@@ -2,7 +2,7 @@
 
 Native Android port of the OBD2 data logging system, now at version **2.2.0**.
 
-This Android app support OBD2 adapter : Support vlinker FS MC bluetooth Wifi Serial OTG OBD adapters and AI Agent.
+This Android app support OBD2 adapter : Support vlinker FS MC bluetooth Wifi Serial OTG OBD adapters / AI Agent can connect direct to access the data.The detail in User_guide.html for you to understand.
 
 ## What was ported and added
 
