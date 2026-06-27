@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBD2 LPG Logger - User Guide</title>
+    <style>
+        :root {
+            --bg: #0B0F19;
+            --surface: #131C2D;
+            --primary: #00E5FF;
+            --accent: #00FFA3;
+            --text: #F8FAFC;
+            --muted: #94A3B8;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: var(--surface);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid var(--primary);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .lang-switch {
+            position: absolute;
+            right: 20px;
+            top: 25px;
+            padding: 8px 16px;
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .lang-switch:hover {
+            background: var(--primary);
+            color: var(--bg);
+        }
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .card {
+            background-color: var(--surface);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 1px solid #1E2A44;
+        }
+        h1, h2, h3 { color: var(--primary); }
+        h1 { margin-top: 0; }
+        .highlight { color: var(--accent); font-weight: bold; }
+        code {
+            background: #1E2A44;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--accent);
+        }
+        .th-content { display: none; } /* Default hidden, managed by JS */
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="header-title" class="en-content">OBD2 LPG Logger - Official User Guide</h1>
+        <h1 id="header-title-th" class="th-content">คู่มือการใช้งาน OBD2 LPG Logger</h1>
+        <button class="lang-switch" onclick="toggleLanguage()">Switch to ภาษาไทย</button>
+    </header>
+
+    <div class="container">
+        
+        <!-- ================= ENGLISH CONTENT ================= -->
+        <div class="en-content">
+            <div class="card">
+                <h2>1. Introduction</h2>
+                <p>Welcome to the <strong>OBD2 LPG Logger</strong>. This application is designed for automotive enthusiasts and tuners to monitor, log, and analyze live vehicle data via OBD2 interfaces (ELM327 Bluetooth/WiFi or USB Serial). It features a highly optimized <strong>LPG Mode</strong> specifically tailored for fast-polling critical tuning sensors like STFT, LTFT, RPM, and MAP.</p>
+            </div>
+
+            <div class="card">
+                <h2>2. Getting Started (Connection)</h2>
+                <ol>
+                    <li><strong>Hardware Setup:</strong> Plug your ELM327 or OBD2 adapter into your vehicle's OBD2 port. Turn the ignition key to the ON position (engine running is optional but recommended for full data).</li>
+                    <li><strong>Pairing:</strong> If using Bluetooth, pair the adapter in your Android system settings first (usually named <code>OBDII</code> or <code>vLinker</code>, PIN: 1234 or 0000).</li>
+                    <li><strong>App Settings:</strong> Go to the <strong>Settings tab (Gear Icon)</strong>. Select your <strong>Transport Mode</strong> (Bluetooth, WiFi, or USB). If Bluetooth is selected, pick your paired device from the dropdown.</li>
+                    <li><strong>Connect:</strong> Return to the Dashboard and tap the circular <strong>Start Logging</strong> button (play icon) at the top right.</li>
+                </ol>
+            </div>
+
+            <div class="card">
+                <h2>3. Dashboard & Gauges</h2>
+                <p>The dashboard displays real-time data in two formats: Circular Gauges and Line Graphs.</p>
+                <ul>
+                    <li><span class="highlight">Gauges:</span> Show instant values (e.g., RPM, Vehicle Speed, Coolant Temp). Long-press a gauge to change which sensor (PID) it displays.</li>
+                    <li><span class="highlight">Graphs:</span> Plot historical data over time. Useful for spotting trends in Oxygen Sensors or Fuel Trims. Long-press to change the displayed PID.</li>
+                </ul>
+                <p><strong>Fuel Mode Toggle:</strong> Use the "Petrol / LPG" switch on the dashboard. When switched to <strong>LPG</strong>, the app activates <em>Fast Polling</em>, ignoring non-essential sensors and querying only tuning-critical data to maximize the refresh rate.</p>
+            </div>
+
+            <div class="card">
+                <h2>4. Live Fuel Map (3D Scatter)</h2>
+                <p>The <strong>Fuel Map</strong> tab is the core tuning tool. It automatically plots your Fuel Trims (STFT + LTFT) into an RPM vs. MAP (Intake Pressure) grid.</p>
+                <ul>
+                    <li><strong>Petrol Map:</strong> Drive on Petrol first to establish a baseline. The app memorizes the factory ECU's target trims.</li>
+                    <li><strong>LPG Map:</strong> Switch to LPG and drive. The app records the LPG trims in the same cells.</li>
+                    <li><strong>Deviation Mode (Diff):</strong> This mode compares the Petrol and LPG maps. Cells colored <span style="color:#FF2A55">Red</span> mean the LPG mixture is too rich, while <span style="color:#00E5FF">Blue</span> means too lean. Your goal is to adjust your LPG ECU so the deviation map is close to 0% (Green).</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>5. Diagnostic Trouble Codes (DTC)</h2>
+                <p>The <strong>DTC Tab</strong> allows you to scan the ECU for stored fault codes. Tap <strong>Read DTCs</strong> to scan. If codes are found, you can tap <strong>Clear DTCs</strong> to erase them and turn off the Check Engine Light. <em>Note: The engine must usually be OFF (but ignition ON) to clear codes.</em></p>
+            </div>
+
+            <div class="card">
+                <h2>6. Data Logging & Export</h2>
+                <p>Every session is automatically recorded as a `.csv` or `.jsonl` file in the selected directory (configured in Settings). You can open these files in Excel, MegaLogViewer, or custom software for deep analysis.</p>
+            </div>
+
+            <div class="card">
+                <h2>7. AI Agent API Server (Local REST API)</h2>
+                <p>The app features a built-in Local HTTP Server designed for MCP (Model Context Protocol) Clients, AI Agents, or custom scripts to read live vehicle data.</p>
+                <ul>
+                    <li><strong>Enable:</strong> In the Settings tab, check the <em>Enable AI Agent API Server</em> box. Your phone's local IP address and URL will be displayed.</li>
+                    <li><strong>Usage:</strong> Ensure your computer/AI Agent is on the <strong>same WiFi network</strong> as the phone.</li>
+                    <li><strong>Endpoints:</strong>
+                        <ul>
+                            <li><code>GET /api/status</code> - Returns app status (Connected/Logging, Fuel Mode, VIN).</li>
+                            <li><code>GET /api/data</code> - Returns the latest polled sensor data (RPM, Speed, Fuel Trims, O2 Sensors, etc.) in JSON format.</li>
+                        </ul>
+                    </li>
+                    <li><em>Note: This API has zero impact on the OBD2 polling speed. It serves the latest cached data from memory.</em></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ================= THAI CONTENT ================= -->
+        <div class="th-content">
+            <div class="card">
+                <h2>1. บทนำ (Introduction)</h2>
+                <p>ยินดีต้อนรับสู่แอป <strong>OBD2 LPG Logger</strong> แอปพลิเคชันนี้ถูกออกแบบมาเพื่อช่างจูนและผู้ใช้รถยนต์ที่ต้องการดูค่าการทำงานของเครื่องยนต์แบบเรียลไทม์ และบันทึกข้อมูล (Log) ผ่านพอร์ต OBD2 โดยมีจุดเด่นคือ <strong>โหมดแก๊ส (LPG Mode)</strong> ที่จะดึงข้อมูลด้วยความเร็วสูงพิเศษ (Fast Polling) เฉพาะเซ็นเซอร์ที่จำเป็นต่อการจูนแก๊ส (เช่น STFT, LTFT, RPM, MAP)</p>
+            </div>
+
+            <div class="card">
+                <h2>2. การเริ่มต้นใช้งานและการเชื่อมต่อ</h2>
+                <ol>
+                    <li><strong>เสียบอุปกรณ์:</strong> เสียบตัวสแกน OBD2 (เช่น ELM327) เข้ากับพอร์ต OBD2 ของรถยนต์ จากนั้นบิดกุญแจรถไปที่ตำแหน่ง ON (หรือสตาร์ทเครื่อง)</li>
+                    <li><strong>จับคู่ (Pairing):</strong> หากใช้ Bluetooth ให้เข้าไปจับคู่อุปกรณ์ในหน้าตั้งค่า Bluetooth ของมือถือก่อน (รหัสผ่านมักจะเป็น 1234 หรือ 0000)</li>
+                    <li><strong>ตั้งค่าในแอป:</strong> ไปที่ <strong>หน้า Settings (ไอคอนฟันเฟือง)</strong> เลือกรูปแบบการเชื่อมต่อ (Transport Mode) เป็น Bluetooth, WiFi หรือ USB หากเลือก Bluetooth ให้เลือกชื่ออุปกรณ์ที่จับคู่ไว้</li>
+                    <li><strong>เริ่มเชื่อมต่อ:</strong> กลับมาที่หน้าแรก (Dashboard) แล้วกดปุ่ม <strong>Start Logging</strong> (ไอคอน Play วงกลมมุมขวาบน)</li>
+                </ol>
+            </div>
+
+            <div class="card">
+                <h2>3. หน้าปัดและกราฟ (Dashboard)</h2>
+                <p>หน้า Dashboard จะแสดงข้อมูลเรียลไทม์ 2 รูปแบบคือ เกจวัด (Gauges) และ กราฟเส้น (Graphs)</p>
+                <ul>
+                    <li><span class="highlight">เกจวัด:</span> แสดงค่าปัจจุบันทันที เช่น รอบเครื่อง (RPM) ความเร็ว (Speed) สามารถ <strong>กดค้างที่เกจ</strong> เพื่อเปลี่ยนไปดูค่าเซ็นเซอร์ตัวอื่นได้</li>
+                    <li><span class="highlight">กราฟเส้น:</span> แสดงแนวโน้มของข้อมูลย้อนหลัง เหมาะสำหรับดูความแกว่งของ O2 Sensor หรือ Fuel Trim <strong>กดค้างที่กราฟ</strong> เพื่อเปลี่ยนเซ็นเซอร์ได้เช่นกัน</li>
+                </ul>
+                <p><strong>ปุ่มสลับโหมดน้ำมัน/แก๊ส:</strong> เมื่อกดสลับเป็น <strong>LPG</strong> แอปจะเข้าสู่โหมด <em>Fast Polling</em> โดยตัดข้อมูลที่ไม่จำเป็นทิ้ง และดึงเฉพาะข้อมูลจูน ทำให้กราฟและเกจตอบสนองไวขึ้นมาก</p>
+            </div>
+
+            <div class="card">
+                <h2>4. ตารางเชื้อเพลิง (Live Fuel Map)</h2>
+                <p>หน้า <strong>Fuel Map</strong> คือเครื่องมือหลักสำหรับช่างจูน โดยแอปจะสร้างตาราง 3 มิติ (RPM เทียบกับ MAP) และเก็บค่า Fuel Trim (STFT+LTFT) ลงในช่องต่างๆ ตามการขับจริง</p>
+                <ul>
+                    <li><strong>แผนที่น้ำมัน (Petrol):</strong> ควรขับด้วยน้ำมันก่อนเพื่อให้แอปจำค่าพื้นฐาน (Baseline) ของรถคุณ</li>
+                    <li><strong>แผนที่แก๊ส (LPG):</strong> สลับเป็นแก๊สแล้วขับ แอปจะเก็บค่า Trim ของแก๊สลงตารางเดิม</li>
+                    <li><strong>โหมดเบี่ยงเบน (Deviation/Diff):</strong> โหมดนี้จะนำค่าแก๊สมาลบกับค่าน้ำมัน หากช่องไหนเป็น <span style="color:#FF2A55">สีแดง</span> แปลว่าแก๊สหนาไป หากเป็น <span style="color:#00E5FF">สีฟ้า</span> แปลว่าบางไป เป้าหมายของคุณคือการปรับจูนกล่องแก๊สให้หน้า Deviation นี้เข้าใกล้ค่า 0% (<span style="color:#00FFA3">สีเขียว</span>) ให้มากที่สุด</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>5. การสแกนโค้ด (DTC)</h2>
+                <p>หน้า <strong>DTC</strong> ใช้สำหรับอ่านและลบโค้ดไฟรูปเครื่องยนต์ (Check Engine) กดปุ่ม <strong>Read DTCs</strong> เพื่ออ่านโค้ด หากพบปัญหาและแก้ไขแล้ว สามารถกด <strong>Clear DTCs</strong> เพื่อลบไฟโชว์ได้ <em>(หมายเหตุ: การลบโค้ดมักจะต้องดับเครื่องยนต์ แต่บิดกุญแจไว้ที่ ON)</em></p>
+            </div>
+
+            <div class="card">
+                <h2>6. การบันทึกข้อมูล (Data Logging)</h2>
+                <p>ทุกครั้งที่คุณกด Start Logging แอปจะบันทึกข้อมูลทุกวินาทีลงในไฟล์ `.csv` หรือ `.jsonl` ในโฟลเดอร์ที่คุณตั้งค่าไว้ คุณสามารถนำไฟล์นี้ไปเปิดใน Excel หรือโปรแกรมวิเคราะห์ข้อมูล (เช่น MegaLogViewer) เพื่อดูข้อมูลย้อนหลังอย่างละเอียดได้</p>
+            </div>
+
+            <div class="card">
+                <h2>7. AI Agent API Server (เชื่อมต่อระบบ AI อัจฉริยะ)</h2>
+                <p>แอปพลิเคชันนี้มีระบบ Local HTTP Server ฝังมาในตัว เพื่อให้ระบบ AI Agent, MCP Client หรือสคริปต์คอมพิวเตอร์ของคุณ สามารถดึงข้อมูลรถยนต์แบบสดๆ (Real-time) ไปประมวลผลได้</p>
+                <ul>
+                    <li><strong>วิธีเปิดใช้งาน:</strong> ไปที่หน้า Settings และติ๊กถูกที่ <em>Enable AI Agent API Server</em> หน้าจอจะแสดง URL สำหรับดึงข้อมูลขึ้นมาให้</li>
+                    <li><strong>เงื่อนไข:</strong> คอมพิวเตอร์หรือระบบ AI ของคุณ จะต้องเชื่อมต่อ <strong>WiFi วงเดียวกัน</strong> กับมือถือเครื่องที่เปิดแอปนี้</li>
+                    <li><strong>API Endpoints:</strong>
+                        <ul>
+                            <li><code>GET /api/status</code> - เช็คสถานะการเชื่อมต่อ (กำลัง Log ข้อมูลอยู่หรือไม่, โหมดน้ำมัน/แก๊ส, เลขตัวถัง)</li>
+                            <li><code>GET /api/data</code> - ดึงข้อมูลเซ็นเซอร์ล่าสุด (รอบเครื่อง, ความเร็ว, Fuel Trims, ค่า O2 ฯลฯ) ในรูปแบบ JSON</li>
+                        </ul>
+                    </li>
+                    <li><em>หมายเหตุ: การดึงข้อมูลผ่าน API นี้ จะไม่มีผลกระทบและไม่ทำให้ความเร็วในการดึงข้อมูลจากตัวสแกน OBD2 ช้าลงแต่อย่างใด</em></li>
+                </ul>
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        let currentLang = 'en';
+
+        function toggleLanguage() {
+            const enElements = document.querySelectorAll('.en-content');
+            const thElements = document.querySelectorAll('.th-content');
+            const btn = document.querySelector('.lang-switch');
+
+            if (currentLang === 'en') {
+                enElements.forEach(el => el.style.display = 'none');
+                thElements.forEach(el => el.style.display = 'block');
+                btn.textContent = 'Switch to English';
+                document.title = "OBD2 LPG Logger - คู่มือการใช้งาน";
+                currentLang = 'th';
+            } else {
+                thElements.forEach(el => el.style.display = 'none');
+                enElements.forEach(el => el.style.display = 'block');
+                btn.textContent = 'Switch to ภาษาไทย';
+                document.title = "OBD2 LPG Logger - User Guide";
+                currentLang = 'en';
+            }
+        }
+    </script>
+</body>
+</html>

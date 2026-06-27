@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_dashboard"
+        android:icon="@drawable/ic_dashboard"
+        android:title="@string/tab_dashboard" />
+    <item
+        android:id="@+id/nav_gauges"
+        android:icon="@drawable/ic_speed"
+        android:title="@string/tab_gauges" />
+    <item
+        android:id="@+id/nav_map"
+        android:icon="@drawable/ic_map"
+        android:title="Map" />
+    <item
+        android:id="@+id/nav_dtc"
+        android:icon="@drawable/ic_build"
+        android:title="@string/tab_dtc" />
+    <item
+        android:id="@+id/nav_logs"
+        android:icon="@drawable/ic_list"
+        android:title="@string/tab_logs" />
+</menu>

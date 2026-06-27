@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OBD2 LPG Logger</string>
+    <string name="start">เริ่ม</string>
+    <string name="stop">หยุด</string>
+    <string name="idle_status">พร้อมทำงาน กรุณาเลือกวิธีเชื่อมต่อแล้วกดเริ่ม</string>
+    <string name="log_path">ล็อกไฟล์จะถูกเก็บที่ Downloads/OBD2LPGLogger</string>
+    <string name="tap_to_open_logs">แตะเพื่อเปิดโฟลเดอร์ Logs</string>
+    <string name="prompt_transport_mode">โหมดการเชื่อมต่อ</string>
+    <string name="prompt_fuel_mode">ชนิดเชื้อเพลิง</string>
+    <string name="prompt_obd_protocol">โปรโตคอล OBD2</string>
+    <string name="prompt_bluetooth_device">อุปกรณ์บลูทูธ OBD2</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">หน้าปัด</string>
+    <string name="tab_gauges">เกจ</string>
+    <string name="tab_map">แผนที่</string>
+    <string name="tab_dtc">วิเคราะห์</string>
+    <string name="tab_logs">บันทึก</string>
+    <string name="tab_settings">ตั้งค่า</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">วิเคราะห์การจูนแบบอัจฉริยะ (Smart Tuning Analysis)</string>
+    <string name="waiting_for_data">รอข้อมูล Fuel Trim...</string>
+    <string name="live_fuel_map">ตาราง Fuel Trim สด</string>
+    <string name="map_axes">Y = รอบเครื่อง RPM (500-6000), X = แรงดัน MAP kPa (20-100)</string>
+    <string name="how_to_read_map_title">💡 วิธีอ่านค่า Map</string>
+    <string name="how_to_read_map_desc" formatted="false">แสดงผลรวม Fuel Trim (STFT + LTFT)\n🟢 สีเขียว (±5%) = สมบูรณ์\n🔴 สีแดง (ติดลบ) = น้ำมันหนาไป (ลดการจ่าย)\n🔵 สีฟ้า (บวก) = น้ำมันบางไป (เพิ่มการจ่าย)\n\nโหมด DEVIATION: แสดงส่วนต่าง (LPG - Petrol)\nค่าบวก=แก๊สบาง ค่าลบ=แก๊สหนา ควรจูนให้เข้าใกล้ 0%\n* ต้องวิ่งเก็บข้อมูลทั้ง 2 โหมดก่อน ถึงจะแสดงผลได้!</string>
+    <string name="petrol">น้ำมัน</string>
+    <string name="lpg">แก๊ส</string>
+    <string name="deviation">ความเบี่ยงเบน</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">ไม่ทราบสถานะ</string>
+    <string name="analyzer_no_data">ไม่มีข้อมูลเซ็นเซอร์</string>
+    <string name="analyzer_lean">บางไป (LEAN)</string>
+    <string name="analyzer_rich">หนาไป (RICH)</string>
+    <string name="analyzer_ok">สมบูรณ์ (PERFECT)</string>
+    
+    <string name="analyzer_petrol_lean">เครื่องยนต์น้ำมันทำงานบางเกินไป ตรวจสอบท่อแวคคั่มรั่วหรือเซ็นเซอร์ก่อนเริ่มจูนแก๊ส</string>
+    <string name="analyzer_petrol_rich">เครื่องยนต์น้ำมันทำงานหนาเกินไป แก้ไขปัญหาเครื่องยนต์ก่อนเริ่มจูนแก๊ส</string>
+    <string name="analyzer_petrol_ok">เครื่องยนต์น้ำมันทำงานสมบูรณ์ พร้อมเก็บค่า Baseline</string>
+    
+    <string name="analyzer_lpg_lean">แก๊สบางไป (LEAN) กรุณาเพิ่มการจ่ายแก๊สในตารางจูนแก๊ส</string>
+    <string name="analyzer_lpg_rich">แก๊สหนาไป (RICH) กรุณาลดการจ่ายแก๊สในตารางจูนแก๊ส</string>
+    <string name="analyzer_lpg_ok">การจ่ายแก๊สสมบูรณ์ ใกล้เคียงกับ Baseline ของน้ำมันเดิม</string>
+    
+    <string name="status_perfect_translated">สมบูรณ์ (PERFECT)</string>
+    <string name="status_lean_translated">บางไป (LEAN)</string>
+    <string name="status_rich_translated">หนาไป (RICH)</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nสถานะ: %3$s\nคำแนะนำ: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">อ่านโค้ด DTC</string>
+    <string name="clear_dtc">ลบโค้ด DTC</string>
+    <string name="read_vin">อ่านเลขตัวถัง VIN</string>
+    <string name="read_readiness">เช็คความพร้อม</string>
+    <string name="no_dtcs">ไม่พบรหัสปัญหา (DTC)</string>
+    <string name="dtc_count">พบปัญหา: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">เตรียมจับเวลา 0-100</string>
+    <string name="perf_reset">รีเซ็ต</string>
+    <string name="perf_brake">จับเวลาเบรก</string>
+
+    <!-- Service -->
+    <string name="prompt_language">ภาษา / Language</string>
+    <string name="background_logging">ทำงานพื้นหลัง</string>
+    <string name="keep_screen_on">เปิดหน้าจอค้างไว้</string>
+    <string name="log_destination_label">โฟลเดอร์สำหรับเก็บล็อกไฟล์</string>
+    <string name="default_log_folder">Downloads/OBD2LPGLogger (ค่าเริ่มต้น)</string>
+    <string name="select_folder">เลือก</string>
+</resources>

@@ -1,0 +1,77 @@
+<resources>
+    <string name="app_name">OBD2 LPG Logger</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="idle_status">Ready. Select transport mode and start logging.</string>
+    <string name="log_path">Logs will be saved to Downloads/OBD2LPGLogger</string>
+    <string name="tap_to_open_logs">Tap to open Downloads/OBD2LPGLogger</string>
+    <string name="prompt_transport_mode">Transport mode</string>
+    <string name="prompt_fuel_mode">Fuel mode</string>
+    <string name="prompt_obd_protocol">OBD2 protocol</string>
+    <string name="prompt_bluetooth_device">Bluetooth OBD2 device</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">Dashboard</string>
+    <string name="tab_gauges">Gauges</string>
+    <string name="tab_map">Map</string>
+    <string name="tab_dtc">DTC</string>
+    <string name="tab_logs">Logs</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">Smart Tuning Analysis</string>
+    <string name="waiting_for_data">Waiting for Fuel Trim data...</string>
+    <string name="live_fuel_map">Live Fuel Trim Map</string>
+    <string name="map_axes">Y = RPM (500-6000), X = MAP kPa (20-100)</string>
+    <string name="how_to_read_map_title">💡 How to read the Map</string>
+    <string name="how_to_read_map_desc" formatted="false">Shows Total Fuel Trim (STFT + LTFT)\n🟢 Green (±5%) = Perfect\n🔴 Red (Negative) = Rich (Reduce fuel)\n🔵 Blue (Positive) = Lean (Add fuel)\n\nDEVIATION: Shows (LPG - Petrol).\n+ means LPG is Lean. - means LPG is Rich. Aim for 0%.\n* Note: To see Deviation, you must collect BOTH Petrol and LPG data first!</string>
+    <string name="petrol">PETROL</string>
+    <string name="lpg">LPG</string>
+    <string name="deviation">DEVIATION</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">UNKNOWN</string>
+    <string name="analyzer_no_data">No sensor data available</string>
+    <string name="analyzer_lean">LEAN</string>
+    <string name="analyzer_rich">RICH</string>
+    <string name="analyzer_ok">OK</string>
+    
+    <string name="analyzer_petrol_lean">Factory engine is running lean. Check for vacuum leaks or bad sensors before tuning LPG.</string>
+    <string name="analyzer_petrol_rich">Factory engine is running rich. Fix mechanical issues before tuning LPG.</string>
+    <string name="analyzer_petrol_ok">Factory tune is healthy. Safe to collect baseline.</string>
+    
+    <string name="analyzer_lpg_lean">LPG is LEAN. INCREASE values in LPG map (add fuel).</string>
+    <string name="analyzer_lpg_rich">LPG is RICH. DECREASE values in LPG map (reduce fuel).</string>
+    <string name="analyzer_lpg_ok">LPG mixture matches factory baseline closely.</string>
+    
+    <string name="status_perfect_translated">Perfect</string>
+    <string name="status_lean_translated">Lean</string>
+    <string name="status_rich_translated">Rich</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nStatus: %3$s\nAdvice: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">Read DTCs</string>
+    <string name="clear_dtc">Clear DTCs</string>
+    <string name="read_vin">Read VIN</string>
+    <string name="read_readiness">Check Readiness</string>
+    <string name="no_dtcs">No DTCs stored.</string>
+    <string name="dtc_count">DTC count: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">Arm 0-100 Timer</string>
+    <string name="perf_reset">Reset</string>
+    <string name="perf_brake">Start Brake Test</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">Fuel Economy</string>
+
+    <string name="prompt_language">Language / ภาษา</string>
+
+    <!-- Service -->
+    <string name="background_logging">Background Logging</string>
+    <string name="keep_screen_on">Keep Screen On</string>
+    <string name="log_destination_label">Log Destination Folder</string>
+    <string name="default_log_folder">Downloads/OBD2LPGLogger (Default)</string>
+    <string name="select_folder">Select</string>
+</resources>

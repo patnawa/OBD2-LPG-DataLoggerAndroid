@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.alpha.obd2logger.PidAvailabilityCheckerTest" tests="30" skipped="0" failures="0" errors="0" timestamp="2026-06-27T12:04:07" hostname="X870E" time="0.005">
+  <properties/>
+  <testcase name="filterCatalogueExcludesUnsupportedPids" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="getProfileYear0IncludesAll" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.001"/>
+  <testcase name="yearFromVinReturnsZeroForShortVin" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="filterCatalogueKeepsSupportedPids" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="brandFromVinDetectsToyota" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.001"/>
+  <testcase name="getProfilePost2008IncludesAdditionalPids" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="filterCatalogueReturnsOriginalWhenSupportedIsNull" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="brandFromVinDetectsBMW" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="simulationProfileIsNotNullAndContainsCorePids" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="brandFromVinReturnsGenericForNull" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="brandFromVinDetectsFord" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="filterCatalogueReturnsOriginalWhenSupportedIsEmpty" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="getProfileFromVinReturnsNullForNullVin" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.001"/>
+  <testcase name="yearFromVinReturnsZeroForNull" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="filterCatalogueKeepsPseudoPidsWhenParentSupported" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="getProfileReturnsNullForNullBrand" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="getProfileIncludesBasePids" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="getProfileToyotaDoesNotIncludeWidebandLambda" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="getProfileFromVinCombinesBrandAndYear" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="yearFromVinDecodes2008" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="yearFromVinDecodes2015" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="yearFromVinDecodes2020" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="yearFromVinDecodes2025" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="getProfileFromVinReturnsNullForShortVin" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="getProfileBmwIncludesWidebandLambda" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="brandFromVinDetectsHonda" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="brandFromVinReturnsGenericForShortVin" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="brandFromVinDetectsVolkswagen" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.001"/>
+  <testcase name="brandFromVinDetectsMercedes" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <testcase name="yearFromVinReturnsZeroForUnknownCode" classname="com.alpha.obd2logger.PidAvailabilityCheckerTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

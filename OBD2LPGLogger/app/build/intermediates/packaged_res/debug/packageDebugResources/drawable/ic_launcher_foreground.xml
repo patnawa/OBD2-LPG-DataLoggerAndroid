@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Soft glow -->
+    <path
+        android:fillColor="#38BDF8"
+        android:fillAlpha="0.18"
+        android:pathData="M54,18m-32,0a32,32 0,1 1,64 0a32,32 0,1 1,-64 0" />
+    <path
+        android:fillColor="#A7F3D0"
+        android:fillAlpha="0.14"
+        android:pathData="M72,72m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0" />
+
+    <!-- Gauge arc -->
+    <path
+        android:strokeColor="#E0F2FE"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M26,68a28,28 0,0 1,56 0" />
+    <path
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M30,64a24,24 0,0 1,48 0" />
+
+    <!-- Gauge ticks -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M34,47L38,43M45,39L47,45M54,37L54,44M63,39L61,45M74,47L70,43" />
+
+    <!-- Needle -->
+    <path
+        android:strokeColor="#FBBF24"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M54,68L69,45" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M54,68m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+
+    <!-- Compact car silhouette -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,78L34,68L42,62H64L72,68L79,78H74L71,72H37L34,78Z" />
+    <path
+        android:fillColor="#A7F3D0"
+        android:pathData="M42,63L48,56H60L65,63Z" />
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M40,79m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0M69,79m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0" />
+
+    <!-- OBD plug accent -->
+    <path
+        android:fillColor="#22D3EE"
+        android:pathData="M82,24h8v14h-8z" />
+    <path
+        android:strokeColor="#22D3EE"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M86,38v7M82,45h8" />
+</vector>
