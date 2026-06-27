@@ -2,6 +2,8 @@
 
 Native Android port of the OBD2 data logging system, now at version **2.2.0**.
 
+This Android app support OBD2 adapter : Support vlinker FS MC bluetooth Wifi Serial OTG OBD adapters and AI Agent.
+
 ## What was ported and added
 
 - **Core Logging**: PID catalogue and safe formula parser for `A`/`B` OBD2 responses.
@@ -16,7 +18,9 @@ Native Android port of the OBD2 data logging system, now at version **2.2.0**.
 - **AI Agent API Server**: Built-in HTTP server (`NanoHTTPD`) running on port `8080`. AI Agents and MCP Clients can read live JSON data on the same WiFi network with zero impact on vehicle polling speed.
 
 ## Endpoints (AI Agent)
+
 Enable the API server in Settings to expose:
+
 - `GET /api/status`: Returns connection status, fuel mode, and VIN.
 - `GET /api/data`: Returns the latest polled sensor data array in JSON format.
 
@@ -32,6 +36,7 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-t
 ```
 
 Debug APK output:
+
 ```text
 app/build/outputs/apk/debug/app-debug.apk
 ```
