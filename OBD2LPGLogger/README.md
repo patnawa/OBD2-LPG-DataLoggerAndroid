@@ -1,21 +1,28 @@
 # OBD2 LPG Logger Android App
 
-Native Android port of `obd2_loggerv4.2.py`.
+Native Android port of the OBD2 data logging system, now at version **2.2.0**.
 
-## What was ported
+## What was ported and added
 
-- PID catalogue and safe formula parser for `A`/`B` OBD2 responses.
-- Simulation, WiFi TCP, and Bluetooth SPP drivers.
-- Auto mode: tries WiFi TCP first, then Bluetooth SPP, then simulation fallback.
-- CSV + JSONL logging to `Downloads/OBD2LPGLogger`.
-- LPG fuel-trim analysis (`STFT + LTFT`) with LEAN/RICH/OK recommendation.
-- Oxygen sensor detection and logging: all 8 standard OBD2 O2 sensor PIDs (0x14-0x1B, Bank 1/2 Sensor 1-4) are queried and logged as voltage (V).
-- Continuous logging mode: record time is unlocked; logging runs until you press Stop.
-- Dark dashboard-style live UI for critical LPG PIDs.
+- **Core Logging**: PID catalogue and safe formula parser for `A`/`B` OBD2 responses.
+- **Drivers**: Support for Simulation, WiFi TCP, Bluetooth SPP, and USB OTG Serial adapters (CH340, CP2102, FTDI, Prolific).
+- **Auto-connect**: Tries WiFi TCP first, then selected Bluetooth SPP device, then paired devices, then USB, and finally simulation fallback.
+- **Flexible Logging**: CSV + JSONL logging to any user-selected folder (via Storage Access Framework). Logging runs continuously as a foreground service.
+- **LPG Tuning Analysis**: Real-time analysis of `STFT + LTFT` with LEAN/RICH/OK recommendations.
+- **DTC & VIN Scanning**: Reads current diagnostic trouble codes (DTC) and retrieves the Vehicle Identification Number (VIN).
+- **Readiness Monitors**: Checks vehicle inspection readiness (Misfire, Fuel System, O2 Sensors, etc.).
+- **O2 Sensor Logging**: Reads all 8 standard OBD2 O2 sensor PIDs (0x14-0x1B) as voltage (V).
+- **Day/Night Theme**: Choose between System, Light, and Dark mode in settings.
+- **AI Agent API Server**: Built-in HTTP server (`NanoHTTPD`) running on port `8080`. AI Agents and MCP Clients can read live JSON data on the same WiFi network with zero impact on vehicle polling speed.
+
+## Endpoints (AI Agent)
+Enable the API server in Settings to expose:
+- `GET /api/status`: Returns connection status, fuel mode, and VIN.
+- `GET /api/data`: Returns the latest polled sensor data array in JSON format.
 
 ## Build
 
-From this directory:
+From the project root:
 
 ```bash
 export JAVA_HOME="$HOME/jdk-17.0.19+10"
@@ -24,24 +31,15 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-t
 ./gradlew clean :app:testDebugUnitTest :app:assembleDebug
 ```
 
-Debug APK:
-
+Debug APK output:
 ```text
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Logs are written to:
-
-```text
-/storage/emulated/0/Download/OBD2LPGLogger/
-```
-
-On Android 10+ the app uses `MediaStore.Downloads`, so it does not rely on legacy broad file permissions. The UI shows the concrete `content://` locations for the current session CSV and JSONL files. Tap the log path box to open the log folder; if the installed file manager cannot open folders directly, the app falls back to opening the latest CSV/JSONL file.
-
 ## Runtime notes
 
-- WiFi mode expects an ELM327/WiFi OBD2 adapter at `192.168.0.10:35000` by default.
-- Bluetooth SPP mode now lists paired Bluetooth devices; no MAC address needs to be typed manually.
-- Auto mode tries WiFi TCP first, then the selected Bluetooth SPP device, then other paired Bluetooth devices, then simulation fallback.
-- USB serial is not implemented in this first Android build because Android USB serial needs a device permission flow plus a USB-serial driver library.
-- Keep the phone screen awake during long logging sessions.
+- **WiFi**: Default is `192.168.0.10:35000`. You can change this in the Settings tab.
+- **Bluetooth**: Select a paired ELM327 device from the dropdown. No MAC address typing required.
+- **USB**: Requires a compatible USB-to-Serial adapter connected via OTG. Grant USB permissions when prompted.
+- **Background Logging**: The app runs a persistent foreground service. You can lock the screen or switch apps without dropping the OBD2 connection.
+- **User Guide**: An in-app HTML user guide (Thai/English) is provided for easy troubleshooting and reference.
