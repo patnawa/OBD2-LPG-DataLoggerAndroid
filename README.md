@@ -2,6 +2,8 @@
 
 Native Android port of the OBD2 data logging system, now at version **2.2.0**.
 
+โปรแกรมนี้แนวคิดทำขึ้นมาเพื่อง่ายต่อการบันทึก Log จากรถยนต์ที่ใช้แก๊ส LPG และคำนวนค่า LTFT STFT แบบrealtime เพื่อใช้ในการจูน โดยเชื่อมต่อกับ AI เพื่อวิเคราะห์การจูน และสามารถเชื่อมต่อกับ Ai Agent เพื่อวิเคราะหการจูนแก๊สแบบอัตโนมัติ และแม่นยำมากที่สุด โดยไม่ต้องพึ่งพาโปรแกรมอื่น เป็นตัวกลางในการเชื่อมต่อระหว่างรถยนต์ และ AI.
+
 This Android app support OBD2 adapter : Support vlinker FS MC bluetooth Wifi Serial OTG OBD adapters / AI Agent can connect direct to access the data.The detail in User_guide.html for you to understand.
 
 ## What was ported and added
