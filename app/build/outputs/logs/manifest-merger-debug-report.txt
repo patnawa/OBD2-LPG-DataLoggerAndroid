@@ -1,20 +1,20 @@
 -- Merging decision tree log ---
 provider#androidx.core.content.FileProvider
-INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:35:9-43:20
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:35:9-43:20
 	android:grantUriPermissions
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:39:13-47
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:39:13-47
 	android:authorities
-		INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:37:13-64
+		INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:37:13-64
 	android:exported
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:38:13-37
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:38:13-37
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:36:13-62
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:36:13-62
 manifest
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:1:1-60:12
-INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:1:1-60:12
-INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:1:1-60:12
-INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:1:1-60:12
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-60:12
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-60:12
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-60:12
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-60:12
 MERGED from [com.google.android.material:material:1.12.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\17283b837f191dad18a5e34f3c310f2e\transformed\material-1.12.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\ca874313ddc5107deb2a90d842f8f753\transformed\constraintlayout-2.1.4\AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\1aec3877a00d7e39e4f93a32f28dceb6\transformed\appcompat-resources-1.6.1\AndroidManifest.xml:17:1-22:12
@@ -58,96 +58,96 @@ MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] C:\User
 MERGED from [androidx.print:print:1.0.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\5d733eb07d4c72f808933ebc69a1a1ef\transformed\print-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.annotation:annotation-experimental:1.4.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\aebdda4cd49b43fe8a6c23c2fad01727\transformed\annotation-experimental-1.4.0\AndroidManifest.xml:2:1-7:12
 	package
-		INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml
 	android:versionName
-		INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml
 	android:versionCode
-		INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml
 	xmlns:android
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:1:11-69
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:11-69
 uses-permission#android.permission.INTERNET
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:3:5-67
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:3:5-67
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:3:22-64
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:3:22-64
 uses-permission#android.permission.ACCESS_NETWORK_STATE
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:4:5-79
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:4:5-79
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:4:22-76
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:4:22-76
 uses-permission#android.permission.ACCESS_WIFI_STATE
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:5:5-76
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:5:5-76
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:5:22-73
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:5:22-73
 uses-permission#android.permission.BLUETOOTH
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:7:5-95
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:7:5-95
 	android:maxSdkVersion
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:7:66-92
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:7:66-92
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:7:22-65
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:7:22-65
 uses-permission#android.permission.BLUETOOTH_ADMIN
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:8:5-101
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:8:5-101
 	android:maxSdkVersion
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:8:72-98
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:8:72-98
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:8:22-71
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:8:22-71
 uses-permission#android.permission.BLUETOOTH_CONNECT
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:9:5-76
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:9:5-76
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:9:22-73
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:9:22-73
 uses-permission#android.permission.BLUETOOTH_SCAN
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:10:5-120
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:10:5-120
 	android:usesPermissionFlags
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:10:71-117
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:10:71-117
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:10:22-70
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:10:22-70
 uses-permission#android.permission.ACCESS_FINE_LOCATION
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:12:5-79
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:12:5-79
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:12:22-76
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:12:22-76
 uses-permission#android.permission.ACCESS_COARSE_LOCATION
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:13:5-81
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:13:5-81
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:13:22-78
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:13:22-78
 uses-permission#android.permission.FOREGROUND_SERVICE
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:16:5-77
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:16:5-77
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:16:22-74
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:16:22-74
 uses-permission#android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:17:5-94
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:17:5-94
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:17:22-91
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:17:22-91
 uses-permission#android.permission.POST_NOTIFICATIONS
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:18:5-77
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:18:5-77
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:18:22-74
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:18:22-74
 uses-permission#android.permission.WAKE_LOCK
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:19:5-68
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:19:5-68
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:19:22-65
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:19:22-65
 uses-permission#android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:20:5-95
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:20:5-95
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:20:22-92
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:20:22-92
 uses-feature#android.hardware.bluetooth
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:22:5-88
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:22:5-88
 	android:required
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:22:61-85
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:22:61-85
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:22:19-60
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:22:19-60
 uses-feature#android.hardware.bluetooth_le
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:23:5-91
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:23:5-91
 	android:required
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:23:64-88
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:23:64-88
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:23:19-63
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:23:19-63
 uses-feature#android.hardware.usb.host
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:24:5-87
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:24:5-87
 	android:required
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:24:60-84
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:24:60-84
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:24:19-59
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:24:19-59
 application
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:26:5-59:19
-INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:26:5-59:19
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:26:5-59:19
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:26:5-59:19
 MERGED from [com.google.android.material:material:1.12.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\17283b837f191dad18a5e34f3c310f2e\transformed\material-1.12.0\AndroidManifest.xml:22:5-20
 MERGED from [com.google.android.material:material:1.12.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\17283b837f191dad18a5e34f3c310f2e\transformed\material-1.12.0\AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\ca874313ddc5107deb2a90d842f8f753\transformed\constraintlayout-2.1.4\AndroidManifest.xml:9:5-20
@@ -165,59 +165,59 @@ MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\Alpha\.g
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\faa14e492eee8d2543eebdfd71a02ea2\transformed\startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\faa14e492eee8d2543eebdfd71a02ea2\transformed\startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
 	android:extractNativeLibs
-		INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.13.1] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\7fde7e584ba6ad99d60f973b698abe33\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:31:9-35
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:31:9-35
 	android:label
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:30:9-41
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:30:9-41
 	android:roundIcon
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:29:9-54
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:29:9-54
 	android:icon
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:28:9-43
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:28:9-43
 	android:allowBackup
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:27:9-35
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:27:9-35
 	android:theme
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:32:9-40
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:32:9-40
 	android:usesCleartextTraffic
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:33:9-44
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:33:9-44
 activity#com.alpha.obd2logger.MainActivity
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:45:9-53:20
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:45:9-53:20
 	android:exported
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:47:13-36
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:47:13-36
 	android:configChanges
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:48:13-74
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:48:13-74
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:46:13-41
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:46:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:49:13-52:29
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:49:13-52:29
 action#android.intent.action.MAIN
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:50:17-69
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:50:17-69
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:50:25-66
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:50:25-66
 category#android.intent.category.LAUNCHER
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:51:17-77
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:51:17-77
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:51:27-74
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:51:27-74
 service#com.alpha.obd2logger.LoggerService
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:55:9-58:63
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:55:9-58:63
 	android:exported
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:57:13-37
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:57:13-37
 	android:foregroundServiceType
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:58:13-60
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:58:13-60
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:56:13-42
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:56:13-42
 meta-data#android.support.FILE_PROVIDER_PATHS
-ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:40:13-42:54
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:40:13-42:54
 	android:resource
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:42:17-51
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:42:17-51
 	android:name
-		ADDED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml:41:17-67
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:41:17-67
 uses-sdk
-INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
-INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml
-INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml
 MERGED from [com.google.android.material:material:1.12.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\17283b837f191dad18a5e34f3c310f2e\transformed\material-1.12.0\AndroidManifest.xml:20:5-44
 MERGED from [com.google.android.material:material:1.12.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\17283b837f191dad18a5e34f3c310f2e\transformed\material-1.12.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\ca874313ddc5107deb2a90d842f8f753\transformed\constraintlayout-2.1.4\AndroidManifest.xml:5:5-7:41
@@ -303,9 +303,9 @@ MERGED from [androidx.print:print:1.0.0] C:\Users\Alpha\.gradle\caches\9.4.1\tra
 MERGED from [androidx.annotation:annotation-experimental:1.4.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\aebdda4cd49b43fe8a6c23c2fad01727\transformed\annotation-experimental-1.4.0\AndroidManifest.xml:5:5-44
 MERGED from [androidx.annotation:annotation-experimental:1.4.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\aebdda4cd49b43fe8a6c23c2fad01727\transformed\annotation-experimental-1.4.0\AndroidManifest.xml:5:5-44
 	android:targetSdkVersion
-		INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml
 	android:minSdkVersion
-		INJECTED from C:\Users\Alpha\Desktop\Data Logger\OBD2LPGLogger\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml
 provider#androidx.startup.InitializationProvider
 ADDED from [androidx.emoji2:emoji2:1.2.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\285cfc76a83a3eb42fcb7ac29204b283\transformed\emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
 MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\5ebc3aab122614a7b4b0c81d8011435f\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:24:9-32:20

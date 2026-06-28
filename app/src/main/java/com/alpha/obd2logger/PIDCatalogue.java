@@ -43,6 +43,7 @@ public final class PIDCatalogue {
         list.add(new PIDDefinition("Engine RPM", "01", "0C", "rpm", "(A*256+B)/4", 0, 16383.75, true, 2, true));
         list.add(new PIDDefinition("Vehicle Speed", "01", "0D", "km/h", "A", 0, 255, false, 1, true));
         list.add(new PIDDefinition("Engine Load", "01", "04", "%", "A*100/255", 0, 100, true, 1, true));
+        list.add(new PIDDefinition("Fuel System Status", "01", "03", "", "A", 0, 255, true, 1, false));
         list.add(new PIDDefinition("Coolant Temp", "01", "05", "°C", "A-40", -40, 215, true, 1, true));
         list.add(new PIDDefinition("Intake Air Temp", "01", "0F", "°C", "A-40", -40, 215, true, 1, false));
         list.add(new PIDDefinition("Ambient Air Temp", "01", "46", "°C", "A-40", -40, 215, false, 1, false));

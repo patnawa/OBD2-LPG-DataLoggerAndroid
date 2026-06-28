@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2026-06-28
+### Added
+- Added OBD2 PID 01 03 (Fuel System Status) to monitor open/closed loop state.
+- Enhanced Fuel Map tab with live display of Engine Coolant Temperature (ECT) and Loop Status.
+- Improved auto-tune calculation logic to plot fuel map data only when the engine is in a stable, closed-loop state and ECT is at least 80°C.
+
 ## [2.2.0] - 2026-06-27
 ### Added
 - Local API Server (NanoHTTPD) to allow external AI Agents and MCP Clients to fetch live sensor data via local WiFi on Port 8080.

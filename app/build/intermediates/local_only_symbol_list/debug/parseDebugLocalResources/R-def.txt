@@ -97,6 +97,8 @@ id keepScreenOnCheckbox
 id languageSpinner
 id logPathText
 id lpgOnlyCheckbox
+id mapEctText
+id mapLoopStatusText
 id mapModeToggle
 id nav_dashboard
 id nav_dtc

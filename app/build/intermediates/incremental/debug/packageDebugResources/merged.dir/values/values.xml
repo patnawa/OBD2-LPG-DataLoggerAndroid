@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="empty_list">
+    </string-array>
+    <string-array name="fuel_modes">
+        <item>LPG</item>
+        <item>Petrol</item>
+    </string-array>
+    <string-array name="language_modes">
+        <item>English</item>
+        <item>ภาษาไทย</item>
+    </string-array>
+    <string-array name="obd_protocols">
+        <item>Auto (AT SP 0)</item>
+        <item>SAE J1850 PWM 41.6 kbaud (AT SP 1)</item>
+        <item>SAE J1850 VPW 10.4 kbaud (AT SP 2)</item>
+        <item>ISO 9141-2 5 baud init (AT SP 3)</item>
+        <item>ISO 14230-4 KWP 5 baud init (AT SP 4)</item>
+        <item>ISO 14230-4 KWP fast init (AT SP 5)</item>
+        <item>ISO 15765-4 CAN 11-bit ID 500 kbaud (AT SP 6)</item>
+        <item>ISO 15765-4 CAN 29-bit ID 500 kbaud (AT SP 7)</item>
+        <item>ISO 15765-4 CAN 11-bit ID 250 kbaud (AT SP 8)</item>
+        <item>ISO 15765-4 CAN 29-bit ID 250 kbaud (AT SP 9)</item>
+        <item>SAE J1939 CAN 29-bit ID 250 kbaud (AT SP A)</item>
+        <item>User1 CAN 11-bit ID 500 kbaud (AT SP B)</item>
+        <item>User2 CAN 29-bit ID 250 kbaud (AT SP C)</item>
+    </string-array>
+    <string-array name="theme_modes">
+        <item>System Default</item>
+        <item>Light Mode</item>
+        <item>Dark Mode</item>
+    </string-array>
+    <string-array name="transport_modes">
+        <item>Simulation</item>
+        <item>WiFi TCP</item>
+        <item>Bluetooth SPP</item>
+        <item>Bluetooth BLE</item>
+        <item>USB Serial</item>
+        <item>Auto</item>
+    </string-array>
+    <color name="accent">#059669</color>
+    <color name="background">#F8FAFC</color>
+    <color name="border">#CBD5E1</color>
+    <color name="danger">#DC2626</color>
+    <color name="gauge_bg">#F1F5F9</color>
+    <color name="muted">#64748B</color>
+    <color name="primary">#2563EB</color>
+    <color name="primary_variant">#1D4ED8</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface2">#F1F5F9</color>
+    <color name="surface3">#E2E8F0</color>
+    <color name="tab_active">#2563EB</color>
+    <color name="tab_inactive">#94A3B8</color>
+    <color name="text">#0F172A</color>
+    <color name="warning">#D97706</color>
+    <string name="analyzer_lean">LEAN</string>
+    <string name="analyzer_lpg_lean">LPG is LEAN. INCREASE values in LPG map (add fuel).</string>
+    <string name="analyzer_lpg_ok">LPG mixture matches factory baseline closely.</string>
+    <string name="analyzer_lpg_rich">LPG is RICH. DECREASE values in LPG map (reduce fuel).</string>
+    <string name="analyzer_no_data">No sensor data available</string>
+    <string name="analyzer_ok">OK</string>
+    <string name="analyzer_petrol_lean">Factory engine is running lean. Check for vacuum leaks or bad sensors before tuning LPG.</string>
+    <string name="analyzer_petrol_ok">Factory tune is healthy. Safe to collect baseline.</string>
+    <string name="analyzer_petrol_rich">Factory engine is running rich. Fix mechanical issues before tuning LPG.</string>
+    <string name="analyzer_rich">RICH</string>
+    <string name="analyzer_unknown">UNKNOWN</string>
+    <string name="app_name">OBD2 LPG Logger</string>
+    <string name="background_logging">Background Logging</string>
+    <string name="clear_dtc">Clear DTCs</string>
+    <string name="default_log_folder">Downloads/OBD2LPGLogger (Default)</string>
+    <string name="deviation">DEVIATION</string>
+    <string name="dtc_count">DTC count: %1$d</string>
+    <string name="fuel_economy">Fuel Economy</string>
+    <string formatted="false" name="how_to_read_map_desc">Shows Total Fuel Trim (STFT + LTFT)\n🟢 Green (±5%) = Perfect\n🔴 Red (Negative) = Rich (Reduce fuel)\n🔵 Blue (Positive) = Lean (Add fuel)\n\nDEVIATION: Shows (LPG - Petrol).\n+ means LPG is Lean. - means LPG is Rich. Aim for 0%.\n* Note: To see Deviation, you must collect BOTH Petrol and LPG data first!</string>
+    <string name="how_to_read_map_title">💡 How to read the Map</string>
+    <string name="idle_status">Ready. Select transport mode and start logging.</string>
+    <string name="keep_screen_on">Keep Screen On</string>
+    <string name="live_fuel_map">Live Fuel Trim Map</string>
+    <string name="log_destination_label">Log Destination Folder</string>
+    <string name="log_path">Logs will be saved to Downloads/OBD2LPGLogger</string>
+    <string name="lpg">LPG</string>
+    <string name="map_axes">Y = RPM (500-6000), X = MAP kPa (20-100)</string>
+    <string name="no_dtcs">No DTCs stored.</string>
+    <string name="perf_arm">Arm 0-100 Timer</string>
+    <string name="perf_brake">Start Brake Test</string>
+    <string name="perf_reset">Reset</string>
+    <string name="petrol">PETROL</string>
+    <string name="prompt_bluetooth_device">Bluetooth OBD2 device</string>
+    <string name="prompt_fuel_mode">Fuel mode</string>
+    <string name="prompt_language">Language / ภาษา</string>
+    <string name="prompt_obd_protocol">OBD2 protocol</string>
+    <string name="prompt_transport_mode">Transport mode</string>
+    <string name="read_dtc">Read DTCs</string>
+    <string name="read_readiness">Check Readiness</string>
+    <string name="read_vin">Read VIN</string>
+    <string name="select_folder">Select</string>
+    <string name="smart_tuning_analysis">Smart Tuning Analysis</string>
+    <string name="start">Start</string>
+    <string name="status_lean_translated">Lean</string>
+    <string name="status_perfect_translated">Perfect</string>
+    <string name="status_rich_translated">Rich</string>
+    <string name="stop">Stop</string>
+    <string name="tab_dashboard">Dashboard</string>
+    <string name="tab_dtc">DTC</string>
+    <string name="tab_gauges">Gauges</string>
+    <string name="tab_logs">Logs</string>
+    <string name="tab_map">Map</string>
+    <string name="tab_settings">Settings</string>
+    <string name="tap_to_open_logs">Tap to open Downloads/OBD2LPGLogger</string>
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nStatus: %3$s\nAdvice: %4$s</string>
+    <string name="waiting_for_data">Waiting for Fuel Trim data...</string>
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
+        <item name="colorOnPrimary">@color/background</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorOnSecondary">@color/background</item>
+        <item name="colorError">@color/danger</item>
+        <item name="colorOnError">@color/text</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColorSecondary">@color/muted</item>
+        <item name="android:editTextColor">@color/text</item>
+        <item name="android:textColorHint">@color/muted</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="materialCardViewStyle">@style/CustomCardViewStyle</item>
+    </style>
+    <style name="CustomCardViewStyle" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">2dp</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">@color/border</item>
+        <item name="cardBackgroundColor">@color/surface</item>
+    </style>
+</resources>

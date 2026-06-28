@@ -3431,6 +3431,8 @@ id list_item
 id logPathText
 id lpgOnlyCheckbox
 id m3_side_sheet
+id mapEctText
+id mapLoopStatusText
 id mapModeToggle
 id marquee
 id masked

@@ -73,6 +73,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView dashTitle1, dashValue1, dashTitle2, dashValue2, dashTitle3, dashValue3, dashTitle4, dashValue4;
     private GaugeView gauge1, gauge2, gauge3, gauge4;
     private TextView tuningStatusText;
+    private TextView mapEctText, mapLoopStatusText;
 
     // --- UI: Gauges tab ---
     private GraphView graph1, graph2, graph3, graph4, graph5;
@@ -268,6 +269,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         gauge4 = findViewById(R.id.gauge4);
         
         tuningStatusText = findViewById(R.id.tuningStatusText);
+        mapEctText = findViewById(R.id.mapEctText);
+        mapLoopStatusText = findViewById(R.id.mapLoopStatusText);
 
         // Gauges tab
         graph1 = findViewById(R.id.graph1);
@@ -823,11 +826,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         Double map = valueByKey(record, "01_0B");
         Double stft = valueByKey(record, "01_06");
         Double ltft = valueByKey(record, "01_07");
+        Double ect = valueByKey(record, "01_05");
+        Double fuelStatus = valueByKey(record, "01_03");
+
+        if (ect != null && mapEctText != null) {
+            mapEctText.setText(String.format(Locale.US, "ECT: %.0f °C", ect));
+        }
+
+        boolean isClosedLoop = false;
+        if (fuelStatus != null && mapLoopStatusText != null) {
+            isClosedLoop = (fuelStatus == 1.0 || fuelStatus == 8.0);
+            mapLoopStatusText.setText(isClosedLoop ? "Status: Closed Loop" : "Status: Open Loop");
+            mapLoopStatusText.setTextColor(getColorCompat(isClosedLoop ? R.color.accent : R.color.warning));
+        }
+
         if (rpm != null && map != null && stft != null) {
-            double trim = stft + (ltft != null ? ltft : 0);
-            if (fuelMapView != null) {
-                FuelMode mode = "lpg".equalsIgnoreCase(record.getFuelMode()) ? FuelMode.LPG : FuelMode.PETROL;
-                fuelMapView.pushData(rpm, map, trim, mode);
+            if (isClosedLoop && ect != null && ect >= 80.0) {
+                double trim = stft + (ltft != null ? ltft : 0);
+                if (fuelMapView != null) {
+                    FuelMode mode = "lpg".equalsIgnoreCase(record.getFuelMode()) ? FuelMode.LPG : FuelMode.PETROL;
+                    fuelMapView.pushData(rpm, map, trim, mode);
+                }
             }
         }
     }
