@@ -6,7 +6,7 @@ Native Android port of the OBD2 data logging system, now at version **2.2.0**.
 
 โปรแกรมยังสามารถ Detect PID id ได้อัตโนมัติ โดยจะค้นหา PID id ที่มีอยู่ในรถยนต์ และสามารถบันทึก Log ที่สำคัญเพื่อใช้ในการปรับจูนอย่างละเอียดในแบบที่ Ai สามารถเข้าใจได้อย่างดี
 
-และยังสามารถคำนวนค่า STFT/LTFT/MAP ต่อ RPM มาคำนวนเพื่อหาค่าความเบี่ยงเบนที่เหมาะสมในการจูนแก๊สได้อัตโนมัติ
+และยังสามารถคำนวนค่า นำสถานะ Closed/Open Loop STFT LTFT MAP และ ECT (อุณหภูมิน้ำหล่อเย็น) มาแสดงบนหน้า MAP พร้อมกับการเพิ่ม Logic กรองข้อมูลให้ดึงมาคำนวณเฉพาะตอนที่ตรงตามเงื่อนไข มาคำนวนเพื่อหาค่าความเบี่ยงเบนที่เหมาะสมในการจูนแก๊สได้อัตโนมัติ
 
 This Android app support OBD2 adapter : Support vlinker FS(USB Serial) MC bluetooth Wifi Serial OTG OBD adapters / AI Agent can connect direct to access the data.The detail in User_guide.html for you to understand.
 

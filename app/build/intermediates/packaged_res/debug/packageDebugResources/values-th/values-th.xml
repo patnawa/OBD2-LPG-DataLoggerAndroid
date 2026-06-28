@@ -11,7 +11,7 @@
     <string name="analyzer_petrol_rich">เครื่องยนต์น้ำมันทำงานหนาเกินไป แก้ไขปัญหาเครื่องยนต์ก่อนเริ่มจูนแก๊ส</string>
     <string name="analyzer_rich">หนาไป (RICH)</string>
     <string name="analyzer_unknown">ไม่ทราบสถานะ</string>
-    <string name="app_name">OBD2 LPG Logger</string>
+    <string name="app_name">OBD2 LPG/CNG Logger</string>
     <string name="background_logging">ทำงานพื้นหลัง</string>
     <string name="clear_dtc">ลบโค้ด DTC</string>
     <string name="default_log_folder">Downloads/OBD2LPGLogger (ค่าเริ่มต้น)</string>
@@ -24,7 +24,7 @@
     <string name="live_fuel_map">ตาราง Fuel Trim สด</string>
     <string name="log_destination_label">โฟลเดอร์สำหรับเก็บล็อกไฟล์</string>
     <string name="log_path">ล็อกไฟล์จะถูกเก็บที่ Downloads/OBD2LPGLogger</string>
-    <string name="lpg">แก๊ส</string>
+    <string name="lpg">LPG/CNG</string>
     <string name="map_axes">Y = รอบเครื่อง RPM (500-6000), X = แรงดัน MAP kPa (20-100)</string>
     <string name="no_dtcs">ไม่พบรหัสปัญหา (DTC)</string>
     <string name="perf_arm">เตรียมจับเวลา 0-100</string>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">OBD2 LPG Logger</string>
+    <string name="app_name">OBD2 LPG/CNG Logger</string>
     <string name="start">Start</string>
     <string name="stop">Stop</string>
     <string name="idle_status">Ready. Select transport mode and start logging.</string>
@@ -26,7 +26,7 @@
     <string name="how_to_read_map_title">💡 How to read the Map</string>
     <string name="how_to_read_map_desc" formatted="false">Shows Total Fuel Trim (STFT + LTFT)\n🟢 Green (±5%) = Perfect\n🔴 Red (Negative) = Rich (Reduce fuel)\n🔵 Blue (Positive) = Lean (Add fuel)\n\nDEVIATION: Shows (LPG - Petrol).\n+ means LPG is Lean. - means LPG is Rich. Aim for 0%.\n* Note: To see Deviation, you must collect BOTH Petrol and LPG data first!</string>
     <string name="petrol">PETROL</string>
-    <string name="lpg">LPG</string>
+    <string name="lpg">LPG/CNG</string>
     <string name="deviation">DEVIATION</string>
     
     <!-- Tuning Analyzer Context Strings -->
@@ -40,9 +40,9 @@
     <string name="analyzer_petrol_rich">Factory engine is running rich. Fix mechanical issues before tuning LPG.</string>
     <string name="analyzer_petrol_ok">Factory tune is healthy. Safe to collect baseline.</string>
     
-    <string name="analyzer_lpg_lean">LPG is LEAN. INCREASE values in LPG map (add fuel).</string>
-    <string name="analyzer_lpg_rich">LPG is RICH. DECREASE values in LPG map (reduce fuel).</string>
-    <string name="analyzer_lpg_ok">LPG mixture matches factory baseline closely.</string>
+    <string name="analyzer_lpg_lean">LPG/CNG is LEAN. INCREASE values in gas map (add fuel).</string>
+    <string name="analyzer_lpg_rich">LPG/CNG is RICH. DECREASE values in gas map (reduce fuel).</string>
+    <string name="analyzer_lpg_ok">LPG/CNG mixture matches factory baseline closely.</string>
     
     <string name="status_perfect_translated">Perfect</string>
     <string name="status_lean_translated">Lean</string>

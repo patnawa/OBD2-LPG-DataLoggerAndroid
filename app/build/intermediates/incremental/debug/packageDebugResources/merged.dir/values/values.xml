@@ -54,9 +54,9 @@
     <color name="text">#0F172A</color>
     <color name="warning">#D97706</color>
     <string name="analyzer_lean">LEAN</string>
-    <string name="analyzer_lpg_lean">LPG is LEAN. INCREASE values in LPG map (add fuel).</string>
-    <string name="analyzer_lpg_ok">LPG mixture matches factory baseline closely.</string>
-    <string name="analyzer_lpg_rich">LPG is RICH. DECREASE values in LPG map (reduce fuel).</string>
+    <string name="analyzer_lpg_lean">LPG/CNG is LEAN. INCREASE values in gas map (add fuel).</string>
+    <string name="analyzer_lpg_ok">LPG/CNG mixture matches factory baseline closely.</string>
+    <string name="analyzer_lpg_rich">LPG/CNG is RICH. DECREASE values in gas map (reduce fuel).</string>
     <string name="analyzer_no_data">No sensor data available</string>
     <string name="analyzer_ok">OK</string>
     <string name="analyzer_petrol_lean">Factory engine is running lean. Check for vacuum leaks or bad sensors before tuning LPG.</string>
@@ -64,7 +64,7 @@
     <string name="analyzer_petrol_rich">Factory engine is running rich. Fix mechanical issues before tuning LPG.</string>
     <string name="analyzer_rich">RICH</string>
     <string name="analyzer_unknown">UNKNOWN</string>
-    <string name="app_name">OBD2 LPG Logger</string>
+    <string name="app_name">OBD2 LPG/CNG Logger</string>
     <string name="background_logging">Background Logging</string>
     <string name="clear_dtc">Clear DTCs</string>
     <string name="default_log_folder">Downloads/OBD2LPGLogger (Default)</string>
@@ -78,7 +78,7 @@
     <string name="live_fuel_map">Live Fuel Trim Map</string>
     <string name="log_destination_label">Log Destination Folder</string>
     <string name="log_path">Logs will be saved to Downloads/OBD2LPGLogger</string>
-    <string name="lpg">LPG</string>
+    <string name="lpg">LPG/CNG</string>
     <string name="map_axes">Y = RPM (500-6000), X = MAP kPa (20-100)</string>
     <string name="no_dtcs">No DTCs stored.</string>
     <string name="perf_arm">Arm 0-100 Timer</string>
