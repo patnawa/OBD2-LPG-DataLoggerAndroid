@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0] - 2026-06-28
+### Added
+- Added Cell Lock & Hit Counter features to the Fuel Map with Dwell Time filtering (Debouncing) to ensure only steady-state data is plotted.
+- Added visual opacity (Alpha Blending) indicators based on hit counts.
+- Added a thick gold border for cells that are fully collected (20+ hits).
+
+### Fixed
+- Fixed an issue where cells lacking the `01 03` PID (Fuel System Status) or `01 05` PID (ECT) would completely block the Fuel Map from plotting.
+- Re-labeled all remaining "LPG" UI strings to "LPG/CNG".
+
 ## [2.3.0] - 2026-06-28
 ### Added
 - Added OBD2 PID 01 03 (Fuel System Status) to monitor open/closed loop state.

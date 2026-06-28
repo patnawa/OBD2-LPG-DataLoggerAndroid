@@ -8,7 +8,7 @@
         <item>Auto</item>
     </string-array>
     <string-array name="fuel_modes">
-        <item>LPG</item>
+        <item>LPG/CNG</item>
         <item>Petrol</item>
     </string-array>
     <string-array name="language_modes">

@@ -17,7 +17,7 @@
     <string name="default_log_folder">Downloads/OBD2LPGLogger (ค่าเริ่มต้น)</string>
     <string name="deviation">ความเบี่ยงเบน</string>
     <string name="dtc_count">พบปัญหา: %1$d</string>
-    <string formatted="false" name="how_to_read_map_desc">แสดงผลรวม Fuel Trim (STFT + LTFT)\n🟢 สีเขียว (±5%) = สมบูรณ์\n🔴 สีแดง (ติดลบ) = น้ำมันหนาไป (ลดการจ่าย)\n🔵 สีฟ้า (บวก) = น้ำมันบางไป (เพิ่มการจ่าย)\n\nโหมด DEVIATION: แสดงส่วนต่าง (LPG - Petrol)\nค่าบวก=แก๊สบาง ค่าลบ=แก๊สหนา ควรจูนให้เข้าใกล้ 0%\n* ต้องวิ่งเก็บข้อมูลทั้ง 2 โหมดก่อน ถึงจะแสดงผลได้!</string>
+    <string formatted="false" name="how_to_read_map_desc">แสดงผลรวม Fuel Trim (STFT + LTFT)\n🟢 สีเขียว (±5%) = สมบูรณ์\n🔴 สีแดง (ติดลบ) = น้ำมันหนาไป (ลดการจ่าย)\n🔵 สีฟ้า (บวก) = น้ำมันบางไป (เพิ่มการจ่าย)\n\nฟีเจอร์ล็อกโซนจูนวิ่ง (CELL LOCK):\nแช่คันเร่งให้นิ่งเพื่อเก็บข้อมูล สีตารางจะเข้มขึ้นตามจำนวนครั้งที่อ่านได้ (มุมขวาบน)\nx20 ครั้ง = เก็บข้อมูลสมบูรณ์ (กรอบสีเหลือง)\n\nโหมด DEVIATION: แสดงส่วนต่าง (LPG/CNG - Petrol)\nค่าบวก=แก๊สบาง ค่าลบ=แก๊สหนา ควรจูนให้เข้าใกล้ 0%\n* ต้องวิ่งเก็บข้อมูลทั้ง 2 โหมดก่อน ถึงจะแสดงผลได้!</string>
     <string name="how_to_read_map_title">💡 วิธีอ่านค่า Map</string>
     <string name="idle_status">พร้อมทำงาน กรุณาเลือกวิธีเชื่อมต่อแล้วกดเริ่ม</string>
     <string name="keep_screen_on">เปิดหน้าจอค้างไว้</string>

@@ -23,7 +23,14 @@ public class FuelMapView extends View {
     private Paint gridPaint;
     private Paint textPaint;
     private Paint highlightPaint;
+    private Paint badgePaint;
     private final RectF cellRect = new RectF();
+
+    // Debounce tracking
+    private int lastRpmCell = -1;
+    private int lastMapCell = -1;
+    private int consecutiveTicks = 0;
+    private static final int DWELL_THRESHOLD = 3;
 
     // Grid configuration
     private static final int RPM_MIN = 500;
@@ -66,6 +73,10 @@ public class FuelMapView extends View {
 
         highlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         highlightPaint.setStyle(Paint.Style.FILL);
+
+        badgePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        badgePaint.setColor(0xCCFFFFFF); // slightly transparent white
+        badgePaint.setTextAlign(Paint.Align.RIGHT);
     }
 
     public void setMapMode(MapMode mode) {
@@ -81,17 +92,26 @@ public class FuelMapView extends View {
         rCell = Math.max(RPM_MIN, Math.min(RPM_MAX, rCell));
         mCell = Math.max(MAP_MIN, Math.min(MAP_MAX, mCell));
 
-        String key = rCell + "_" + mCell;
-        Map<String, TrimData> targetData = (fuelMode == FuelMode.PETROL) ? petrolData : lpgData;
-        TrimData data = targetData.get(key);
-        if (data == null) {
-            data = new TrimData();
-        }
-        data.addValue(trim);
-        targetData.put(key, data);
-        
         currentRpmCell = rCell;
         currentMapCell = mCell;
+
+        if (rCell == lastRpmCell && mCell == lastMapCell) {
+            consecutiveTicks++;
+            if (consecutiveTicks >= DWELL_THRESHOLD) {
+                String key = rCell + "_" + mCell;
+                Map<String, TrimData> targetData = (fuelMode == FuelMode.PETROL) ? petrolData : lpgData;
+                TrimData data = targetData.get(key);
+                if (data == null) {
+                    data = new TrimData();
+                }
+                data.addStableValue(trim);
+                targetData.put(key, data);
+            }
+        } else {
+            lastRpmCell = rCell;
+            lastMapCell = mCell;
+            consecutiveTicks = 1;
+        }
         
         invalidate();
     }
@@ -149,6 +169,10 @@ public class FuelMapView extends View {
                 TrimData petrol = petrolData.get(key);
                 TrimData lpg = lpgData.get(key);
                 
+                TrimData activeData = (currentMode == MapMode.PETROL) ? petrol : lpg;
+                int hitCount = (activeData != null) ? activeData.getHitCount() : 0;
+                boolean isLocked = (activeData != null) ? activeData.isLocked() : false;
+                
                 Double displayTrim = null;
                 if (currentMode == MapMode.PETROL && petrol != null) {
                     displayTrim = petrol.getAverage();
@@ -156,6 +180,8 @@ public class FuelMapView extends View {
                     displayTrim = lpg.getAverage();
                 } else if (currentMode == MapMode.DEVIATION && petrol != null && lpg != null) {
                     displayTrim = lpg.getAverage() - petrol.getAverage();
+                    hitCount = Math.min(petrol.getHitCount(), lpg.getHitCount());
+                    isLocked = petrol.isLocked() && lpg.isLocked();
                 }
                 
                 cellRect.set(xLeft, yTop, xRight, yBottom);
@@ -163,18 +189,15 @@ public class FuelMapView extends View {
                 if (displayTrim != null) {
                     highlightPaint.setColor(getColorForTrim(displayTrim));
                     
+                    int alpha = Math.min(255, 40 + (int)((hitCount / (float)TrimData.MAX_HITS) * 215));
+                    if (isLocked) alpha = 255;
+                    
                     // Highlight current cell differently
                     if (rpmValue == currentRpmCell && mapValue == currentMapCell) {
                         highlightPaint.setAlpha(255);
                         canvas.drawRect(cellRect, highlightPaint);
-                        
-                        gridPaint.setColor(0xFFFFFFFF);
-                        gridPaint.setStrokeWidth(4f);
-                        canvas.drawRect(cellRect, gridPaint);
-                        gridPaint.setColor(0xFF334155);
-                        gridPaint.setStrokeWidth(2f);
                     } else {
-                        highlightPaint.setAlpha(180);
+                        highlightPaint.setAlpha(alpha);
                         canvas.drawRect(cellRect, highlightPaint);
                     }
 
@@ -185,10 +208,31 @@ public class FuelMapView extends View {
                     canvas.drawText(String.format(Locale.US, "%.1f", displayTrim), xLeft + cellWidth / 2, yBottom - cellHeight / 3, textPaint);
                     textPaint.setColor(oldColor);
                     textPaint.setTextAlign(oldAlign);
+                    
+                    // Draw hit count badge in top-right
+                    if (currentMode != MapMode.DEVIATION && hitCount > 0) {
+                        badgePaint.setTextSize(8f * density);
+                        canvas.drawText("x" + hitCount, xRight - (4f * density), yTop + (12f * density), badgePaint);
+                    }
                 }
 
                 // Draw cell border
+                if (rpmValue == currentRpmCell && mapValue == currentMapCell) {
+                    gridPaint.setColor(0xFFFFFFFF);
+                    gridPaint.setStrokeWidth(4f);
+                } else if (isLocked) {
+                    gridPaint.setColor(0xFFFDE047);
+                    gridPaint.setStrokeWidth(5f);
+                } else {
+                    gridPaint.setColor(0xFF334155);
+                    gridPaint.setStrokeWidth(2f);
+                }
+                
                 canvas.drawRect(cellRect, gridPaint);
+                
+                // Reset grid paint
+                gridPaint.setColor(0xFF334155);
+                gridPaint.setStrokeWidth(2f);
             }
         }
     }
@@ -203,15 +247,24 @@ public class FuelMapView extends View {
 
     private static class TrimData {
         private double sum = 0;
-        private int count = 0;
+        private int hitCount = 0;
+        public static final int MAX_HITS = 20;
 
-        public void addValue(double val) {
+        public void addStableValue(double val) {
             sum += val;
-            count++;
+            hitCount++;
         }
 
         public double getAverage() {
-            return count == 0 ? 0 : sum / count;
+            return hitCount == 0 ? 0 : sum / hitCount;
+        }
+        
+        public int getHitCount() {
+            return hitCount;
+        }
+        
+        public boolean isLocked() {
+            return hitCount >= MAX_HITS;
         }
     }
 }

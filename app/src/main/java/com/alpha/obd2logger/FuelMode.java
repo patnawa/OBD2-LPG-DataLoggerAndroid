@@ -1,7 +1,7 @@
 package com.alpha.obd2logger;
 
 public enum FuelMode {
-    LPG("lpg"),
+    LPG("lpg/cng"),
     PETROL("petrol");
 
     private final String value;

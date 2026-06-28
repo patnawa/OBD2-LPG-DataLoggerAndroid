@@ -831,20 +831,26 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         if (ect != null && mapEctText != null) {
             mapEctText.setText(String.format(Locale.US, "ECT: %.0f °C", ect));
+        } else if (mapEctText != null) {
+            mapEctText.setText("ECT: Unknown");
         }
 
-        boolean isClosedLoop = false;
+        boolean isClosedLoop = true; // Default to true if not supported so app still works
         if (fuelStatus != null && mapLoopStatusText != null) {
             isClosedLoop = (fuelStatus == 1.0 || fuelStatus == 8.0);
             mapLoopStatusText.setText(isClosedLoop ? "Status: Closed Loop" : "Status: Open Loop");
             mapLoopStatusText.setTextColor(getColorCompat(isClosedLoop ? R.color.accent : R.color.warning));
+        } else if (mapLoopStatusText != null) {
+            mapLoopStatusText.setText("Status: Unknown (Assumed Closed)");
+            mapLoopStatusText.setTextColor(getColorCompat(R.color.muted));
         }
 
         if (rpm != null && map != null && stft != null) {
-            if (isClosedLoop && ect != null && ect >= 80.0) {
+            boolean tempOk = (ect == null) || (ect >= 80.0);
+            if (isClosedLoop && tempOk) {
                 double trim = stft + (ltft != null ? ltft : 0);
                 if (fuelMapView != null) {
-                    FuelMode mode = "lpg".equalsIgnoreCase(record.getFuelMode()) ? FuelMode.LPG : FuelMode.PETROL;
+                    FuelMode mode = "lpg/cng".equalsIgnoreCase(record.getFuelMode()) ? FuelMode.LPG : FuelMode.PETROL;
                     fuelMapView.pushData(rpm, map, trim, mode);
                 }
             }
@@ -918,7 +924,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         Double stft = valueByKey(record, "01_06");
         Double ltft = valueByKey(record, "01_07");
         if (stft != null) {
-            FuelMode mode = "lpg".equalsIgnoreCase(record.getFuelMode()) ? FuelMode.LPG : FuelMode.PETROL;
+            FuelMode mode = "lpg/cng".equalsIgnoreCase(record.getFuelMode()) ? FuelMode.LPG : FuelMode.PETROL;
             FuelTrimResult result = LPGAnalyzer.analyzeFuelTrim(this, stft, ltft, mode);
             
             if (tuningStatusText != null) {

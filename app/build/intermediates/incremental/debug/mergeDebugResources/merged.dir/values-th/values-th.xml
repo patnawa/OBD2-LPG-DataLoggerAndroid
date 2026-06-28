@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:ns1="http://schemas.android.com/tools" xmlns:ns2="urn:oasis:names:tc:xliff:document:1.2">
+<resources xmlns:ns1="urn:oasis:names:tc:xliff:document:1.2" xmlns:ns2="http://schemas.android.com/tools">
     <plurals name="mtrl_badge_content_description">
     <item quantity="one">การแจ้งเตือนใหม่ %d รายการ</item>
     <item quantity="other">การแจ้งเตือนใหม่ %d รายการ</item>
@@ -29,7 +29,7 @@
     <string msgid="1486535517437947103" name="abc_searchview_description_submit">"ส่งคำค้นหา"</string>
     <string msgid="2293578557972875415" name="abc_searchview_description_voice">"ค้นหาด้วยเสียง"</string>
     <string msgid="8875138169939072951" name="abc_shareactionprovider_share_with">"แชร์กับ"</string>
-    <string msgid="9055268688411532828" name="abc_shareactionprovider_share_with_application">"แชร์ทาง <ns2:g id="APPLICATION_NAME">%s</ns2:g>"</string>
+    <string msgid="9055268688411532828" name="abc_shareactionprovider_share_with_application">"แชร์ทาง <ns1:g id="APPLICATION_NAME">%s</ns1:g>"</string>
     <string msgid="1656852541809559762" name="abc_toolbar_collapse_description">"ยุบ"</string>
     <string name="analyzer_lean">บางไป (LEAN)</string>
     <string name="analyzer_lpg_lean">แก๊สบางไป (LEAN) กรุณาเพิ่มการจ่ายแก๊สในตารางจูนแก๊ส</string>
@@ -66,7 +66,7 @@
     <string name="error_a11y_label">ข้อผิดพลาด: ไม่ถูกต้อง</string>
     <string name="error_icon_content_description">ข้อผิดพลาด</string>
     <string name="exposed_dropdown_menu_content_description">แสดงเมนูแบบเลื่อนลง</string>
-    <string formatted="false" name="how_to_read_map_desc">แสดงผลรวม Fuel Trim (STFT + LTFT)\n🟢 สีเขียว (±5%) = สมบูรณ์\n🔴 สีแดง (ติดลบ) = น้ำมันหนาไป (ลดการจ่าย)\n🔵 สีฟ้า (บวก) = น้ำมันบางไป (เพิ่มการจ่าย)\n\nโหมด DEVIATION: แสดงส่วนต่าง (LPG - Petrol)\nค่าบวก=แก๊สบาง ค่าลบ=แก๊สหนา ควรจูนให้เข้าใกล้ 0%\n* ต้องวิ่งเก็บข้อมูลทั้ง 2 โหมดก่อน ถึงจะแสดงผลได้!</string>
+    <string formatted="false" name="how_to_read_map_desc">แสดงผลรวม Fuel Trim (STFT + LTFT)\n🟢 สีเขียว (±5%) = สมบูรณ์\n🔴 สีแดง (ติดลบ) = น้ำมันหนาไป (ลดการจ่าย)\n🔵 สีฟ้า (บวก) = น้ำมันบางไป (เพิ่มการจ่าย)\n\nฟีเจอร์ล็อกโซนจูนวิ่ง (CELL LOCK):\nแช่คันเร่งให้นิ่งเพื่อเก็บข้อมูล สีตารางจะเข้มขึ้นตามจำนวนครั้งที่อ่านได้ (มุมขวาบน)\nx20 ครั้ง = เก็บข้อมูลสมบูรณ์ (กรอบสีเหลือง)\n\nโหมด DEVIATION: แสดงส่วนต่าง (LPG/CNG - Petrol)\nค่าบวก=แก๊สบาง ค่าลบ=แก๊สหนา ควรจูนให้เข้าใกล้ 0%\n* ต้องวิ่งเก็บข้อมูลทั้ง 2 โหมดก่อน ถึงจะแสดงผลได้!</string>
     <string name="how_to_read_map_title">💡 วิธีอ่านค่า Map</string>
     <string name="icon_content_description">ไอคอนกล่องโต้ตอบ</string>
     <string name="idle_status">พร้อมทำงาน กรุณาเลือกวิธีเชื่อมต่อแล้วกดเริ่ม</string>
@@ -95,7 +95,7 @@
     <string name="mtrl_checkbox_state_description_indeterminate">เลือกบางส่วน</string>
     <string name="mtrl_checkbox_state_description_unchecked">ไม่ได้เลือก</string>
     <string name="mtrl_chip_close_icon_content_description">นำ %1$s ออก</string>
-    <string name="mtrl_exceed_max_badge_number_content_description" ns1:ignore="PluralsCandidate">การแจ้งเตือนใหม่มากกว่า %1$d รายการ</string>
+    <string name="mtrl_exceed_max_badge_number_content_description" ns2:ignore="PluralsCandidate">การแจ้งเตือนใหม่มากกว่า %1$d รายการ</string>
     <string name="mtrl_picker_a11y_next_month">เปลี่ยนไปที่เดือนถัดไป</string>
     <string name="mtrl_picker_a11y_prev_month">เปลี่ยนไปที่เดือนก่อนหน้า</string>
     <string name="mtrl_picker_announce_current_range_selection">การเลือกวันที่เริ่มต้น: %1$s – การเลือกวันที่สิ้นสุด: %2$s</string>

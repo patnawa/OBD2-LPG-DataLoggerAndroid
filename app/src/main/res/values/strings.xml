@@ -24,7 +24,7 @@
     <string name="live_fuel_map">Live Fuel Trim Map</string>
     <string name="map_axes">Y = RPM (500-6000), X = MAP kPa (20-100)</string>
     <string name="how_to_read_map_title">💡 How to read the Map</string>
-    <string name="how_to_read_map_desc" formatted="false">Shows Total Fuel Trim (STFT + LTFT)\n🟢 Green (±5%) = Perfect\n🔴 Red (Negative) = Rich (Reduce fuel)\n🔵 Blue (Positive) = Lean (Add fuel)\n\nDEVIATION: Shows (LPG - Petrol).\n+ means LPG is Lean. - means LPG is Rich. Aim for 0%.\n* Note: To see Deviation, you must collect BOTH Petrol and LPG data first!</string>
+    <string name="how_to_read_map_desc" formatted="false">Shows Total Fuel Trim (STFT + LTFT)\n🟢 Green (±5%) = Perfect\n🔴 Red (Negative) = Rich (Reduce fuel)\n🔵 Blue (Positive) = Lean (Add fuel)\n\nCELL LOCK &amp; HIT COUNTER:\nCells start transparent. Hold steady RPM/MAP to collect data. Opacity increases with hits.\nx20 hits = Locked (Gold Border).\n\nDEVIATION: Shows (LPG/CNG - Petrol).\n+ means LPG is Lean. - means LPG is Rich. Aim for 0%.\n* Note: To see Deviation, you must collect BOTH Petrol and LPG data first!</string>
     <string name="petrol">PETROL</string>
     <string name="lpg">LPG/CNG</string>
     <string name="deviation">DEVIATION</string>

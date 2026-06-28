@@ -318,7 +318,7 @@
                                 android:layout_width="0dp"
                                 android:layout_weight="1"
                                 android:layout_height="56dp"
-                                android:text="LPG"
+                                android:text="@string/lpg"
                                 android:textStyle="bold"
                                 style="?attr/materialButtonOutlinedStyle" />
 
@@ -1143,7 +1143,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:checked="true"
-                            android:text="LPG critical PIDs only"
+                            android:text="LPG/CNG critical PIDs only"
                             android:textColor="@color/text" />
 
                         <CheckBox

@@ -61,7 +61,7 @@ public final class DataWriter implements AutoCloseable {
         }
 
         StringBuilder header = new StringBuilder();
-        header.append("timestamp,elapsed_s,fuel_mode,vehicle_brand,vin");
+        header.append("timestamp,elapsed_s,fuel_mode,loop_status,vehicle_brand,vin");
         for (PIDDefinition pid : pids) {
             header.append(',').append(csvEscape(pid.getName() + " (" + pid.getUnit() + ")"));
         }
@@ -70,10 +70,22 @@ public final class DataWriter implements AutoCloseable {
     }
 
     public void writeRecord(DataRecord record) throws IOException {
+        String loopStatus = "Open";
+        for (SensorSample sample : record.getSamples()) {
+            if ("01_03".equals(sample.getPidKey())) {
+                Double val = sample.getValue();
+                if (val != null && (val == 1.0 || val == 8.0)) {
+                    loopStatus = "Closed";
+                }
+                break;
+            }
+        }
+
         StringBuilder csvRow = new StringBuilder();
         csvRow.append(csvEscape(record.getTimestamp()))
                 .append(',').append(record.getElapsedS())
                 .append(',').append(csvEscape(record.getFuelMode()))
+                .append(',').append(csvEscape(loopStatus))
                 .append(',').append(csvEscape(record.getVehicleBrand()))
                 .append(',').append(csvEscape(record.getVin()));
 
@@ -82,6 +94,7 @@ public final class DataWriter implements AutoCloseable {
             json.put("timestamp", record.getTimestamp());
             json.put("elapsed_s", record.getElapsedS());
             json.put("fuel_mode", record.getFuelMode());
+            json.put("loop_status", loopStatus);
             json.put("vehicle_brand", record.getVehicleBrand());
             json.put("vin", record.getVin());
         } catch (JSONException e) {
