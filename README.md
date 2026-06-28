@@ -1,6 +1,6 @@
 # OBD2 Petro/LPG/CNG Data Logger Android
 
-Native Android port of the OBD2 data logging system, now at version **2.6.0**.
+Native Android port of the OBD2 advanced data logging system performance assist tune for lpg cng petrol.
 
 แนวคิดจัดทำขึ้นมาเพื่อง่ายต่อการบันทึก Log จากรถยนต์ที่ใช้น้ำมันและแก๊ส LPG/CNG เพื่อคำนวนค่า LTFT STFT แบบ Real-time โดยสามารถเชื่อมต่อกับ Ai Agent เพื่อวิเคราะห์ความผิดปรกติของเครื่องยนต์ และสามารถวิเคราะห์การจูนแก๊สแบบอัตโนมัติ โดยคำนึงถึงความแม่นยำสูงสุดในการคำนวณค่าต่างๆจาก Parameter ของรถยนต์ รองรับการเชื่อมต่อ Agent เข้ากับ Rest API Server (HTTP) เพื่อให้ Ai Agent สามารถดึงข้อมูลจากรถยนต์ได้โดยตรงมาประมวลผลได้อย่างรวดเร็วและแม่นยำ
 
