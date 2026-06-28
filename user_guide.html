@@ -113,8 +113,9 @@
                 <p>The <strong>Fuel Map</strong> tab is the core tuning tool. It automatically plots your Fuel Trims (STFT + LTFT) into an RPM vs. MAP (Intake Pressure) grid.</p>
                 <ul>
                     <li><strong>Petrol Map:</strong> Drive on Petrol first to establish a baseline. The app memorizes the factory ECU's target trims.</li>
-                    <li><strong>LPG Map:</strong> Switch to LPG and drive. The app records the LPG trims in the same cells.</li>
-                    <li><strong>Deviation Mode (Diff):</strong> This mode compares the Petrol and LPG maps. Cells colored <span style="color:#FF2A55">Red</span> mean the LPG mixture is too rich, while <span style="color:#00E5FF">Blue</span> means too lean. Your goal is to adjust your LPG ECU so the deviation map is close to 0% (Green).</li>
+                    <li><strong>LPG/CNG Map:</strong> Switch to LPG/CNG and drive. The app records the trims in the same cells.</li>
+                    <li><strong>Cell Lock &amp; Hit Counter:</strong> Cells start transparent and become more opaque as stable data is collected (Dwell Time logic). At <strong>20 hits</strong>, the cell is "Locked" and receives a thick gold border.</li>
+                    <li><strong>Deviation Mode (Diff):</strong> This mode compares the Petrol and LPG/CNG maps. Cells colored <span style="color:#FF2A55">Red</span> mean the gas mixture is too rich, while <span style="color:#00E5FF">Blue</span> means too lean. Your goal is to adjust your gas ECU so the deviation map is close to 0% (Green).</li>
                 </ul>
             </div>
 
@@ -177,7 +178,8 @@
                 <p>หน้า <strong>Fuel Map</strong> คือเครื่องมือหลักสำหรับช่างจูน โดยแอปจะสร้างตาราง 3 มิติ (RPM เทียบกับ MAP) และเก็บค่า Fuel Trim (STFT+LTFT) ลงในช่องต่างๆ ตามการขับจริง</p>
                 <ul>
                     <li><strong>แผนที่น้ำมัน (Petrol):</strong> ควรขับด้วยน้ำมันก่อนเพื่อให้แอปจำค่าพื้นฐาน (Baseline) ของรถคุณ</li>
-                    <li><strong>แผนที่แก๊ส (LPG):</strong> สลับเป็นแก๊สแล้วขับ แอปจะเก็บค่า Trim ของแก๊สลงตารางเดิม</li>
+                    <li><strong>แผนที่แก๊ส (LPG/CNG):</strong> สลับเป็นแก๊สแล้วขับ แอปจะเก็บค่า Trim ของแก๊สลงตารางเดิม</li>
+                    <li><strong>ฟีเจอร์ล็อกโซนจูน (Cell Lock):</strong> ช่องตารางจะเริ่มต้นแบบโปร่งใส และจะทึบแสงขึ้นเมื่อเก็บข้อมูลได้นิ่งพอ (Dwell Time) เมื่อเก็บครบ <strong>20 ครั้ง (Hits)</strong> ช่องนั้นจะถูก "ล็อก" และแสดงกรอบสีเหลืองทองที่ชัดเจน</li>
                     <li><strong>โหมดเบี่ยงเบน (Deviation/Diff):</strong> โหมดนี้จะนำค่าแก๊สมาลบกับค่าน้ำมัน หากช่องไหนเป็น <span style="color:#FF2A55">สีแดง</span> แปลว่าแก๊สหนาไป หากเป็น <span style="color:#00E5FF">สีฟ้า</span> แปลว่าบางไป เป้าหมายของคุณคือการปรับจูนกล่องแก๊สให้หน้า Deviation นี้เข้าใกล้ค่า 0% (<span style="color:#00FFA3">สีเขียว</span>) ให้มากที่สุด</li>
                 </ul>
             </div>

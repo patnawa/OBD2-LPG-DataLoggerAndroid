@@ -1,6 +1,6 @@
 # OBD2 LPG Logger Android App
 
-Native Android port of the OBD2 data logging system, now at version **2.2.0**.
+Native Android port of the OBD2 data logging system, now at version **2.4.0**.
 
 แนวคิดจัดทำขึ้นมาเพื่อง่ายต่อการบันทึก Log จากรถยนต์ที่ใช้น้ำมันและแก๊ส LPG/CNG เพื่อคำนวนค่า LTFT STFT แบบ Real-time โดยสามารถเชื่อมต่อกับ Ai Agent เพื่อวิเคราะห์ความผิดปรกติของเครื่องยนต์ และสามารถวิเคราะห์การจูนแก๊สแบบอัตโนมัติ ในรถที่ไม่มีระบบ OBD โดยคำนึงถึงความแม่นยำสูงสุดในการคำนวณค่าต่างๆจาก Parameter ของรถยนต์ รองรับการเชื่อมต่อ Agent เข้ากับ Rest API Server (HTTP) เพื่อให้ Ai Agent สามารถดึงข้อมูลจากรถยนต์ได้โดยตรง สามารถดึงค่า Parameter มาประมวลผลได้อย่างรวดเร็วและแม่นยำ
 
@@ -16,7 +16,8 @@ This Android app support OBD2 adapter : Support vlinker FS(USB Serial) MC blueto
 - **Drivers**: Support for Simulation, WiFi TCP, Bluetooth SPP, and USB OTG Serial adapters (CH340, CP2102, FTDI, Prolific).
 - **Auto-connect**: Tries WiFi TCP first, then selected Bluetooth SPP device, then paired devices, then USB, and finally simulation fallback.
 - **Flexible Logging**: CSV + JSONL logging to any user-selected folder (via Storage Access Framework). Logging runs continuously as a foreground service.
-- **LPG Tuning Analysis**: Real-time analysis of `STFT + LTFT` with LEAN/RICH/OK recommendations.
+- **LPG/CNG Tuning Analysis**: Real-time analysis of `STFT + LTFT` with LEAN/RICH/OK recommendations.
+- **Cell Lock & Hit Counter**: Visual indicators (opacity & gold borders) tracking stable 3D map data using Dwell Time debounce logic.
 - **DTC & VIN Scanning**: Reads current diagnostic trouble codes (DTC) and retrieves the Vehicle Identification Number (VIN).
 - **Readiness Monitors**: Checks vehicle inspection readiness (Misfire, Fuel System, O2 Sensors, etc.).
 - **O2 Sensor Logging**: Reads all 8 standard OBD2 O2 sensor PIDs (0x14-0x1B) as voltage (V).
