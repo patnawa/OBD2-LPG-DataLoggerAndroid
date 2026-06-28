@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.0] - 2026-06-28
+### Added
+- **In-App Session History & Viewer**: Added a new "History" tab that allows users to review previously recorded log files (.csv) directly within the app without exporting.
+- Standalone "Review Session" Activity which parses historical log data in the background and plots it on the Fuel Map, fully supporting Petrol/LPG/Deviation overlays.
+
+
 ## [2.4.0] - 2026-06-28
 ### Added
 - Added Cell Lock & Hit Counter features to the Fuel Map with Dwell Time filtering (Debouncing) to ensure only steady-state data is plotted.

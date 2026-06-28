@@ -11,10 +11,10 @@ INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src
 	android:name
 		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:36:13-62
 manifest
-ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-60:12
-INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-60:12
-INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-60:12
-INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-60:12
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-65:12
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-65:12
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-65:12
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:1:1-65:12
 MERGED from [com.google.android.material:material:1.12.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\17283b837f191dad18a5e34f3c310f2e\transformed\material-1.12.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\ca874313ddc5107deb2a90d842f8f753\transformed\constraintlayout-2.1.4\AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\1aec3877a00d7e39e4f93a32f28dceb6\transformed\appcompat-resources-1.6.1\AndroidManifest.xml:17:1-22:12
@@ -146,8 +146,8 @@ ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\ma
 	android:name
 		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:24:19-59
 application
-ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:26:5-59:19
-INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:26:5-59:19
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:26:5-64:19
+INJECTED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:26:5-64:19
 MERGED from [com.google.android.material:material:1.12.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\17283b837f191dad18a5e34f3c310f2e\transformed\material-1.12.0\AndroidManifest.xml:22:5-20
 MERGED from [com.google.android.material:material:1.12.0] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\17283b837f191dad18a5e34f3c310f2e\transformed\material-1.12.0\AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\Alpha\.gradle\caches\9.4.1\transforms\ca874313ddc5107deb2a90d842f8f753\transformed\constraintlayout-2.1.4\AndroidManifest.xml:9:5-20
@@ -208,6 +208,16 @@ ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\ma
 		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:58:13-60
 	android:name
 		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:56:13-42
+activity#com.alpha.obd2logger.ReviewSessionActivity
+ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:60:9-63:46
+	android:label
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:63:13-43
+	android:exported
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:61:13-37
+	android:theme
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:62:13-44
+	android:name
+		ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:60:19-56
 meta-data#android.support.FILE_PROVIDER_PATHS
 ADDED from C:\Users\Alpha\Documents\GitHub\OBD2-LPG-DataLoggerAndroid\app\src\main\AndroidManifest.xml:40:13-42:54
 	android:resource

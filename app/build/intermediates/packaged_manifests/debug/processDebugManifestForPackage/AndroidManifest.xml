@@ -84,6 +84,12 @@
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
 
+        <activity
+            android:name="com.alpha.obd2logger.ReviewSessionActivity"
+            android:exported="false"
+            android:label="Review Session"
+            android:theme="@style/AppTheme" />
+
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="com.alpha.obd2logger.androidx-startup"

@@ -41,6 +41,7 @@ id backgroundLoggingCheckbox
 id baudInput
 id bluetoothDeviceSpinner
 id bluetoothHintText
+id btnBack
 id btnClearDtc
 id btnMapDiff
 id btnMapLpg
@@ -48,6 +49,9 @@ id btnMapPetrol
 id btnReadDtc
 id btnReadVin
 id btnReadiness
+id btnReviewDiff
+id btnReviewLpg
+id btnReviewPetrol
 id btnSelectLogFolder
 id btnSettings
 id btnToggleLpg
@@ -92,6 +96,8 @@ id graphCard4
 id graphCard5
 id headerStatus
 id headerVin
+id historyFolderText
+id historyListView
 id intervalInput
 id keepScreenOnCheckbox
 id languageSpinner
@@ -103,6 +109,7 @@ id mapModeToggle
 id nav_dashboard
 id nav_dtc
 id nav_gauges
+id nav_history
 id nav_logs
 id nav_map
 id obdProtocolSpinner
@@ -110,10 +117,17 @@ id panelDashboard
 id panelDtc
 id panelFuelMap
 id panelGauges
+id panelHistory
 id panelLogs
 id panelSettings
 id readinessContainer
 id readingsTable
+id reviewFileName
+id reviewFuelMapView
+id reviewHeader
+id reviewMapToggle
+id reviewProgress
+id reviewStatus
 id statusText
 id tabBar
 id themeSpinner
@@ -124,6 +138,7 @@ id tuningStatusText
 id wifiIpInput
 id wifiPortInput
 layout activity_main
+layout activity_review_session
 menu bottom_nav_menu
 mipmap ic_launcher
 mipmap ic_launcher_round

@@ -91,6 +91,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private com.google.android.material.floatingactionbutton.FloatingActionButton fabLog;
     private FuelMapView fuelMapView;
 
+    // --- UI: History tab ---
+    private View panelHistory;
+    private android.widget.ListView historyListView;
+    private TextView historyFolderText;
+
     // --- State ---
     private volatile ExecutorService executor;
     // Separate executor for DTC/VIN/readiness operations so that stopping the
@@ -183,6 +188,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         headerStatus = findViewById(R.id.headerStatus);
         headerVin = findViewById(R.id.headerVin);
         btnSettings = findViewById(R.id.btnSettings);
+        
+        panelHistory = findViewById(R.id.panelHistory);
+        historyListView = findViewById(R.id.historyListView);
+        historyFolderText = findViewById(R.id.historyFolderText);
+        
         bottomNav = findViewById(R.id.tabBar);
         panelDashboard = findViewById(R.id.panelDashboard);
         panelGauges = findViewById(R.id.panelGauges);
@@ -418,6 +428,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             } else if (id == R.id.nav_logs) {
                 showTab(4);
                 return true;
+            } else if (id == R.id.nav_history) {
+                showTab(5);
+                return true;
             }
             return false;
         });
@@ -430,7 +443,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         findViewById(R.id.panelFuelMap).setVisibility(index == 2 ? View.VISIBLE : View.GONE);
         panelDtc.setVisibility(index == 3 ? View.VISIBLE : View.GONE);
         panelLogs.setVisibility(index == 4 ? View.VISIBLE : View.GONE);
-        panelSettings.setVisibility(index == 5 ? View.VISIBLE : View.GONE);
+        if (panelHistory != null) panelHistory.setVisibility(index == 5 ? View.VISIBLE : View.GONE);
+        panelSettings.setVisibility(index == 6 ? View.VISIBLE : View.GONE);
+        
+        if (index == 5) {
+            loadHistoryFiles();
+        }
     }
 
     private void setupGauges() {
@@ -522,7 +540,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // Header
         if (btnSettings != null) {
-            btnSettings.setOnClickListener(v -> showTab(5));
+            btnSettings.setOnClickListener(v -> showTab(6));
         }
 
         // DTC
@@ -552,6 +570,50 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (savedUriStr != null) {
             updateCustomFolderText(Uri.parse(savedUriStr));
         }
+    }
+
+    private void loadHistoryFiles() {
+        String savedUriStr = getSharedPreferences("OBD2Prefs", MODE_PRIVATE).getString("custom_log_folder_uri", null);
+        if (savedUriStr == null) {
+            historyFolderText.setText("No log folder selected. Please go to Settings.");
+            historyListView.setAdapter(null);
+            return;
+        }
+        
+        Uri treeUri = Uri.parse(savedUriStr);
+        androidx.documentfile.provider.DocumentFile df = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
+        if (df == null || !df.exists()) {
+            historyFolderText.setText("Cannot access log folder. Please re-select in Settings.");
+            historyListView.setAdapter(null);
+            return;
+        }
+        
+        historyFolderText.setText("Folder: " + df.getName());
+        androidx.documentfile.provider.DocumentFile[] files = df.listFiles();
+        List<androidx.documentfile.provider.DocumentFile> csvFiles = new java.util.ArrayList<>();
+        for (androidx.documentfile.provider.DocumentFile f : files) {
+            if (f.getName() != null && f.getName().endsWith(".csv")) {
+                csvFiles.add(f);
+            }
+        }
+        
+        java.util.Collections.sort(csvFiles, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
+        
+        List<String> names = new java.util.ArrayList<>();
+        for (androidx.documentfile.provider.DocumentFile f : csvFiles) {
+            String dateStr = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date(f.lastModified()));
+            names.add(f.getName() + "\n" + dateStr);
+        }
+        
+        historyListView.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, names));
+        
+        historyListView.setOnItemClickListener((parent, view, position, id) -> {
+            androidx.documentfile.provider.DocumentFile selectedFile = csvFiles.get(position);
+            Intent intent = new Intent(this, ReviewSessionActivity.class);
+            intent.setData(selectedFile.getUri());
+            intent.putExtra("file_name", selectedFile.getName());
+            startActivity(intent);
+        });
     }
 
     private void updateCustomFolderText(Uri uri) {

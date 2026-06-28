@@ -1,78 +1,90 @@
 [
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_ic_launcher_background.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/ic_launcher_background.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_ic_speed.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\ic_speed.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_ic_build.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/ic_build.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\mipmap_ic_launcher_round.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\mipmap\\ic_launcher_round.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/mipmap_ic_launcher_round.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/mipmap/ic_launcher_round.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_ic_settings.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\ic_settings.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/mipmap_ic_launcher.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/mipmap/ic_launcher.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\mipmap-anydpi-v26\\ic_launcher.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_ic_speed.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/ic_speed.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_ic_list.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\ic_list.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_button_start.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/button_start.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_input_panel.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\input_panel.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_input_panel.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/input_panel.xml"
+        "merged": "com.alpha.obd2logger.app-debug-31:/layout_activity_review_session.xml.flat",
+        "source": "com.alpha.obd2logger.app-main-33:/layout/activity_review_session.xml"
+    },
+    {
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\layout_activity_main.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\layout\\activity_main.xml"
+    },
+    {
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_ic_launcher_background.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\ic_launcher_background.xml"
+    },
+    {
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_ic_launcher_foreground.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_button_start.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\button_start.xml"
     },
     {
         "merged": "com.alpha.obd2logger.app-debug-31:/menu_bottom_nav_menu.xml.flat",
         "source": "com.alpha.obd2logger.app-main-33:/menu/bottom_nav_menu.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_ic_list.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/ic_list.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_ic_dashboard.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/ic_dashboard.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_button_stop.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\button_stop.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/mipmap-anydpi-v26/ic_launcher_round.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_ic_map.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\ic_map.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_ic_launcher_foreground.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/ic_launcher_foreground.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_panel.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\panel.xml"
     },
     {
         "merged": "com.alpha.obd2logger.app-debug-31:/layout_activity_main.xml.flat",
         "source": "com.alpha.obd2logger.app-main-33:/layout/activity_main.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/mipmap-anydpi-v26/ic_launcher.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_ic_dashboard.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\ic_dashboard.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_panel.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/panel.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\menu_bottom_nav_menu.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\menu\\bottom_nav_menu.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_button_stop.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/button_stop.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_ic_build.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\ic_build.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_ic_settings.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/ic_settings.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\xml_file_paths.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\xml\\file_paths.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/drawable_ic_map.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/drawable/ic_map.xml"
-    },
-    {
-        "merged": "com.alpha.obd2logger.app-debug-31:/xml_file_paths.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/xml/file_paths.xml"
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\mipmap_ic_launcher.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\mipmap\\ic_launcher.xml"
     }
 ]

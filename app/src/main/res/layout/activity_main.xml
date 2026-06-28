@@ -896,6 +896,52 @@
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
 
+            <!-- ===== HISTORY TAB ===== -->
+            <LinearLayout
+                android:id="@+id/panelHistory"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Session History"
+                    android:textColor="@color/primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="16dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/surface2"
+                    app:cardCornerRadius="12dp">
+
+                    <TextView
+                        android:id="@+id/historyFolderText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:padding="16dp"
+                        android:text="Tap to select log folder..."
+                        android:textColor="@color/muted"
+                        android:textSize="13sp" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <ListView
+                    android:id="@+id/historyListView"
+                    android:layout_width="match_parent"
+                    android:layout_height="400dp"
+                    android:divider="@color/surface2"
+                    android:dividerHeight="1dp" />
+
+            </LinearLayout>
+
             <!-- ===== SETTINGS TAB ===== -->
             <LinearLayout
                 android:id="@+id/panelSettings"

@@ -20,4 +20,8 @@
         android:id="@+id/nav_logs"
         android:icon="@drawable/ic_list"
         android:title="@string/tab_logs" />
+    <item
+        android:id="@+id/nav_history"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:title="History" />
 </menu>

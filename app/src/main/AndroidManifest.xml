@@ -56,5 +56,10 @@
             android:name=".LoggerService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
+
+        <activity android:name=".ReviewSessionActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:label="Review Session" />
     </application>
 </manifest>
