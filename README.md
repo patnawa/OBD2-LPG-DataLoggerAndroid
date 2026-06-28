@@ -1,4 +1,4 @@
-# OBD2 Petro/LPG/CNG Data Logger Android
+# OBD2 Petrol/LPG/CNG Data Logger Android
 
 Native Android port of the OBD2 advanced data logging system performance assist tune for lpg cng petrol.
 
