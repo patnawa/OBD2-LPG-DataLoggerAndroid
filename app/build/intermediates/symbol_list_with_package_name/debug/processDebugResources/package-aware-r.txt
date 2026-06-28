@@ -3502,7 +3502,6 @@ id multiply
 id nav_dashboard
 id nav_dtc
 id nav_gauges
-id nav_history
 id nav_logs
 id nav_map
 id navigation_bar_item_active_indicator_view
@@ -3549,7 +3548,6 @@ id panelDashboard
 id panelDtc
 id panelFuelMap
 id panelGauges
-id panelHistory
 id panelLogs
 id panelSettings
 id parallax

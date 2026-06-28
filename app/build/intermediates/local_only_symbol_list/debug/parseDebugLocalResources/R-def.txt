@@ -109,7 +109,6 @@ id mapModeToggle
 id nav_dashboard
 id nav_dtc
 id nav_gauges
-id nav_history
 id nav_logs
 id nav_map
 id obdProtocolSpinner
@@ -117,7 +116,6 @@ id panelDashboard
 id panelDtc
 id panelFuelMap
 id panelGauges
-id panelHistory
 id panelLogs
 id panelSettings
 id readinessContainer

@@ -70,12 +70,16 @@ public final class DataWriter implements AutoCloseable {
     }
 
     public void writeRecord(DataRecord record) throws IOException {
-        String loopStatus = "Open";
+        String loopStatus = "Unknown";
         for (SensorSample sample : record.getSamples()) {
             if ("01_03".equals(sample.getPidKey())) {
                 Double val = sample.getValue();
-                if (val != null && (val == 1.0 || val == 8.0)) {
-                    loopStatus = "Closed";
+                if (val != null) {
+                    if (val == 1.0 || val == 8.0) {
+                        loopStatus = "Closed";
+                    } else {
+                        loopStatus = "Open";
+                    }
                 }
                 break;
             }

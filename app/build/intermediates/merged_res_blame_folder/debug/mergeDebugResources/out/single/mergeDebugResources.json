@@ -24,10 +24,6 @@
         "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\drawable\\input_panel.xml"
     },
     {
-        "merged": "com.alpha.obd2logger.app-debug-31:/layout_activity_review_session.xml.flat",
-        "source": "com.alpha.obd2logger.app-main-33:/layout/activity_review_session.xml"
-    },
-    {
         "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\layout_activity_main.xml.flat",
         "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\layout\\activity_main.xml"
     },
@@ -66,6 +62,10 @@
     {
         "merged": "com.alpha.obd2logger.app-debug-31:/layout_activity_main.xml.flat",
         "source": "com.alpha.obd2logger.app-main-33:/layout/activity_main.xml"
+    },
+    {
+        "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\layout_activity_review_session.xml.flat",
+        "source": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-main-33:\\layout\\activity_review_session.xml"
     },
     {
         "merged": "C:\\Users\\Alpha\\.gradle\\daemon\\9.4.1\\com.alpha.obd2logger.app-debug-31:\\drawable_ic_dashboard.xml.flat",

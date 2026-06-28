@@ -189,7 +189,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         headerVin = findViewById(R.id.headerVin);
         btnSettings = findViewById(R.id.btnSettings);
         
-        panelHistory = findViewById(R.id.panelHistory);
         historyListView = findViewById(R.id.historyListView);
         historyFolderText = findViewById(R.id.historyFolderText);
         
@@ -428,9 +427,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             } else if (id == R.id.nav_logs) {
                 showTab(4);
                 return true;
-            } else if (id == R.id.nav_history) {
-                showTab(5);
-                return true;
             }
             return false;
         });
@@ -443,10 +439,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         findViewById(R.id.panelFuelMap).setVisibility(index == 2 ? View.VISIBLE : View.GONE);
         panelDtc.setVisibility(index == 3 ? View.VISIBLE : View.GONE);
         panelLogs.setVisibility(index == 4 ? View.VISIBLE : View.GONE);
-        if (panelHistory != null) panelHistory.setVisibility(index == 5 ? View.VISIBLE : View.GONE);
-        panelSettings.setVisibility(index == 6 ? View.VISIBLE : View.GONE);
+        panelSettings.setVisibility(index == 5 ? View.VISIBLE : View.GONE);
         
-        if (index == 5) {
+        if (index == 4) {
             loadHistoryFiles();
         }
     }
@@ -540,7 +535,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // Header
         if (btnSettings != null) {
-            btnSettings.setOnClickListener(v -> showTab(6));
+            btnSettings.setOnClickListener(v -> showTab(5));
         }
 
         // DTC
@@ -572,48 +567,160 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
     }
 
+    private class HistoryLogFile {
+        Uri uri;
+        String name;
+        long date;
+        boolean isSaf;
+        androidx.documentfile.provider.DocumentFile df;
+        boolean isMediaStore;
+        boolean isFile;
+        File file;
+
+        boolean delete(Context context) {
+            if (isSaf && df != null) {
+                return df.delete();
+            } else if (isMediaStore) {
+                return context.getContentResolver().delete(uri, null, null) > 0;
+            } else if (isFile && file != null) {
+                return file.delete();
+            }
+            return false;
+        }
+    }
+
     private void loadHistoryFiles() {
         String savedUriStr = getSharedPreferences("OBD2Prefs", MODE_PRIVATE).getString("custom_log_folder_uri", null);
-        if (savedUriStr == null) {
-            historyFolderText.setText("No log folder selected. Please go to Settings.");
-            historyListView.setAdapter(null);
-            return;
-        }
-        
-        Uri treeUri = Uri.parse(savedUriStr);
-        androidx.documentfile.provider.DocumentFile df = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
-        if (df == null || !df.exists()) {
-            historyFolderText.setText("Cannot access log folder. Please re-select in Settings.");
-            historyListView.setAdapter(null);
-            return;
-        }
-        
-        historyFolderText.setText("Folder: " + df.getName());
-        androidx.documentfile.provider.DocumentFile[] files = df.listFiles();
-        List<androidx.documentfile.provider.DocumentFile> csvFiles = new java.util.ArrayList<>();
-        for (androidx.documentfile.provider.DocumentFile f : files) {
-            if (f.getName() != null && f.getName().endsWith(".csv")) {
-                csvFiles.add(f);
+        List<HistoryLogFile> logFiles = new ArrayList<>();
+
+        if (savedUriStr != null) {
+            Uri treeUri = Uri.parse(savedUriStr);
+            androidx.documentfile.provider.DocumentFile df = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
+            if (df != null && df.exists()) {
+                historyFolderText.setText("Folder: " + df.getName());
+                for (androidx.documentfile.provider.DocumentFile f : df.listFiles()) {
+                    if (f.getName() != null && f.getName().endsWith(".csv")) {
+                        HistoryLogFile hlf = new HistoryLogFile();
+                        hlf.uri = f.getUri();
+                        hlf.name = f.getName();
+                        hlf.date = f.lastModified();
+                        hlf.isSaf = true;
+                        hlf.df = f;
+                        logFiles.add(hlf);
+                    }
+                }
+            } else {
+                historyFolderText.setText("Cannot access custom folder. Using default.");
+                loadDefaultHistory(logFiles);
             }
+        } else {
+            historyFolderText.setText("Default Folder (Downloads/OBD2LPGLogger)");
+            loadDefaultHistory(logFiles);
         }
-        
-        java.util.Collections.sort(csvFiles, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
-        
-        List<String> names = new java.util.ArrayList<>();
-        for (androidx.documentfile.provider.DocumentFile f : csvFiles) {
-            String dateStr = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date(f.lastModified()));
-            names.add(f.getName() + "\n" + dateStr);
+
+        java.util.Collections.sort(logFiles, (f1, f2) -> Long.compare(f2.date, f1.date));
+
+        List<String> names = new ArrayList<>();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+        for (HistoryLogFile hlf : logFiles) {
+            names.add(hlf.name + "\n" + sdf.format(new Date(hlf.date)));
         }
-        
+
         historyListView.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, names));
-        
+
         historyListView.setOnItemClickListener((parent, view, position, id) -> {
-            androidx.documentfile.provider.DocumentFile selectedFile = csvFiles.get(position);
+            HistoryLogFile selectedFile = logFiles.get(position);
             Intent intent = new Intent(this, ReviewSessionActivity.class);
-            intent.setData(selectedFile.getUri());
-            intent.putExtra("file_name", selectedFile.getName());
+            intent.setData(selectedFile.uri);
+            intent.putExtra("file_name", selectedFile.name);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(intent);
         });
+
+        historyListView.setOnItemLongClickListener((parent, view, position, id) -> {
+            HistoryLogFile selectedFile = logFiles.get(position);
+            String[] options = {"Share Log", "Delete Log"};
+            new android.app.AlertDialog.Builder(this)
+                .setTitle(selectedFile.name)
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) { // Share
+                        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                        shareIntent.setType("text/csv");
+                        shareIntent.putExtra(Intent.EXTRA_STREAM, selectedFile.uri);
+                        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivity(Intent.createChooser(shareIntent, "Share Log File"));
+                    } else if (which == 1) { // Delete
+                        new android.app.AlertDialog.Builder(this)
+                            .setTitle("Confirm Delete")
+                            .setMessage("Are you sure you want to delete this log?")
+                            .setPositiveButton("Delete", (d, w) -> {
+                                if (selectedFile.delete(this)) {
+                                    Toast.makeText(this, "File deleted", Toast.LENGTH_SHORT).show();
+                                    loadHistoryFiles();
+                                } else {
+                                    Toast.makeText(this, "Failed to delete file", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                    }
+                })
+                .show();
+            return true;
+        });
+    }
+
+    private void loadDefaultHistory(List<HistoryLogFile> logFiles) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            Uri collection = android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+            String[] projection = new String[] {
+                android.provider.MediaStore.Downloads._ID,
+                android.provider.MediaStore.Downloads.DISPLAY_NAME,
+                android.provider.MediaStore.Downloads.DATE_MODIFIED
+            };
+            String selection = android.provider.MediaStore.Downloads.RELATIVE_PATH + " LIKE ? AND " +
+                               android.provider.MediaStore.Downloads.DISPLAY_NAME + " LIKE ?";
+            String[] selectionArgs = new String[] { "%OBD2LPGLogger%", "%.csv" };
+
+            try (android.database.Cursor cursor = getContentResolver().query(collection, projection, selection, selectionArgs, null)) {
+                if (cursor != null) {
+                    int idCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Downloads._ID);
+                    int nameCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Downloads.DISPLAY_NAME);
+                    int dateCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Downloads.DATE_MODIFIED);
+                    while (cursor.moveToNext()) {
+                        long id = cursor.getLong(idCol);
+                        String name = cursor.getString(nameCol);
+                        long date = cursor.getLong(dateCol) * 1000L;
+                        Uri contentUri = android.content.ContentUris.withAppendedId(collection, id);
+                        
+                        HistoryLogFile hlf = new HistoryLogFile();
+                        hlf.uri = contentUri;
+                        hlf.name = name;
+                        hlf.date = date;
+                        hlf.isMediaStore = true;
+                        logFiles.add(hlf);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } else {
+            File folder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "OBD2LPGLogger");
+            if (folder.exists()) {
+                File[] files = folder.listFiles((dir, name) -> name.endsWith(".csv"));
+                if (files != null) {
+                    for (File f : files) {
+                        HistoryLogFile hlf = new HistoryLogFile();
+                        hlf.uri = androidx.core.content.FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".fileprovider", f);
+                        hlf.name = f.getName();
+                        hlf.date = f.lastModified();
+                        hlf.isFile = true;
+                        hlf.file = f;
+                        logFiles.add(hlf);
+                    }
+                }
+            }
+        }
     }
 
     private void updateCustomFolderText(Uri uri) {
