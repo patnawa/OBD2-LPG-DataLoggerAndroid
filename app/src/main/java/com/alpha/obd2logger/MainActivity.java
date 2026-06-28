@@ -306,15 +306,38 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         fuelMapView = findViewById(R.id.fuelMapView);
         
         com.google.android.material.button.MaterialButtonToggleGroup mapModeToggle = findViewById(R.id.mapModeToggle);
+        View btnExportCsv = findViewById(R.id.btnExportCsv);
         mapModeToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (isChecked && fuelMapView != null) {
                 if (checkedId == R.id.btnMapPetrol) fuelMapView.setMapMode(FuelMapView.MapMode.PETROL);
                 else if (checkedId == R.id.btnMapLpg) fuelMapView.setMapMode(FuelMapView.MapMode.LPG);
                 else if (checkedId == R.id.btnMapDiff) fuelMapView.setMapMode(FuelMapView.MapMode.DEVIATION);
+                else if (checkedId == R.id.btnMapCorrection) fuelMapView.setMapMode(FuelMapView.MapMode.CORRECTION);
+                
+                if (btnExportCsv != null) {
+                    btnExportCsv.setVisibility(checkedId == R.id.btnMapCorrection ? View.VISIBLE : View.GONE);
+                }
             }
         });
         
+        if (btnExportCsv != null) {
+            btnExportCsv.setOnClickListener(v -> exportCorrectionCsv());
+        }
+        
+        View btnMapInfo = findViewById(R.id.btnMapInfo);
+        if (btnMapInfo != null) {
+            btnMapInfo.setOnClickListener(v -> showMapInfoDialog());
+        }
+        
         setupDynamicPids();
+    }
+    
+    private void showMapInfoDialog() {
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.how_to_read_map_title)
+            .setMessage(R.string.how_to_read_map_desc)
+            .setPositiveButton("OK", null)
+            .show();
     }
     
     private void applyFuelTheme(FuelMode mode) {
@@ -377,6 +400,42 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             })
             .setNegativeButton("Cancel", null)
             .show();
+    }
+    
+    private void exportCorrectionCsv() {
+        if (fuelMapView == null) return;
+        
+        if (!fuelMapView.hasAnyCorrection()) {
+            android.widget.Toast.makeText(this, "No correction data yet. Need both Petrol & LPG data in the same RPM/MAP cells.", android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
+        
+        String csvData = fuelMapView.exportCorrectionMapCsv();
+        
+        try {
+            java.io.File dir = new java.io.File(getCacheDir(), "Tuning");
+            if (!dir.exists()) dir.mkdirs();
+            
+            String timestamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
+            java.io.File csvFile = new java.io.File(dir, "CorrectionMap_" + timestamp + ".csv");
+            
+            try (java.io.FileWriter writer = new java.io.FileWriter(csvFile)) {
+                writer.write(csvData);
+            }
+            
+            android.net.Uri fileUri = androidx.core.content.FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".fileprovider", csvFile);
+            
+            android.content.Intent shareIntent = new android.content.Intent(android.content.Intent.ACTION_SEND);
+            shareIntent.setType("text/csv");
+            shareIntent.putExtra(android.content.Intent.EXTRA_STREAM, fileUri);
+            shareIntent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            
+            startActivity(android.content.Intent.createChooser(shareIntent, "Share Correction CSV"));
+            
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Failed to export CSV", e);
+            android.widget.Toast.makeText(this, "Failed to export CSV: " + e.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void setupDashboard() {
@@ -690,6 +749,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     while (cursor.moveToNext()) {
                         long id = cursor.getLong(idCol);
                         String name = cursor.getString(nameCol);
+                        if (name != null && name.startsWith("CorrectionMap_")) continue;
                         long date = cursor.getLong(dateCol) * 1000L;
                         Uri contentUri = android.content.ContentUris.withAppendedId(collection, id);
                         
@@ -707,7 +767,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         } else {
             File folder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "OBD2LPGLogger");
             if (folder.exists()) {
-                File[] files = folder.listFiles((dir, name) -> name.endsWith(".csv"));
+                File[] files = folder.listFiles((dir, name) -> name.endsWith(".csv") && !name.startsWith("CorrectionMap_"));
                 if (files != null) {
                     for (File f : files) {
                         HistoryLogFile hlf = new HistoryLogFile();
@@ -824,7 +884,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void runLogger(LoggerConfig config) {
-        String sessionId = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String fuelPrefix = config.fuelMode != null ? config.fuelMode.name() + "_" : "";
+        String simPrefix = (config.transportMode == TransportMode.SIM) ? "Sim_" : "";
+        String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String sessionId = simPrefix + fuelPrefix + timeStr;
         BaseDriver driver = DriverFactory.create(config);
         currentDriver = driver;
 

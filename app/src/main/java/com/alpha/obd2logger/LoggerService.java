@@ -122,7 +122,11 @@ public final class LoggerService extends Service {
     }
 
     private void runLogger(LoggerConfig config) {
-        String sessionId = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String fuelPrefix = config.fuelMode != null ? config.fuelMode.name() + "_" : "";
+        String simPrefix = (config.transportMode == TransportMode.SIM) ? "Sim_" : "";
+        String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String sessionId = simPrefix + fuelPrefix + timeStr;
+        
         driver = DriverFactory.create(config);
 
         if (!driver.isConnected() && !driver.connect()) {

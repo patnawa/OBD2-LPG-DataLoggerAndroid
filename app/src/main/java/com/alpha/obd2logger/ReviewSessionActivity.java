@@ -45,6 +45,7 @@ public class ReviewSessionActivity extends AppCompatActivity {
         btnBack.setOnClickListener(v -> finish());
 
         MaterialButtonToggleGroup mapToggle = findViewById(R.id.reviewMapToggle);
+        View btnReviewExportCsv = findViewById(R.id.btnReviewExportCsv);
         mapToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (isChecked) {
                 if (checkedId == R.id.btnReviewPetrol) {
@@ -53,9 +54,24 @@ public class ReviewSessionActivity extends AppCompatActivity {
                     fuelMapView.setMapMode(FuelMapView.MapMode.LPG);
                 } else if (checkedId == R.id.btnReviewDiff) {
                     fuelMapView.setMapMode(FuelMapView.MapMode.DEVIATION);
+                } else if (checkedId == R.id.btnReviewCorrection) {
+                    fuelMapView.setMapMode(FuelMapView.MapMode.CORRECTION);
+                }
+                
+                if (btnReviewExportCsv != null) {
+                    btnReviewExportCsv.setVisibility(checkedId == R.id.btnReviewCorrection ? View.VISIBLE : View.GONE);
                 }
             }
         });
+        
+        if (btnReviewExportCsv != null) {
+            btnReviewExportCsv.setOnClickListener(v -> exportCorrectionCsv());
+        }
+        
+        View btnReviewMapInfo = findViewById(R.id.btnReviewMapInfo);
+        if (btnReviewMapInfo != null) {
+            btnReviewMapInfo.setOnClickListener(v -> showMapInfoDialog());
+        }
         
         fuelMapView.setMapMode(FuelMapView.MapMode.PETROL);
 
@@ -198,6 +214,50 @@ public class ReviewSessionActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executor.shutdownNow();
+        if (executor != null) executor.shutdownNow();
+    }
+    
+    private void exportCorrectionCsv() {
+        if (fuelMapView == null) return;
+        
+        if (!fuelMapView.hasAnyCorrection()) {
+            android.widget.Toast.makeText(this, "No correction data yet. Need both Petrol & LPG data in the same RPM/MAP cells.", android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
+        
+        String csvData = fuelMapView.exportCorrectionMapCsv();
+        
+        try {
+            java.io.File dir = new java.io.File(getCacheDir(), "Tuning");
+            if (!dir.exists()) dir.mkdirs();
+            
+            String timestamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
+            java.io.File csvFile = new java.io.File(dir, "CorrectionMap_Review_" + timestamp + ".csv");
+            
+            try (java.io.FileWriter writer = new java.io.FileWriter(csvFile)) {
+                writer.write(csvData);
+            }
+            
+            android.net.Uri fileUri = androidx.core.content.FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".fileprovider", csvFile);
+            
+            android.content.Intent shareIntent = new android.content.Intent(android.content.Intent.ACTION_SEND);
+            shareIntent.setType("text/csv");
+            shareIntent.putExtra(android.content.Intent.EXTRA_STREAM, fileUri);
+            shareIntent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            
+            startActivity(android.content.Intent.createChooser(shareIntent, "Share Correction CSV"));
+            
+        } catch (Exception e) {
+            android.util.Log.e("ReviewSessionActivity", "Failed to export CSV", e);
+            android.widget.Toast.makeText(this, "Failed to export CSV: " + e.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showMapInfoDialog() {
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.how_to_read_map_title)
+            .setMessage(R.string.how_to_read_map_desc)
+            .setPositiveButton("OK", null)
+            .show();
     }
 }

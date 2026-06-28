@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.0] - 2026-06-29
+### Added
+- **Fuel Mode Prefix in Log Filenames**: Log files now include the fuel mode and transport mode in the filename (e.g., `Sim_LPG_20260628_120000_obd2.csv`, `PETROL_20260628_120000_obd2.csv`) to easily identify which mode was used during testing.
+- **Empty Data Warning on Export**: The app now shows a clear Toast warning ("No correction data yet. Need both Petrol & LPG data in the same RPM/MAP cells.") when the user tries to export a Tune Assist CSV with no overlapping data, instead of silently exporting an empty file.
+- **`hasAnyCorrection()` Method**: New public method on `FuelMapView` to check whether any valid correction data exists before attempting export.
+- **Error Detail in Export Toast**: Export failure messages now include the actual error reason (e.g., `Failed to export CSV: permission denied`) instead of a generic message.
+
+### Fixed
+- **Corrupt CSV Header (CRITICAL)**: Fixed a bug where `exportCorrectionMapCsv()` wrote the header label twice without a newline separator (`MAP\RPMMAP \ RPM,500,...`), producing a malformed CSV that couldn't be opened in Excel or tuning software.
+- **Wrong Fuel Mode in Log Filename (CRITICAL)**: Fixed the session ID prefix logic that used a binary PETROL-vs-LPG check. Any future fuel mode (CNG, Aviation, etc.) would have been incorrectly labeled as "LPG". Now uses the enum name directly (`fuelMode.name()`).
+- **In-Process Logger Missing Fuel Prefix**: The in-process logger (`MainActivity.runLogger()`) was never updated with the fuel mode prefix, so log files recorded without background logging still used the old date-only naming format.
+- **CSV Export Crash — FileProvider Authority Mismatch**: Fixed the FileProvider authority string from `.provider` to `.fileprovider` to match the AndroidManifest declaration, which caused `IllegalArgumentException` crashes on every export attempt.
+- **CSV Export Crash — Missing FileProvider Path**: Added `<cache-path>` and `<external-cache-path>` entries to `file_paths.xml` to cover the cache directory used for temporary CSV files.
+- **CSV Export Storage Access**: Moved CSV export from `Downloads/OBD2LPGLogger` (which requires special permissions on Android 10+) to the app's internal cache directory (`getCacheDir()`), which requires no permissions and is automatically cleaned by the OS.
+- **FileWriter Resource Leak**: Wrapped `FileWriter` in try-with-resources in both `MainActivity` and `ReviewSessionActivity` export methods to prevent file handle leaks if `write()` throws an exception.
+- **Data Loss on App Crash**: Reduced the flush interval from every 10 records to every 5 records, and added an immediate flush after writing the CSV header, reducing potential data loss from 9 records to 4.
+- **CorrectionMap Files in History List**: Filtered out files starting with `CorrectionMap_` from the session history list to prevent users from accidentally opening tuning CSVs as log files (which would show an empty graph).
+- **ReviewSessionActivity Crash on Destroy**: Added null check on `executor` in `onDestroy()` to prevent NPE if the activity is destroyed before the executor is initialized.
+
+### Changed
+- **Fuel Mode Prefix Logic**: Both `LoggerService.runLogger()` and `MainActivity.runLogger()` now use `config.fuelMode.name() + "_"` instead of a ternary `PETROL ? "Petrol_" : "LPG_"`, making the prefix future-proof for any new fuel modes.
+
+### Removed
+- **Dead Code Cleanup**: Removed 13 lines of commented-out debug code and an unused loop in `FuelMapView.exportCorrectionMapCsv()` that was left over from axis orientation experimentation.
+
+## [2.6.0] - 2026-06-28
+### Added
+- **Smart Auto-Correction Grid (Tune Assist)**: Added a "Tune Assist" button on the Fuel Map which calculates the exact correction multiplier (% to add or subtract) for the gas ECU to reach the ideal fuel mixture. 
+- **Export Tune Assist to CSV**: Added a button to export the Tune Assist map as a CSV file and share it via any installed app (Line, Email, Bluetooth) to be viewed on a tuning laptop. 
+
 ## [2.5.0] - 2026-06-28
 ### Added
 - **In-App Session History & Viewer**: Added a new "History" tab that allows users to review previously recorded log files (.csv) directly within the app without exporting.

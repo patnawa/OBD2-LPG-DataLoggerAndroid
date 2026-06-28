@@ -17,7 +17,7 @@ import java.util.Map;
 public class FuelMapView extends View {
 
     public enum MapMode {
-        PETROL, LPG, DEVIATION
+        PETROL, LPG, DEVIATION, CORRECTION
     }
 
     private Paint gridPaint;
@@ -178,10 +178,12 @@ public class FuelMapView extends View {
                     displayTrim = petrol.getAverage();
                 } else if (currentMode == MapMode.LPG && lpg != null) {
                     displayTrim = lpg.getAverage();
-                } else if (currentMode == MapMode.DEVIATION && petrol != null && lpg != null) {
-                    displayTrim = lpg.getAverage() - petrol.getAverage();
-                    hitCount = Math.min(petrol.getHitCount(), lpg.getHitCount());
-                    isLocked = petrol.isLocked() && lpg.isLocked();
+                } else if (currentMode == MapMode.DEVIATION || currentMode == MapMode.CORRECTION) {
+                    if (petrol != null && lpg != null) {
+                        displayTrim = lpg.getAverage() - petrol.getAverage();
+                        hitCount = Math.min(petrol.getHitCount(), lpg.getHitCount());
+                        isLocked = petrol.isLocked() && lpg.isLocked();
+                    }
                 }
                 
                 cellRect.set(xLeft, yTop, xRight, yBottom);
@@ -205,12 +207,18 @@ public class FuelMapView extends View {
                     Paint.Align oldAlign = textPaint.getTextAlign();
                     int oldColor = textPaint.getColor();
                     textPaint.setColor(0xFFFFFFFF);
-                    canvas.drawText(String.format(Locale.US, "%.1f", displayTrim), xLeft + cellWidth / 2, yBottom - cellHeight / 3, textPaint);
+                    String textToDraw;
+                    if (currentMode == MapMode.CORRECTION) {
+                        textToDraw = (displayTrim > 0 ? "+" : "") + Math.round(displayTrim) + "%";
+                    } else {
+                        textToDraw = String.format(Locale.US, "%.1f", displayTrim);
+                    }
+                    canvas.drawText(textToDraw, xLeft + cellWidth / 2, yBottom - cellHeight / 3, textPaint);
                     textPaint.setColor(oldColor);
                     textPaint.setTextAlign(oldAlign);
                     
                     // Draw hit count badge in top-right
-                    if (currentMode != MapMode.DEVIATION && hitCount > 0) {
+                    if (currentMode != MapMode.DEVIATION && currentMode != MapMode.CORRECTION && hitCount > 0) {
                         badgePaint.setTextSize(8f * density);
                         canvas.drawText("x" + hitCount, xRight - (4f * density), yTop + (12f * density), badgePaint);
                     }
@@ -266,5 +274,55 @@ public class FuelMapView extends View {
         public boolean isLocked() {
             return hitCount >= MAX_HITS;
         }
+    }
+    
+    /**
+     * Checks if there is any overlapping Petrol+LPG data to produce a correction value.
+     */
+    public boolean hasAnyCorrection() {
+        for (String key : petrolData.keySet()) {
+            if (lpgData.containsKey(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public String exportCorrectionMapCsv() {
+        StringBuilder sb = new StringBuilder();
+        
+        int rpmCount = (RPM_MAX - RPM_MIN) / RPM_STEP + 1;
+        int mapCount = (MAP_MAX - MAP_MIN) / MAP_STEP + 1;
+        
+        // Header row: RPM as Columns (Horizontal)
+        sb.append("MAP \\ RPM");
+        for (int c = 0; c < rpmCount; c++) {
+            int rpmValue = RPM_MIN + (c * RPM_STEP);
+            sb.append(",").append(rpmValue);
+        }
+        sb.append("\n");
+        
+        // MAP as Rows (Vertical)
+        for (int r = 0; r < mapCount; r++) {
+            int mapValue = MAP_MIN + (r * MAP_STEP);
+            sb.append(mapValue);
+            
+            for (int c = 0; c < rpmCount; c++) {
+                int rpmValue = RPM_MIN + (c * RPM_STEP);
+                String key = rpmValue + "_" + mapValue;
+                TrimData petrol = petrolData.get(key);
+                TrimData lpg = lpgData.get(key);
+                
+                if (petrol != null && lpg != null) {
+                    double correction = lpg.getAverage() - petrol.getAverage();
+                    sb.append(",").append(Math.round(correction));
+                } else {
+                    sb.append(",");
+                }
+            }
+            sb.append("\n");
+        }
+        
+        return sb.toString();
     }
 }

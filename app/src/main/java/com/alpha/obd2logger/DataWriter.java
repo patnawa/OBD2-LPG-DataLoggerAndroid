@@ -67,6 +67,7 @@ public final class DataWriter implements AutoCloseable {
         }
         csvWriter.write(header.toString());
         csvWriter.newLine();
+        csvWriter.flush();
     }
 
     public void writeRecord(DataRecord record) throws IOException {
@@ -126,7 +127,7 @@ public final class DataWriter implements AutoCloseable {
         jsonlWriter.newLine();
 
         recordsSinceFlush++;
-        if (recordsSinceFlush % 10 == 0) {
+        if (recordsSinceFlush % 5 == 0) {
             csvWriter.flush();
             jsonlWriter.flush();
         }
