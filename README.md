@@ -2,13 +2,13 @@
 
 Native Android port of the OBD2 data logging system, now at version **2.4.0**.
 
-แนวคิดจัดทำขึ้นมาเพื่อง่ายต่อการบันทึก Log จากรถยนต์ที่ใช้น้ำมันและแก๊ส LPG/CNG เพื่อคำนวนค่า LTFT STFT แบบ Real-time โดยสามารถเชื่อมต่อกับ Ai Agent เพื่อวิเคราะห์ความผิดปรกติของเครื่องยนต์ และสามารถวิเคราะห์การจูนแก๊สแบบอัตโนมัติ ในรถที่ไม่มีระบบ OBD โดยคำนึงถึงความแม่นยำสูงสุดในการคำนวณค่าต่างๆจาก Parameter ของรถยนต์ รองรับการเชื่อมต่อ Agent เข้ากับ Rest API Server (HTTP) เพื่อให้ Ai Agent สามารถดึงข้อมูลจากรถยนต์ได้โดยตรง สามารถดึงค่า Parameter มาประมวลผลได้อย่างรวดเร็วและแม่นยำ
+แนวคิดจัดทำขึ้นมาเพื่อง่ายต่อการบันทึก Log จากรถยนต์ที่ใช้น้ำมันและแก๊ส LPG/CNG เพื่อคำนวนค่า LTFT STFT แบบ Real-time โดยสามารถเชื่อมต่อกับ Ai Agent เพื่อวิเคราะห์ความผิดปรกติของเครื่องยนต์ และสามารถวิเคราะห์การจูนแก๊สแบบอัตโนมัติ โดยคำนึงถึงความแม่นยำสูงสุดในการคำนวณค่าต่างๆจาก Parameter ของรถยนต์ รองรับการเชื่อมต่อ Agent เข้ากับ Rest API Server (HTTP) เพื่อให้ Ai Agent สามารถดึงข้อมูลจากรถยนต์ได้โดยตรงมาประมวลผลได้อย่างรวดเร็วและแม่นยำ
 
 โปรแกรมยังสามารถ Detect PID id ได้อัตโนมัติ โดยจะค้นหา PID id ที่มีอยู่ในรถยนต์ และสามารถบันทึก Log ที่สำคัญเพื่อใช้ในการปรับจูนอย่างละเอียดในแบบที่ Ai สามารถเข้าใจได้อย่างดี
 
-และยังสามารถคำนวนค่า นำสถานะ Closed/Open Loop STFT LTFT MAP และ ECT (อุณหภูมิน้ำหล่อเย็น) มาแสดงบนหน้า MAP พร้อมกับการเพิ่ม Logic กรองข้อมูลให้ดึงมาคำนวณเฉพาะตอนที่ตรงตามเงื่อนไข มาคำนวนเพื่อหาค่าความเบี่ยงเบนที่เหมาะสมในการจูนแก๊สได้อัตโนมัติ
+และยังสามารถคำนวนค่า Closed/Open Loop STFT LTFT MAP และ ECT พร้อมกับการเพิ่ม Logic กรองข้อมูล ดึงมาคำนวณเฉพาะที่ตรงตามเงื่อนไข หาค่าความเบี่ยงเบนที่เหมาะสมในการจูนแก๊สได้อัตโนมัติ
 
-This Android app support OBD2 adapter : Support vlinker FS(USB Serial) MC bluetooth Wifi Serial OTG OBD adapters / AI Agent can connect direct to access the data.The detail in User_guide.html for you to understand.
+This Android app support OBD2 adapter : Support vlinker FS(USB Serial) MC bluetooth Wifi Serial OTG OBD adapters / AI Agent can connect direct to access the data.The detail in User_guide.html in English/Thai for you to understand.
 
 ## What was ported and added
 
@@ -24,7 +24,7 @@ This Android app support OBD2 adapter : Support vlinker FS(USB Serial) MC blueto
 - **Day/Night Theme**: Choose between System, Light, and Dark mode in settings.
 - **AI Agent API Server**: Built-in HTTP server (`NanoHTTPD`) running on port `8080`. AI Agents and MCP Clients can read live JSON data on the same WiFi network with zero impact on vehicle polling speed.
 
-## Endpoints (AI Agent)
+## Endpoints For (AI Agent)
 
 Enable the API server in Settings to expose:
 
