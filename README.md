@@ -1,4 +1,4 @@
-# OBD2 LPG Data Logger Android
+# OBD2 Petro/LPG/CNG Data Logger Android
 
 Native Android port of the OBD2 data logging system, now at version **2.5.0**.
 
