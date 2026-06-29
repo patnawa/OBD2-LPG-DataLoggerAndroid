@@ -141,18 +141,59 @@ public final class PidAvailabilityChecker {
     }
 
     /**
-     * Extract the hex data portion after the expected response header.
+     * Extract and merge hex data from ALL ECU responses for a given PID query.
+     *
+     * Multi-ECU vehicles (e.g., Toyota Sienta 2014) return multiple responses
+     * to PID availability queries — one per ECU (engine, transmission, etc.).
+     * Each ECU reports a different bitmask of supported PIDs. We must OR all
+     * bitmasks together to get the full picture.
+     *
+     * Example raw response from a Toyota with CAN protocol:
+     *   7E8 06 41 00 BE 3F A8 13   ← Engine ECU
+     *   7E9 06 41 00 80 00 00 00   ← Transmission ECU
+     *
+     * We parse BOTH and OR: BE3FA813 | 80000000 = BE3FA813 (engine wins).
+     * Without this fix, if 7E9 appears first, we'd only get 80000000 and
+     * miss STFT, LTFT, O2, MAP, and many other PIDs.
      */
     private static String extractHexData(String response, String expectedHeader) {
-        String hex = response.replace("\r\n", "\n").replace('\r', '\n');
-        hex = hex.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "");
-        hex = hex.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
-
-        int idx = hex.indexOf(expectedHeader.toUpperCase());
-        if (idx < 0) {
-            return null;
+        if (response == null || response.isEmpty()) return null;
+        
+        String header = expectedHeader.toUpperCase();
+        
+        // Split into lines BEFORE stripping non-hex characters,
+        // so each ECU response stays on its own line
+        String[] rawLines = response.replace("\r\n", "\n").replace('\r', '\n').split("\n");
+        
+        long mergedBits = 0;
+        boolean found = false;
+        
+        for (String rawLine : rawLines) {
+            // Clean this single line
+            String cleaned = rawLine.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "");
+            cleaned = cleaned.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
+            
+            if (cleaned.isEmpty()) continue;
+            
+            int idx = cleaned.indexOf(header);
+            if (idx < 0) continue;
+            
+            String payload = cleaned.substring(idx + header.length());
+            if (payload.length() < 8) continue;
+            
+            try {
+                long bits = Long.parseLong(payload.substring(0, 8), 16);
+                mergedBits |= bits;
+                found = true;
+                Log.d(TAG, "ECU response for " + header + ": " + payload.substring(0, 8) 
+                        + " (merged=" + String.format("%08X", mergedBits) + ")");
+            } catch (NumberFormatException e) {
+                Log.w(TAG, "Bad hex in line: " + cleaned);
+            }
         }
-        return hex.substring(idx + expectedHeader.length());
+        
+        if (!found) return null;
+        return String.format("%08X", mergedBits);
     }
 
     private static int parseHexByte(String hex, int offset) {

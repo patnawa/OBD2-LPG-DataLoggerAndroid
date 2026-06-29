@@ -17,7 +17,7 @@ public class PIDParserTest {
     @Test
     public void catalogueContainsCriticalLpgPids() {
         assertNotNull(PIDCatalogue.getLpgCritical());
-        assertEquals(19, PIDCatalogue.getLpgCritical().size());
+        assertEquals(20, PIDCatalogue.getLpgCritical().size());
     }
 
     @Test
@@ -120,6 +120,49 @@ public class PIDParserTest {
         PIDParser.extractMulti(chunk, "4114B49A", results);
         assertEquals(Double.valueOf(0.9), results.get("O2 Sensor B1S1 Voltage"));
         assertEquals(Double.valueOf(20.3125), results.get("O2 Sensor B1S1 STFT"));
+    }
+    @Test
+    public void extractMultiHandlesCanMultiFrame() {
+        // Multi-PID group 1: RPM (0C, 2B), Load (04, 1B), Fuel Status (03, 2B), Coolant Temp (05, 1B)
+        // SAE J1979: PID 03 returns 2 bytes (A=fuel system 1, B=fuel system 2).
+        // Total data: 1(mode) + 2+1+2+1(PID hex) + 2+1+2+1(data) = 11 bytes
+        PIDDefinition rpm = findByName("Engine RPM");
+        PIDDefinition load = findByName("Engine Load");
+        PIDDefinition status = findByName("Fuel System Status");
+        PIDDefinition coolant = findByName("Coolant Temp");
+        java.util.List<PIDDefinition> chunk = java.util.Arrays.asList(rpm, load, status, coolant);
+
+        // 1. Test Format A: Spaces ON, Headers ON (e.g. multi-frame on CAN)
+        // 7E8 10 0B 41 0C 1A F8 04 52    (first frame: PCI=10 0B, 6 data bytes)
+        // 7E8 21 03 02 00 05 5A          (consecutive: PCI=21, 5 data bytes)
+        String responseA = "7E8 10 0B 41 0C 1A F8 04 52\r7E8 21 03 02 00 05 5A\r";
+        java.util.Map<String, Double> resultsA = new java.util.LinkedHashMap<>();
+        PIDParser.extractMulti(chunk, responseA, resultsA);
+        assertEquals(Double.valueOf(1726.0), resultsA.get("Engine RPM"));
+        assertEquals(Double.valueOf(32.1569), resultsA.get("Engine Load")); // 0x52 = 82 -> 82*100/255 = 32.15686
+        assertEquals(Double.valueOf(2.0), resultsA.get("Fuel System Status")); // A=0x02 = 2
+        assertEquals(Double.valueOf(50.0), resultsA.get("Coolant Temp")); // 0x5A = 90 -> 90-40 = 50
+
+        // 2. Test Format B: Spaces OFF, Headers ON
+        String responseB = "7E8100B410C1AF80452\r7E82103020005 5A\r";
+        java.util.Map<String, Double> resultsB = new java.util.LinkedHashMap<>();
+        PIDParser.extractMulti(chunk, responseB, resultsB);
+        assertEquals(Double.valueOf(1726.0), resultsB.get("Engine RPM"));
+        assertEquals(Double.valueOf(32.1569), resultsB.get("Engine Load"));
+        assertEquals(Double.valueOf(2.0), resultsB.get("Fuel System Status"));
+        assertEquals(Double.valueOf(50.0), resultsB.get("Coolant Temp"));
+
+        // 3. Test Format C: Spaces ON, Headers OFF
+        // 00B
+        // 0: 41 0C 1A F8 04 52 03
+        // 1: 02 00 05 5A
+        String responseC = "00B\r0: 41 0C 1A F8 04 52 03\r1: 02 00 05 5A\r";
+        java.util.Map<String, Double> resultsC = new java.util.LinkedHashMap<>();
+        PIDParser.extractMulti(chunk, responseC, resultsC);
+        assertEquals(Double.valueOf(1726.0), resultsC.get("Engine RPM"));
+        assertEquals(Double.valueOf(32.1569), resultsC.get("Engine Load"));
+        assertEquals(Double.valueOf(2.0), resultsC.get("Fuel System Status"));
+        assertEquals(Double.valueOf(50.0), resultsC.get("Coolant Temp"));
     }
 
     private PIDDefinition findByName(String name) {

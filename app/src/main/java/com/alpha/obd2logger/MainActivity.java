@@ -327,6 +327,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         View btnMapInfo = findViewById(R.id.btnMapInfo);
         if (btnMapInfo != null) {
             btnMapInfo.setOnClickListener(v -> showMapInfoDialog());
+            // Long-press resets the ENTIRE fuel map (both Petrol + LPG) to start a
+            // fresh Tune Assist comparison. Normal Start only clears the fuel being
+            // logged, so this is the only way to wipe both at once.
+            btnMapInfo.setOnLongClickListener(v -> {
+                if (fuelMapView == null) return false;
+                new android.app.AlertDialog.Builder(this)
+                    .setTitle("Reset Fuel Map")
+                    .setMessage("Clear ALL Petrol and LPG map data? This starts a fresh Tune Assist comparison and cannot be undone.")
+                    .setPositiveButton("Clear All", (d, w) -> {
+                        fuelMapView.clearData();
+                        setStatus("Fuel map cleared.", R.color.muted);
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+                return true;
+            });
         }
         
         setupDynamicPids();
@@ -606,12 +622,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
 
         // Keep screen on
+        // Restore the saved preference (default = true) and apply the flag immediately,
+        // because setOnCheckedChangeListener only fires on a *change*, not on startup —
+        // without this the screen would still sleep even though the box shows as checked.
+        android.content.SharedPreferences screenPrefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
+        boolean keepScreenOn = screenPrefs.getBoolean("keepScreenOn", true);
+        keepScreenOnCheckbox.setChecked(keepScreenOn);
+        applyKeepScreenOn(keepScreenOn);
+
         keepScreenOnCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            } else {
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            }
+            applyKeepScreenOn(isChecked);
+            getSharedPreferences("OBD2Prefs", MODE_PRIVATE)
+                    .edit().putBoolean("keepScreenOn", isChecked).apply();
         });
         
         btnSelectLogFolder.setOnClickListener(v -> {
@@ -834,6 +856,23 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         TextView[] values = {dashValue1, dashValue2, dashValue3, dashValue4};
         for (int i=0; i<4; i++) {
             if (values[i] != null) values[i].setText("—");
+        }
+
+        // Sync FuelMapView mode with selected fuel mode so data shows immediately.
+        // IMPORTANT: only clear the fuel we're about to (re)log — NOT the whole map.
+        // The Tune Assist / Deviation workflow logs Petrol, then switches to LPG and
+        // logs again to compare. Wiping the entire map on every Start would erase the
+        // Petrol data the moment LPG logging begins, leaving Deviation/Correction
+        // permanently empty. clearData(fuelMode) preserves the comparison fuel.
+        if (fuelMapView != null) {
+            fuelMapView.clearData(config.fuelMode);
+            fuelMapView.setMapMode(config.fuelMode == FuelMode.LPG
+                    ? FuelMapView.MapMode.LPG : FuelMapView.MapMode.PETROL);
+            // Also sync the toggle button in the Map tab
+            com.google.android.material.button.MaterialButtonToggleGroup mapModeToggle = findViewById(R.id.mapModeToggle);
+            if (mapModeToggle != null) {
+                mapModeToggle.check(config.fuelMode == FuelMode.LPG ? R.id.btnMapLpg : R.id.btnMapPetrol);
+            }
         }
 
         if (backgroundLoggingCheckbox.isChecked()) {
@@ -1061,6 +1100,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         Double ect = valueByKey(record, "01_05");
         Double fuelStatus = valueByKey(record, "01_03");
 
+        // Fallback for the load axis: many vehicles (MAF-based, no MAP sensor) or
+        // adapters that drop MAP from a batch response leave 0x0B null. Engine Load
+        // (0x04, A*100/255 → 0-100%) maps onto the same 20-100 fuel-map X-axis range
+        // and is supported by virtually every OBD2 vehicle, so use it when MAP is
+        // unavailable rather than leaving the entire fuel map empty.
+        double loadAxis;
+        if (map != null) {
+            loadAxis = map;
+        } else {
+            Double load = valueByKey(record, "01_04");
+            loadAxis = (load != null) ? load : Double.NaN;
+        }
+
         if (ect != null && mapEctText != null) {
             mapEctText.setText(String.format(Locale.US, "ECT: %.0f °C", ect));
         } else if (mapEctText != null) {
@@ -1069,7 +1121,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         boolean isClosedLoop = true; // Default to true if not supported so app still works
         if (fuelStatus != null && mapLoopStatusText != null) {
-            isClosedLoop = (fuelStatus == 1.0 || fuelStatus == 8.0);
+            // SAE J1979 PID 03 Fuel System Status (byte A, bit flags):
+            //   0x01 = Open loop (insufficient engine temp)
+            //   0x02 = Closed loop (using oxygen sensor feedback) ← THIS IS WHAT WE WANT
+            //   0x04 = Open loop (engine load)
+            //   0x08 = Open loop (system failure)
+            int statusVal = fuelStatus.intValue();
+            isClosedLoop = (statusVal & 0x02) != 0;
             mapLoopStatusText.setText(isClosedLoop ? "Status: Closed Loop" : "Status: Open Loop");
             mapLoopStatusText.setTextColor(getColorCompat(isClosedLoop ? R.color.accent : R.color.warning));
         } else if (mapLoopStatusText != null) {
@@ -1077,13 +1135,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             mapLoopStatusText.setTextColor(getColorCompat(R.color.muted));
         }
 
-        if (rpm != null && map != null && stft != null) {
+        if (rpm != null && !Double.isNaN(loadAxis)) {
+            // Use STFT if available, otherwise LTFT, otherwise 0 (just track position)
+            double trim = 0;
+            if (stft != null) {
+                trim = stft + (ltft != null ? ltft : 0);
+            } else if (ltft != null) {
+                trim = ltft;
+            }
+
             boolean tempOk = (ect == null) || (ect >= 80.0);
             if (isClosedLoop && tempOk) {
-                double trim = stft + (ltft != null ? ltft : 0);
                 if (fuelMapView != null) {
                     FuelMode mode = "lpg/cng".equalsIgnoreCase(record.getFuelMode()) ? FuelMode.LPG : FuelMode.PETROL;
-                    fuelMapView.pushData(rpm, map, trim, mode);
+                    fuelMapView.pushData(rpm, loadAxis, trim, mode);
                 }
             }
         }
@@ -1118,6 +1183,35 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     ? supportedCount + "/" + totalCount + " PIDs detected (live query)"
                     : supportedCount + "/" + totalCount + " PIDs (VIN profile fallback)";
             setStatus(msg, R.color.accent);
+        });
+    }
+
+    @Override
+    public void onDeviceDetected(VLinkerOptimizer.DeviceType deviceType) {
+        runOnUiThread(() -> {
+            String deviceName;
+            int color;
+            switch (deviceType) {
+                case VLINKER_FS_USB:
+                    deviceName = "vLinker FS USB (MIC3322)";
+                    color = R.color.accent;
+                    break;
+                case VLINKER_MC_WIFI:
+                    deviceName = "vLinker MC WiFi (MIC3313)";
+                    color = R.color.accent;
+                    break;
+                case VLINKER_MC_BT:
+                    deviceName = "vLinker MC BT (MIC3313)";
+                    color = R.color.accent;
+                    break;
+                case GENERIC_ELM327:
+                    deviceName = "Generic ELM327";
+                    color = R.color.warning;
+                    break;
+                default:
+                    return; // Don't show for UNKNOWN
+            }
+            setStatus(deviceName + " — optimized", color);
         });
     }
 
@@ -1676,9 +1770,26 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
     }
 
+    /**
+     * Apply or clear FLAG_KEEP_SCREEN_ON on the activity window.
+     * When set, the device screen stays on (and won't dim/lock) the whole time
+     * this activity is in the foreground — exactly what we want while logging OBD2 data.
+     */
+    private void applyKeepScreenOn(boolean enabled) {
+        if (enabled) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+        // Re-assert the keep-screen-on flag on resume in case the activity/window was recreated.
+        if (keepScreenOnCheckbox != null) {
+            applyKeepScreenOn(keepScreenOnCheckbox.isChecked());
+        }
         int pos = transportSpinner.getSelectedItemPosition();
         if (pos == 2 || pos == 3 || pos == 4) {
             refreshBluetoothDevices();

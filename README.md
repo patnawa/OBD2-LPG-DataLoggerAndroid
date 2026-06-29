@@ -22,6 +22,7 @@ This Android app support OBD2 adapter : Support vlinker FS(USB Serial) MC blueto
 - **Readiness Monitors**: Checks vehicle inspection readiness (Misfire, Fuel System, O2 Sensors, etc.).
 - **O2 Sensor Logging**: Reads all 8 standard OBD2 O2 sensor PIDs (0x14-0x1B) as voltage (V).
 - **Day/Night Theme**: Choose between System, Light, and Dark mode in settings.
+- **Keep Screen On**: When enabled (default), the device screen stays on and won't dim or lock while the app is in the foreground — ideal for watching live data on a long drive. The preference is saved and applied automatically on startup.
 - **AI Agent API Server**: Built-in HTTP server (`NanoHTTPD`) running on port `8080`. AI Agents and MCP Clients can read live JSON data on the same WiFi network with zero impact on vehicle polling speed.
 
 ## Endpoints For (AI Agent)
@@ -54,4 +55,5 @@ app/build/outputs/apk/debug/app-debug.apk
 - **Bluetooth**: Select a paired ELM327 device from the dropdown. No MAC address typing required.
 - **USB**: Requires a compatible USB-to-Serial adapter connected via OTG. Grant USB permissions when prompted.
 - **Background Logging**: The app runs a persistent foreground service. You can lock the screen or switch apps without dropping the OBD2 connection.
+- **Keep Screen On**: Enabled by default. While the app is open, the screen stays awake (won't dim or lock). Toggle it off in the Settings tab if you prefer the screen to time out normally; the choice is remembered between launches.
 - **User Guide**: An in-app HTML user guide (Thai/English) is provided for easy troubleshooting and reference.

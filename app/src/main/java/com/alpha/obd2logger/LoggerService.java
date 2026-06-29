@@ -68,6 +68,7 @@ public final class LoggerService extends Service {
         void onStopped(int totalRecords);
         void onVinRead(String vin);
         void onPidsDetected(int supportedCount, int totalCount, boolean fromLiveQuery);
+        void onDeviceDetected(VLinkerOptimizer.DeviceType deviceType);
     }
 
     public static void setCallback(LoggerCallback cb) {
@@ -142,6 +143,15 @@ public final class LoggerService extends Service {
             notifyStatus("Auto probe failed — running simulation.", false);
         } else {
             notifyStatus("Connected. Logging in background.", false);
+        }
+
+        // Notify UI of detected vLinker device type
+        if (driver instanceof ElmDriver) {
+            final VLinkerOptimizer.DeviceType dt = ((ElmDriver) driver).getVlinkerType();
+            LoggerCallback cb0 = getCallback();
+            if (cb0 != null && dt != VLinkerOptimizer.DeviceType.UNKNOWN) {
+                mainHandler.post(() -> cb0.onDeviceDetected(dt));
+            }
         }
 
         if (config.vin == null || config.vin.isEmpty()) {

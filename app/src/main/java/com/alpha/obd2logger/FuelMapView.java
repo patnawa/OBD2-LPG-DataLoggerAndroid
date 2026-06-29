@@ -30,7 +30,9 @@ public class FuelMapView extends View {
     private int lastRpmCell = -1;
     private int lastMapCell = -1;
     private int consecutiveTicks = 0;
-    private static final int DWELL_THRESHOLD = 3;
+    private static final int DWELL_THRESHOLD = 1; // Was 3 — real driving has rapid RPM/MAP
+    // changes so dwell=3 almost never triggers. With dwell=1, the first sample in a
+    // cell is stored immediately.
 
     // Grid configuration
     private static final int RPM_MIN = 500;
@@ -121,6 +123,34 @@ public class FuelMapView extends View {
         lpgData.clear();
         currentRpmCell = -1;
         currentMapCell = -1;
+        // Reset dwell tracking so the next session starts fresh.
+        lastRpmCell = -1;
+        lastMapCell = -1;
+        consecutiveTicks = 0;
+        invalidate();
+    }
+
+    /**
+     * Clears only ONE fuel's data, preserving the other fuel's map.
+     *
+     * This is essential for the Tune Assist / Deviation workflow: the user logs
+     * Petrol first, then switches to LPG and logs again. Starting the LPG session
+     * must NOT wipe the previously-collected Petrol map (and vice versa), otherwise
+     * the DEVIATION/CORRECTION view can never have both fuels in the same cell and
+     * always shows empty. Only the fuel about to be (re)logged is cleared so a
+     * re-run of the same fuel starts fresh while the comparison fuel survives.
+     */
+    public void clearData(FuelMode fuelMode) {
+        if (fuelMode == FuelMode.PETROL) {
+            petrolData.clear();
+        } else {
+            lpgData.clear();
+        }
+        currentRpmCell = -1;
+        currentMapCell = -1;
+        lastRpmCell = -1;
+        lastMapCell = -1;
+        consecutiveTicks = 0;
         invalidate();
     }
 
@@ -286,6 +316,11 @@ public class FuelMapView extends View {
             }
         }
         return false;
+    }
+
+    /** Number of populated cells for a given fuel — used to warn before overwriting. */
+    public int getCellCount(FuelMode fuelMode) {
+        return (fuelMode == FuelMode.PETROL) ? petrolData.size() : lpgData.size();
     }
 
     public String exportCorrectionMapCsv() {

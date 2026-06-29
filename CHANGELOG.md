@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.8.0] - 2026-06-29
+### Fixed
+- **Keep Screen On Not Working (CRITICAL)**: The "Keep Screen On" setting (checked by default) never actually kept the screen awake. The `FLAG_KEEP_SCREEN_ON` window flag was only applied inside the checkbox's `OnCheckedChangeListener`, which fires only when the user *changes* the checkbox — never on startup. So the box always showed as checked, but the screen still dimmed and locked during logging. Now the flag is applied immediately on app start based on the saved preference, so the screen stays on as soon as the app opens.
+
+### Added
+- **Keep Screen On Preference Persistence**: The "Keep Screen On" choice is now saved to `SharedPreferences` (`keepScreenOn`, default `true`) and restored on next launch.
+- **Flag Re-assertion on Resume**: `MainActivity.onResume()` now re-applies the keep-screen-on flag in case the window/activity was recreated (e.g. after rotation or returning from the background), so the screen reliably stays on the whole time the app is in the foreground.
+- **`applyKeepScreenOn(boolean)` Helper**: Centralized the add/clear of `FLAG_KEEP_SCREEN_ON` into a single method used by startup, the listener, and `onResume()`.
+
 ## [2.7.0] - 2026-06-29
 ### Added
 - **Fuel Mode Prefix in Log Filenames**: Log files now include the fuel mode and transport mode in the filename (e.g., `Sim_LPG_20260628_120000_obd2.csv`, `PETROL_20260628_120000_obd2.csv`) to easily identify which mode was used during testing.
@@ -10,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - **Error Detail in Export Toast**: Export failure messages now include the actual error reason (e.g., `Failed to export CSV: permission denied`) instead of a generic message.
 
 ### Fixed
+- **Multi-ECU PID Detection — STFT/LTFT/O2 Not Detected on Toyota Sienta 2014 (CRITICAL)**: On multi-ECU vehicles, the PID availability checker concatenated all ECU response lines into one string and used `indexOf` to find the first match. If the transmission ECU (7E9, supporting almost no PIDs) responded before the engine ECU (7E8, supporting STFT/LTFT/O2/MAP), only the transmission's sparse bitmask was used, causing all fuel trim and O2 sensor PIDs to be silently excluded. Fixed by parsing each ECU response line separately and OR-merging all bitmasks to get the full supported PID set from every ECU.
 - **Corrupt CSV Header (CRITICAL)**: Fixed a bug where `exportCorrectionMapCsv()` wrote the header label twice without a newline separator (`MAP\RPMMAP \ RPM,500,...`), producing a malformed CSV that couldn't be opened in Excel or tuning software.
 - **Wrong Fuel Mode in Log Filename (CRITICAL)**: Fixed the session ID prefix logic that used a binary PETROL-vs-LPG check. Any future fuel mode (CNG, Aviation, etc.) would have been incorrectly labeled as "LPG". Now uses the enum name directly (`fuelMode.name()`).
 - **In-Process Logger Missing Fuel Prefix**: The in-process logger (`MainActivity.runLogger()`) was never updated with the fuel mode prefix, so log files recorded without background logging still used the old date-only naming format.

@@ -100,14 +100,24 @@ public class UsbDriver extends ElmDriver {
             return "";
         }
         try {
+            // 1. Flush any leftover data from previous command before sending
+            usbSerialPort.purgeHwBuffers(true, true);
+
+            // 2. Send command with CR (ELM327 expects \r as command terminator)
             usbSerialPort.write((command + "\r").getBytes(), 1000);
-            
+
+            // 3. Small delay to let ELM327 process the command before reading
+            Thread.sleep(20);
+
+            // 4. Read response — use longer per-read timeout (200ms) and overall
+            //    deadline of connectionTimeoutMs (default 2000ms).
+            //    The ELM327 signals end-of-response with '>' prompt.
             StringBuilder response = new StringBuilder();
             long deadline = System.currentTimeMillis() + config.connectionTimeoutMs;
-            byte[] buffer = new byte[64];
-            
+            byte[] buffer = new byte[256];
+
             while (System.currentTimeMillis() < deadline) {
-                int len = usbSerialPort.read(buffer, 100);
+                int len = usbSerialPort.read(buffer, 200);
                 if (len > 0) {
                     for (int i = 0; i < len; i++) {
                         char ch = (char) buffer[i];
@@ -121,6 +131,9 @@ public class UsbDriver extends ElmDriver {
             return response.toString();
         } catch (IOException e) {
             Log.e(TAG, "Error sending USB command", e);
+            return "";
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
             return "";
         }
     }

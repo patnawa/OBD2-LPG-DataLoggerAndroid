@@ -125,10 +125,66 @@ public final class PIDParser {
     }
 
     private static String normalizeResponse(String response) {
-        String normalized = response.replace("\r\n", "\n").replace('\r', '\n');
-        normalized = normalized.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "");
-        normalized = normalized.replaceAll("[^0-9A-Fa-f]", "");
-        return normalized.toUpperCase();
+        if (response == null) return "";
+        String[] lines = response.replace("\r\n", "\n").replace('\r', '\n').split("\n");
+        StringBuilder sb = new StringBuilder();
+        for (String line : lines) {
+            sb.append(cleanLine(line));
+        }
+        return sb.toString().toUpperCase();
+    }
+
+    private static String cleanLine(String line) {
+        String trimmed = line.trim().toUpperCase();
+        if (trimmed.isEmpty()) return "";
+
+        // 1. Remove status and diagnostics messages
+        if (trimmed.contains("SEARCHING") || trimmed.contains("BUS") || trimmed.contains("ERR") || trimmed.contains("STOPPED")) {
+            return "";
+        }
+
+        // 2. Remove line headers like "0:", "1:", "0A:" from consecutive ELM327 lines (Format C/D)
+        trimmed = trimmed.replaceAll("^[0-9A-F]+:\\s*", "");
+
+        // 3. Remove CAN IDs and PCI bytes with spaces (Format A)
+        // Check for 11-bit CAN ID (e.g. "7E8 ")
+        if (trimmed.matches("^[0-9A-F]{3}\\s+.*")) {
+            trimmed = trimmed.substring(4); // strip "7E8 "
+            // Strip PCI frame headers:
+            if (trimmed.matches("^10\\s+[0-9A-F]{2}\\s+.*")) {
+                trimmed = trimmed.replaceAll("^10\\s+[0-9A-F]{2}\\s*", ""); // First frame "10 13 "
+            } else if (trimmed.matches("^(0[0-9A-F]|2[0-9A-F])\\s+.*")) {
+                trimmed = trimmed.replaceAll("^(0[0-9A-F]|2[0-9A-F])\\s*", ""); // Consecutive/Single frame "21 " / "03 "
+            }
+        }
+        // Check for 29-bit CAN ID (e.g. "18DAF110 ")
+        else if (trimmed.matches("^[0-9A-F]{8}\\s+.*")) {
+            trimmed = trimmed.substring(9); // strip "18DAF110 "
+            // Strip PCI frame headers:
+            if (trimmed.matches("^10\\s+[0-9A-F]{2}\\s+.*")) {
+                trimmed = trimmed.replaceAll("^10\\s+[0-9A-F]{2}\\s*", "");
+            } else if (trimmed.matches("^(0[0-9A-F]|2[0-9A-F])\\s+.*")) {
+                trimmed = trimmed.replaceAll("^(0[0-9A-F]|2[0-9A-F])\\s*", "");
+            }
+        }
+
+        // 4. Remove CAN IDs and PCI bytes without spaces (Format B)
+        // Strip 11-bit CAN ID (7E8) + PCI byte (1013, 21, 03)
+        trimmed = trimmed.replaceAll("^7E[8-F]10[0-9A-F]{2}", "");
+        trimmed = trimmed.replaceAll("^7E[8-F][0-2][0-9A-F]", "");
+        // Strip 29-bit CAN ID (18DAF1xx) + PCI byte (1013, 21, 03)
+        trimmed = trimmed.replaceAll("^18DAF1[0-9A-F]{2}10[0-9A-F]{2}", "");
+        trimmed = trimmed.replaceAll("^18DAF1[0-9A-F]{2}[0-2][0-9A-F]", "");
+
+        // 5. Remove any non-hex characters
+        trimmed = trimmed.replaceAll("[^0-9A-F]", "");
+
+        // 6. Ignore multi-frame total length lines (e.g. "00E" or "013")
+        if (trimmed.length() <= 3 && !trimmed.startsWith("41")) {
+            return "";
+        }
+
+        return trimmed;
     }
 
     private static int parseHexByte(String dataHex, int offset) {

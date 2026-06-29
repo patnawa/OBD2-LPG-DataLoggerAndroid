@@ -108,89 +108,24 @@ public class ReviewSessionActivity extends AppCompatActivity {
                 if (headerLine == null) {
                     throw new Exception("File is empty");
                 }
-                
-                String[] headers = headerLine.split(",");
-                
-                int fuelModeIdx = -1;
-                int loopStatusIdx = -1;
-                int fuelSystemStatusIdx = -1;
-                int rpmIdx = -1;
-                int mapIdx = -1;
-                int stftIdx = -1;
-                int ltftIdx = -1;
-                
-                for (int i = 0; i < headers.length; i++) {
-                    String h = headers[i].toLowerCase().replace("\"", "");
-                    if (h.equals("fuel_mode")) fuelModeIdx = i;
-                    else if (h.equals("loop_status")) loopStatusIdx = i;
-                    else if (h.contains("fuel system status")) fuelSystemStatusIdx = i;
-                    else if (h.contains("engine rpm")) rpmIdx = i;
-                    else if (h.contains("manifold pressure")) mapIdx = i;
-                    else if (h.contains("short term fuel trim")) stftIdx = i;
-                    else if (h.contains("long term fuel trim")) ltftIdx = i;
+
+                LogReplayParser.Columns cols = LogReplayParser.parseHeader(headerLine);
+
+                // MAP is optional: parser falls back to Engine Load for the X-axis
+                // (MAF-based vehicles, or adapters that drop MAP) — mirrors updateFuelMap().
+                if (!cols.hasRequired()) {
+                    throw new Exception("Missing required columns. Need 'Engine RPM' and either 'Intake Manifold Pressure' or 'Engine Load'.");
                 }
-                
-                if (rpmIdx == -1 || mapIdx == -1) {
-                    throw new Exception("Missing required columns in CSV (Needs RPM, MAP)");
-                }
-                
+
                 String line;
                 while ((line = reader.readLine()) != null) {
                     lineCount++;
-                    // Basic split (assumes no commas inside quotes for numeric data)
-                    String[] parts = line.split(",");
-                    if (parts.length <= Math.max(rpmIdx, mapIdx)) continue;
-                    
-                    FuelMode mode = FuelMode.PETROL;
-                    if (fuelModeIdx != -1 && parts.length > fuelModeIdx) {
-                        String fuelModeStr = parts[fuelModeIdx].replace("\"", "").trim();
-                        mode = fuelModeStr.equalsIgnoreCase("PETROL") ? FuelMode.PETROL : FuelMode.LPG;
-                    }
-                    
-                    boolean isClosedLoop = true;
-                    if (fuelSystemStatusIdx != -1 && parts.length > fuelSystemStatusIdx) {
-                        String val = parts[fuelSystemStatusIdx].replace("\"", "").trim();
-                        if (!val.isEmpty()) {
-                            try {
-                                double ds = Double.parseDouble(val);
-                                if (ds != 1.0 && ds != 8.0) isClosedLoop = false;
-                            } catch (Exception ignored) {}
-                        }
-                    } else if (fuelSystemStatusIdx == -1) {
-                        isClosedLoop = true;
-                    } else if (loopStatusIdx != -1 && parts.length > loopStatusIdx) {
-                        String ls = parts[loopStatusIdx].replace("\"", "").trim();
-                        if (ls.equalsIgnoreCase("Open")) isClosedLoop = false;
-                    }
-                                        
-                    if (!isClosedLoop) {
-                        continue; // Skip open loop data for tuning
-                    }
-                    
-                    try {
-                        double rpm = Double.parseDouble(parts[rpmIdx]);
-                        double map = Double.parseDouble(parts[mapIdx]);
-                        
-                        double stft = 0.0;
-                        if (stftIdx != -1 && parts.length > stftIdx && !parts[stftIdx].isEmpty()) {
-                            stft = Double.parseDouble(parts[stftIdx]);
-                        }
-                        
-                        double ltft = 0.0;
-                        if (ltftIdx != -1 && parts.length > ltftIdx && !parts[ltftIdx].isEmpty()) {
-                            ltft = Double.parseDouble(parts[ltftIdx]);
-                        }
-                                      
-                        double trim = stft + ltft;
-                        
-                        final FuelMode finalMode = mode;
-                        // Push to map
-                        runOnUiThread(() -> fuelMapView.pushData(rpm, map, trim, finalMode));
-                        plottedPoints++;
-                        
-                    } catch (NumberFormatException ignored) {
-                        // Skip unparseable lines
-                    }
+                    LogReplayParser.Point p = LogReplayParser.parseLine(line, cols);
+                    if (p == null) continue; // too short, open loop, or unparseable
+
+                    // Push to map on the UI thread
+                    runOnUiThread(() -> fuelMapView.pushData(p.rpm, p.axis, p.trim, p.fuelMode));
+                    plottedPoints++;
                 }
                 
                 int finalLines = lineCount;

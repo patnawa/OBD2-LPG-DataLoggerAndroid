@@ -10,8 +10,8 @@ android {
         applicationId 'com.alpha.obd2logger'
         minSdk 23
         targetSdk 35
-        versionCode 9
-        versionName '2.7.0'
+        versionCode 10
+        versionName '2.8.0'
     }
 
     buildTypes {
@@ -27,6 +27,15 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    testOptions {
+        unitTests {
+            // Return default values (0/false/null) for un-mocked Android framework
+            // methods like android.util.Log instead of throwing "not mocked".
+            // Lets pure-JVM unit tests exercise classes that call Log.i/Log.w.
+            returnDefaultValues = true
+        }
     }
 }
 
