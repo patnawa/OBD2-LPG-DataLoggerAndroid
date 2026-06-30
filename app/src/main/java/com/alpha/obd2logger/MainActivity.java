@@ -74,6 +74,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private GaugeView gauge1, gauge2, gauge3, gauge4;
     private TextView tuningStatusText;
     private TextView mapEctText, mapLoopStatusText;
+    private TextView dashTuningStatus, dashEctText;
+    private com.google.android.material.progressindicator.LinearProgressIndicator dashWarmupProgress;
 
     // --- UI: Gauges tab ---
     private GraphView graph1, graph2, graph3, graph4, graph5;
@@ -121,7 +123,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private static final int NOTIFICATION_PERMISSION_CODE = 1002;
 
     private androidx.activity.result.ActivityResultLauncher<Intent> folderPickerLauncher;
-    private androidx.activity.result.ActivityResultLauncher<Intent> openLogFileLauncher;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -153,14 +154,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     }
             );
 
-            openLogFileLauncher = registerForActivityResult(
-                    new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
-                    result -> {
-                        if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                            handleOpenLogResult(result.getData());
-                        }
-                    }
-            );
+
 
             DriverFactory.setAppContext(this.getApplicationContext());
             LoggerService.setCallback(this);
@@ -270,12 +264,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         });
         
-        com.google.android.material.button.MaterialButtonToggleGroup dashboardFuelToggle = findViewById(R.id.dashboardFuelToggle);
-        dashboardFuelToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (isChecked) {
-                fuelSpinner.setSelection(checkedId == R.id.btnToggleLpg ? 0 : 1);
-                applyFuelTheme(checkedId == R.id.btnToggleLpg ? FuelMode.LPG : FuelMode.PETROL);
+        dashTuningStatus = findViewById(R.id.dashTuningStatus);
+        dashEctText = findViewById(R.id.dashEctText);
+        dashWarmupProgress = findViewById(R.id.dashWarmupProgress);
+
+        fuelSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                applyFuelTheme(position == 0 ? FuelMode.LPG : FuelMode.PETROL);
             }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
         });
         statusText = findViewById(R.id.statusText);
         countText = findViewById(R.id.countText);
@@ -362,10 +362,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             });
         }
         
-        View btnOpenLogFile = findViewById(R.id.btnOpenLogFile);
-        if (btnOpenLogFile != null) {
-            btnOpenLogFile.setOnClickListener(v -> launchOpenLogPicker());
-        }
+
 
         btnCompareLogs = findViewById(R.id.btnCompareLogs);
         compareHintText = findViewById(R.id.compareHintText);
@@ -376,115 +373,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         setupDynamicPids();
     }
     
-    /**
-     * Opens a Storage Access Framework picker so the user can choose one OR MORE
-     * saved log CSV files from anywhere on the device (Downloads, Google Drive,
-     * SD card, USB, etc.) — not just the app's own History folder. Selecting two
-     * files (e.g. a Petrol-only log + an LPG-only log) lets ReviewSessionActivity
-     * plot both onto one map so DEVIATION / TUNE-ASSIST works across separate runs.
-     */
-    private void launchOpenLogPicker() {
-        try {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("*/*");
-            // Only CSV is replayable on the map (LogReplayParser reads CSV columns).
-            // The app also writes a .jsonl sibling, but that format can't be plotted —
-            // so we narrow the picker to CSV MIME types to avoid the confusing case
-            // where a user picks a .jsonl and gets "No data plotted". A final
-            // .csv-extension guard in handleOpenLogResult() catches providers that
-            // ignore the MIME filter.
-            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
-                    "text/csv", "text/comma-separated-values"
-            });
-            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            Toast.makeText(this, R.string.open_log_multi_hint, Toast.LENGTH_LONG).show();
-            openLogFileLauncher.launch(Intent.createChooser(intent, getString(R.string.open_log_file_chooser)));
-        } catch (Exception e) {
-            Toast.makeText(this, "Cannot open file picker: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
-    }
-    
-    /**
-     * Collects the picked URI(s) — single (getData) or multiple (getClipData) —
-     * and forwards them to ReviewSessionActivity. All selected files are plotted
-     * onto the same FuelMapView so cross-file Petrol-vs-LPG comparison works.
-     */
-    private void handleOpenLogResult(Intent data) {
-        java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
-        if (data.getClipData() != null) {
-            android.content.ClipData clip = data.getClipData();
-            for (int i = 0; i < clip.getItemCount(); i++) {
-                Uri u = clip.getItemAt(i).getUri();
-                if (u != null) uris.add(u);
-            }
-        } else if (data.getData() != null) {
-            uris.add(data.getData());
-        }
 
-        if (uris.isEmpty()) {
-            Toast.makeText(this, "No file selected", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Guard: keep only .csv files. The map replay parser (LogReplayParser) reads
-        // CSV columns only — a .jsonl (the app's other log format) or any other file
-        // would just produce "No data plotted". Some content providers ignore the
-        // EXTRA_MIME_TYPES filter, so we re-check the display name's extension here.
-        java.util.ArrayList<Uri> csvUris = new java.util.ArrayList<>();
-        int rejected = 0;
-        for (Uri u : uris) {
-            String name = queryDisplayName(u);
-            if (name != null && name.toLowerCase(Locale.US).endsWith(".csv")) {
-                csvUris.add(u);
-            } else {
-                rejected++;
-            }
-        }
-        if (csvUris.isEmpty()) {
-            Toast.makeText(this, R.string.open_log_csv_only, Toast.LENGTH_LONG).show();
-            return;
-        }
-        if (rejected > 0) {
-            Toast.makeText(this, getString(R.string.open_log_skipped_non_csv, rejected),
-                    Toast.LENGTH_LONG).show();
-        }
-        uris = csvUris;
-
-        // Persist read permission for each URI so ReviewSessionActivity can read them.
-        for (Uri u : uris) {
-            try {
-                getContentResolver().takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            } catch (Exception ignored) {
-                // Some providers (chooser-wrapped) don't grant persistable permission;
-                // the FLAG_GRANT_READ_URI_PERMISSION on the launch intent still covers
-                // the immediate handoff to ReviewSessionActivity.
-            }
-        }
-
-        Intent intent = new Intent(this, ReviewSessionActivity.class);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        if (uris.size() == 1) {
-            intent.setData(uris.get(0));
-            intent.putExtra("file_name", queryDisplayName(uris.get(0)));
-        } else {
-            intent.putParcelableArrayListExtra("file_uris", uris);
-            intent.putExtra("file_name", uris.size() + " files");
-        }
-        startActivity(intent);
-    }
-
-    /** Best-effort human-readable name for a content URI. */
-    private String queryDisplayName(Uri uri) {
-        try (android.database.Cursor c = getContentResolver().query(uri, null, null, null, null)) {
-            if (c != null && c.moveToFirst()) {
-                int idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
-                if (idx >= 0) return c.getString(idx);
-            }
-        } catch (Exception ignored) {}
-        return uri.getLastPathSegment();
-    }
     
     private void showMapInfoDialog() {
         new android.app.AlertDialog.Builder(this)
@@ -1060,17 +949,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         } else {
             File folder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "OBD2LPGLogger");
             if (folder.exists()) {
-                File[] files = folder.listFiles((dir, name) -> name.endsWith(".csv") && !name.startsWith("CorrectionMap_"));
-                if (files != null) {
-                    for (File f : files) {
-                        HistoryLogFile hlf = new HistoryLogFile();
-                        hlf.uri = androidx.core.content.FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".fileprovider", f);
-                        hlf.name = f.getName();
-                        hlf.date = f.lastModified();
-                        hlf.isFile = true;
-                        hlf.file = f;
-                        logFiles.add(hlf);
-                    }
+                scanFolderRecursively(folder, logFiles);
+            }
+        }
+    }
+
+    private void scanFolderRecursively(File dir, List<HistoryLogFile> logFiles) {
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File f : files) {
+                if (f.isDirectory()) {
+                    scanFolderRecursively(f, logFiles);
+                } else if (f.getName().endsWith(".csv") && !f.getName().startsWith("CorrectionMap_")) {
+                    HistoryLogFile hlf = new HistoryLogFile();
+                    hlf.uri = androidx.core.content.FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".fileprovider", f);
+                    hlf.name = f.getName();
+                    hlf.date = f.lastModified();
+                    hlf.isFile = true;
+                    hlf.file = f;
+                    logFiles.add(hlf);
                 }
             }
         }
@@ -1272,7 +1169,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US);
 
         try {
-            writer = new DataWriter(this, sessionId, finalPids);
+            writer = new DataWriter(this, sessionId, finalPids, config.vin);
             currentWriter = writer;
             final DataWriter dataWriter = writer;
             currentDownloadFolder = dataWriter.getDownloadFolderFile();
@@ -1510,6 +1407,44 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             Double val = valueByKey(record, prefGaugePids[i]);
             if (val != null && gauges[i] != null) {
                 gauges[i].setValue(val.floatValue());
+            }
+        }
+
+        // Update Tuning Readiness widget
+        Double ect = valueByKey(record, "01_05");
+        Double fuelStatus = valueByKey(record, "01_03");
+
+        if (ect != null) {
+            if (dashEctText != null) {
+                dashEctText.setText(String.format(Locale.US, "%.0f °C", ect));
+            }
+            if (dashWarmupProgress != null) {
+                int progress = (int) Math.min(100, Math.max(0, (ect / 80.0) * 100));
+                dashWarmupProgress.setProgress(progress);
+                if (ect >= 80.0) {
+                    dashWarmupProgress.setIndicatorColor(getColorCompat(R.color.accent));
+                } else {
+                    dashWarmupProgress.setIndicatorColor(getColorCompat(R.color.warning));
+                }
+            }
+        }
+
+        boolean isClosedLoop = true;
+        if (fuelStatus != null) {
+            isClosedLoop = (fuelStatus.intValue() & 0x02) != 0;
+        }
+
+        boolean tempOk = (ect == null) || (ect >= 80.0);
+        if (dashTuningStatus != null) {
+            if (!isClosedLoop) {
+                dashTuningStatus.setText("Open Loop");
+                dashTuningStatus.setTextColor(getColorCompat(R.color.danger));
+            } else if (!tempOk) {
+                dashTuningStatus.setText("Engine Cold");
+                dashTuningStatus.setTextColor(getColorCompat(R.color.warning));
+            } else {
+                dashTuningStatus.setText("Ready to Tune");
+                dashTuningStatus.setTextColor(getColorCompat(R.color.accent));
             }
         }
     }

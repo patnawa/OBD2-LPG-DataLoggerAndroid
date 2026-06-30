@@ -272,14 +272,7 @@
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:visibility="gone" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnOpenLogFile"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:layout_marginTop="16dp"
-                    android:text="@string/open_log_file"
-                    app:icon="@android:drawable/ic_menu_upload"
-                    style="@style/Widget.Material3.Button.OutlinedButton" />
+
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnMapInfo"
@@ -316,34 +309,88 @@
                         android:orientation="vertical"
                         android:padding="16dp">
 
-                        <com.google.android.material.button.MaterialButtonToggleGroup
-                            android:id="@+id/dashboardFuelToggle"
+                        <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginBottom="12dp"
-                            app:singleSelection="true"
-                            app:selectionRequired="true"
-                            app:checkedButton="@id/btnTogglePetrol">
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="12dp">
 
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btnTogglePetrol"
+                            <!-- Left Column: Tuning Readiness -->
+                            <LinearLayout
                                 android:layout_width="0dp"
+                                android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:layout_height="56dp"
-                                android:text="PETROL"
-                                android:textStyle="bold"
-                                style="?attr/materialButtonOutlinedStyle" />
+                                android:orientation="vertical">
 
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btnToggleLpg"
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Tuning Readiness"
+                                    android:textColor="@color/muted"
+                                    android:textSize="12sp" />
+
+                                <TextView
+                                    android:id="@+id/dashTuningStatus"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Waiting for Data"
+                                    android:textColor="@color/warning"
+                                    android:textSize="16sp"
+                                    android:textStyle="bold"
+                                    android:layout_marginTop="4dp" />
+                            </LinearLayout>
+
+                            <!-- Divider line -->
+                            <View
+                                android:layout_width="1dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginStart="12dp"
+                                android:layout_marginEnd="12dp"
+                                android:background="@color/surface3" />
+
+                            <!-- Right Column: Engine Warm-up -->
+                            <LinearLayout
                                 android:layout_width="0dp"
-                                android:layout_weight="1"
-                                android:layout_height="56dp"
-                                android:text="@string/lpg"
-                                android:textStyle="bold"
-                                style="?attr/materialButtonOutlinedStyle" />
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1.2"
+                                android:orientation="vertical">
 
-                        </com.google.android.material.button.MaterialButtonToggleGroup>
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal">
+
+                                    <TextView
+                                        android:layout_width="0dp"
+                                        android:layout_weight="1"
+                                        android:layout_height="wrap_content"
+                                        android:text="Engine Temp"
+                                        android:textColor="@color/muted"
+                                        android:textSize="12sp" />
+
+                                    <TextView
+                                        android:id="@+id/dashEctText"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="-- °C"
+                                        android:textColor="@color/text"
+                                        android:textSize="12sp"
+                                        android:textStyle="bold" />
+                                </LinearLayout>
+
+                                <com.google.android.material.progressindicator.LinearProgressIndicator
+                                    android:id="@+id/dashWarmupProgress"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="8dp"
+                                    app:trackColor="@color/surface3"
+                                    app:indicatorColor="@color/accent"
+                                    android:max="100"
+                                    android:progress="0"
+                                    app:trackCornerRadius="4dp"
+                                    app:trackThickness="8dp" />
+                            </LinearLayout>
+                        </LinearLayout>
 
                         <TextView
                             android:id="@+id/statusText"

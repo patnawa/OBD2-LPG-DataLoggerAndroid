@@ -28,6 +28,7 @@ public final class DataWriter implements AutoCloseable {
     private static final String DOWNLOAD_SUBDIR = "OBD2LPGLogger";
 
     private final Context context;
+    private final String vin;
     private final File csvFile;
     private final File jsonlFile;
     private final Uri csvUri;
@@ -38,12 +39,17 @@ public final class DataWriter implements AutoCloseable {
     private int recordsSinceFlush = 0;
 
     public DataWriter(Context context, String sessionId) throws IOException {
-        this(context, sessionId, PIDCatalogue.getAll());
+        this(context, sessionId, PIDCatalogue.getAll(), null);
     }
 
     public DataWriter(Context context, String sessionId, List<PIDDefinition> pids) throws IOException {
+        this(context, sessionId, pids, null);
+    }
+
+    public DataWriter(Context context, String sessionId, List<PIDDefinition> pids, String vin) throws IOException {
         this.context = context.getApplicationContext();
         this.pids = pids;
+        this.vin = vin;
 
         DownloadTarget csvTarget = createDownloadTarget(sessionId + "_obd2.csv", "text/csv");
         DownloadTarget jsonlTarget = createDownloadTarget(sessionId + "_obd2.jsonl", "application/x-ndjson");
@@ -164,7 +170,12 @@ public final class DataWriter implements AutoCloseable {
     }
 
     public File getDownloadFolderFile() {
-        return new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), DOWNLOAD_SUBDIR);
+        String cleanVin = sanitizeVin(this.vin);
+        File downloadDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), DOWNLOAD_SUBDIR);
+        if (!cleanVin.isEmpty()) {
+            return new File(downloadDir, cleanVin);
+        }
+        return downloadDir;
     }
 
     public String getDownloadFolderPath() {
@@ -227,7 +238,12 @@ public final class DataWriter implements AutoCloseable {
             ContentValues values = new ContentValues();
             values.put(MediaStore.Downloads.DISPLAY_NAME, displayName);
             values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
-            values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_SUBDIR);
+            String path = Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_SUBDIR;
+            String cleanVin = sanitizeVin(this.vin);
+            if (!cleanVin.isEmpty()) {
+                path += "/" + cleanVin;
+            }
+            values.put(MediaStore.Downloads.RELATIVE_PATH, path);
             Uri uri = context.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
             if (uri == null) {
                 throw new IOException("MediaStore could not create Download entry: " + displayName);
@@ -244,7 +260,11 @@ public final class DataWriter implements AutoCloseable {
             };
         }
 
+        String cleanVin = sanitizeVin(this.vin);
         File downloadDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), DOWNLOAD_SUBDIR);
+        if (!cleanVin.isEmpty()) {
+            downloadDir = new File(downloadDir, cleanVin);
+        }
         if (!downloadDir.exists() && !downloadDir.mkdirs()) {
             throw new IOException("Failed to create download directory: " + downloadDir.getAbsolutePath());
         }
@@ -276,6 +296,13 @@ public final class DataWriter implements AutoCloseable {
         }
         String safe = value.replace("\"", "\"\"");
         return "\"" + safe + "\"";
+    }
+
+    private static String sanitizeVin(String vin) {
+        if (vin == null || vin.isEmpty() || "Unknown".equalsIgnoreCase(vin)) {
+            return "";
+        }
+        return vin.replaceAll("[^a-zA-Z0-9_-]", "").toUpperCase(Locale.US).trim();
     }
 
     private abstract static class DownloadTarget {

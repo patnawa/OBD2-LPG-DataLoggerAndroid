@@ -229,7 +229,7 @@ public final class LoggerService extends Service {
         long started = android.os.SystemClock.elapsedRealtime();
 
         try {
-            writer = new DataWriter(this, sessionId, finalPids);
+            writer = new DataWriter(this, sessionId, finalPids, config.vin);
             updateNotification("Logging: 0 records", 0);
 
             while (running) {

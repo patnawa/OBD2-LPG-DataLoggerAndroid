@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.9.1] - 2026-06-30
+### Added & Changed
+- **Organized log files by VIN subdirectory**: Created separate subdirectories inside `Downloads/OBD2LPGLogger` based on the vehicle's sanitized VIN (e.g. `Downloads/OBD2LPGLogger/1HGCR2F8.../`). If no VIN is detected, logs are written to the root log folder. Also updated history file loading to recursively scan folders so that all subfolder logs are fully loaded into the session list.
+- **Replaced Dashboard Fuel Toggle with Tuning Readiness Widget**: Removed the redundant Petrol/LPG toggle button group from the Dashboard tab (since it is already available on the Settings tab). In its place, added a creative, live "Tuning Readiness Monitor" that displays real-time Engine Warm-up progress (using a horizontal progress bar based on Coolant Temperature) and Closed-Loop status verification.
+
+### Fixed
+- **Removed Map Tab external log picker**: Removed the "Open Log File" (`btnOpenLogFile`) button and its corresponding dead code from the Map page. Tapping log files inside the "Session History" list remains as the primary way to review logs, which resolves a bug where the user got stuck after choosing a file from the external picker.
+- **Localized Bottom Navigation Bar Titles**: Changed the hardcoded menu titles for the "Map" and "Logs & History" tabs in the bottom navigation bar to use the `@string/tab_map` and `@string/tab_logs` string resources. This displays shorter, localized labels ("แผนที่" and "บันทึก" in Thai, and "Map" and "Logs" in English) that completely resolve text clipping/wrapping bugs on smaller screens.
+
 ## [2.9.0] - 2026-06-30
 ### Fixed — Critical
 - **DataWriter closed-loop inversion (CRITICAL)**: The `loop_status` column written to every CSV/JSONL log file was inverted. SAE J1979 PID 03 values `0x01` (open loop/temp) and `0x08` (open loop/failure) were labelled `"Closed"`, while the real closed-loop value `0x02` was labelled `"Open"`. This corrupted every saved log's loop_status, causing replay parsers to drop closed-loop tuning rows. Fixed to `(val & 0x02) != 0 ? "Closed" : "Open"`. This was the same bug family previously fixed in `MainActivity.updateFuelMap()` and `LogReplayParser.isClosedLoop()` but survived in `DataWriter`.
