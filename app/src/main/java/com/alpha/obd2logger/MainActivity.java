@@ -277,6 +277,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
+        fuelSpinner.setSelection(1); // Default to Petrol on startup
         statusText = findViewById(R.id.statusText);
         countText = findViewById(R.id.countText);
         

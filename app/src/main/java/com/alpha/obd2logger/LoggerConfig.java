@@ -27,7 +27,7 @@ public final class LoggerConfig {
         this.wifiIp = "192.168.0.10";
         this.wifiPort = 35000;
         this.vehicleBrand = "auto";
-        this.fuelMode = FuelMode.LPG;
+        this.fuelMode = FuelMode.PETROL;
         this.obdProtocol = ObdProtocol.AUTO;
         this.vin = "UNKNOWN";
         this.sampleIntervalMs = 500;
