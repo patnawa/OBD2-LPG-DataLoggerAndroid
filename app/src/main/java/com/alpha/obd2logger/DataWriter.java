@@ -215,7 +215,18 @@ public final class DataWriter implements AutoCloseable {
                 Uri treeUri = Uri.parse(savedUriStr);
                 androidx.documentfile.provider.DocumentFile tree = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, treeUri);
                 if (tree != null && tree.exists() && tree.canWrite()) {
-                    androidx.documentfile.provider.DocumentFile newFile = tree.createFile(mimeType, displayName);
+                    androidx.documentfile.provider.DocumentFile targetDir = tree;
+                    String cleanVin = sanitizeVin(this.vin);
+                    if (!cleanVin.isEmpty()) {
+                        androidx.documentfile.provider.DocumentFile sub = tree.findFile(cleanVin);
+                        if (sub == null || !sub.isDirectory()) {
+                            sub = tree.createDirectory(cleanVin);
+                        }
+                        if (sub != null) {
+                            targetDir = sub;
+                        }
+                    }
+                    androidx.documentfile.provider.DocumentFile newFile = targetDir.createFile(mimeType, displayName);
                     if (newFile != null) {
                         return new DownloadTarget(null, newFile.getUri()) {
                             @Override

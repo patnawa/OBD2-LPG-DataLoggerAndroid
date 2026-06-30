@@ -706,17 +706,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             androidx.documentfile.provider.DocumentFile df = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
             if (df != null && df.exists()) {
                 historyFolderText.setText("Folder: " + df.getName());
-                for (androidx.documentfile.provider.DocumentFile f : df.listFiles()) {
-                    if (f.getName() != null && f.getName().endsWith(".csv")) {
-                        HistoryLogFile hlf = new HistoryLogFile();
-                        hlf.uri = f.getUri();
-                        hlf.name = f.getName();
-                        hlf.date = f.lastModified();
-                        hlf.isSaf = true;
-                        hlf.df = f;
-                        logFiles.add(hlf);
-                    }
-                }
+                scanSafFolderRecursively(df, logFiles);
             } else {
                 historyFolderText.setText("Cannot access custom folder. Using default.");
                 loadDefaultHistory(logFiles);
@@ -969,6 +959,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     hlf.file = f;
                     logFiles.add(hlf);
                 }
+            }
+        }
+    }
+
+    private void scanSafFolderRecursively(androidx.documentfile.provider.DocumentFile dir, List<HistoryLogFile> logFiles) {
+        for (androidx.documentfile.provider.DocumentFile f : dir.listFiles()) {
+            if (f.isDirectory()) {
+                scanSafFolderRecursively(f, logFiles);
+            } else if (f.getName() != null && f.getName().endsWith(".csv") && !f.getName().startsWith("CorrectionMap_")) {
+                HistoryLogFile hlf = new HistoryLogFile();
+                hlf.uri = f.getUri();
+                hlf.name = f.getName();
+                hlf.date = f.lastModified();
+                hlf.isSaf = true;
+                hlf.df = f;
+                logFiles.add(hlf);
             }
         }
     }
