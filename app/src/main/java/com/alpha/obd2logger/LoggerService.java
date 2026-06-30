@@ -69,6 +69,7 @@ public final class LoggerService extends Service {
         void onVinRead(String vin);
         void onPidsDetected(int supportedCount, int totalCount, boolean fromLiveQuery);
         void onDeviceDetected(VLinkerOptimizer.DeviceType deviceType);
+        void onAdapterCheckResult(boolean isStandard, String details);
     }
 
     public static void setCallback(LoggerCallback cb) {
@@ -158,6 +159,14 @@ public final class LoggerService extends Service {
             if (cb0 != null && dt != VLinkerOptimizer.DeviceType.UNKNOWN) {
                 mainHandler.post(() -> cb0.onDeviceDetected(dt));
             }
+        }
+
+        // Notify UI of adapter standard/clone validation result
+        final boolean isStd = driver.isStandardAdapter();
+        final String details = driver.getAdapterDetails();
+        LoggerCallback cbCheck = getCallback();
+        if (cbCheck != null) {
+            mainHandler.post(() -> cbCheck.onAdapterCheckResult(isStd, details));
         }
 
         if (config.vin == null || config.vin.isEmpty()) {

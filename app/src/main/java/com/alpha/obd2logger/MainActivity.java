@@ -1562,6 +1562,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         });
     }
 
+    @Override
+    public void onAdapterCheckResult(boolean isStandard, String details) {
+        runOnUiThread(() -> {
+            if (!isStandard) {
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("⚠️ Adapter Warning / เตือนอะแดปเตอร์")
+                        .setMessage("The connected OBD2 adapter (" + details + ") is non-standard or a low-quality clone.\n\n" +
+                                "It may lack support for critical CAN features, cause latency, drop OBD2 frames, or fail to auto-tune.\n\n" +
+                                "We recommend using high-quality adapters like vLinker or OBDLink for reliable operation.\n\n" +
+                                "อะแดปเตอร์ที่เชื่อมต่อไม่ได้มาตรฐานหรือเป็นรุ่นลอกเลียนแบบ อาจส่งข้อมูลช้าหรือทำงานไม่เสถียร แนะนำให้ใช้ vLinker หรือ OBDLink")
+                        .setPositiveButton("OK", null)
+                        .show();
+            }
+        });
+    }
+
     // --- Dashboard updates ---
 
     private void updateDashboard(DataRecord record) {

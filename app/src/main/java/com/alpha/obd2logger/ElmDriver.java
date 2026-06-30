@@ -23,38 +23,66 @@ public abstract class ElmDriver extends BaseDriver {
      * Used to optimize multi-PID chunk size and timing.
      */
     protected VLinkerOptimizer.DeviceType vlinkerType = VLinkerOptimizer.DeviceType.UNKNOWN;
+    protected boolean isStandard = true;
+    protected String adapterDetails = "Generic ELM327";
 
     protected ElmDriver(LoggerConfig config) {
         super(config);
+    }
+
+    @Override
+    public boolean isStandardAdapter() {
+        return isStandard;
+    }
+
+    @Override
+    public String getAdapterDetails() {
+        return adapterDetails;
     }
 
     protected boolean initializeElm327() {
         try {
             sendCommand("ATZ");
             Thread.sleep(500L);
+
+            // Clone check queries
+            String atiRes = sendCommand("ATI");
+            String at1Res = sendCommand("AT@1");
+
+            boolean hasAtiErr = atiRes == null || atiRes.contains("?") || atiRes.trim().isEmpty();
+            boolean hasAt1Err = at1Res == null || at1Res.contains("?");
+            boolean isVersion21Clone = atiRes != null && atiRes.contains("2.1") && !atiRes.contains("vLinker");
+
+            if (hasAtiErr || hasAt1Err || isVersion21Clone) {
+                isStandard = false;
+                if (isVersion21Clone) {
+                    adapterDetails = "Buggy ELM327 v2.1 Clone";
+                } else if (hasAtiErr) {
+                    adapterDetails = "Invalid ELM327 Chip";
+                } else {
+                    adapterDetails = "Non-standard Clone";
+                }
+            } else {
+                isStandard = true;
+                adapterDetails = atiRes.trim().replace("\r", " ").replace("\n", " ");
+            }
+
             sendCommand("ATE0");  // Echo off
             sendCommand("ATL0"); // Linefeeds off
             sendCommand("ATS0"); // Spaces off (compact response)
-            sendCommand("ATH0"); // Headers off — critical! Without this, ELM327 sends
-                                 // CAN IDs (7E8, 18DAF110) that confuse the parser when
-                                 // spaces are also off. Must be ATH0, not just ATL0.
-            sendCommand("ATAL"); // Allow Long messages (>7 data bytes per message).
-                                 // CRITICAL for multi-PID batch queries: without this,
-                                 // ELM327 defaults to the 7-byte Normal-Length limit and
-                                 // TRUNCATES long batch responses, silently dropping
-                                 // trailing PIDs (e.g. MAP 0x0B) → empty fuel map. Set
-                                 // here as a baseline for ALL adapters (generic + vLinker).
+            sendCommand("ATH0"); // Headers off — critical!
+            sendCommand("ATAL"); // Allow Long messages
             sendCommand("ATAT2"); // Aggressive adaptive timing
-            sendCommand("ATST19"); // 100ms timeout (faster failure on unsupported PIDs)
+            sendCommand("ATST19"); // 100ms timeout
             sendCommand("ATSP" + config.obdProtocol.getElmValue());
 
             // Detect vLinker device and apply firmware-specific optimizations
-            // (derived from reverse-engineering MIC3322 v2.3.04 and MIC3313 v2.2.92 firmware)
             vlinkerType = VLinkerOptimizer.detectDevice(this);
             VLinkerOptimizer.applyOptimizations(this, vlinkerType, config);
 
             return true;
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            android.util.Log.e("OBD2Logger", "ELM327 initialization error", e);
             disconnect();
             return false;
         }

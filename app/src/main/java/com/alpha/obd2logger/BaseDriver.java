@@ -29,4 +29,12 @@ public abstract class BaseDriver {
     public boolean isConnected() {
         return connected;
     }
+
+    public boolean isStandardAdapter() {
+        return true;
+    }
+
+    public String getAdapterDetails() {
+        return "Standard Driver";
+    }
 }

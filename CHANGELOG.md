@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.9.5] - 2026-06-30
+### Added
+- **ELM327 Clone & Standard Adapter Detection**: Implemented an automated adapter validator query check during OBD2 chip initialization. It queries `ATI` and `AT@1` command availability to identify standard vs. non-standard/buggy clone adapters (such as low-quality ELM327 v2.1 Chinese clones).
+- **Bilingual Adapter Warning Dialog**: Created a pop-up alert dialog in `MainActivity.java` that alerts the user in both English and Thai if their connected OBD2 adapter is detected as non-standard or a buggy clone, detailing the performance and tuning failure risks.
+
 ## [2.9.4] - 2026-06-30
 ### Fixed & Optimized
 - **Classic Bluetooth (SPP) Connection Fallback & Discovery Cancellation**: Configured `SerialDriver.connect()` to cancel Bluetooth active discovery searches before connecting as recommended by the Android SDK to prevent timeouts. Implemented a reflection-based socket connection fallback (using channel 1 `createRfcommSocket`) to recover from standard UUID connection lookup failures.
