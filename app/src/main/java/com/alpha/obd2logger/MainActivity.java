@@ -1003,9 +1003,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         intent.putExtra("file_name", names.toString());
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
-        // Leave compare mode after launching so the list returns to normal next time.
-        compareMode = false;
-        compareSelection.clear();
     }
 
     private void loadDefaultHistory(List<HistoryLogFile> logFiles) {
@@ -2119,6 +2116,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         int pos = transportSpinner.getSelectedItemPosition();
         if (pos == 2 || pos == 3 || pos == 4) {
             refreshBluetoothDevices();
+        }
+        if (currentTabIndex == 4) {
+            loadHistoryFiles();
         }
     }
 
