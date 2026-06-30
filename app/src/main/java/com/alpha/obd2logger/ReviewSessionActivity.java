@@ -32,6 +32,11 @@ public class ReviewSessionActivity extends AppCompatActivity {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        super.attachBaseContext(LocaleHelper.onAttach(newBase));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_review_session);

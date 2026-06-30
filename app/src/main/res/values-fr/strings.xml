@@ -1,0 +1,90 @@
+<resources>
+    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="start">Démarrer</string>
+    <string name="stop">Arrêter</string>
+    <string name="idle_status">Prêt. Sélectionnez le mode de transport et démarrez l\'enregistrement.</string>
+    <string name="log_path">Les journaux seront enregistrés dans Downloads/OBD2LPGLogger</string>
+    <string name="tap_to_open_logs">Appuyez pour ouvrir Downloads/OBD2LPGLogger</string>
+    <string name="prompt_transport_mode">Mode de transport</string>
+    <string name="prompt_fuel_mode">Mode de carburant</string>
+    <string name="prompt_obd_protocol">Protocole OBD2</string>
+    <string name="prompt_bluetooth_device">Appareil OBD2 Bluetooth</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">Tableau de bord</string>
+    <string name="tab_gauges">Jauges</string>
+    <string name="tab_map">Carte</string>
+    <string name="tab_dtc">DTC</string>
+    <string name="tab_logs">Journaux</string>
+    <string name="tab_settings">Paramètres</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">Analyse de réglage intelligente</string>
+    <string name="waiting_for_data">En attente des données Fuel Trim...</string>
+    <string name="live_fuel_map">Carte Fuel Trim en direct</string>
+    <string name="map_axes">Y = tr/min (500-6000), X = MAP kPa (20-100)</string>
+    <string name="how_to_read_map_title">💡 Comment lire la carte</string>
+    <string name="how_to_read_map_desc" formatted="false">Affiche le Fuel Trim total (STFT + LTFT)\n🟢 Vert (±5%) = Parfait\n🔴 Rouge (Négatif) = Riche (Réduire le carburant)\n🔵 Bleu (Positif) = Pauvre (Ajouter du carburant)\n\nVERROUILLAGE DE CELLULE ET COMPTEUR DE VISITES :\nLes cellules commencent transparentes. Maintenez le tr/min/MAP stable pour collecter des données. L\'opacité augmente avec les visites.\nx20 visites = Verrouillé (Bordure dorée).\n\nDÉVIATION : Affiche (LPG/CNG - Essence).\n+ signifie que le GPL est pauvre. - signifie que le GPL est riche. Visez 0%.\n\nASSISTANT DE RÉGLAGE : Affiche la correction exacte en % pour votre carte de GPL (Exportable en CSV).\n\n* Note : Pour utiliser l\'assistant ou la déviation, vous devez collecter les données d\'essence et de GPL d\'abord !</string>
+    <string name="petrol">ESSENCE</string>
+    <string name="petrol_logs_header">Journaux d\'essence</string>
+    <string name="lpg_logs_header">Journaux de GPL/GNC</string>
+    <string name="open_log_file">OUVRIR LE FICHIER DE JOURNAL</string>
+    <string name="open_log_file_chooser">Sélectionner le(s) fichier(s) CSV de journal</string>
+    <string name="open_log_multi_hint">Astuce : sélectionnez plusieurs fichiers (par exemple, un journal d\'essence + un journal de GPL) pour les comparer ensemble.</string>
+    <string name="compare_logs">Comparer 2 journaux</string>
+    <string name="compare_logs_cancel">Annuler la comparaison</string>
+    <string name="compare_hint_select">Sélectionnez un journal d\'essence et un journal de GPL (max 2), puis appuyez sur Comparer.</string>
+    <string name="compare_hint_count">Sélectionné %1$d/2 — appuyez sur Comparer pour tracer les deux sur la carte.</string>
+    <string name="compare_need_two">Sélectionnez au moins 2 journaux (ou 1) à comparer.</string>
+    <string name="compare_max_two">Vous pouvez comparer jusqu\'à 2 journaux à la fois.</string>
+    <string name="open_log_csv_only">Seuls les fichiers de journal CSV peuvent être ouverts sur la carte. (Les journaux JSONL ne sont pas pris en charge pour la relecture).</string>
+    <string name="open_log_skipped_non_csv">Ignoré %1$d fichier(s) non-CSV — seul le format CSV peut être tracé.</string>
+    <string name="lpg">GPL/GNC</string>
+    <string name="deviation">DÉVIATION</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">INCONNU</string>
+    <string name="analyzer_no_data">Aucune donnée de capteur disponible</string>
+    <string name="analyzer_lean">PAUVRE</string>
+    <string name="analyzer_rich">RICHE</string>
+    <string name="analyzer_ok">OK</string>
+    
+    <string name="analyzer_petrol_lean">Le moteur d\'origine fonctionne pauvre. Vérifiez les fuites de vide ou les capteurs défectueux avant de régler le GPL.</string>
+    <string name="analyzer_petrol_rich">Le moteur d\'origine fonctionne riche. Corrigez les problèmes mécaniques avant de régler le GPL.</string>
+    <string name="analyzer_petrol_ok">Le réglage d\'origine est sain. Prêt pour collecter la ligne de base.</string>
+    
+    <string name="analyzer_lpg_lean">Le GPL/GNC is PAUVRE. AUGMENTEZ les valeurs dans la carte de gaz (ajouter du carburant).</string>
+    <string name="analyzer_lpg_rich">Le GPL/GNC is RICHE. DIMINUEZ les valeurs dans la carte de gaz (réduire le carburant).</string>
+    <string name="analyzer_lpg_ok">Le mélange GPL/GNC correspond étroitement à la ligne de base d\'origine.</string>
+    
+    <string name="status_perfect_translated">Parfait</string>
+    <string name="status_lean_translated">Pauvre</string>
+    <string name="status_rich_translated">Riche</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nStatut: %3$s\nConseil: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">Lire les DTC</string>
+    <string name="clear_dtc">Effacer les DTC</string>
+    <string name="read_vin">Lire le VIN</string>
+    <string name="read_readiness">Vérifier la préparation</string>
+    <string name="no_dtcs">Aucun DTC stocké.</string>
+    <string name="dtc_count">Nombre de DTC: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">Armer le minuteur 0-100</string>
+    <string name="perf_reset">Réinitialiser</string>
+    <string name="perf_brake">Démarrer le test de freinage</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">Consommation de carburant</string>
+
+    <string name="prompt_language">Langue / Language</string>
+
+    <!-- Service -->
+    <string name="background_logging">Enregistrement en arrière-plan</string>
+    <string name="keep_screen_on">Garder l\'écran allumé</string>
+    <string name="log_destination_label">Dossier de destination des journaux</string>
+    <string name="default_log_folder">Downloads/OBD2LPGLogger (Par défaut)</string>
+    <string name="select_folder">Sélectionner</string>
+</resources>

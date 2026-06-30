@@ -1,0 +1,90 @@
+<resources>
+    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="start">Start</string>
+    <string name="stop">Stopp</string>
+    <string name="idle_status">Bereit. Übertragungsmodus wählen und Aufzeichnung starten.</string>
+    <string name="log_path">Protokolle werden unter Downloads/OBD2LPGLogger gespeichert</string>
+    <string name="tap_to_open_logs">Tippen, um Downloads/OBD2LPGLogger zu öffnen</string>
+    <string name="prompt_transport_mode">Übertragungsmodus</string>
+    <string name="prompt_fuel_mode">Kraftstoffmodus</string>
+    <string name="prompt_obd_protocol">OBD2-Protokoll</string>
+    <string name="prompt_bluetooth_device">Bluetooth OBD2-Gerät</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">Dashboard</string>
+    <string name="tab_gauges">Anzeigen</string>
+    <string name="tab_map">Karte</string>
+    <string name="tab_dtc">DTC</string>
+    <string name="tab_logs">Protokolle</string>
+    <string name="tab_settings">Einstellungen</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">Intelligente Tuning-Analyse</string>
+    <string name="waiting_for_data">Warte auf Fuel Trim Daten...</string>
+    <string name="live_fuel_map">Live-Fuel Trim Karte</string>
+    <string name="map_axes">Y = U/min (500-6000), X = MAP kPa (20-100)</string>
+    <string name="how_to_read_map_title">💡 Funktionsweise der Karte</string>
+    <string name="how_to_read_map_desc" formatted="false">Zeigt das gesamte Fuel Trim (STFT + LTFT)\n🟢 Grün (±5%) = Perfekt\n🔴 Rot (Negativ) = Fett (Kraftstoff reduzieren)\n🔵 Blau (Positiv) = Mager (Kraftstoff hinzufügen)\n\nZELLEN-SPERRE &amp; TREFFER-ZÄHLER:\nZellen beginnen transparent. Halten Sie U/min/MAP stabil, um Daten zu sammeln. Die Deckkraft erhöht sich mit den Treffern.\nx20 Treffer = Gesperrt (Goldener Rand).\n\nABWEICHUNG: Zeigt (LPG/CNG - Benzin).\n+ bedeutet LPG ist mager. - bedeutet LPG ist fett. Ziel ist 0%.\n\nTUNING-ASSISTENT: Zeigt die genaue %-Korrektur für Ihr LPG-Kennfeld (Exportierbar als CSV).\n\n* Hinweis: Um den Assistenten oder die Abweichung zu nutzen, müssen Sie zuerst Benzin- und LPG-Daten sammeln!</string>
+    <string name="petrol">BENZIN</string>
+    <string name="petrol_logs_header">Benzin-Protokolle</string>
+    <string name="lpg_logs_header">LPG/CNG-Protokolle</string>
+    <string name="open_log_file">PROTOKOLLDATEI ÖFFNEN</string>
+    <string name="open_log_file_chooser">CSV-Protokolldatei(en) auswählen</string>
+    <string name="open_log_multi_hint">Tipp: Wählen Sie mehrere Dateien aus (z. B. ein Benzin-Protokoll + ein LPG-Protokoll), um sie zu vergleichen.</string>
+    <string name="compare_logs">2 Protokolle vergleichen</string>
+    <string name="compare_logs_cancel">Vergleich abbrechen</string>
+    <string name="compare_hint_select">Wählen Sie ein Benzin- und ein LPG-Protokoll (max. 2) aus, und tippen Sie auf Vergleichen.</string>
+    <string name="compare_hint_count">Ausgewählt %1$d/2 — tippen Sie auf Vergleichen, um beide auf der Karte darzustellen.</string>
+    <string name="compare_need_two">Wählen Sie mindestens 2 Protokolle (oder 1) zum Vergleichen aus.</string>
+    <string name="compare_max_two">Sie können maximal 2 Protokolle gleichzeitig vergleichen.</string>
+    <string name="open_log_csv_only">Es können nur CSV-Protokolldateien auf der Karte geöffnet werden. (JSONL-Protokolle werden für Replay nicht unterstützt).</string>
+    <string name="open_log_skipped_non_csv">%1$d Nicht-CSV-Datei(en) übersprungen — nur CSV kann dargestellt werden.</string>
+    <string name="lpg">LPG/CNG</string>
+    <string name="deviation">ABWEICHUNG</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">UNBEKANNT</string>
+    <string name="analyzer_no_data">Keine Sensordaten verfügbar</string>
+    <string name="analyzer_lean">MAGER</string>
+    <string name="analyzer_rich">FETT</string>
+    <string name="analyzer_ok">OK</string>
+    
+    <string name="analyzer_petrol_lean">Der Benzinmotor läuft zu mager. Überprüfen Sie vor dem LPG-Tuning auf Falschluft oder defekte Sensoren.</string>
+    <string name="analyzer_petrol_rich">Der Benzinmotor läuft zu fett. Beheben Sie mechanische Probleme vor dem LPG-Tuning.</string>
+    <string name="analyzer_petrol_ok">Benzin-Tuning ist in Ordnung. Bereit zur Erstellung des Basiskennfelds.</string>
+    
+    <string name="analyzer_lpg_lean">LPG/CNG ist MAGER. Erhöhen Sie die Werte im Gaskennfeld (Kraftstoff hinzufügen).</string>
+    <string name="analyzer_lpg_rich">LPG/CNG ist FETT. Verringern Sie die Werte im Gaskennfeld (Kraftstoff reduzieren).</string>
+    <string name="analyzer_lpg_ok">LPG/CNG-Gemisch stimmt weitgehend mit dem Werks-Benzinkennfeld überein.</string>
+    
+    <string name="status_perfect_translated">Perfekt</string>
+    <string name="status_lean_translated">Mager</string>
+    <string name="status_rich_translated">Fett</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nStatus: %3$s\nHinweis: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">Fehlercodes auslesen</string>
+    <string name="clear_dtc">Fehlercodes löschen</string>
+    <string name="read_vin">VIN auslesen</string>
+    <string name="read_readiness">Bereitschaft prüfen</string>
+    <string name="no_dtcs">Keine Fehlercodes gespeichert.</string>
+    <string name="dtc_count">Fehleranzahl: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">0-100 Timer bereitstellen</string>
+    <string name="perf_reset">Zurücksetzen</string>
+    <string name="perf_brake">Bremstest starten</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">Kraftstoffverbrauch</string>
+
+    <string name="prompt_language">Sprache / Language</string>
+
+    <!-- Service -->
+    <string name="background_logging">Hintergrund-Aufzeichnung</string>
+    <string name="keep_screen_on">Bildschirm eingeschaltet lassen</string>
+    <string name="log_destination_label">Speicherort für Protokolle</string>
+    <string name="default_log_folder">Downloads/OBD2LPGLogger (Standard)</string>
+    <string name="select_folder">Auswählen</string>
+</resources>

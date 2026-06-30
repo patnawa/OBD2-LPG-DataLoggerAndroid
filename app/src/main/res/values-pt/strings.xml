@@ -1,0 +1,90 @@
+<resources>
+    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="start">Iniciar</string>
+    <string name="stop">Parar</string>
+    <string name="idle_status">Pronto. Selecione o modo de transmissão e inicie o registro.</string>
+    <string name="log_path">Os registros serão salvos em Downloads/OBD2LPGLogger</string>
+    <string name="tap_to_open_logs">Toque para abrir Downloads/OBD2LPGLogger</string>
+    <string name="prompt_transport_mode">Modo de transmissão</string>
+    <string name="prompt_fuel_mode">Modo de combustível</string>
+    <string name="prompt_obd_protocol">Protocolo OBD2</string>
+    <string name="prompt_bluetooth_device">Dispositivo OBD2 Bluetooth</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">Painel</string>
+    <string name="tab_gauges">Manômetros</string>
+    <string name="tab_map">Mapa</string>
+    <string name="tab_dtc">DTC</string>
+    <string name="tab_logs">Registros</string>
+    <string name="tab_settings">Configurações</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">Análise de ajuste inteligente</string>
+    <string name="waiting_for_data">Aguardando dados de Fuel Trim...</string>
+    <string name="live_fuel_map">Mapa de Fuel Trim ao vivo</string>
+    <string name="map_axes">Y = RPM (500-6000), X = MAP kPa (20-100)</string>
+    <string name="how_to_read_map_title">💡 Como ler o mapa</string>
+    <string name="how_to_read_map_desc" formatted="false">Mostra o ajuste de combustível total (STFT + LTFT)\n🟢 Verde (±5%) = Perfeito\n🔴 Vermelho (Negativo) = Rico (Reduzir combustível)\n🔵 Azul (Positivo) = Pobre (Adicionar combustível)\n\nBLOQUEIO DE CÉLULA E CONTADOR DE TOQUES:\nAs células começam transparentes. Mantenha RPM/MAP estáveis para coletar dados. A opacidade aumenta com os toques.\nx20 toques = Bloqueado (Borda dourada).\n\nDESVIO: Mostra (LPG/CNG - Gasolina).\n+ significa que o GPL está pobre. - significa que o GPL está rico. Foque em 0%.\n\nASSISTENTE DE AJUSTE: Mostra a correção exata em % para o seu mapa de GPL (Exportável para CSV).\n\n* Nota: Para usar o assistente ou o desvio, você deve coletar os dados de gasolina e GPL primeiro!</string>
+    <string name="petrol">GASOLINA</string>
+    <string name="petrol_logs_header">Registros de Gasolina</string>
+    <string name="lpg_logs_header">Registros de GPL/GNV</string>
+    <string name="open_log_file">ABRIR ARQUIVO DE REGISTRO</string>
+    <string name="open_log_file_chooser">Selecionar arquivo(s) CSV de registro</string>
+    <string name="open_log_multi_hint">Dica: selecione vários arquivos (ex: um registro de Gasolina + um registro de GPL) para compará-los.</string>
+    <string name="compare_logs">Comparar 2 registros</string>
+    <string name="compare_logs_cancel">Cancelar comparação</string>
+    <string name="compare_hint_select">Selecione um registro de Gasolina e um registro de GPL (máx. 2), depois toque em Comparar.</string>
+    <string name="compare_hint_count">Selecionado %1$d/2 — toque em Comparar para traçar ambos no mapa.</string>
+    <string name="compare_need_two">Selecione pelo menos 2 registros (ou 1) para comparar.</string>
+    <string name="compare_max_two">Você pode comparar até 2 registros ao mesmo tempo.</string>
+    <string name="open_log_csv_only">Apenas arquivos de registro CSV podem ser abertos no mapa. (Os registros JSONL não são compatíveis com a reprodução).</string>
+    <string name="open_log_skipped_non_csv">Ignorado %1$d arquivo(s) não-CSV — apenas CSV pode ser plotado.</string>
+    <string name="lpg">GPL/GNV</string>
+    <string name="deviation">DESVIO</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">DESCONHECIDO</string>
+    <string name="analyzer_no_data">Nenhum dado do sensor disponível</string>
+    <string name="analyzer_lean">POBRE</string>
+    <string name="analyzer_rich">RICO</string>
+    <string name="analyzer_ok">OK</string>
+    
+    <string name="analyzer_petrol_lean">O motor original está funcionando pobre. Verifique se há vazamentos de vácuo ou sensores ruins antes de ajustar o GPL.</string>
+    <string name="analyzer_petrol_rich">O motor original está funcionando rico. Corrija problemas mecânicos antes de ajustar o GPL.</string>
+    <string name="analyzer_petrol_ok">O ajuste original está saudável. Seguro para coletar a linha de referência.</string>
+    
+    <string name="analyzer_lpg_lean">O GPL/GNV está POBRE. AUMENTE os valores no mapa de gás (adicione combustível).</string>
+    <string name="analyzer_lpg_rich">O GPL/GNV está RICO. DIMINUA os valores no mapa de gás (reduza combustível).</string>
+    <string name="analyzer_lpg_ok">A mistura de GPL/GNV coincide de perto com a linha de referência de fábrica.</string>
+    
+    <string name="status_perfect_translated">Perfeito</string>
+    <string name="status_lean_translated">Pobre</string>
+    <string name="status_rich_translated">Rico</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nStatus: %3$s\nConselho: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">Ler DTCs</string>
+    <string name="clear_dtc">Limpar DTCs</string>
+    <string name="read_vin">Ler VIN</string>
+    <string name="read_readiness">Verificar prontidão</string>
+    <string name="no_dtcs">Nenhum DTC armazenado.</string>
+    <string name="dtc_count">Total de DTCs: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">Armar cronômetro 0-100</string>
+    <string name="perf_reset">Redefinir</string>
+    <string name="perf_brake">Iniciar teste de freio</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">Economia de Combustível</string>
+
+    <string name="prompt_language">Idioma / Language</string>
+
+    <!-- Service -->
+    <string name="background_logging">Registro em segundo plano</string>
+    <string name="keep_screen_on">Manter tela ligada</string>
+    <string name="log_destination_label">Pasta de destino dos registros</string>
+    <string name="default_log_folder">Downloads/OBD2LPGLogger (Padrão)</string>
+    <string name="select_folder">Selecionar</string>
+</resources>

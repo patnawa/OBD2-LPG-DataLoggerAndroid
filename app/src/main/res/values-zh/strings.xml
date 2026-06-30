@@ -1,0 +1,90 @@
+<resources>
+    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="start">开始</string>
+    <string name="stop">停止</string>
+    <string name="idle_status">就绪。请选择连接模式并启动记录。</string>
+    <string name="log_path">日志将保存至 Downloads/OBD2LPGLogger</string>
+    <string name="tap_to_open_logs">轻点以打开 Downloads/OBD2LPGLogger</string>
+    <string name="prompt_transport_mode">传输模式</string>
+    <string name="prompt_fuel_mode">燃料模式</string>
+    <string name="prompt_obd_protocol">OBD2协议</string>
+    <string name="prompt_bluetooth_device">蓝牙OBD2设备</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">仪表盘</string>
+    <string name="tab_gauges">仪表</string>
+    <string name="tab_map">地图</string>
+    <string name="tab_dtc">DTC故障码</string>
+    <string name="tab_logs">日志历史</string>
+    <string name="tab_settings">设置</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">智能调校分析</string>
+    <string name="waiting_for_data">正在等待燃油修正数据...</string>
+    <string name="live_fuel_map">实时燃油修正图</string>
+    <string name="map_axes">Y = 转速 RPM (500-6000), X = 歧管压力 MAP kPa (20-100)</string>
+    <string name="how_to_read_map_title">💡 如何看懂地图数据</string>
+    <string name="how_to_read_map_desc" formatted="false">显示总燃油修正 (短期 STFT + 长期 LTFT)\n🟢 绿色 (±5%) = 完美\n🔴 红色 (负值) = 偏浓 (应减少喷油)\n🔵 蓝色 (正值) = 偏稀 (应增加喷油)\n\n单元格锁定与命中计数器:\n单元格初始为透明。保持稳定的 RPM/MAP 以收集数据。随着命中次数增加，不透明度会提高。\nx20 次命中 = 已锁定 (金色边框)。\n\n偏差 (DEVIATION): 显示 (LPG/CNG - 汽油)。\n正值表示 LPG 偏稀，负值表示 LPG 偏浓。调校目标是使偏差接近 0%。\n\n调校辅助 (TUNE ASSIST): 显示 LPG 地图的准确修正百分比 (可导出为 CSV)。\n\n* 注意: 要使用调校辅助或偏差功能，您必须先收集汽油和 LPG 两者的基准数据！</string>
+    <string name="petrol">汽油</string>
+    <string name="petrol_logs_header">汽油日志</string>
+    <string name="lpg_logs_header">LPG/CNG日志</string>
+    <string name="open_log_file">打开日志文件</string>
+    <string name="open_log_file_chooser">选择日志 CSV 文件</string>
+    <string name="open_log_multi_hint">提示：可同时选择多个文件（如汽油日志 + LPG日志）进行对比。</string>
+    <string name="compare_logs">对比 2 个日志</string>
+    <string name="compare_logs_cancel">取消对比</string>
+    <string name="compare_hint_select">分别勾选一个汽油日志和一个 LPG 日志（最多 2 个），然后点击对比。</string>
+    <string name="compare_hint_count">已选择 %1$d/2 个日志 — 点击对比在地图上绘制。</string>
+    <string name="compare_need_two">请选择至少 2 个日志（或 1 个）进行对比。</string>
+    <string name="compare_max_two">您一次最多只能对比 2 个日志。</string>
+    <string name="open_log_csv_only">地图仅支持打开 CSV 日志文件。（不支持播放 JSONL 日志）。</string>
+    <string name="open_log_skipped_non_csv">已跳过 %1$d 个非 CSV 文件 — 仅支持绘制 CSV。</string>
+    <string name="lpg">LPG/CNG</string>
+    <string name="deviation">偏差</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">未知</string>
+    <string name="analyzer_no_data">无传感器数据可用</string>
+    <string name="analyzer_lean">偏稀</string>
+    <string name="analyzer_rich">偏浓</string>
+    <string name="analyzer_ok">正常</string>
+    
+    <string name="analyzer_petrol_lean">原厂引擎运行偏稀。在调校 LPG 前，请先检查是否存在真空泄漏或传感器损坏。</string>
+    <string name="analyzer_petrol_rich">原厂引擎运行偏浓。在调校 LPG 前，请先修复机械故障。</string>
+    <string name="analyzer_petrol_ok">汽油调校状态健康。可以开始收集基准数据。</string>
+    
+    <string name="analyzer_lpg_lean">LPG/CNG 混合气偏稀。请增加燃气喷油图中的数值（增加燃油）。</string>
+    <string name="analyzer_lpg_rich">LPG/CNG 混合气偏浓。请减少燃气喷油图中的数值（减少燃油）。</string>
+    <string name="analyzer_lpg_ok">LPG/CNG 混合气与原厂汽油基准高度吻合。</string>
+    
+    <string name="status_perfect_translated">完美</string>
+    <string name="status_lean_translated">偏稀</string>
+    <string name="status_rich_translated">偏浓</string>
+    
+    <string name="tuning_status_format">短期 STFT: %1$.1f%% | 长期 LTFT: %2$.1f%%\n状态: %3$s\n建议: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">读取 DTC 故障码</string>
+    <string name="clear_dtc">清除 DTC 故障码</string>
+    <string name="read_vin">读取 VIN</string>
+    <string name="read_readiness">检查就绪状态</string>
+    <string name="no_dtcs">无故障码存储。</string>
+    <string name="dtc_count">故障码数量: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">准备 0-100 加速度测试</string>
+    <string name="perf_reset">重置</string>
+    <string name="perf_brake">开始刹车测试</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">燃油经济性</string>
+
+    <string name="prompt_language">语言 / Language</string>
+
+    <!-- Service -->
+    <string name="background_logging">后台日志记录</string>
+    <string name="keep_screen_on">保持屏幕常亮</string>
+    <string name="log_destination_label">日志保存文件夹</string>
+    <string name="default_log_folder">Downloads/OBD2LPGLogger (默认)</string>
+    <string name="select_folder">选择</string>
+</resources>

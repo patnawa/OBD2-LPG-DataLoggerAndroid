@@ -1,0 +1,90 @@
+<resources>
+    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="start">開始</string>
+    <string name="stop">停止</string>
+    <string name="idle_status">準備完了。通信モードを選択し、ログ記録を開始してください。</string>
+    <string name="log_path">ログは Downloads/OBD2LPGLogger に保存されます</string>
+    <string name="tap_to_open_logs">タップして Downloads/OBD2LPGLogger を開く</string>
+    <string name="prompt_transport_mode">通信モード</string>
+    <string name="prompt_fuel_mode">燃料モード</string>
+    <string name="prompt_obd_protocol">OBD2プロトコル</string>
+    <string name="prompt_bluetooth_device">Bluetooth OBD2デバイス</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">ダッシュボード</string>
+    <string name="tab_gauges">メーター</string>
+    <string name="tab_map">マップ</string>
+    <string name="tab_dtc">DTC</string>
+    <string name="tab_logs">ログ履歴</string>
+    <string name="tab_settings">設定</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">スマートチューニング分析</string>
+    <string name="waiting_for_data">フューエルトリムデータを待機中...</string>
+    <string name="live_fuel_map">リアルタイム フューエルトリム マップ</string>
+    <string name="map_axes">Y = RPM (500-6000), X = MAP kPa (20-100)</string>
+    <string name="how_to_read_map_title">💡 マップの読み方</string>
+    <string name="how_to_read_map_desc" formatted="false">トータルフューエルトリム (STFT + LTFT) を表示します\n🟢 緑 (±5%) = 完璧\n🔴 赤 (マイナス値) = リッチ (燃料を減らす)\n🔵 青 (プラス値) = リーン (燃料を増やす)\n\nセルロックとヒットカウンター:\nセルは最初は透明です。データを収集するにはRPMとMAPを一定に維持してください。ヒットするほど透明度が下がります。\nx20 ヒット = ロック完了 (金の枠線)\n\n偏差 (DEVIATION): (LPG/CNG - ガソリン) を表示します。\n+ はLPGがリーン、- はLPGがリッチであることを意味します。0%を目指して調整してください。\n\nチューニングアシスト (TUNE ASSIST): LPGマップの正確なパーセント補正値を表示します (CSVにエクスポート可能)。\n\n* 注意: チューニングアシストまたは偏差を使用するには、まずガソリンとLPG両方のデータを収集する必要があります！</string>
+    <string name="petrol">ガソリン</string>
+    <string name="petrol_logs_header">ガソリンログ</string>
+    <string name="lpg_logs_header">LPG/CNGログ</string>
+    <string name="open_log_file">ログファイルを開く</string>
+    <string name="open_log_file_chooser">ログCSVファイルを選択</string>
+    <string name="open_log_multi_hint">ヒント: 複数のファイル (例: ガソリンログ + LPGログ) を選択して比較することができます。</string>
+    <string name="compare_logs">2つのログを比較</string>
+    <string name="compare_logs_cancel">比較をキャンセル</string>
+    <string name="compare_hint_select">ガソリンログとLPGログをそれぞれ選択し (最大2つ)、「比較」をタップします。</string>
+    <string name="compare_hint_count">%1$d/2 件選択中 — 「比較」をタップしてマップにプロットします。</string>
+    <string name="compare_need_two">比較するには少なくとも2つのログ (または1つ) を選択してください。</string>
+    <string name="compare_max_two">一度に比較できるログは最大2つまでです。</string>
+    <string name="open_log_csv_only">マップで開くことができるのはCSVログファイルのみです。(JSONLログのリプレイはサポートされていません)。</string>
+    <string name="open_log_skipped_non_csv">CSV以外のファイル %1$d 件をスキップしました (CSVのみプロット可能です)。</string>
+    <string name="lpg">LPG/CNG</string>
+    <string name="deviation">偏差</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">不明</string>
+    <string name="analyzer_no_data">センサーデータなし</string>
+    <string name="analyzer_lean">リーン</string>
+    <string name="analyzer_rich">リッチ</string>
+    <string name="analyzer_ok">OK</string>
+    
+    <string name="analyzer_petrol_lean">純正エンジンがリーン気味です。LPG調整の前に二次エアー吸い込みやセンサーの不良を確認してください。</string>
+    <string name="analyzer_petrol_rich">純正エンジンがリッチ気味です。LPG調整の前に機械的な不具合を解消してください。</string>
+    <string name="analyzer_petrol_ok">純正状態は良好です。基準データの収集を開始できます。</string>
+    
+    <string name="analyzer_lpg_lean">LPG/CNGがリーンです。ガス燃料マップの数値を増やしてください (燃料増量)。</string>
+    <string name="analyzer_lpg_rich">LPG/CNGがリッチです。ガス燃料マップの数値を減らしてください (燃料減量)。</string>
+    <string name="analyzer_lpg_ok">LPG/CNGの混合比は純正基準値とよく一致しています。</string>
+    
+    <string name="status_perfect_translated">完璧</string>
+    <string name="status_lean_translated">リーン</string>
+    <string name="status_rich_translated">リッチ</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\n状態: %3$s\nアドバイス: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">DTCの読み込み</string>
+    <string name="clear_dtc">DTCの消去</string>
+    <string name="read_vin">VINの読み込み</string>
+    <string name="read_readiness">レディネスチェック</string>
+    <string name="no_dtcs">記憶されているDTCはありません。</string>
+    <string name="dtc_count">DTC検出数: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">0-100計測開始待機</string>
+    <string name="perf_reset">リセット</string>
+    <string name="perf_brake">制動テスト開始</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">燃料消費率</string>
+
+    <string name="prompt_language">言語 / Language</string>
+
+    <!-- Service -->
+    <string name="background_logging">バックグラウンドログ記録</string>
+    <string name="keep_screen_on">スリープ防止 (画面常時点灯)</string>
+    <string name="log_destination_label">ログの保存先フォルダ</string>
+    <string name="default_log_folder">Downloads/OBD2LPGLogger (デフォルト)</string>
+    <string name="select_folder">選択</string>
+</resources>

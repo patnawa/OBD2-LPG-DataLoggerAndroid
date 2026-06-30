@@ -12,8 +12,15 @@
         <item>Petrol</item>
     </string-array>
     <string-array name="language_modes">
+        <item>System Default</item>
         <item>English</item>
         <item>ภาษาไทย</item>
+        <item>Español</item>
+        <item>Português</item>
+        <item>Deutsch</item>
+        <item>Français</item>
+        <item>日本語</item>
+        <item>中文</item>
     </string-array>
     <string-array name="theme_modes">
         <item>System Default</item>

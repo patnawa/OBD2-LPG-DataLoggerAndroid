@@ -12,12 +12,13 @@ import java.util.Locale;
 
 public class LocaleHelper {
 
-    private static final String SELECTED_LANGUAGE = "Locale.Helper.Selected.Language";
+    public static final String LANG_SYSTEM = "default";
     public static final String LANG_ENGLISH = "en";
     public static final String LANG_THAI = "th";
+    private static final String SELECTED_LANGUAGE = "Locale.Helper.Selected.Language";
 
     public static Context onAttach(Context context) {
-        String lang = getPersistedData(context, Locale.getDefault().getLanguage());
+        String lang = getPersistedData(context, LANG_SYSTEM);
         return setLocale(context, lang);
     }
 
@@ -27,16 +28,27 @@ public class LocaleHelper {
     }
 
     public static String getLanguage(Context context) {
-        return getPersistedData(context, Locale.getDefault().getLanguage());
+        return getPersistedData(context, LANG_SYSTEM);
     }
 
     public static Context setLocale(Context context, String language) {
         persist(context, language);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            return updateResources(context, language);
+        String resolveLang = language;
+        if (LANG_SYSTEM.equals(language)) {
+            Locale sysLocale;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                sysLocale = android.content.res.Resources.getSystem().getConfiguration().getLocales().get(0);
+            } else {
+                sysLocale = android.content.res.Resources.getSystem().getConfiguration().locale;
+            }
+            resolveLang = sysLocale.getLanguage();
         }
-        return updateResourcesLegacy(context, language);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            return updateResources(context, resolveLang);
+        }
+        return updateResourcesLegacy(context, resolveLang);
     }
 
     private static String getPersistedData(Context context, String defaultLanguage) {

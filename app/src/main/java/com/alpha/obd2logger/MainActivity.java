@@ -578,12 +578,30 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void setupListeners() {
         // Init language spinner
+        final String[] langCodes = {
+            LocaleHelper.LANG_SYSTEM,
+            LocaleHelper.LANG_ENGLISH,
+            LocaleHelper.LANG_THAI,
+            "es",
+            "pt",
+            "de",
+            "fr",
+            "ja",
+            "zh"
+        };
         String currentLang = LocaleHelper.getLanguage(this);
-        languageSpinner.setSelection(currentLang.equals(LocaleHelper.LANG_THAI) ? 1 : 0);
+        int langIndex = 0; // Default to System Default
+        for (int i = 0; i < langCodes.length; i++) {
+            if (langCodes[i].equals(currentLang)) {
+                langIndex = i;
+                break;
+            }
+        }
+        languageSpinner.setSelection(langIndex);
         languageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String selectedLang = position == 1 ? LocaleHelper.LANG_THAI : LocaleHelper.LANG_ENGLISH;
+                String selectedLang = langCodes[position];
                 if (!selectedLang.equals(LocaleHelper.getLanguage(MainActivity.this))) {
                     LocaleHelper.setLocale(MainActivity.this, selectedLang);
                     recreate();
