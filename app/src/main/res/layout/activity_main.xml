@@ -274,6 +274,17 @@
 
                 </com.google.android.material.card.MaterialCardView>
 
+                <TextView
+                    android:id="@+id/txtMapFormulaHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/map_formula_hint"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp"
+                    android:gravity="center" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnExportCsv"
                     android:layout_width="match_parent"

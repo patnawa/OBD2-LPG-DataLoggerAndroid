@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.1] - 2026-06-30
+### Added
+- **UI Formula Explanation**: Added a dynamic, bilingual formula label (`txtMapFormulaHint`) directly underneath the Fuel Map on the main screen to make it clear how the Deviation/Tune Assist percentages are calculated (`Deviation = LPG Trim - Petrol Trim`).
+- **Detailed Formula Documentation**: Added a "Tuning Formula & Examples" section in the README.md explaining how to apply positive/negative correction values to the LPG ECU multiplier map.
+
 ## [3.0.0] - 2026-06-30
 ### Added & Changed
 - **Fuel Map Redesign (Y = T.inj ms, X = RPM)**: Redesigned the Live Fuel Map layout to swap axes to match standard LPG tuning software: Y-axis is now gasoline injection time (`T.inj` in ms) bins, and X-axis is `RPM` (500 to 6500 in 500 steps).

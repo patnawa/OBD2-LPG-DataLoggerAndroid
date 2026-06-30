@@ -33,6 +33,14 @@ This app connects to your vehicle's OBD2 port via ELM327-compatible adapters (vL
 - **Open Log File**: Load external CSV files from anywhere (SAF picker) for offline analysis; multi-select for cross-file Petrol+LPG comparison
 - **In-list Compare 2 Logs**: Pick a Petrol log + an LPG log from History and plot both on one map
 
+### Tuning Formula & Examples
+The **Deviation** and **Tune Assist** percentage calculations are based on the following formula:
+$$\text{Deviation} = \text{LPG Trim} - \text{Petrol Trim}$$
+This calculates the net fuel trim difference between running on gas and the petrol baseline:
+- **Positive Deviation (e.g., +8%)**: LPG is running leaner than petrol (the ECU must add 8% extra fuel when on gas). To correct this, you need to **increase (add +8%)** the LPG multiplier map at that cell in your gas tuning software.
+- **Negative Deviation (e.g., -8%)**: LPG is running richer than petrol (the ECU is pulling 8% more fuel when on gas). To correct this, you need to **decrease (subtract -8%)** the LPG multiplier map at that cell in your gas tuning software.
+- **Goal**: Adjust the LPG map until the Deviation is close to **0%** across all cells.
+
 ### Live Dashboard
 - **4 customizable gauges**: Analog gauge views with neon glow, warning zones, and tick marks
 - **4 dashboard value cards**: Long-press to swap which PID each card shows

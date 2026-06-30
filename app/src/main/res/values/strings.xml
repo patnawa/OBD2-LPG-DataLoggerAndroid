@@ -41,6 +41,7 @@
     <string name="open_log_skipped_non_csv">Skipped %1$d non-CSV file(s) — only CSV can be plotted.</string>
     <string name="lpg">LPG/CNG</string>
     <string name="deviation">DEVIATION</string>
+    <string name="map_formula_hint">Formula: Deviation = LPG Trim - Petrol Trim. Adjust your LPG ECU multiplier map by this percentage.</string>
     
     <!-- Tuning Analyzer Context Strings -->
     <string name="analyzer_unknown">UNKNOWN</string>

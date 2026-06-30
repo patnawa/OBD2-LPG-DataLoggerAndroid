@@ -42,6 +42,7 @@
     <string name="open_log_skipped_non_csv">ข้ามไฟล์ที่ไม่ใช่ CSV %1$d ไฟล์ — แสดงบนแผนที่ได้เฉพาะ CSV</string>
     <string name="lpg">LPG/CNG</string>
     <string name="deviation">ความเบี่ยงเบน</string>
+    <string name="map_formula_hint">สูตรคำนวณ: ค่าเบี่ยงเบน (Deviation) = แก๊ส Trim - น้ำมัน Trim. ใช้เปอร์เซ็นต์นี้ปรับค่าตารางคูณในกล่องจูนแก๊สของคุณ</string>
     
     <!-- Tuning Analyzer Context Strings -->
     <string name="analyzer_unknown">ไม่ทราบสถานะ</string>
