@@ -26,25 +26,14 @@ public class FuelMapView extends View {
     private Paint badgePaint;
     private final RectF cellRect = new RectF();
 
-    // Debounce tracking
-    private int lastRpmCell = -1;
-    private int lastMapCell = -1;
-    private int consecutiveTicks = 0;
-    private static final int DWELL_THRESHOLD = 1; // Was 3 — real driving has rapid RPM/MAP
-    // changes so dwell=3 almost never triggers. With dwell=1, the SECOND consecutive
-    // sample in the same cell is stored (the first call lands in the else branch and
-    // only seeds consecutiveTicks=1; storage fires on the next same-cell tick when
-    // consecutiveTicks is incremented to 2 >= 1). This filters one-off transient
-    // samples while keeping the map responsive.
-
     // Grid configuration
     private static final int RPM_MIN = 500;
     private static final int RPM_MAX = 6500;
     private static final int RPM_STEP = 500;
     
-    private static final int MAP_MIN = 20;
-    private static final int MAP_MAX = 100;
-    private static final int MAP_STEP = 10;
+    private static final float[] T_INJ_BINS = {
+        2.0f, 2.5f, 3.0f, 3.5f, 4.0f, 4.5f, 6.0f, 8.0f, 10.0f, 12.0f, 14.0f, 16.0f, 18.0f
+    };
 
     // Data store: Map<GridKey, TrimData>
     private final Map<String, TrimData> petrolData = new HashMap<>();
@@ -53,7 +42,35 @@ public class FuelMapView extends View {
     private MapMode currentMode = MapMode.PETROL;
     
     private int currentRpmCell = -1;
-    private int currentMapCell = -1;
+    private float currentTinjCell = -1f;
+
+    // Debounce tracking
+    private int lastRpmCell = -1;
+    private float lastTinjCell = -1f;
+    private int consecutiveTicks = 0;
+
+    private static float mapLoadToTinj(double loadOrMap) {
+        if (loadOrMap <= 20) return 2.0f;
+        if (loadOrMap >= 100) {
+            double ratio = (loadOrMap - 100) / 60.0;
+            return (float) Math.min(18.0, 12.0 + ratio * 6.0);
+        }
+        double ratio = (loadOrMap - 20) / 80.0;
+        return (float) (2.0 + ratio * 10.0);
+    }
+
+    private static int findClosestBinIndex(double value, float[] bins) {
+        int bestIdx = 0;
+        double minDiff = Double.MAX_VALUE;
+        for (int i = 0; i < bins.length; i++) {
+            double diff = Math.abs(bins[i] - value);
+            if (diff < minDiff) {
+                minDiff = diff;
+                bestIdx = i;
+            }
+        }
+        return bestIdx;
+    }
 
     public FuelMapView(Context context) {
         super(context);
@@ -105,17 +122,17 @@ public class FuelMapView extends View {
     }
 
     private void pushDataInternal(double rpm, double map, double trim, FuelMode fuelMode) {
-        int rCell = (int) (Math.round(rpm / RPM_STEP) * RPM_STEP);
-        int mCell = (int) (Math.round(map / MAP_STEP) * MAP_STEP);
+        int rpmCell = (int) (Math.round(rpm / RPM_STEP) * RPM_STEP);
+        rpmCell = Math.max(RPM_MIN, Math.min(RPM_MAX, rpmCell));
 
-        // Clamp
-        rCell = Math.max(RPM_MIN, Math.min(RPM_MAX, rCell));
-        mCell = Math.max(MAP_MIN, Math.min(MAP_MAX, mCell));
+        double tinj = mapLoadToTinj(map);
+        int tinjIdx = findClosestBinIndex(tinj, T_INJ_BINS);
+        float tinjBinValue = T_INJ_BINS[tinjIdx];
 
-        currentRpmCell = rCell;
-        currentMapCell = mCell;
+        currentRpmCell = rpmCell;
+        currentTinjCell = tinjBinValue;
 
-        String key = rCell + "_" + mCell;
+        String key = rpmCell + "_" + String.format(Locale.US, "%.2f", tinjBinValue);
         Map<String, TrimData> targetData = (fuelMode == FuelMode.PETROL) ? petrolData : lpgData;
         TrimData data = targetData.get(key);
         if (data == null) {
@@ -129,10 +146,10 @@ public class FuelMapView extends View {
         petrolData.clear();
         lpgData.clear();
         currentRpmCell = -1;
-        currentMapCell = -1;
+        currentTinjCell = -1f;
         // Reset dwell tracking so the next session starts fresh.
         lastRpmCell = -1;
-        lastMapCell = -1;
+        lastTinjCell = -1f;
         consecutiveTicks = 0;
         invalidate();
     }
@@ -154,9 +171,9 @@ public class FuelMapView extends View {
             lpgData.clear();
         }
         currentRpmCell = -1;
-        currentMapCell = -1;
+        currentTinjCell = -1f;
         lastRpmCell = -1;
-        lastMapCell = -1;
+        lastTinjCell = -1f;
         consecutiveTicks = 0;
         invalidate();
     }
@@ -165,8 +182,8 @@ public class FuelMapView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        int cols = (MAP_MAX - MAP_MIN) / MAP_STEP + 1;
-        int rows = (RPM_MAX - RPM_MIN) / RPM_STEP + 1;
+        int cols = (RPM_MAX - RPM_MIN) / RPM_STEP + 1;
+        int rows = T_INJ_BINS.length;
 
         float width = getWidth();
         float height = getHeight();
@@ -185,24 +202,24 @@ public class FuelMapView extends View {
 
         // Draw grid and cells
         for (int r = 0; r < rows; r++) {
-            int rpmValue = RPM_MAX - (r * RPM_STEP);
+            float tinjValue = T_INJ_BINS[r];
             float yTop = paddingTop + r * cellHeight;
             float yBottom = yTop + cellHeight;
             
-            // Draw RPM Y-axis labels
-            canvas.drawText(String.valueOf(rpmValue), paddingLeft / 2, yBottom - cellHeight / 4, textPaint);
+            // Draw T.inj Y-axis labels
+            canvas.drawText(String.format(Locale.US, "%.2f", tinjValue), paddingLeft / 2, yBottom - cellHeight / 4, textPaint);
 
             for (int c = 0; c < cols; c++) {
-                int mapValue = MAP_MIN + (c * MAP_STEP);
+                int rpmValue = RPM_MIN + (c * RPM_STEP);
                 float xLeft = paddingLeft + c * cellWidth;
                 float xRight = xLeft + cellWidth;
 
-                // Draw MAP X-axis labels (only on the last row)
+                // Draw RPM X-axis labels (only on the last row)
                 if (r == rows - 1) {
-                    canvas.drawText(String.valueOf(mapValue), xLeft + cellWidth / 2, height - (5f * density), textPaint);
+                    canvas.drawText(String.valueOf(rpmValue), xLeft + cellWidth / 2, height - (5f * density), textPaint);
                 }
 
-                String key = rpmValue + "_" + mapValue;
+                String key = rpmValue + "_" + String.format(Locale.US, "%.2f", tinjValue);
                 TrimData petrol = petrolData.get(key);
                 TrimData lpg = lpgData.get(key);
                 
@@ -232,7 +249,7 @@ public class FuelMapView extends View {
                     if (isLocked) alpha = 255;
                     
                     // Highlight current cell differently
-                    if (rpmValue == currentRpmCell && mapValue == currentMapCell) {
+                    if (rpmValue == currentRpmCell && Math.abs(tinjValue - currentTinjCell) < 0.01f) {
                         highlightPaint.setAlpha(255);
                         canvas.drawRect(cellRect, highlightPaint);
                     } else {
@@ -262,7 +279,7 @@ public class FuelMapView extends View {
                 }
 
                 // Draw cell border
-                if (rpmValue == currentRpmCell && mapValue == currentMapCell) {
+                if (rpmValue == currentRpmCell && Math.abs(tinjValue - currentTinjCell) < 0.01f) {
                     gridPaint.setColor(0xFFFFFFFF);
                     gridPaint.setStrokeWidth(4f);
                 } else if (isLocked) {
@@ -334,24 +351,24 @@ public class FuelMapView extends View {
         StringBuilder sb = new StringBuilder();
         
         int rpmCount = (RPM_MAX - RPM_MIN) / RPM_STEP + 1;
-        int mapCount = (MAP_MAX - MAP_MIN) / MAP_STEP + 1;
+        int tinjCount = T_INJ_BINS.length;
         
         // Header row: RPM as Columns (Horizontal)
-        sb.append("MAP \\ RPM");
+        sb.append("T.inj \\ RPM");
         for (int c = 0; c < rpmCount; c++) {
             int rpmValue = RPM_MIN + (c * RPM_STEP);
             sb.append(",").append(rpmValue);
         }
         sb.append("\n");
         
-        // MAP as Rows (Vertical)
-        for (int r = 0; r < mapCount; r++) {
-            int mapValue = MAP_MIN + (r * MAP_STEP);
-            sb.append(mapValue);
+        // T.inj as Rows (Vertical)
+        for (int r = 0; r < tinjCount; r++) {
+            float tinjValue = T_INJ_BINS[r];
+            sb.append(String.format(Locale.US, "%.2f", tinjValue));
             
             for (int c = 0; c < rpmCount; c++) {
                 int rpmValue = RPM_MIN + (c * RPM_STEP);
-                String key = rpmValue + "_" + mapValue;
+                String key = rpmValue + "_" + String.format(Locale.US, "%.2f", tinjValue);
                 TrimData petrol = petrolData.get(key);
                 TrimData lpg = lpgData.get(key);
                 

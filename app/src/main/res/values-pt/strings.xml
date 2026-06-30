@@ -22,7 +22,7 @@
     <string name="smart_tuning_analysis">Análise de ajuste inteligente</string>
     <string name="waiting_for_data">Aguardando dados de Fuel Trim...</string>
     <string name="live_fuel_map">Mapa de Fuel Trim ao vivo</string>
-    <string name="map_axes">Y = RPM (500-6000), X = MAP kPa (20-100)</string>
+    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = RPM (500-6500)</string>
     <string name="how_to_read_map_title">💡 Como ler o mapa</string>
     <string name="how_to_read_map_desc" formatted="false">Mostra o ajuste de combustível total (STFT + LTFT)\n🟢 Verde (±5%) = Perfeito\n🔴 Vermelho (Negativo) = Rico (Reduzir combustível)\n🔵 Azul (Positivo) = Pobre (Adicionar combustível)\n\nBLOQUEIO DE CÉLULA E CONTADOR DE TOQUES:\nAs células começam transparentes. Mantenha RPM/MAP estáveis para coletar dados. A opacidade aumenta com os toques.\nx20 toques = Bloqueado (Borda dourada).\n\nDESVIO: Mostra (LPG/CNG - Gasolina).\n+ significa que o GPL está pobre. - significa que o GPL está rico. Foque em 0%.\n\nASSISTENTE DE AJUSTE: Mostra a correção exata em % para o seu mapa de GPL (Exportável para CSV).\n\n* Nota: Para usar o assistente ou o desvio, você deve coletar os dados de gasolina e GPL primeiro!</string>
     <string name="petrol">GASOLINA</string>

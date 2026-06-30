@@ -1,6 +1,6 @@
 # OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 2.9.5** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.0.0** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
@@ -22,13 +22,13 @@ This app connects to your vehicle's OBD2 port via ELM327-compatible adapters (vL
 - **VIN-based fallback**: If live detection fails, decodes brand/year from VIN WMI + model year code to estimate supported PIDs
 
 ### LPG/CNG Tune Assist
-- **Live Fuel Map**: 2D grid (RPM × MAP) with color-coded STFT+LTFT averages — red (rich) to blue (lean), green (perfect)
+- **Live Fuel Map**: 2D grid (T.inj ms × RPM) with color-coded STFT+LTFT averages — red (rich) to blue (lean), green (perfect)
 - **Dual-fuel comparison**: Separate Petrol and LPG data layers on the same map; Deviation view shows `LPG - Petrol` per cell
 - **Correction grid**: Auto-calculates the % correction multiplier needed for the LPG ECU to match petrol trims
 - **CSV export**: Export correction map as CSV for use on a tuning laptop; share via any app (Line, Email, Bluetooth)
 - **Closed-loop gating**: Only plots data when PID 03 bit 0x02 is set (closed loop) and ECT ≥ 80°C
 - **LTFT fallback**: Uses LTFT alone when STFT is unavailable (common on some Toyota/Honda models)
-- **MAP → Engine Load fallback**: Uses Engine Load (PID 0x04) as X-axis when MAP is unavailable (MAF-only vehicles)
+- **MAP → T.inj scaling**: Linearly scales standard OBD2 MAP/Load values into estimated `T.inj` ms to ensure compatibility with all car models
 - **Cell lock & hit counter**: Dwell-time debounce filters transients; cells lock after 20+ hits (gold border)
 - **Open Log File**: Load external CSV files from anywhere (SAF picker) for offline analysis; multi-select for cross-file Petrol+LPG comparison
 - **In-list Compare 2 Logs**: Pick a Petrol log + an LPG log from History and plot both on one map

@@ -22,7 +22,7 @@
     <string name="smart_tuning_analysis">Analisi di calibrazione intelligente</string>
     <string name="waiting_for_data">In attesa dei dati Fuel Trim...</string>
     <string name="live_fuel_map">Mappa Fuel Trim in tempo reale</string>
-    <string name="map_axes">Y = Giri/min (500-6000), X = MAP kPa (20-100)</string>
+    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = Giri/min (500-6500)</string>
     <string name="how_to_read_map_title">💡 Come leggere la mappa</string>
     <string name="how_to_read_map_desc" formatted="false">Mostra il Fuel Trim totale (STFT + LTFT)\n🟢 Verde (±5%) = Perfetto\n🔴 Rosso (Negativo) = Ricco (Ridurre carburante)\n🔵 Blu (Positivo) = Magro (Aggiungere carburante)\n\nBLOCCO CELLA E CONTATORE COLPI:\nLe celle iniziano trasparenti. Mantieni stabili Giri/min/MAP per raccogliere dati. L\'opacità aumenta con i colpi.\nx20 colpi = Bloccato (Bordo dorato).\n\nDEVIAZIONE: Mostra (LPG/CNG - Benzina).\n+ significa che il GPL è magro. - significa che il GPL è ricco. Punta allo 0%.\n\nASSISTENTE DI CALIBRAZIONE: Mostra la correzione esatta in % per la mappa GPL (Esportabile in CSV).\n\n* Nota: per utilizzare l\'assistente o la deviazione, devi prima raccogliere dati sia a Benzina che a GPL!</string>
     <string name="petrol">BENZINA</string>

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.0] - 2026-06-30
+### Added & Changed
+- **Fuel Map Redesign (Y = T.inj ms, X = RPM)**: Redesigned the Live Fuel Map layout to swap axes to match standard LPG tuning software: Y-axis is now gasoline injection time (`T.inj` in ms) bins, and X-axis is `RPM` (500 to 6500 in 500 steps).
+- **Linear MAP/Load to T.inj Scaling**: Implemented automated linear scaling from standard OBD2 MAP/Load values into estimated `T.inj` ms to ensure compatibility with all vehicle models.
+- **Tuning Correction CSV Export Update**: Realigned the Tune Assist correction CSV export to output in the new `T.inj` row-by-RPM-column layout format.
+- **Multilingual Axis Labeling**: Updated the `map_axes` helper text resource in all 15 translation files (Thai, English, Arabic, German, Spanish, French, Hindi, Indonesian, Italian, Japanese, Korean, Portuguese, Russian, Vietnamese, Chinese).
+
+### Fixed
+- **History Log List Height Calculation**: Resolved a classic Android layout bug where list views inside a ScrollView measured with 0 width during initial layout (since the tab starts as `gone`), forcing them to wrap text vertically and request an artificially massive height (leaving a huge blank space at the bottom). Implemented screen width fallback and scheduled precise post-layout height adjustments.
+- **Changelog and Readme Clarification**: Documented transition colors (Orange/Yellow for slightly rich, Light Blue for slightly lean) in the "How to read the Map" helper dialog to clarify grid color blending on dark backgrounds.
+
 ## [2.9.5] - 2026-06-30
 ### Added
 - **ELM327 Clone & Standard Adapter Detection**: Implemented an automated adapter validator query check during OBD2 chip initialization. It queries `ATI` and `AT@1` command availability to identify standard vs. non-standard/buggy clone adapters (such as low-quality ELM327 v2.1 Chinese clones).

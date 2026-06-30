@@ -22,9 +22,9 @@
     <string name="smart_tuning_analysis">Smart Tuning Analysis</string>
     <string name="waiting_for_data">Waiting for Fuel Trim data...</string>
     <string name="live_fuel_map">Live Fuel Trim Map</string>
-    <string name="map_axes">Y = RPM (500-6000), X = MAP kPa (20-100)</string>
+    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = RPM (500-6500)</string>
     <string name="how_to_read_map_title">💡 How to read the Map</string>
-    <string name="how_to_read_map_desc" formatted="false">Shows Total Fuel Trim (STFT + LTFT)\n🟢 Green (±5%) = Perfect\n🔴 Red (Negative) = Rich (Reduce fuel)\n🔵 Blue (Positive) = Lean (Add fuel)\n\nCELL LOCK &amp; HIT COUNTER:\nCells start transparent. Hold steady RPM/MAP to collect data. Opacity increases with hits.\nx20 hits = Locked (Gold Border).\n\nDEVIATION: Shows (LPG/CNG - Petrol).\n+ means LPG is Lean. - means LPG is Rich. Aim for 0%.\n\nTUNE ASSIST: Shows exact % correction for your LPG map (Exportable to CSV).\n\n* Note: To use Tune Assist or Deviation, you must collect BOTH Petrol and LPG data first!</string>
+    <string name="how_to_read_map_desc" formatted="false">Shows Total Fuel Trim (STFT + LTFT)\n🟢 Green (±5%) = Perfect\n🟡 Orange/Yellow (-5% to -10%) = Slightly Rich\n🔴 Red (Under -10%) = Very Rich (Reduce fuel)\n🌐 Light Blue (+5% to +10%) = Slightly Lean\n🔵 Dark Blue (Over +10%) = Very Lean (Add fuel)\n\nCELL LOCK &amp; HIT COUNTER:\nCells start transparent. Hold steady RPM/T.inj to collect data. Opacity increases with hits.\nx20 hits = Locked (Gold Border).\n\nDEVIATION: Shows (LPG/CNG - Petrol).\n+ means LPG is Lean. - means LPG is Rich. Aim for 0%.\n\nTUNE ASSIST: Shows exact % correction for your LPG map (Exportable to CSV).\n\n* Note: To use Tune Assist or Deviation, you must collect BOTH Petrol and LPG data first!</string>
     <string name="petrol">PETROL</string>
     <string name="petrol_logs_header">Petrol Logs</string>
     <string name="lpg_logs_header">LPG/CNG Logs</string>

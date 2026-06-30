@@ -968,8 +968,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void setListViewHeightBasedOnChildren(android.widget.ListView listView) {
         android.widget.ListAdapter adapter = listView.getAdapter();
         if (adapter == null) return;
-        int widthSpec = View.MeasureSpec.makeMeasureSpec(
-                Math.max(listView.getWidth(), 0), View.MeasureSpec.AT_MOST);
+        int width = listView.getWidth();
+        if (width <= 0) {
+            // Fallback: estimate width using screen width minus padding
+            int screenWidth = listView.getResources().getDisplayMetrics().widthPixels;
+            float density = listView.getResources().getDisplayMetrics().density;
+            width = screenWidth - (int) (32 * density); // 16dp padding on each side
+            // Schedule precise layout recalculation once the view is attached and laid out
+            listView.post(() -> setListViewHeightBasedOnChildren(listView));
+        }
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.AT_MOST);
         int totalHeight = 0;
         View view = null;
         for (int i = 0; i < adapter.getCount(); i++) {

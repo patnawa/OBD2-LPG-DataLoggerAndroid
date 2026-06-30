@@ -22,7 +22,7 @@
     <string name="smart_tuning_analysis">Análisis de sintonización inteligente</string>
     <string name="waiting_for_data">Esperando datos de Fuel Trim...</string>
     <string name="live_fuel_map">Mapa de Fuel Trim en tiempo real</string>
-    <string name="map_axes">Y = RPM (500-6000), X = MAP kPa (20-100)</string>
+    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = RPM (500-6500)</string>
     <string name="how_to_read_map_title">💡 Cómo leer el mapa</string>
     <string name="how_to_read_map_desc" formatted="false">Muestra el ajuste de combustible total (STFT + LTFT)\n🟢 Verde (±5%) = Perfecto\n🔴 Rojo (Negativo) = Rico (Reducir combustible)\n🔵 Azul (Positivo) = Pobre (Añadir combustible)\n\nBLOQUEO DE CELDA Y CONTADOR DE TOQUES:\nLas celdas comienzan transparentes. Mantenga RPM/MAP estables para recopilar datos. La opacidad aumenta con los toques.\nx20 toques = Bloqueado (Borde dorado).\n\nDESVIACIÓN: Muestra (LPG/CNG - Gasolina).\n+ significa que el GLP es pobre. - significa que el GLP es rico. Apunte al 0%.\n\nASISTENTE DE SINTONIZACIÓN: Muestra la corrección exacta en % para su mapa de GLP (Exportable a CSV).\n\n* Nota: ¡Para usar el asistente o la desviación, debe recopilar datos de gasolina y GLP primero!</string>
     <string name="petrol">GASOLINA</string>
