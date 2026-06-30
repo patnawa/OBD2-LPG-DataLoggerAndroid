@@ -722,17 +722,58 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Drop any stale selection indices that no longer exist after a reload.
         compareSelection.removeIf(i -> i >= logFiles.size());
 
-        List<String> names = new ArrayList<>();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
-        for (HistoryLogFile hlf : logFiles) {
-            names.add(hlf.name + "\n" + sdf.format(new Date(hlf.date)));
-        }
 
-        // In compare mode show multiple-choice checkboxes; otherwise a plain list.
-        int layout = compareMode
-                ? android.R.layout.simple_list_item_multiple_choice
-                : android.R.layout.simple_list_item_1;
-        historyListView.setAdapter(new ArrayAdapter<>(this, layout, names));
+        historyListView.setAdapter(new android.widget.BaseAdapter() {
+            @Override
+            public int getCount() {
+                return logFiles.size();
+            }
+
+            @Override
+            public Object getItem(int position) {
+                return logFiles.get(position);
+            }
+
+            @Override
+            public long getItemId(int position) {
+                return position;
+            }
+
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View view = convertView;
+                if (view == null) {
+                    view = getLayoutInflater().inflate(R.layout.list_item_history, parent, false);
+                }
+
+                HistoryLogFile item = logFiles.get(position);
+                TextView nameText = view.findViewById(R.id.logNameText);
+                TextView dateText = view.findViewById(R.id.logDateText);
+                View actionLayout = view.findViewById(R.id.actionLayout);
+                android.widget.ImageButton btnShare = view.findViewById(R.id.btnShare);
+                android.widget.ImageButton btnDelete = view.findViewById(R.id.btnDelete);
+                CheckBox compareCheckbox = view.findViewById(R.id.compareCheckbox);
+
+                nameText.setText(item.name);
+                dateText.setText(sdf.format(new Date(item.date)));
+
+                if (compareMode) {
+                    actionLayout.setVisibility(View.GONE);
+                    compareCheckbox.setVisibility(View.VISIBLE);
+                    compareCheckbox.setChecked(historyListView.isItemChecked(position));
+                } else {
+                    actionLayout.setVisibility(View.VISIBLE);
+                    compareCheckbox.setVisibility(View.GONE);
+
+                    btnShare.setOnClickListener(v -> shareLogFile(item));
+                    btnDelete.setOnClickListener(v -> deleteLogFile(item));
+                }
+
+                return view;
+            }
+        });
+
         historyListView.setChoiceMode(compareMode
                 ? android.widget.ListView.CHOICE_MODE_MULTIPLE
                 : android.widget.ListView.CHOICE_MODE_NONE);
@@ -740,7 +781,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Re-apply checked state after rebuilding the adapter (compare mode).
         if (compareMode) {
             for (Integer pos : compareSelection) {
-                if (pos < names.size()) historyListView.setItemChecked(pos, true);
+                if (pos < logFiles.size()) historyListView.setItemChecked(pos, true);
             }
         }
 
@@ -757,43 +798,34 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             startActivity(intent);
         });
 
-        historyListView.setOnItemLongClickListener((parent, view, position, id) -> {
-            if (compareMode) return false; // long-press menu disabled while comparing
-            HistoryLogFile selectedFile = logFiles.get(position);
-            String[] options = {"Share Log", "Delete Log"};
-            new android.app.AlertDialog.Builder(this)
-                .setTitle(selectedFile.name)
-                .setItems(options, (dialog, which) -> {
-                    if (which == 0) { // Share
-                        Intent shareIntent = new Intent(Intent.ACTION_SEND);
-                        shareIntent.setType("text/csv");
-                        shareIntent.putExtra(Intent.EXTRA_STREAM, selectedFile.uri);
-                        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        startActivity(Intent.createChooser(shareIntent, "Share Log File"));
-                    } else if (which == 1) { // Delete
-                        new android.app.AlertDialog.Builder(this)
-                            .setTitle("Confirm Delete")
-                            .setMessage("Are you sure you want to delete this log?")
-                            .setPositiveButton("Delete", (d, w) -> {
-                                if (selectedFile.delete(this)) {
-                                    Toast.makeText(this, "File deleted", Toast.LENGTH_SHORT).show();
-                                    loadHistoryFiles();
-                                } else {
-                                    Toast.makeText(this, "Failed to delete file", Toast.LENGTH_SHORT).show();
-                                }
-                            })
-                            .setNegativeButton("Cancel", null)
-                            .show();
-                    }
-                })
-                .show();
-            return true;
-        });
-
         // Size the ListView to fit ALL rows so the OUTER ScrollView can scroll
         // through every log — fixes "can't scroll to the oldest logs".
         setListViewHeightBasedOnChildren(historyListView);
         updateCompareUi();
+    }
+
+    private void shareLogFile(HistoryLogFile selectedFile) {
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("text/csv");
+        shareIntent.putExtra(Intent.EXTRA_STREAM, selectedFile.uri);
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(shareIntent, "Share Log File"));
+    }
+
+    private void deleteLogFile(HistoryLogFile selectedFile) {
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("Confirm Delete")
+            .setMessage("Are you sure you want to delete this log?")
+            .setPositiveButton("Delete", (d, w) -> {
+                if (selectedFile.delete(this)) {
+                    Toast.makeText(this, "File deleted", Toast.LENGTH_SHORT).show();
+                    loadHistoryFiles();
+                } else {
+                    Toast.makeText(this, "Failed to delete file", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
     }
 
     /**
@@ -842,6 +874,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             compareSelection.add(position);
         } else {
             compareSelection.remove(position);
+        }
+        if (historyListView.getAdapter() instanceof android.widget.BaseAdapter) {
+            ((android.widget.BaseAdapter) historyListView.getAdapter()).notifyDataSetChanged();
         }
         updateCompareUi();
     }
