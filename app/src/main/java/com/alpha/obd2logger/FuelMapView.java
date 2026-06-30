@@ -115,23 +115,14 @@ public class FuelMapView extends View {
         currentRpmCell = rCell;
         currentMapCell = mCell;
 
-        if (rCell == lastRpmCell && mCell == lastMapCell) {
-            consecutiveTicks++;
-            if (consecutiveTicks >= DWELL_THRESHOLD) {
-                String key = rCell + "_" + mCell;
-                Map<String, TrimData> targetData = (fuelMode == FuelMode.PETROL) ? petrolData : lpgData;
-                TrimData data = targetData.get(key);
-                if (data == null) {
-                    data = new TrimData();
-                }
-                data.addStableValue(trim);
-                targetData.put(key, data);
-            }
-        } else {
-            lastRpmCell = rCell;
-            lastMapCell = mCell;
-            consecutiveTicks = 1;
+        String key = rCell + "_" + mCell;
+        Map<String, TrimData> targetData = (fuelMode == FuelMode.PETROL) ? petrolData : lpgData;
+        TrimData data = targetData.get(key);
+        if (data == null) {
+            data = new TrimData();
         }
+        data.addStableValue(trim);
+        targetData.put(key, data);
     }
 
     public void clearData() {
