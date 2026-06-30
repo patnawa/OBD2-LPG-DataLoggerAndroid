@@ -26,6 +26,8 @@
     <string name="how_to_read_map_title">💡 How to read the Map</string>
     <string name="how_to_read_map_desc" formatted="false">Shows Total Fuel Trim (STFT + LTFT)\n🟢 Green (±5%) = Perfect\n🔴 Red (Negative) = Rich (Reduce fuel)\n🔵 Blue (Positive) = Lean (Add fuel)\n\nCELL LOCK &amp; HIT COUNTER:\nCells start transparent. Hold steady RPM/MAP to collect data. Opacity increases with hits.\nx20 hits = Locked (Gold Border).\n\nDEVIATION: Shows (LPG/CNG - Petrol).\n+ means LPG is Lean. - means LPG is Rich. Aim for 0%.\n\nTUNE ASSIST: Shows exact % correction for your LPG map (Exportable to CSV).\n\n* Note: To use Tune Assist or Deviation, you must collect BOTH Petrol and LPG data first!</string>
     <string name="petrol">PETROL</string>
+    <string name="petrol_logs_header">Petrol Logs</string>
+    <string name="lpg_logs_header">LPG/CNG Logs</string>
     <string name="open_log_file">OPEN LOG FILE</string>
     <string name="open_log_file_chooser">Select log CSV file(s)</string>
     <string name="open_log_multi_hint">Tip: select multiple files (e.g. a Petrol log + an LPG log) to compare them together.</string>

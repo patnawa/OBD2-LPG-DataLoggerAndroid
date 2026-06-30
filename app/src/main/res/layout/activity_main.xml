@@ -1018,11 +1018,40 @@
                         android:visibility="gone" />
                 </LinearLayout>
 
-                <!-- height=wrap_content + setListViewHeightBasedOnChildren() so the
-                     OUTER ScrollView scrolls through ALL logs (was fixed 400dp which
-                     clipped older entries and stole touch-scroll from the ListView). -->
+                <!-- Petrol Logs Section -->
+                <TextView
+                    android:id="@+id/petrolLogsHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/petrol_logs_header"
+                    android:textColor="@color/primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="8dp" />
+
                 <ListView
-                    android:id="@+id/historyListView"
+                    android:id="@+id/historyListViewPetrol"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:choiceMode="none"
+                    android:divider="@color/surface2"
+                    android:dividerHeight="1dp" />
+
+                <!-- LPG/CNG Logs Section -->
+                <TextView
+                    android:id="@+id/lpgLogsHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/lpg_logs_header"
+                    android:textColor="@color/accent"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="8dp" />
+
+                <ListView
+                    android:id="@+id/historyListViewLpg"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:choiceMode="none"

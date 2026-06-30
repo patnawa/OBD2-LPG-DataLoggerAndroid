@@ -27,6 +27,8 @@
     <string name="how_to_read_map_title">💡 วิธีอ่านค่า Map</string>
     <string name="how_to_read_map_desc" formatted="false">แสดงผลรวม Fuel Trim (STFT + LTFT)\n🟢 สีเขียว (±5%) = สมบูรณ์\n🔴 สีแดง (ติดลบ) = น้ำมันหนาไป (ลดการจ่าย)\n🔵 สีฟ้า (บวก) = น้ำมันบางไป (เพิ่มการจ่าย)\n\nฟีเจอร์ล็อกโซนจูนวิ่ง (CELL LOCK):\nแช่คันเร่งให้นิ่งเพื่อเก็บข้อมูล สีตารางจะเข้มขึ้นตามจำนวนครั้งที่อ่านได้ (มุมขวาบน)\nx20 ครั้ง = เก็บข้อมูลสมบูรณ์ (กรอบสีเหลือง)\n\nโหมด DEVIATION: แสดงส่วนต่าง (LPG/CNG - Petrol)\nค่าบวก=แก๊สบาง ค่าลบ=แก๊สหนา ควรจูนให้เข้าใกล้ 0%\n\nโหมด TUNE ASSIST: คำนวณ % ปรับจูนแก๊สอัตโนมัติ (Export เป็น CSV ได้)\n\n* ต้องวิ่งเก็บข้อมูลทั้ง 2 โหมด (น้ำมัน+แก๊ส) ก่อน ถึงจะแสดงผลได้!</string>
     <string name="petrol">น้ำมัน</string>
+    <string name="petrol_logs_header">บันทึกน้ำมัน (Petrol)</string>
+    <string name="lpg_logs_header">บันทึกแก๊ส (LPG/CNG)</string>
     <string name="open_log_file">เปิดไฟล์ Log</string>
     <string name="open_log_file_chooser">เลือกไฟล์ log CSV (เลือกได้หลายไฟล์)</string>
     <string name="open_log_multi_hint">เคล็ดลับ: เลือกหลายไฟล์พร้อมกันได้ (เช่น ไฟล์ Petrol + ไฟล์ LPG) เพื่อนำมาเทียบกัน</string>

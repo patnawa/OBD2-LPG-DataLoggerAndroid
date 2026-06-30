@@ -95,14 +95,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     // --- UI: History tab ---
     private View panelHistory;
-    private android.widget.ListView historyListView;
+    private android.widget.ListView historyListViewPetrol;
+    private android.widget.ListView historyListViewLpg;
     private TextView historyFolderText;
     private com.google.android.material.button.MaterialButton btnCompareLogs;
     private TextView compareHintText;
     // Compare mode: when true the history list shows checkboxes so the user can
     // pick up to 2 logs (e.g. a Petrol log + an LPG log) and plot both onto one map.
     private boolean compareMode = false;
-    private final java.util.LinkedHashSet<Integer> compareSelection = new java.util.LinkedHashSet<>();
+    private final java.util.LinkedHashSet<Uri> compareSelection = new java.util.LinkedHashSet<>();
     private java.util.List<HistoryLogFile> currentLogFiles = new ArrayList<>();
 
     // --- State ---
@@ -199,8 +200,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         headerStatus = findViewById(R.id.headerStatus);
         headerVin = findViewById(R.id.headerVin);
         btnSettings = findViewById(R.id.btnSettings);
-        
-        historyListView = findViewById(R.id.historyListView);
+        historyListViewPetrol = findViewById(R.id.historyListViewPetrol);
+        historyListViewLpg = findViewById(R.id.historyListViewLpg);
         historyFolderText = findViewById(R.id.historyFolderText);
         
         bottomNav = findViewById(R.id.tabBar);
@@ -719,20 +720,35 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         java.util.Collections.sort(logFiles, (f1, f2) -> Long.compare(f2.date, f1.date));
         currentLogFiles = logFiles;
-        // Drop any stale selection indices that no longer exist after a reload.
-        compareSelection.removeIf(i -> i >= logFiles.size());
+        
+        // Clean up compareSelection to remove any Uris that no longer exist in logFiles.
+        java.util.HashSet<Uri> allUris = new java.util.HashSet<>();
+        for (HistoryLogFile f : logFiles) {
+            allUris.add(f.uri);
+        }
+        compareSelection.retainAll(allUris);
+
+        List<HistoryLogFile> petrolFiles = new ArrayList<>();
+        List<HistoryLogFile> lpgFiles = new ArrayList<>();
+        for (HistoryLogFile f : logFiles) {
+            if (f.name != null && f.name.toUpperCase().startsWith("PETROL")) {
+                petrolFiles.add(f);
+            } else {
+                lpgFiles.add(f);
+            }
+        }
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
 
-        historyListView.setAdapter(new android.widget.BaseAdapter() {
+        historyListViewPetrol.setAdapter(new android.widget.BaseAdapter() {
             @Override
             public int getCount() {
-                return logFiles.size();
+                return petrolFiles.size();
             }
 
             @Override
             public Object getItem(int position) {
-                return logFiles.get(position);
+                return petrolFiles.get(position);
             }
 
             @Override
@@ -747,7 +763,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     view = getLayoutInflater().inflate(R.layout.list_item_history, parent, false);
                 }
 
-                HistoryLogFile item = logFiles.get(position);
+                HistoryLogFile item = petrolFiles.get(position);
                 TextView nameText = view.findViewById(R.id.logNameText);
                 TextView dateText = view.findViewById(R.id.logDateText);
                 View actionLayout = view.findViewById(R.id.actionLayout);
@@ -761,7 +777,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (compareMode) {
                     actionLayout.setVisibility(View.GONE);
                     compareCheckbox.setVisibility(View.VISIBLE);
-                    compareCheckbox.setChecked(historyListView.isItemChecked(position));
+                    compareCheckbox.setChecked(compareSelection.contains(item.uri));
                 } else {
                     actionLayout.setVisibility(View.VISIBLE);
                     compareCheckbox.setVisibility(View.GONE);
@@ -774,34 +790,86 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         });
 
-        historyListView.setChoiceMode(compareMode
-                ? android.widget.ListView.CHOICE_MODE_MULTIPLE
-                : android.widget.ListView.CHOICE_MODE_NONE);
-
-        // Re-apply checked state after rebuilding the adapter (compare mode).
-        if (compareMode) {
-            for (Integer pos : compareSelection) {
-                if (pos < logFiles.size()) historyListView.setItemChecked(pos, true);
+        historyListViewLpg.setAdapter(new android.widget.BaseAdapter() {
+            @Override
+            public int getCount() {
+                return lpgFiles.size();
             }
-        }
 
-        historyListView.setOnItemClickListener((parent, view, position, id) -> {
-            if (compareMode) {
-                handleCompareClick(position);
-                return;
+            @Override
+            public Object getItem(int position) {
+                return lpgFiles.get(position);
             }
-            HistoryLogFile selectedFile = logFiles.get(position);
-            Intent intent = new Intent(this, ReviewSessionActivity.class);
-            intent.setData(selectedFile.uri);
-            intent.putExtra("file_name", selectedFile.name);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(intent);
+
+            @Override
+            public long getItemId(int position) {
+                return position;
+            }
+
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View view = convertView;
+                if (view == null) {
+                    view = getLayoutInflater().inflate(R.layout.list_item_history, parent, false);
+                }
+
+                HistoryLogFile item = lpgFiles.get(position);
+                TextView nameText = view.findViewById(R.id.logNameText);
+                TextView dateText = view.findViewById(R.id.logDateText);
+                View actionLayout = view.findViewById(R.id.actionLayout);
+                android.widget.ImageButton btnShare = view.findViewById(R.id.btnShare);
+                android.widget.ImageButton btnDelete = view.findViewById(R.id.btnDelete);
+                CheckBox compareCheckbox = view.findViewById(R.id.compareCheckbox);
+
+                nameText.setText(item.name);
+                dateText.setText(sdf.format(new Date(item.date)));
+
+                if (compareMode) {
+                    actionLayout.setVisibility(View.GONE);
+                    compareCheckbox.setVisibility(View.VISIBLE);
+                    compareCheckbox.setChecked(compareSelection.contains(item.uri));
+                } else {
+                    actionLayout.setVisibility(View.VISIBLE);
+                    compareCheckbox.setVisibility(View.GONE);
+
+                    btnShare.setOnClickListener(v -> shareLogFile(item));
+                    btnDelete.setOnClickListener(v -> deleteLogFile(item));
+                }
+
+                return view;
+            }
         });
 
-        // Size the ListView to fit ALL rows so the OUTER ScrollView can scroll
-        // through every log — fixes "can't scroll to the oldest logs".
-        setListViewHeightBasedOnChildren(historyListView);
+        historyListViewPetrol.setOnItemClickListener((parent, view, position, id) -> {
+            HistoryLogFile selectedFile = petrolFiles.get(position);
+            if (compareMode) {
+                handleCompareClick(selectedFile.uri);
+                return;
+            }
+            openReviewActivity(selectedFile);
+        });
+
+        historyListViewLpg.setOnItemClickListener((parent, view, position, id) -> {
+            HistoryLogFile selectedFile = lpgFiles.get(position);
+            if (compareMode) {
+                handleCompareClick(selectedFile.uri);
+                return;
+            }
+            openReviewActivity(selectedFile);
+        });
+
+        // Size both ListViews to fit ALL rows so the OUTER ScrollView can scroll
+        setListViewHeightBasedOnChildren(historyListViewPetrol);
+        setListViewHeightBasedOnChildren(historyListViewLpg);
         updateCompareUi();
+    }
+
+    private void openReviewActivity(HistoryLogFile selectedFile) {
+        Intent intent = new Intent(this, ReviewSessionActivity.class);
+        intent.setData(selectedFile.uri);
+        intent.putExtra("file_name", selectedFile.name);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(intent);
     }
 
     private void shareLogFile(HistoryLogFile selectedFile) {
@@ -862,21 +930,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     /** Handle a tap on a row while in compare mode (enforce max 2 selections). */
-    private void handleCompareClick(int position) {
-        boolean nowChecked = historyListView.isItemChecked(position);
-        if (nowChecked) {
+    private void handleCompareClick(Uri uri) {
+        if (compareSelection.contains(uri)) {
+            compareSelection.remove(uri);
+        } else {
             if (compareSelection.size() >= 2) {
-                // Reject the 3rd selection — uncheck it and warn.
-                historyListView.setItemChecked(position, false);
                 Toast.makeText(this, R.string.compare_max_two, Toast.LENGTH_SHORT).show();
                 return;
             }
-            compareSelection.add(position);
-        } else {
-            compareSelection.remove(position);
+            compareSelection.add(uri);
         }
-        if (historyListView.getAdapter() instanceof android.widget.BaseAdapter) {
-            ((android.widget.BaseAdapter) historyListView.getAdapter()).notifyDataSetChanged();
+        if (historyListViewPetrol.getAdapter() instanceof android.widget.BaseAdapter) {
+            ((android.widget.BaseAdapter) historyListViewPetrol.getAdapter()).notifyDataSetChanged();
+        }
+        if (historyListViewLpg.getAdapter() instanceof android.widget.BaseAdapter) {
+            ((android.widget.BaseAdapter) historyListViewLpg.getAdapter()).notifyDataSetChanged();
         }
         updateCompareUi();
     }
@@ -913,19 +981,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     /** Build a file_uris list from the selected rows and open ReviewSessionActivity. */
     private void launchCompare() {
-        java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
-        StringBuilder names = new StringBuilder();
-        for (Integer pos : compareSelection) {
-            if (pos < currentLogFiles.size()) {
-                HistoryLogFile f = currentLogFiles.get(pos);
-                uris.add(f.uri);
-                if (names.length() > 0) names.append(" vs ");
-                names.append(f.name);
-            }
-        }
+        java.util.ArrayList<Uri> uris = new java.util.ArrayList<>(compareSelection);
         if (uris.isEmpty()) {
             Toast.makeText(this, R.string.compare_need_two, Toast.LENGTH_SHORT).show();
             return;
+        }
+        StringBuilder names = new StringBuilder();
+        for (Uri uri : uris) {
+            String filename = "Log File";
+            for (HistoryLogFile f : currentLogFiles) {
+                if (f.uri.equals(uri)) {
+                    filename = f.name;
+                    break;
+                }
+            }
+            if (names.length() > 0) names.append(" vs ");
+            names.append(filename);
         }
         Intent intent = new Intent(this, ReviewSessionActivity.class);
         intent.putParcelableArrayListExtra("file_uris", uris);
