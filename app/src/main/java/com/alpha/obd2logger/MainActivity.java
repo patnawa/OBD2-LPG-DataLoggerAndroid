@@ -897,7 +897,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             compareHintText.setText(R.string.compare_hint_select);
         } else {
             // With >=1 selected, the button doubles as "Compare now".
-            btnCompareLogs.setText(R.string.compare_logs_cancel);
+            btnCompareLogs.setText(R.string.compare_logs);
             compareHintText.setText(getString(R.string.compare_hint_count, n));
         }
         // Re-wire the button: while comparing, pressing it launches the comparison
