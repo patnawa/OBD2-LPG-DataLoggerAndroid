@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.2] - 2026-06-30
+### Added
+- **Detailed Formula Explanations in Help Dialog**: Rewrote the "How to read the Map" help dialog (`how_to_read_map_desc` in English and Thai) to explain the formulas and mathematical logic for each tab (Petrol, LPG, Deviation, and Tune Assist) separately.
+
 ## [3.0.1] - 2026-06-30
 ### Added
 - **UI Formula Explanation**: Added a dynamic, bilingual formula label (`txtMapFormulaHint`) directly underneath the Fuel Map on the main screen to make it clear how the Deviation/Tune Assist percentages are calculated (`Deviation = LPG Trim - Petrol Trim`).
