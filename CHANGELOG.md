@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.9.2] - 2026-06-30
+### Added & Changed
+- **Splitting Log History Lists (Petrol vs. LPG/CNG)**: Split the history files into two distinct visual lists under localized Petrol Logs and LPG/CNG Logs headers to make scanning and comparison much easier.
+- **Uri-based Compare Logs Selection**: Reworked the checkbox selection mechanism to track items directly by their document `Uri` (using `LinkedHashSet<Uri>`) instead of unstable index list view positions. Fixes checking/unchecking bugs.
+- **Persistent Compare Mode & Selection State**: Ensured that the selected comparison files and compare mode are retained and fully interactive when returning (pressing Back) from the review screen to `MainActivity`.
+- **Global Multi-Language Support (16 Languages)**: Expanded translation files to support 16 major languages, including Spanish, Portuguese, German, French, Italian, Russian, Hindi, Arabic, Indonesian, Vietnamese, Japanese, Korean, and Chinese, alongside a "System Default" fallback locale setting.
+- **Top App Bar Theme Switcher**: Added a beautiful sun/moon toggle button in the top app bar header, providing a single-tap way to switch between light and dark themes synced with Settings.
+
 ## [2.9.1] - 2026-06-30
 ### Added & Changed
 - **Organized log files by VIN subdirectory**: Created separate subdirectories inside `Downloads/OBD2LPGLogger` based on the vehicle's sanitized VIN (e.g. `Downloads/OBD2LPGLogger/1HGCR2F8.../`). If no VIN is detected, logs are written to the root log folder. Also updated history file loading to recursively scan folders so that all subfolder logs are fully loaded into the session list.

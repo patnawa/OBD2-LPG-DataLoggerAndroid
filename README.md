@@ -1,6 +1,6 @@
 # OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 2.9.1** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 2.9.2** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
@@ -65,8 +65,8 @@ This app connects to your vehicle's OBD2 port via ELM327-compatible adapters (vL
 
 ### UI/UX
 - **5 tabs**: Dashboard, Gauges, Fuel Map, DTC, History (with Settings panel)
-- **Bilingual**: English and Thai (ภาษาไทย), auto-detects system locale
-- **Day/Night theme**: System default, Light, or Dark mode
+- **Global Multi-Language**: Support for 16 options including English, Thai (ภาษาไทย), Spanish (Español), Portuguese (Português), German (Deutsch), French (Français), Italian (Italiano), Russian (Русский), Hindi (हिन्दी), Arabic (العربية), Indonesian (Bahasa Indonesia), Vietnamese (Tiếng Việt), Japanese (日本語), Korean (한국어), Chinese (中文), and System Default auto-detection
+- **Day/Night theme**: System default, Light, or Dark mode with a quick-access theme toggle button (sun/moon) on the top app bar
 - **Keep screen on**: Prevents screen sleep while app is foregrounded (default on, toggleable)
 - **Dynamic PID selection**: Long-press any gauge/card/graph to choose which PID it displays
 - **History browser**: Browse, open, share, delete, and compare past log files
