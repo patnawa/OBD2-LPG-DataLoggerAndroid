@@ -2049,7 +2049,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             bluetoothHintText.setText("Turn on Bluetooth and pair the ELM327 adapter first.");
             return;
         }
-        Set<BluetoothDevice> bonded = adapter.getBondedDevices();
+        Set<BluetoothDevice> bonded;
+        try {
+            bonded = adapter.getBondedDevices();
+        } catch (SecurityException se) {
+            setBluetoothSpinnerMessage("Permission denied");
+            bluetoothHintText.setText("Grant Bluetooth connect permission in system settings.");
+            return;
+        }
+
         if (bonded == null || bonded.isEmpty()) {
             setBluetoothSpinnerMessage("No paired devices");
             bluetoothHintText.setText("Pair the ELM327/OBD2 adapter in Bluetooth settings first.");
@@ -2069,7 +2077,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private String deviceLabel(BluetoothDevice device) {
-        String name = device.getName();
+        String name = "";
+        try {
+            name = device.getName();
+        } catch (SecurityException se) {
+            android.util.Log.e("OBD2Logger", "SecurityException reading device name", se);
+        }
         String addr = device.getAddress();
         if (name == null || name.isEmpty()) return addr;
         return name + " (" + addr + ")";

@@ -42,8 +42,31 @@ public final class SerialDriver extends ElmDriver {
             if (device == null) {
                 device = bluetoothAdapter.getRemoteDevice(config.port.trim());
             }
-            socket = device.createRfcommSocketToServiceRecord(SPP_UUID);
-            socket.connect();
+
+            // Cancel discovery before connecting as recommended by Android SDK
+            try {
+                if (bluetoothAdapter.isDiscovering()) {
+                    bluetoothAdapter.cancelDiscovery();
+                }
+            } catch (SecurityException se) {
+                android.util.Log.w("OBD2Logger", "Cannot cancel discovery: missing permission", se);
+            }
+
+            // Attempt RFCOMM socket connection with reflection fallback
+            try {
+                socket = device.createRfcommSocketToServiceRecord(SPP_UUID);
+                socket.connect();
+            } catch (IOException e) {
+                android.util.Log.w("OBD2Logger", "Standard RFCOMM connection failed, trying reflection fallback...", e);
+                try {
+                    socket = (BluetoothSocket) device.getClass().getMethod("createRfcommSocket", int.class).invoke(device, 1);
+                    socket.connect();
+                } catch (Exception e2) {
+                    android.util.Log.e("OBD2Logger", "Bluetooth fallback connection failed", e2);
+                    throw e; // throw original IOException to outer catch
+                }
+            }
+
             // Note: BluetoothSocket does not support setSoTimeout() — inputStream.read()
             // blocks until data arrives, the ELM327 '>' prompt is received, or the stream
             // is closed (returns -1 or throws IOException).
@@ -54,7 +77,8 @@ public final class SerialDriver extends ElmDriver {
                 disconnect();
             }
             return connected;
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            android.util.Log.e("OBD2Logger", "Bluetooth SPP connect error: " + e.getMessage(), e);
             disconnect();
             return false;
         }

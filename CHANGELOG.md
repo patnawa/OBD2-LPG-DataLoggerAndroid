@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.9.4] - 2026-06-30
+### Fixed & Optimized
+- **Classic Bluetooth (SPP) Connection Fallback & Discovery Cancellation**: Configured `SerialDriver.connect()` to cancel Bluetooth active discovery searches before connecting as recommended by the Android SDK to prevent timeouts. Implemented a reflection-based socket connection fallback (using channel 1 `createRfcommSocket`) to recover from standard UUID connection lookup failures.
+- **BLE Write Characteristics & Dynamic Write Type Optimization**: Modified fallback write characteristic scanning in `BleDriver.java` to support either `PROPERTY_WRITE` or `PROPERTY_WRITE_NO_RESPONSE` independently (previously required both). Added dynamic write type selection to use `WRITE_TYPE_NO_RESPONSE` when the characteristic only supports write-without-response.
+- **Runtime Security Exception Safety Guards**: Wrapped Bluetooth bonded device queries and name queries in `MainActivity.java` and `DriverFactory.java` inside try-catch blocks for `SecurityException` to prevent background service crashes on Android 12+ due to runtime permission changes.
+- **Improved Bluetooth Exception Logging**: Replaced silent try-catch blocks with explicit system log outputs (`Log.e`) to provide detailed diagnostics for bluetooth connection failures.
+
 ## [2.9.3] - 2026-06-30
 ### Fixed
 - **Arabic RTL Layout Direction Alignment**: Dynamically set layout direction (`setLayoutDirection`) on configuration and activity decor views based on the resolved locale. This ensures that when the user switches to Arabic (or any RTL language), the entire app layout correctly mirrors to Right-to-Left (RTL) mode instead of alignment bugs.

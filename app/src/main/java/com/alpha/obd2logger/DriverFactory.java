@@ -69,16 +69,20 @@ public final class DriverFactory {
             return new SimulationDriver(config);
         }
 
-        Set<BluetoothDevice> bonded = adapter.getBondedDevices();
-        if (bonded != null) {
-            for (BluetoothDevice device : bonded) {
-                LoggerConfig candidate = copyConfig(config);
-                candidate.bluetoothDevice = device;
-                SerialDriver serialDriver = new SerialDriver(candidate);
-                if (serialDriver.connect()) {
-                    return serialDriver;
+        try {
+            Set<BluetoothDevice> bonded = adapter.getBondedDevices();
+            if (bonded != null) {
+                for (BluetoothDevice device : bonded) {
+                    LoggerConfig candidate = copyConfig(config);
+                    candidate.bluetoothDevice = device;
+                    SerialDriver serialDriver = new SerialDriver(candidate);
+                    if (serialDriver.connect()) {
+                        return serialDriver;
+                    }
                 }
             }
+        } catch (SecurityException se) {
+            android.util.Log.e("OBD2Logger", "SecurityException reading bonded devices during candidate check", se);
         }
 
         return new SimulationDriver(config);

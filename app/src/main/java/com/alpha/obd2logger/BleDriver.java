@@ -80,8 +80,8 @@ public final class BleDriver extends ElmDriver {
                 for (android.bluetooth.BluetoothGattService svc : g.getServices()) {
                     for (BluetoothGattCharacteristic ch : svc.getCharacteristics()) {
                         int props = ch.getProperties();
-                        if (writeChar == null && (props & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0
-                                && (props & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) {
+                        if (writeChar == null && ((props & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0
+                                || (props & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0)) {
                             writeChar = ch;
                         }
                         if (notifyChar == null && (props & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0) {
@@ -175,6 +175,7 @@ public final class BleDriver extends ElmDriver {
             }
             return connected;
         } catch (Exception e) {
+            android.util.Log.e("OBD2Logger", "Bluetooth BLE connect error: " + e.getMessage(), e);
             disconnect();
             return false;
         }
@@ -224,7 +225,12 @@ public final class BleDriver extends ElmDriver {
             // setValue() is deprecated in API 33+ but remains the most compatible
             // approach for older API levels; the GATT callback relies on it here.
             writeChar.setValue(data);
-            writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+            int props = writeChar.getProperties();
+            if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) {
+                writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+            } else if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) {
+                writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+            }
             if (!gatt.writeCharacteristic(writeChar)) {
                 // Write was not accepted by the GATT layer — command would be lost
                 return "";
