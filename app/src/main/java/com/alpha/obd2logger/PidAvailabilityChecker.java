@@ -128,6 +128,15 @@ public final class PidAvailabilityChecker {
         // Build a set for O(1) lookup
         java.util.Set<String> supportedSet = new java.util.HashSet<>(supportedHex);
 
+        // Force-include core PIDs critical for basic engine diagnostics and LPG tuning
+        supportedSet.add("03"); // Fuel System Status
+        supportedSet.add("04"); // Engine Load
+        supportedSet.add("05"); // Coolant Temp
+        supportedSet.add("06"); // Short Term Fuel Trim
+        supportedSet.add("07"); // Long Term Fuel Trim
+        supportedSet.add("0B"); // MAP (falls back to Load if vehicle lacks MAP sensor)
+        supportedSet.add("0C"); // Engine RPM
+
         List<PIDDefinition> filtered = new ArrayList<>();
         for (PIDDefinition pid : catalogue) {
             String hex = pid.getPidHex();

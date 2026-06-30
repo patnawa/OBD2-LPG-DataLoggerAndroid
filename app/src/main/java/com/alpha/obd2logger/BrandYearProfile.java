@@ -83,7 +83,10 @@ public final class BrandYearProfile {
         if (wmi.startsWith("JH") || wmi.startsWith("JHM")) return Brand.HONDA;
         if (wmi.startsWith("JN")) return Brand.NISSAN;
         if (wmi.startsWith("JM")) return Brand.MAZDA;
-        if (wmi.startsWith("JA") || wmi.startsWith("JMY")) return Brand.MITSUBISHI;
+        if (wmi.startsWith("JA") || wmi.startsWith("JMY")
+                || wmi.startsWith("MK2") || wmi.startsWith("MM3")
+                || wmi.startsWith("MMB") || wmi.startsWith("MMA")
+                || wmi.startsWith("4A3") || wmi.startsWith("4A4")) return Brand.MITSUBISHI;
         if (wmi.startsWith("JF")) return Brand.SUBARU;
         if (wmi.startsWith("JS")) return Brand.SUZUKI;
         if (wmi.startsWith("J")) return Brand.TOYOTA; // Default Japanese
