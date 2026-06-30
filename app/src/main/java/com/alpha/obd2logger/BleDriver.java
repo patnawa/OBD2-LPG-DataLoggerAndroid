@@ -97,8 +97,28 @@ public final class BleDriver extends ElmDriver {
                 if (cccd != null) {
                     cccd.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
                     g.writeDescriptor(cccd);
+                    // notifyEnabled is set in onDescriptorWrite() after the
+                    // descriptor write is confirmed — setting it here would be
+                    // premature because writeDescriptor is asynchronous and may
+                    // fail, leaving notifications not actually enabled while
+                    // connect() proceeds thinking they are.
+                } else {
+                    // No CCCD descriptor — notifications can't be enabled remotely.
+                    // Mark as enabled anyway so connect() doesn't block forever;
+                    // local notification state was set above.
+                    notifyEnabled = true;
                 }
-                notifyEnabled = true;
+            }
+        }
+
+        @Override
+        public void onDescriptorWrite(BluetoothGatt g, BluetoothGattDescriptor descriptor, int status) {
+            if (descriptor.getUuid().equals(CCCD_UUID)) {
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    notifyEnabled = true;
+                }
+                // On failure, notifyEnabled stays false and connect() will
+                // time out and disconnect — which is the correct behavior.
             }
         }
 

@@ -75,9 +75,16 @@ public final class VLinkerOptimizer {
                         return DeviceType.VLINKER_FS_USB;
                     }
                     if (version != null && version.toUpperCase().contains("MIC3313")) {
-                        Log.i(TAG, "Detected: vLinker MC (MIC3313)");
-                        // Could be WiFi or BT — caller knows the transport mode
-                        // Default to WiFi since MC is typically WiFi
+                        // Distinguish WiFi vs BT by the driver class — the MC3313
+                        // chip is used in both MC WiFi and MC BT adapters, but
+                        // they need different timing/chunk optimizations.
+                        // BT (SerialDriver/BleDriver) has higher latency than
+                        // WiFi, so it must use the MC_BT profile.
+                        if (elm instanceof BleDriver || elm instanceof SerialDriver) {
+                            Log.i(TAG, "Detected: vLinker MC BT (MIC3313 via BT)");
+                            return DeviceType.VLINKER_MC_BT;
+                        }
+                        Log.i(TAG, "Detected: vLinker MC WiFi (MIC3313)");
                         return DeviceType.VLINKER_MC_WIFI;
                     }
                     // vLinker but unknown chip — assume MC class

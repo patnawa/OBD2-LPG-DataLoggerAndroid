@@ -76,13 +76,21 @@ public class ReviewSessionActivity extends AppCompatActivity {
         fuelMapView.setMapMode(FuelMapView.MapMode.PETROL);
 
         Intent intent = getIntent();
-        if (intent == null || intent.getData() == null) {
+        if (intent == null || (intent.getData() == null && intent.getParcelableArrayListExtra("file_uris") == null)) {
             Toast.makeText(this, "No file provided", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
-        Uri fileUri = intent.getData();
+        // Build the list of files to parse: either a single setData() URI, or a
+        // "file_uris" ArrayList (multi-select — e.g. a Petrol log + an LPG log,
+        // both plotted onto the same map for cross-file Deviation/Tune-Assist).
+        java.util.ArrayList<Uri> uris = intent.getParcelableArrayListExtra("file_uris");
+        if (uris == null || uris.isEmpty()) {
+            uris = new java.util.ArrayList<>();
+            if (intent.getData() != null) uris.add(intent.getData());
+        }
+
         String fileName = intent.getStringExtra("file_name");
         if (fileName != null) {
             tvFileName.setText(fileName);
@@ -90,60 +98,108 @@ public class ReviewSessionActivity extends AppCompatActivity {
             tvFileName.setText("Review Session");
         }
 
-        parseLogFile(fileUri);
+        parseLogFiles(uris);
     }
 
-    private void parseLogFile(Uri uri) {
+    private void parseLogFiles(java.util.List<Uri> uris) {
         progressBar.setVisibility(View.VISIBLE);
         tvStatus.setText("Parsing data...");
 
+        final java.util.List<Uri> fileList = new java.util.ArrayList<>(uris);
+
         executor.execute(() -> {
-            int lineCount = 0;
-            int plottedPoints = 0;
-            
-            try (InputStream in = getContentResolver().openInputStream(uri);
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-                
-                String headerLine = reader.readLine();
-                if (headerLine == null) {
-                    throw new Exception("File is empty");
+            int totalLines = 0;
+            int totalPlotted = 0;
+            int filesOk = 0;
+            StringBuilder errors = new StringBuilder();
+
+            for (Uri uri : fileList) {
+                int[] counts = parseSingleFile(uri, errors);
+                if (counts != null) {
+                    totalLines += counts[0];
+                    totalPlotted += counts[1];
+                    filesOk++;
                 }
-
-                LogReplayParser.Columns cols = LogReplayParser.parseHeader(headerLine);
-
-                // MAP is optional: parser falls back to Engine Load for the X-axis
-                // (MAF-based vehicles, or adapters that drop MAP) — mirrors updateFuelMap().
-                if (!cols.hasRequired()) {
-                    throw new Exception("Missing required columns. Need 'Engine RPM' and either 'Intake Manifold Pressure' or 'Engine Load'.");
-                }
-
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    lineCount++;
-                    LogReplayParser.Point p = LogReplayParser.parseLine(line, cols);
-                    if (p == null) continue; // too short, open loop, or unparseable
-
-                    // Push to map on the UI thread
-                    runOnUiThread(() -> fuelMapView.pushData(p.rpm, p.axis, p.trim, p.fuelMode));
-                    plottedPoints++;
-                }
-                
-                int finalLines = lineCount;
-                int finalPlotted = plottedPoints;
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    tvStatus.setText(String.format("Loaded %d valid points (from %d lines)", finalPlotted, finalLines));
-                });
-                
-            } catch (Exception e) {
-                Log.e(TAG, "Error parsing log", e);
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    tvStatus.setText("Error: " + e.getMessage());
-                    Toast.makeText(this, "Failed to parse log", Toast.LENGTH_LONG).show();
-                });
             }
+
+            final int fLines = totalLines;
+            final int fPlotted = totalPlotted;
+            final int fFiles = filesOk;
+            final int fTotalFiles = fileList.size();
+            final String errMsg = errors.toString();
+
+            runOnUiThread(() -> {
+                progressBar.setVisibility(View.GONE);
+                if (fPlotted == 0) {
+                    tvStatus.setText(errMsg.isEmpty()
+                            ? "No valid tuning points found (check closed-loop / columns)."
+                            : "Error: " + errMsg.trim());
+                    Toast.makeText(this, "No data plotted", Toast.LENGTH_LONG).show();
+                } else {
+                    String suffix = (fTotalFiles > 1)
+                            ? String.format(" across %d/%d files", fFiles, fTotalFiles) : "";
+                    tvStatus.setText(String.format("Loaded %d valid points (from %d lines)%s",
+                            fPlotted, fLines, suffix));
+                    if (!errMsg.isEmpty()) {
+                        Toast.makeText(this, "Some files skipped: " + errMsg.trim(), Toast.LENGTH_LONG).show();
+                    }
+                }
+            });
         });
+    }
+
+    /**
+     * Parses one log file, pushing valid points to the (shared) FuelMapView.
+     * Returns {lineCount, plottedPoints} on success, or null on failure (and
+     * appends a short reason to {@code errors}). Plotting onto the same map
+     * accumulates data, so calling this for a Petrol file then an LPG file
+     * populates both layers for Deviation/Correction.
+     */
+    private int[] parseSingleFile(Uri uri, StringBuilder errors) {
+        int lineCount = 0;
+        int plottedPoints = 0;
+
+        try (InputStream in = getContentResolver().openInputStream(uri);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+
+            String headerLine = reader.readLine();
+            if (headerLine == null) {
+                errors.append("empty file; ");
+                return null;
+            }
+
+            LogReplayParser.Columns cols = LogReplayParser.parseHeader(headerLine);
+
+            // MAP is optional: parser falls back to Engine Load for the X-axis
+            // (MAF-based vehicles, or adapters that drop MAP) — mirrors updateFuelMap().
+            if (!cols.hasRequired()) {
+                errors.append("missing RPM/MAP/Load columns; ");
+                return null;
+            }
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                lineCount++;
+                LogReplayParser.Point p = LogReplayParser.parseLine(line, cols);
+                if (p == null) continue; // too short, open loop, or unparseable
+
+                // Batch UI updates: calling runOnUiThread per line floods the
+                // message queue on large logs (10000+ lines) and causes ANR.
+                // Instead, push data directly without invalidating, then trigger
+                // a single redraw at the end via postInvalidate (thread-safe).
+                fuelMapView.pushDataNoInvalidate(p.rpm, p.axis, p.trim, p.fuelMode);
+                plottedPoints++;
+            }
+            // Trigger a single redraw after all data is pushed.
+            fuelMapView.postInvalidate();
+
+            return new int[]{lineCount, plottedPoints};
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing log", e);
+            errors.append(e.getMessage()).append("; ");
+            return null;
+        }
     }
     
     @Override

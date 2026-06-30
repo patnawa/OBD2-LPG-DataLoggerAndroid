@@ -273,6 +273,15 @@
                     android:visibility="gone" />
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnOpenLogFile"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/open_log_file"
+                    app:icon="@android:drawable/ic_menu_upload"
+                    style="@style/Widget.Material3.Button.OutlinedButton" />
+
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnMapInfo"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -935,10 +944,41 @@
                         android:textSize="13sp" />
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- Compare-mode bar: toggle multi-select to pick a Petrol log + an
+                     LPG log and plot both onto one map for cross-file Deviation. -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCompareLogs"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/compare_logs" />
+
+                    <TextView
+                        android:id="@+id/compareHintText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:textColor="@color/muted"
+                        android:textSize="12sp"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <!-- height=wrap_content + setListViewHeightBasedOnChildren() so the
+                     OUTER ScrollView scrolls through ALL logs (was fixed 400dp which
+                     clipped older entries and stole touch-scroll from the ListView). -->
                 <ListView
                     android:id="@+id/historyListView"
                     android:layout_width="match_parent"
-                    android:layout_height="400dp"
+                    android:layout_height="wrap_content"
+                    android:choiceMode="none"
                     android:divider="@color/surface2"
                     android:dividerHeight="1dp" />
 

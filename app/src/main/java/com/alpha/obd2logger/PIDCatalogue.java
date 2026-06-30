@@ -55,8 +55,10 @@ public final class PIDCatalogue {
         list.add(new PIDDefinition("Long Term Fuel Trim", "01", "07", "%", "(A-128)*100/128", -100, 99.22, true, 1, true));
         list.add(new PIDDefinition("STFT Bank 2", "01", "08", "%", "(A-128)*100/128", -100, 99.22, true, 1, false));
         list.add(new PIDDefinition("LTFT Bank 2", "01", "09", "%", "(A-128)*100/128", -100, 99.22, true, 1, false));
-        list.add(new PIDDefinition("Lambda (B1S1)", "01", "34", "", "(A*256+B)/32768", 0, 2, true, 4, false));
-        list.add(new PIDDefinition("Wideband Lambda (B1S1)", "01", "44", "", "(A*256+B)/32768", 0, 2, true, 4, false));
+        // SAE J1979: PIDs 0x34 and 0x44 return 4 data bytes: A=sensor index, B,C=lambda value, D=oxygen.
+        // Formula uses (B*256+C)/32768, NOT (A*256+B)/32768 which mixes the sensor index byte into the value.
+        list.add(new PIDDefinition("Lambda (B1S1)", "01", "34", "", "(B*256+C)/32768", 0, 2, true, 4, false));
+        list.add(new PIDDefinition("Wideband Lambda (B1S1)", "01", "44", "", "(B*256+C)/32768", 0, 2, true, 4, false));
         // --- Oxygen sensors (Mode 01 PIDs 0x14-0x1B) ---
         // Each O2 sensor PID returns 2 data bytes: A = voltage (A/200), B = short-term fuel trim.
         // B1S1 (PID 0x14) is already listed above; here we add the remaining 7 sensors.
@@ -81,7 +83,7 @@ public final class PIDCatalogue {
         // --- Timing & fuel ---
         list.add(new PIDDefinition("Timing Advance", "01", "0E", "deg", "A/2-64", -64, 63.5, true, 1, false));
         list.add(new PIDDefinition("Fuel Inject Timing", "01", "5D", "deg", "(A*256+B)/128-210", -210, 302, true, 2, false));
-        list.add(new PIDDefinition("Engine Fuel Rate", "01", "5E", "L/h", "(A*256+B)/20", 0, 3276, true, 2, false));
+        list.add(new PIDDefinition("Engine Fuel Rate", "01", "5E", "L/h", "(A*256+B)/20", 0, 3276.75, true, 2, false));
 
         // --- Load & misc ---
         list.add(new PIDDefinition("Absolute Load", "01", "43", "%", "(A*256+B)*100/255", 0, 25700, false, 2, false));

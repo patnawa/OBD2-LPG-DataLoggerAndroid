@@ -6,7 +6,7 @@ import java.util.Map;
 
 public abstract class BaseDriver {
     protected final LoggerConfig config;
-    protected boolean connected;
+    protected volatile boolean connected;
 
     protected BaseDriver(LoggerConfig config) {
         this.config = config;

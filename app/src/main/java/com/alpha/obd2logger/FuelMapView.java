@@ -31,8 +31,11 @@ public class FuelMapView extends View {
     private int lastMapCell = -1;
     private int consecutiveTicks = 0;
     private static final int DWELL_THRESHOLD = 1; // Was 3 — real driving has rapid RPM/MAP
-    // changes so dwell=3 almost never triggers. With dwell=1, the first sample in a
-    // cell is stored immediately.
+    // changes so dwell=3 almost never triggers. With dwell=1, the SECOND consecutive
+    // sample in the same cell is stored (the first call lands in the else branch and
+    // only seeds consecutiveTicks=1; storage fires on the next same-cell tick when
+    // consecutiveTicks is incremented to 2 >= 1). This filters one-off transient
+    // samples while keeping the map responsive.
 
     // Grid configuration
     private static final int RPM_MIN = 500;
@@ -87,6 +90,21 @@ public class FuelMapView extends View {
     }
 
     public void pushData(double rpm, double map, double trim, FuelMode fuelMode) {
+        pushDataInternal(rpm, map, trim, fuelMode);
+        invalidate();
+    }
+
+    /**
+     * Push data without triggering a redraw. Used by background threads
+     * (e.g. ReviewSessionActivity parsing) that batch many pushData calls
+     * and trigger a single redraw at the end via {@link #postInvalidate()}
+     * or {@link #invalidate()} on the UI thread.
+     */
+    public void pushDataNoInvalidate(double rpm, double map, double trim, FuelMode fuelMode) {
+        pushDataInternal(rpm, map, trim, fuelMode);
+    }
+
+    private void pushDataInternal(double rpm, double map, double trim, FuelMode fuelMode) {
         int rCell = (int) (Math.round(rpm / RPM_STEP) * RPM_STEP);
         int mCell = (int) (Math.round(map / MAP_STEP) * MAP_STEP);
 
@@ -114,8 +132,6 @@ public class FuelMapView extends View {
             lastMapCell = mCell;
             consecutiveTicks = 1;
         }
-        
-        invalidate();
     }
 
     public void clearData() {

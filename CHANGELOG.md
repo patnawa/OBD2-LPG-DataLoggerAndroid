@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.9.0] - 2026-06-30
+### Fixed — Critical
+- **DataWriter closed-loop inversion (CRITICAL)**: The `loop_status` column written to every CSV/JSONL log file was inverted. SAE J1979 PID 03 values `0x01` (open loop/temp) and `0x08` (open loop/failure) were labelled `"Closed"`, while the real closed-loop value `0x02` was labelled `"Open"`. This corrupted every saved log's loop_status, causing replay parsers to drop closed-loop tuning rows. Fixed to `(val & 0x02) != 0 ? "Closed" : "Open"`. This was the same bug family previously fixed in `MainActivity.updateFuelMap()` and `LogReplayParser.isClosedLoop()` but survived in `DataWriter`.
+- **Lambda PIDs 0x34/0x44 wrong formula (CRITICAL)**: PIDs `0x34` (Lambda B1S1) and `0x44` (Wideband Lambda) used formula `(A*256+B)/32768`, but per SAE J1979 byte A is the sensor index, not part of the lambda value. The correct formula is `(B*256+C)/32768`. The old formula mixed the sensor index byte into the value, producing incorrect lambda readings on any vehicle with wideband sensors (BMW, Mercedes, VW, etc.).
+
+### Fixed — High
+- **ReadinessMonitor byte D overlapping bit pairs**: The old code used overlapping bit pairs for Group 2 monitors — each monitor's "complete" bit was the next monitor's "available" bit, which is logically impossible. Per SAE J1979, byte D contains ONLY status bits (bit 3=O2 Heater, bit 4=O2 Sensor, bit 5=EGR, bit 6=Particulate Filter, bit 7=NOx/SOR). Fixed to use bits 3-7 for status with `available=true` (availability is in a separate PID 41 query).
+- **ReadinessMonitor rejects valid 3-byte responses**: The minimum data length was 8 hex chars (4 bytes), but pre-2008 non-CAN vehicles (ISO 9141-2, KWP) may return only 3 bytes (A B C). Lowered to 6 hex chars (3 bytes) so MIL status and Group 1 monitors work on older vehicles.
+- **BaseDriver.connected not volatile**: The `connected` field is written by the logger thread and read from the main thread (DTC/VIN/readiness operations) and BLE GATT callbacks. Without `volatile`, the main thread could see stale cached values. Made `connected` field `volatile`.
+- **LoggerService double-start orphaned executor**: If `ACTION_START` was received twice (rapid restart or START_STICKY redelivery), a new executor was created without shutting down the old one, orphaning the previous logger thread and causing races on `driver`/`writer` fields. Added a guard that calls `stopLogging()` first if `executor != null`.
+- **MainActivity.stopLogging disconnect() race**: The main thread called `currentDriver.disconnect()` while the logger thread was potentially still using the driver, and the logger thread's `finally` block also calls `disconnect()`. This could double-free native resources (GATT handles, BluetoothSocket, UsbSerialPort). Removed the `disconnect()` call from `stopLogging()` — the logger thread handles cleanup in its `finally` block.
+- **BleDriver notifyEnabled set prematurely**: `notifyEnabled = true` was set synchronously after calling `g.writeDescriptor(cccd)`, but `writeDescriptor` is asynchronous and may fail. If it failed, `connect()` would proceed thinking notifications were enabled, leading to silent command loss (all `sendCommand` calls would time out). Moved `notifyEnabled = true` to `onDescriptorWrite` callback that only sets it when `status == GATT_SUCCESS`.
+- **DtcReader PCI byte not stripped on continuation frames**: Consecutive ISO-TP frames start with a PCI byte (0x21, 0x22, etc.) that was being parsed as the first byte of a spurious DTC code. Added PCI byte stripping for continuation frames that don't start with the mode header.
+
+### Fixed — Medium
+- **VLinkerOptimizer MC BT detected as WiFi**: A vLinker MC connected via Bluetooth was always detected as `VLINKER_MC_WIFI`, applying WiFi optimizations (aggressive timing, 6-PID chunks) instead of BT optimizations (conservative timing, 4-PID chunks). This could cause dropped responses on Bluetooth. Fixed by checking `elm instanceof BleDriver || elm instanceof SerialDriver` to return `VLINKER_MC_BT`.
+- **ReviewSessionActivity per-line runOnUiThread ANR**: Opening a large log file (10000+ lines) called `runOnUiThread()` for every line, flooding the UI thread message queue and causing ANR. Added `FuelMapView.pushDataNoInvalidate()` and batch all data pushes, then trigger a single `postInvalidate()` at the end. Reduces 10000 UI messages to 1 redraw.
+- **MainActivity.runLogger unsafe executor shutdown**: The logger thread called `executor.shutdown()` without checking if `stopLogging()` on the main thread had already shut it down. Could clobber a newly-started executor. Fixed to capture executor reference locally and check `isShutdown()`.
+- **DriverFactory.copyConfig missing enableApiServer**: The `copyConfig` method used for AUTO-mode candidate configs didn't copy the `enableApiServer` field, so when AUTO mode tried Bluetooth devices, the API server setting was silently lost.
+- **GaugeView warning-zone background overpainted value arc**: The dim (alpha-60) warning-zone background was drawn AFTER the bright value arc. When the current value entered the warning zone, the full-alpha warning portion was overpainted by the 60-alpha background, making the gauge appear to stop at the warning threshold. Fixed draw order: warning background first, then value arc on top.
+- **Engine Fuel Rate maxVal off by 0.75**: Formula `(A*256+B)/20` at max raw value produces 3276.75, but `maxVal` was 3276, causing the parser to reject the true maximum as out-of-range. Fixed to `3276.75`.
+
+### Fixed — Low
+- **FuelMapView misleading dwell comment**: The comment claimed "first sample stored immediately" but the code actually requires 2 consecutive same-cell ticks. Corrected the comment.
+
 ## [2.8.0] - 2026-06-29
 ### Fixed
 - **Keep Screen On Not Working (CRITICAL)**: The "Keep Screen On" setting (checked by default) never actually kept the screen awake. The `FLAG_KEEP_SCREEN_ON` window flag was only applied inside the checkbox's `OnCheckedChangeListener`, which fires only when the user *changes* the checkbox — never on startup. So the box always showed as checked, but the screen still dimmed and locked during logging. Now the flag is applied immediately on app start based on the saved preference, so the screen stays on as soon as the app opens.

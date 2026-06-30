@@ -95,6 +95,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private View panelHistory;
     private android.widget.ListView historyListView;
     private TextView historyFolderText;
+    private com.google.android.material.button.MaterialButton btnCompareLogs;
+    private TextView compareHintText;
+    // Compare mode: when true the history list shows checkboxes so the user can
+    // pick up to 2 logs (e.g. a Petrol log + an LPG log) and plot both onto one map.
+    private boolean compareMode = false;
+    private final java.util.LinkedHashSet<Integer> compareSelection = new java.util.LinkedHashSet<>();
+    private java.util.List<HistoryLogFile> currentLogFiles = new ArrayList<>();
 
     // --- State ---
     private volatile ExecutorService executor;
@@ -114,6 +121,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private static final int NOTIFICATION_PERMISSION_CODE = 1002;
 
     private androidx.activity.result.ActivityResultLauncher<Intent> folderPickerLauncher;
+    private androidx.activity.result.ActivityResultLauncher<Intent> openLogFileLauncher;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -141,6 +149,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putString("custom_log_folder_uri", uri.toString()).apply();
                                 updateCustomFolderText(uri);
                             }
+                        }
+                    }
+            );
+
+            openLogFileLauncher = registerForActivityResult(
+                    new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                            handleOpenLogResult(result.getData());
                         }
                     }
             );
@@ -345,7 +362,128 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             });
         }
         
+        View btnOpenLogFile = findViewById(R.id.btnOpenLogFile);
+        if (btnOpenLogFile != null) {
+            btnOpenLogFile.setOnClickListener(v -> launchOpenLogPicker());
+        }
+
+        btnCompareLogs = findViewById(R.id.btnCompareLogs);
+        compareHintText = findViewById(R.id.compareHintText);
+        if (btnCompareLogs != null) {
+            btnCompareLogs.setOnClickListener(v -> toggleCompareMode());
+        }
+        
         setupDynamicPids();
+    }
+    
+    /**
+     * Opens a Storage Access Framework picker so the user can choose one OR MORE
+     * saved log CSV files from anywhere on the device (Downloads, Google Drive,
+     * SD card, USB, etc.) — not just the app's own History folder. Selecting two
+     * files (e.g. a Petrol-only log + an LPG-only log) lets ReviewSessionActivity
+     * plot both onto one map so DEVIATION / TUNE-ASSIST works across separate runs.
+     */
+    private void launchOpenLogPicker() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            // Only CSV is replayable on the map (LogReplayParser reads CSV columns).
+            // The app also writes a .jsonl sibling, but that format can't be plotted —
+            // so we narrow the picker to CSV MIME types to avoid the confusing case
+            // where a user picks a .jsonl and gets "No data plotted". A final
+            // .csv-extension guard in handleOpenLogResult() catches providers that
+            // ignore the MIME filter.
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                    "text/csv", "text/comma-separated-values"
+            });
+            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Toast.makeText(this, R.string.open_log_multi_hint, Toast.LENGTH_LONG).show();
+            openLogFileLauncher.launch(Intent.createChooser(intent, getString(R.string.open_log_file_chooser)));
+        } catch (Exception e) {
+            Toast.makeText(this, "Cannot open file picker: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * Collects the picked URI(s) — single (getData) or multiple (getClipData) —
+     * and forwards them to ReviewSessionActivity. All selected files are plotted
+     * onto the same FuelMapView so cross-file Petrol-vs-LPG comparison works.
+     */
+    private void handleOpenLogResult(Intent data) {
+        java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
+        if (data.getClipData() != null) {
+            android.content.ClipData clip = data.getClipData();
+            for (int i = 0; i < clip.getItemCount(); i++) {
+                Uri u = clip.getItemAt(i).getUri();
+                if (u != null) uris.add(u);
+            }
+        } else if (data.getData() != null) {
+            uris.add(data.getData());
+        }
+
+        if (uris.isEmpty()) {
+            Toast.makeText(this, "No file selected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Guard: keep only .csv files. The map replay parser (LogReplayParser) reads
+        // CSV columns only — a .jsonl (the app's other log format) or any other file
+        // would just produce "No data plotted". Some content providers ignore the
+        // EXTRA_MIME_TYPES filter, so we re-check the display name's extension here.
+        java.util.ArrayList<Uri> csvUris = new java.util.ArrayList<>();
+        int rejected = 0;
+        for (Uri u : uris) {
+            String name = queryDisplayName(u);
+            if (name != null && name.toLowerCase(Locale.US).endsWith(".csv")) {
+                csvUris.add(u);
+            } else {
+                rejected++;
+            }
+        }
+        if (csvUris.isEmpty()) {
+            Toast.makeText(this, R.string.open_log_csv_only, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (rejected > 0) {
+            Toast.makeText(this, getString(R.string.open_log_skipped_non_csv, rejected),
+                    Toast.LENGTH_LONG).show();
+        }
+        uris = csvUris;
+
+        // Persist read permission for each URI so ReviewSessionActivity can read them.
+        for (Uri u : uris) {
+            try {
+                getContentResolver().takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (Exception ignored) {
+                // Some providers (chooser-wrapped) don't grant persistable permission;
+                // the FLAG_GRANT_READ_URI_PERMISSION on the launch intent still covers
+                // the immediate handoff to ReviewSessionActivity.
+            }
+        }
+
+        Intent intent = new Intent(this, ReviewSessionActivity.class);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        if (uris.size() == 1) {
+            intent.setData(uris.get(0));
+            intent.putExtra("file_name", queryDisplayName(uris.get(0)));
+        } else {
+            intent.putParcelableArrayListExtra("file_uris", uris);
+            intent.putExtra("file_name", uris.size() + " files");
+        }
+        startActivity(intent);
+    }
+
+    /** Best-effort human-readable name for a content URI. */
+    private String queryDisplayName(Uri uri) {
+        try (android.database.Cursor c = getContentResolver().query(uri, null, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                int idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                if (idx >= 0) return c.getString(idx);
+            }
+        } catch (Exception ignored) {}
+        return uri.getLastPathSegment();
     }
     
     private void showMapInfoDialog() {
@@ -700,6 +838,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
 
         java.util.Collections.sort(logFiles, (f1, f2) -> Long.compare(f2.date, f1.date));
+        currentLogFiles = logFiles;
+        // Drop any stale selection indices that no longer exist after a reload.
+        compareSelection.removeIf(i -> i >= logFiles.size());
 
         List<String> names = new ArrayList<>();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
@@ -707,9 +848,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             names.add(hlf.name + "\n" + sdf.format(new Date(hlf.date)));
         }
 
-        historyListView.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, names));
+        // In compare mode show multiple-choice checkboxes; otherwise a plain list.
+        int layout = compareMode
+                ? android.R.layout.simple_list_item_multiple_choice
+                : android.R.layout.simple_list_item_1;
+        historyListView.setAdapter(new ArrayAdapter<>(this, layout, names));
+        historyListView.setChoiceMode(compareMode
+                ? android.widget.ListView.CHOICE_MODE_MULTIPLE
+                : android.widget.ListView.CHOICE_MODE_NONE);
+
+        // Re-apply checked state after rebuilding the adapter (compare mode).
+        if (compareMode) {
+            for (Integer pos : compareSelection) {
+                if (pos < names.size()) historyListView.setItemChecked(pos, true);
+            }
+        }
 
         historyListView.setOnItemClickListener((parent, view, position, id) -> {
+            if (compareMode) {
+                handleCompareClick(position);
+                return;
+            }
             HistoryLogFile selectedFile = logFiles.get(position);
             Intent intent = new Intent(this, ReviewSessionActivity.class);
             intent.setData(selectedFile.uri);
@@ -719,6 +878,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         });
 
         historyListView.setOnItemLongClickListener((parent, view, position, id) -> {
+            if (compareMode) return false; // long-press menu disabled while comparing
             HistoryLogFile selectedFile = logFiles.get(position);
             String[] options = {"Share Log", "Delete Log"};
             new android.app.AlertDialog.Builder(this)
@@ -749,6 +909,117 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 .show();
             return true;
         });
+
+        // Size the ListView to fit ALL rows so the OUTER ScrollView can scroll
+        // through every log — fixes "can't scroll to the oldest logs".
+        setListViewHeightBasedOnChildren(historyListView);
+        updateCompareUi();
+    }
+
+    /**
+     * Measures every row of the adapter and sets the ListView's height to the
+     * total. Required when a ListView lives inside a ScrollView: the ScrollView
+     * gives the ListView an unbounded height during measurement, so without this
+     * the ListView collapses to (or clips at) a fixed height and its own internal
+     * scroll fights the parent ScrollView — making older rows unreachable.
+     */
+    private void setListViewHeightBasedOnChildren(android.widget.ListView listView) {
+        android.widget.ListAdapter adapter = listView.getAdapter();
+        if (adapter == null) return;
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(
+                Math.max(listView.getWidth(), 0), View.MeasureSpec.AT_MOST);
+        int totalHeight = 0;
+        View view = null;
+        for (int i = 0; i < adapter.getCount(); i++) {
+            view = adapter.getView(i, view, listView);
+            view.measure(widthSpec, View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            totalHeight += view.getMeasuredHeight();
+        }
+        int dividerHeight = listView.getDividerHeight() * Math.max(adapter.getCount() - 1, 0);
+        android.view.ViewGroup.LayoutParams params = listView.getLayoutParams();
+        params.height = totalHeight + dividerHeight;
+        listView.setLayoutParams(params);
+        listView.requestLayout();
+    }
+
+    /** Toggle the compare (multi-select) mode and rebuild the history list. */
+    private void toggleCompareMode() {
+        compareMode = !compareMode;
+        compareSelection.clear();
+        loadHistoryFiles();
+    }
+
+    /** Handle a tap on a row while in compare mode (enforce max 2 selections). */
+    private void handleCompareClick(int position) {
+        boolean nowChecked = historyListView.isItemChecked(position);
+        if (nowChecked) {
+            if (compareSelection.size() >= 2) {
+                // Reject the 3rd selection — uncheck it and warn.
+                historyListView.setItemChecked(position, false);
+                Toast.makeText(this, R.string.compare_max_two, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            compareSelection.add(position);
+        } else {
+            compareSelection.remove(position);
+        }
+        updateCompareUi();
+    }
+
+    /** Refresh the compare button label and the hint/count text. */
+    private void updateCompareUi() {
+        if (btnCompareLogs == null || compareHintText == null) return;
+        if (!compareMode) {
+            btnCompareLogs.setText(R.string.compare_logs);
+            compareHintText.setVisibility(View.GONE);
+            btnCompareLogs.setOnClickListener(v -> toggleCompareMode());
+            return;
+        }
+        compareHintText.setVisibility(View.VISIBLE);
+        int n = compareSelection.size();
+        if (n == 0) {
+            btnCompareLogs.setText(R.string.compare_logs_cancel);
+            compareHintText.setText(R.string.compare_hint_select);
+        } else {
+            // With >=1 selected, the button doubles as "Compare now".
+            btnCompareLogs.setText(R.string.compare_logs_cancel);
+            compareHintText.setText(getString(R.string.compare_hint_count, n));
+        }
+        // Re-wire the button: while comparing, pressing it launches the comparison
+        // if files are selected, otherwise it cancels compare mode.
+        btnCompareLogs.setOnClickListener(v -> {
+            if (compareMode && !compareSelection.isEmpty()) {
+                launchCompare();
+            } else {
+                toggleCompareMode();
+            }
+        });
+    }
+
+    /** Build a file_uris list from the selected rows and open ReviewSessionActivity. */
+    private void launchCompare() {
+        java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
+        StringBuilder names = new StringBuilder();
+        for (Integer pos : compareSelection) {
+            if (pos < currentLogFiles.size()) {
+                HistoryLogFile f = currentLogFiles.get(pos);
+                uris.add(f.uri);
+                if (names.length() > 0) names.append(" vs ");
+                names.append(f.name);
+            }
+        }
+        if (uris.isEmpty()) {
+            Toast.makeText(this, R.string.compare_need_two, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(this, ReviewSessionActivity.class);
+        intent.putParcelableArrayListExtra("file_uris", uris);
+        intent.putExtra("file_name", names.toString());
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(intent);
+        // Leave compare mode after launching so the list returns to normal next time.
+        compareMode = false;
+        compareSelection.clear();
     }
 
     private void loadDefaultHistory(List<HistoryLogFile> logFiles) {
@@ -901,9 +1172,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void stopLogging() {
         running = false;
-        if (currentDriver != null) {
-            currentDriver.disconnect();
-        }
+        // Don't call currentDriver.disconnect() from the main thread — the
+        // logger thread performs disconnect() in its finally block. Calling it
+        // here too races with that thread and can double-free native resources
+        // (GATT handles, BluetoothSocket, UsbSerialPort). Setting running=false
+        // and shutdownNow() is enough to make the logger thread exit and clean up.
 
         if (backgroundLoggingCheckbox.isChecked()) {
             Intent intent = new Intent(this, LoggerService.class);
@@ -1063,8 +1336,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             driver.disconnect();
             currentWriter = null;
             currentDriver = null;
-            if (executor != null) {
-                executor.shutdown();
+            // Only shut down the executor if it's still the one we started with.
+            // stopLogging() on the main thread may have already shut it down and
+            // set executor=null (or started a new session) — clobbering that here
+            // would either NPE or kill a newly-started logger thread.
+            ExecutorService ex = executor;
+            if (ex != null && !ex.isShutdown()) {
+                ex.shutdown();
             }
             executor = null;
             runOnUiThread(() -> {

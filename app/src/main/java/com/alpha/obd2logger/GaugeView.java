@@ -165,6 +165,20 @@ public final class GaugeView extends View {
         float warnFraction = warningStart;
         float warnStartAngle = startAngle + (float)(sweepAngle * warnFraction);
         float warnSweep = (float)(sweepAngle * (1.0 - warnFraction));
+
+        // Draw warning zone BACKGROUND first (dim, full sweep). This must be
+        // painted BEFORE the value arc so that when the current value enters the
+        // warning zone (fraction > warnFraction) the bright warning portion of
+        // the value arc is drawn ON TOP of the dim background. The old code drew
+        // the background after the value arc, which overwrote the value's warning
+        // segment with the 60-alpha paint and made the gauge look like it stopped
+        // at the warning threshold.
+        if (warnSweep > 0) {
+            warningArcPaint.setAlpha(60);
+            canvas.drawArc(arcRect, warnStartAngle, warnSweep, false, warningArcPaint);
+            warningArcPaint.setAlpha(255);
+        }
+
         if (fraction > warnFraction) {
             // Normal portion
             canvas.drawArc(arcRect, startAngle, (float)(sweepAngle * warnFraction), false, arcPaint);
@@ -173,13 +187,6 @@ public final class GaugeView extends View {
                     (float)(sweepAngle * (fraction - warnFraction)), false, warningArcPaint);
         } else {
             canvas.drawArc(arcRect, startAngle, (float)(sweepAngle * fraction), false, arcPaint);
-        }
-
-        // Draw warning zone background
-        if (warnSweep > 0) {
-            warningArcPaint.setAlpha(60);
-            canvas.drawArc(arcRect, warnStartAngle, warnSweep, false, warningArcPaint);
-            warningArcPaint.setAlpha(255);
         }
 
         // Tick marks

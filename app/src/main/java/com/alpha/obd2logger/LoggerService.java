@@ -116,6 +116,12 @@ public final class LoggerService extends Service {
     }
 
     private void startLogging(LoggerConfig config) {
+        // Guard against double-start: if a previous logging session is still
+        // running (e.g. START intent received twice), shut it down first so we
+        // don't orphan the old executor thread or race on driver/writer fields.
+        if (executor != null) {
+            stopLogging();
+        }
         running = true;
         recordCount = 0;
         executor = Executors.newSingleThreadExecutor();

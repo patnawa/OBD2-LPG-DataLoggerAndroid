@@ -76,11 +76,17 @@ public final class DataWriter implements AutoCloseable {
             if ("01_03".equals(sample.getPidKey())) {
                 Double val = sample.getValue();
                 if (val != null) {
-                    if (val == 1.0 || val == 8.0) {
-                        loopStatus = "Closed";
-                    } else {
-                        loopStatus = "Open";
-                    }
+                    // SAE J1979 PID 03 Fuel System Status (byte A, bit flags):
+                    //   0x01 = Open loop (insufficient engine temp)
+                    //   0x02 = Closed loop (using O2 sensor feedback) ← CLOSED
+                    //   0x04 = Open loop (engine load)
+                    //   0x08 = Open loop (system failure)
+                    // The OLD code here treated 1.0 and 8.0 as "Closed" — both are
+                    // actually OPEN loop — and labelled the real closed-loop value
+                    // (0x02) as "Open", inverting the loop_status column written to
+                    // the CSV. This mirrors the bug that was already fixed in
+                    // LogReplayParser.isClosedLoop but survived here.
+                    loopStatus = ((val.intValue() & 0x02) != 0) ? "Closed" : "Open";
                 }
                 break;
             }

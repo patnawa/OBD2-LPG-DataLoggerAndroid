@@ -85,7 +85,9 @@ public final class ReadinessMonitor {
         }
 
         String data = hex.substring(idx + 4);
-        if (data.length() < 8) {
+        // Require at least 3 data bytes (A B C) — pre-2008 non-CAN vehicles
+        // may return only 3 bytes (no byte D for Group 2 monitors).
+        if (data.length() < 6) {
             return new ReadinessMonitor(false, 0, new ArrayList<>());
         }
 
@@ -109,13 +111,21 @@ public final class ReadinessMonitor {
         monitors.add(new MonitorStatus("Heated Catalyst",  (byteB & 0x20) != 0, (byteC & 0x20) != 0));
         monitors.add(new MonitorStatus("EVAP",             (byteB & 0x40) != 0, (byteC & 0x40) != 0));
         monitors.add(new MonitorStatus("Secondary Air",    (byteB & 0x80) != 0, (byteC & 0x80) != 0));
-        // Group 2 (bits in byte D for additional monitors per SAE J1979).
-        // For these monitors, complete when the bit is SET in byteD.
-        monitors.add(new MonitorStatus("EGR",              (byteD & 0x20) != 0, (byteD & 0x10) != 0));
-        monitors.add(new MonitorStatus("Particulate Filter", (byteD & 0x10) != 0, (byteD & 0x08) != 0));
-        monitors.add(new MonitorStatus("NOx/SOR",         (byteD & 0x08) != 0, (byteD & 0x04) != 0));
-        monitors.add(new MonitorStatus("O2 Sensor",        (byteD & 0x04) != 0, (byteD & 0x02) != 0));
-        monitors.add(new MonitorStatus("O2 Sensor Heater", (byteD & 0x02) != 0, (byteD & 0x01) != 0));
+        // Group 2 (byte D): Non-continuous monitors per SAE J1979.
+        // Byte D contains ONLY status (completion) bits: bit 3=O2 Heater,
+        // bit 4=O2 Sensor, bit 5=EGR, bit 6=Particulate Filter, bit 7=NOx/SOR.
+        // Availability for these monitors is in a separate PID (Mode 01 PID 41),
+        // not in byte D. We mark them all as available=true since we can't query
+        // PID 41 from here, and set complete=bit_is_SET (1=complete for Group 2).
+        //
+        // BUG FIX: The old code used overlapping bit pairs where each monitor's
+        // "complete" bit was the next monitor's "available" bit. The correct
+        // mapping uses bits 3-7 of byte D for ALL status bits with no overlap.
+        monitors.add(new MonitorStatus("EGR",              true, (byteD & 0x20) != 0));
+        monitors.add(new MonitorStatus("Particulate Filter", true, (byteD & 0x40) != 0));
+        monitors.add(new MonitorStatus("NOx/SOR",          true, (byteD & 0x80) != 0));
+        monitors.add(new MonitorStatus("O2 Sensor",        true, (byteD & 0x10) != 0));
+        monitors.add(new MonitorStatus("O2 Sensor Heater", true, (byteD & 0x08) != 0));
 
         return new ReadinessMonitor(mil, dtcCount, monitors);
     }

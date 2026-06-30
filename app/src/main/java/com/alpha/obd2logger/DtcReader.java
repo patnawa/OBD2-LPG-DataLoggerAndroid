@@ -52,11 +52,12 @@ public final class DtcReader {
                     pos += 2;
                 }
             } else {
-                // Consecutive CAN frame, might start with PCI byte like "21", "22"
-                // But ELM327 with ATSP0 auto formatting might strip PCI bytes if headers are off.
-                // We just parse all 2-byte pairs in the line that aren't 0000.
-                // It's safer to just parse 4-hex-char chunks.
-                // If the line didn't have a header, it's a continuation line.
+                // Consecutive ISO-TP frame — strip the 1-byte PCI header (21, 22, etc.)
+                // if present. Without this, the PCI byte is parsed as byteA of a
+                // spurious DTC code, polluting the list.
+                if (hex.length() >= 2 && hex.substring(0, 2).matches("[0-2][0-9A-F]")) {
+                    pos = 2;
+                }
             }
 
             while (pos + 4 <= hex.length()) {

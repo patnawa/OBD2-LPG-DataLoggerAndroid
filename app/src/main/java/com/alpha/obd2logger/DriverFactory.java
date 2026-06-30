@@ -101,6 +101,7 @@ public final class DriverFactory {
         target.lpgOnlyMode = source.lpgOnlyMode;
         target.connectionTimeoutMs = source.connectionTimeoutMs;
         target.maxRetries = source.maxRetries;
+        target.enableApiServer = source.enableApiServer;
         return target;
     }
 }

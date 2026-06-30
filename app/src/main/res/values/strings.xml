@@ -26,6 +26,17 @@
     <string name="how_to_read_map_title">💡 How to read the Map</string>
     <string name="how_to_read_map_desc" formatted="false">Shows Total Fuel Trim (STFT + LTFT)\n🟢 Green (±5%) = Perfect\n🔴 Red (Negative) = Rich (Reduce fuel)\n🔵 Blue (Positive) = Lean (Add fuel)\n\nCELL LOCK &amp; HIT COUNTER:\nCells start transparent. Hold steady RPM/MAP to collect data. Opacity increases with hits.\nx20 hits = Locked (Gold Border).\n\nDEVIATION: Shows (LPG/CNG - Petrol).\n+ means LPG is Lean. - means LPG is Rich. Aim for 0%.\n\nTUNE ASSIST: Shows exact % correction for your LPG map (Exportable to CSV).\n\n* Note: To use Tune Assist or Deviation, you must collect BOTH Petrol and LPG data first!</string>
     <string name="petrol">PETROL</string>
+    <string name="open_log_file">OPEN LOG FILE</string>
+    <string name="open_log_file_chooser">Select log CSV file(s)</string>
+    <string name="open_log_multi_hint">Tip: select multiple files (e.g. a Petrol log + an LPG log) to compare them together.</string>
+    <string name="compare_logs">Compare 2 Logs</string>
+    <string name="compare_logs_cancel">Cancel Compare</string>
+    <string name="compare_hint_select">Select a Petrol log and an LPG log (max 2), then tap Compare.</string>
+    <string name="compare_hint_count">Selected %1$d/2 — tap Compare to plot both on the map.</string>
+    <string name="compare_need_two">Select at least 2 logs (or 1) to compare.</string>
+    <string name="compare_max_two">You can compare up to 2 logs at a time.</string>
+    <string name="open_log_csv_only">Only CSV log files can be opened on the map. (JSONL logs aren\'t supported for replay.)</string>
+    <string name="open_log_skipped_non_csv">Skipped %1$d non-CSV file(s) — only CSV can be plotted.</string>
     <string name="lpg">LPG/CNG</string>
     <string name="deviation">DEVIATION</string>
     
