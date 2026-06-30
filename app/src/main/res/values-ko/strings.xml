@@ -1,0 +1,90 @@
+<resources>
+    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="start">시작</string>
+    <string name="stop">중지</string>
+    <string name="idle_status">준비 완료. 통신 모드를 선택하고 로그 기록을 시작하십시오.</string>
+    <string name="log_path">로그는 Downloads/OBD2LPGLogger에 저장됩니다</string>
+    <string name="tap_to_open_logs">Downloads/OBD2LPGLogger를 열려면 누르십시오</string>
+    <string name="prompt_transport_mode">통신 모드</string>
+    <string name="prompt_fuel_mode">연료 모드</string>
+    <string name="prompt_obd_protocol">OBD2 프로토콜</string>
+    <string name="prompt_bluetooth_device">Bluetooth OBD2 장치</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">대시보드</string>
+    <string name="tab_gauges">게이지</string>
+    <string name="tab_map">맵</string>
+    <string name="tab_dtc">DTC</string>
+    <string name="tab_logs">로그</string>
+    <string name="tab_settings">설정</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">스마트 튜닝 분석</string>
+    <string name="waiting_for_data">연료 보정 데이터를 대기 중...</string>
+    <string name="live_fuel_map">실시간 연료 보정 맵</string>
+    <string name="map_axes">Y = RPM (500-6000), X = MAP kPa (20-100)</string>
+    <string name="how_to_read_map_title">💡 맵 읽는 법</string>
+    <string name="how_to_read_map_desc" formatted="false">총 연료 보정값 (STFT + LTFT)을 표시합니다\n🟢 초록 (±5%) = 완벽\n🔴 빨강 (음수) = 농후 (연료 감소)\n🔵 파랑 (양수) = 희박 (연료 추가)\n\n셀 잠금 및 히트 카운터:\n셀은 투명하게 시작합니다. 데이터를 수집하려면 안정적인 RPM/MAP을 유지하십시오. 히트할수록 투명도가 낮아집니다.\nx20 히트 = 잠김 (금색 테두리).\n\n편차 (DEVIATION): (LPG/CNG - 가솔린)을 나타냅니다.\n+는 LPG가 희박하다는 뜻이고, -는 LPG가 농후하다는 뜻입니다. 0%를 목표로 하십시오.\n\n튜닝 어시스트 (TUNE ASSIST): LPG 맵의 정확한 % 보정치를 보여줍니다 (CSV로 내보내기 가능).\n\n* 참고: 튜닝 어시스트나 편차를 사용하려면 가솔린과 LPG 데이터 모두를 먼저 수집해야 합니다!</string>
+    <string name="petrol">가솔린</string>
+    <string name="petrol_logs_header">가솔린 로그</string>
+    <string name="lpg_logs_header">LPG/CNG 로그</string>
+    <string name="open_log_file">로그 파일 열기</string>
+    <string name="open_log_file_chooser">로그 CSV 파일 선택</string>
+    <string name="open_log_multi_hint">팁: 여러 파일(예: 가솔린 로그 + LPG 로그)을 선택하여 함께 비교할 수 있습니다.</string>
+    <string name="compare_logs">2개 로그 비교</string>
+    <string name="compare_logs_cancel">비교 취소</string>
+    <string name="compare_hint_select">가솔린 로그와 LPG 로그를 각각 선택하고(최대 2개), 비교를 누르십시오.</string>
+    <string name="compare_hint_count">%1$d/2개 선택됨 — 비교를 눌러 맵에 표시하십시오.</string>
+    <string name="compare_need_two">비교할 로그를 최소 2개(또는 1개) 선택하십시오.</string>
+    <string name="compare_max_two">한 번에 최대 2개의 로그만 비교할 수 있습니다.</string>
+    <string name="open_log_csv_only">맵에서는 CSV 로그 파일만 열 수 있습니다. (JSONL 로그는 재생이 지원되지 않습니다.)</string>
+    <string name="open_log_skipped_non_csv">CSV가 아닌 파일 %1$d개 건너뜀 — CSV만 표시 가능합니다.</string>
+    <string name="lpg">LPG/CNG</string>
+    <string name="deviation">편차</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">알 수 없음</string>
+    <string name="analyzer_no_data">센서 데이터 없음</string>
+    <string name="analyzer_lean">희박</string>
+    <string name="analyzer_rich">농후</string>
+    <string name="analyzer_ok">OK</string>
+    
+    <string name="analyzer_petrol_lean">순정 엔진이 희박하게 작동 중입니다. LPG 튜닝 전에 도둑 공기나 불량 센서를 점검하십시오.</string>
+    <string name="analyzer_petrol_rich">순정 엔진이 농후하게 작동 중입니다. LPG 튜닝 전에 기계적 문제를 먼저 해결하십시오.</string>
+    <string name="analyzer_petrol_ok">순정 튜닝 상태가 양호합니다. 기준 데이터 수집을 시작해도 안전합니다.</string>
+    
+    <string name="analyzer_lpg_lean">LPG/CNG가 희박합니다. 가스 맵의 수치를 높이십시오 (연료 추가).</string>
+    <string name="analyzer_lpg_rich">LPG/CNG가 농후합니다. 가스 맵의 수치를 낮추십시오 (연료 감소).</string>
+    <string name="analyzer_lpg_ok">LPG/CNG 혼합비가 순정 기준치와 거의 일치합니다.</string>
+    
+    <string name="status_perfect_translated">완벽</string>
+    <string name="status_lean_translated">희박</string>
+    <string name="status_rich_translated">농후</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\n상태: %3$s\n조언: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">DTC 읽기</string>
+    <string name="clear_dtc">DTC 삭제</string>
+    <string name="read_vin">VIN 읽기</string>
+    <string name="read_readiness">준비 상태 확인</string>
+    <string name="no_dtcs">저장된 DTC 없음.</string>
+    <string name="dtc_count">DTC 개수: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">0-100 타이머 준비</string>
+    <string name="perf_reset">초기화</string>
+    <string name="perf_brake">제동 테스트 시작</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">연비</string>
+
+    <string name="prompt_language">언어 / Language</string>
+
+    <!-- Service -->
+    <string name="background_logging">백그라운드 로그 기록</string>
+    <string name="keep_screen_on">화면 켜짐 유지</string>
+    <string name="log_destination_label">로그 저장 대상 폴더</string>
+    <string name="default_log_folder">Downloads/OBD2LPGLogger (기본)</string>
+    <string name="select_folder">선택</string>
+</resources>

@@ -1,0 +1,90 @@
+<resources>
+    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="start">Bắt đầu</string>
+    <string name="stop">Dừng</string>
+    <string name="idle_status">Sẵn sàng. Chọn chế độ kết nối và bắt đầu ghi nhật ký.</string>
+    <string name="log_path">Nhật ký sẽ được lưu vào Downloads/OBD2LPGLogger</string>
+    <string name="tap_to_open_logs">Nhấn để mở thư mục Downloads/OBD2LPGLogger</string>
+    <string name="prompt_transport_mode">Chế độ kết nối</string>
+    <string name="prompt_fuel_mode">Chế độ nhiên liệu</string>
+    <string name="prompt_obd_protocol">Giao thức OBD2</string>
+    <string name="prompt_bluetooth_device">Thiết bị OBD2 Bluetooth</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">Bảng điều khiển</string>
+    <string name="tab_gauges">Đồng hồ</string>
+    <string name="tab_map">Bản đồ</string>
+    <string name="tab_dtc">Mã lỗi (DTC)</string>
+    <string name="tab_logs">Nhật ký</string>
+    <string name="tab_settings">Cài đặt</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">Phân tích hiệu chỉnh thông minh</string>
+    <string name="waiting_for_data">Đang chờ dữ liệu hiệu chỉnh nhiên liệu...</string>
+    <string name="live_fuel_map">Bản đồ hiệu chỉnh nhiên liệu trực tiếp</string>
+    <string name="map_axes">Y = Vòng/phút RPM (500-6000), X = Áp suất MAP kPa (20-100)</string>
+    <string name="how_to_read_map_title">💡 Cách đọc bản đồ</string>
+    <string name="how_to_read_map_desc" formatted="false">Hiển thị Hiệu chỉnh nhiên liệu tổng (STFT + LTFT)\n🟢 Xanh lá (±5%) = Hoàn hảo\n🔴 Đỏ (Âm) = Giàu xăng (Giảm nhiên liệu)\n🔵 Xanh dương (Dương) = Nghèo xăng (Thêm nhiên liệu)\n\nKHÓA Ô &amp; ĐỒNG HỒ ĐẾM LƯỢT:\nCác ô bắt đầu trong suốt. Giữ đều RPM/MAP để thu thập dữ liệu. Độ mờ giảm dần khi số lượt tăng.\nx20 lượt = Khóa ô (Viền vàng).\n\nĐỘ LỆCH (DEVIATION): Hiển thị (LPG/CNG - Xăng).\n+ nghĩa là LPG bị nghèo. - nghĩa là LPG bị giàu. Hướng tới mục tiêu 0%.\n\nTUNE ASSIST: Hiển thị % điều chỉnh chính xác cho bản đồ LPG của bạn (Có thể xuất ra CSV).\n\n* Lưu ý: Để sử dụng Tune Assist hoặc Độ lệch, bạn phải thu thập dữ liệu Xăng và LPG trước!</string>
+    <string name="petrol">XĂNG</string>
+    <string name="petrol_logs_header">Nhật ký Xăng</string>
+    <string name="lpg_logs_header">Nhật ký LPG/CNG</string>
+    <string name="open_log_file">MỞ TẬP TIN NHẬT KÝ</string>
+    <string name="open_log_file_chooser">Chọn tập tin nhật ký CSV</string>
+    <string name="open_log_multi_hint">Mẹo: chọn nhiều tập tin (ví dụ: nhật ký Xăng + nhật ký LPG) để so sánh chúng với nhau.</string>
+    <string name="compare_logs">So sánh 2 nhật ký</string>
+    <string name="compare_logs_cancel">Hủy so sánh</string>
+    <string name="compare_hint_select">Chọn một nhật ký Xăng và một nhật ký LPG (tối đa 2), sau đó nhấn So sánh.</string>
+    <string name="compare_hint_count">Đã chọn %1$d/2 — nhấn So sánh để vẽ cả hai lên bản đồ.</string>
+    <string name="compare_need_two">Chọn ít nhất 2 nhật ký (or 1) để so sánh.</string>
+    <string name="compare_max_two">Bạn chỉ có thể so sánh tối đa 2 nhật ký cùng một lúc.</string>
+    <string name="open_log_csv_only">Chỉ có thể mở các tập tin nhật ký CSV trên bản đồ. (Không hỗ trợ chạy lại nhật ký JSONL).</string>
+    <string name="open_log_skipped_non_csv">Đã bỏ qua %1$d tập tin không phải CSV — chỉ có thể vẽ CSV.</string>
+    <string name="lpg">LPG/CNG</string>
+    <string name="deviation">ĐỘ LỆCH</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">CHƯA XÁC ĐỊNH</string>
+    <string name="analyzer_no_data">Không có dữ liệu cảm biến</string>
+    <string name="analyzer_lean">NGHÈO</string>
+    <string name="analyzer_rich">GIÀU</string>
+    <string name="analyzer_ok">OK</string>
+    
+    <string name="analyzer_petrol_lean">Động cơ nguyên bản đang chạy nghèo xăng. Hãy kiểm tra rò rỉ chân không hoặc cảm biến hỏng trước khi điều chỉnh LPG.</string>
+    <string name="analyzer_petrol_rich">Động cơ nguyên bản đang chạy giàu xăng. Hãy khắc phục các lỗi cơ khí trước khi điều chỉnh LPG.</string>
+    <string name="analyzer_petrol_ok">Bản hiệu chỉnh xăng nguyên bản hoạt động tốt. An toàn để thu thập dữ liệu cơ sở.</string>
+    
+    <string name="analyzer_lpg_lean">LPG/CNG bị NGHÈO. TĂNG các giá trị trong bản đồ ga (thêm nhiên liệu).</string>
+    <string name="analyzer_lpg_rich">LPG/CNG bị GIÀU. GIẢM các giá trị trong bản đồ ga (giảm nhiên liệu).</string>
+    <string name="analyzer_lpg_ok">Hỗn hợp LPG/CNG khớp rất sát với dữ liệu cơ sở của nhà máy.</string>
+    
+    <string name="status_perfect_translated">Hoàn hảo</string>
+    <string name="status_lean_translated">Nghèo xăng</string>
+    <string name="status_rich_translated">Giàu xăng</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nTrạng thái: %3$s\nLời khuyên: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">Đọc mã lỗi (DTC)</string>
+    <string name="clear_dtc">Xóa mã lỗi (DTC)</string>
+    <string name="read_vin">Đọc mã VIN</string>
+    <string name="read_readiness">Kiểm tra trạng thái sẵn sàng</string>
+    <string name="no_dtcs">Không có mã lỗi được lưu trữ.</string>
+    <string name="dtc_count">Số lượng mã lỗi: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">Sẵn sàng đo 0-100</string>
+    <string name="perf_reset">Đặt lại</string>
+    <string name="perf_brake">Bắt đầu kiểm tra phanh</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">Mức tiêu thụ nhiên liệu</string>
+
+    <string name="prompt_language">Ngôn ngữ / Language</string>
+
+    <!-- Service -->
+    <string name="background_logging">Ghi nhật ký nền</string>
+    <string name="keep_screen_on">Giữ màn hình luôn bật</string>
+    <string name="log_destination_label">Thư mục lưu trữ nhật ký</string>
+    <string name="default_log_folder">Downloads/OBD2LPGLogger (Mặc định)</string>
+    <string name="select_folder">Chọn</string>
+</resources>
