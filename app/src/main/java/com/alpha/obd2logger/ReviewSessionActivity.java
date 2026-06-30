@@ -41,6 +41,18 @@ public class ReviewSessionActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_review_session);
 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            String lang = LocaleHelper.getLanguage(this);
+            java.util.Locale locale;
+            if (LocaleHelper.LANG_SYSTEM.equals(lang)) {
+                locale = android.content.res.Resources.getSystem().getConfiguration().locale;
+            } else {
+                locale = new java.util.Locale(lang);
+            }
+            int direction = android.text.TextUtils.getLayoutDirectionFromLocale(locale);
+            getWindow().getDecorView().setLayoutDirection(direction);
+        }
+
         fuelMapView = findViewById(R.id.reviewFuelMapView);
         tvFileName = findViewById(R.id.reviewFileName);
         tvStatus = findViewById(R.id.reviewStatus);

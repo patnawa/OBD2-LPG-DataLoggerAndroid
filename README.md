@@ -1,6 +1,6 @@
 # OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 2.9.2** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 2.9.3** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 

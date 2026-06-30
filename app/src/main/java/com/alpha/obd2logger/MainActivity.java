@@ -140,6 +140,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_main);
 
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                String lang = LocaleHelper.getLanguage(this);
+                java.util.Locale locale;
+                if (LocaleHelper.LANG_SYSTEM.equals(lang)) {
+                    locale = android.content.res.Resources.getSystem().getConfiguration().locale;
+                } else {
+                    locale = new java.util.Locale(lang);
+                }
+                int direction = android.text.TextUtils.getLayoutDirectionFromLocale(locale);
+                getWindow().getDecorView().setLayoutDirection(direction);
+            }
+
             folderPickerLauncher = registerForActivityResult(
                     new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
                     result -> {

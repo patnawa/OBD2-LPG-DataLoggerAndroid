@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.9.3] - 2026-06-30
+### Fixed
+- **Arabic RTL Layout Direction Alignment**: Dynamically set layout direction (`setLayoutDirection`) on configuration and activity decor views based on the resolved locale. This ensures that when the user switches to Arabic (or any RTL language), the entire app layout correctly mirrors to Right-to-Left (RTL) mode instead of alignment bugs.
+
 ## [2.9.2] - 2026-06-30
 ### Added & Changed
 - **Splitting Log History Lists (Petrol vs. LPG/CNG)**: Split the history files into two distinct visual lists under localized Petrol Logs and LPG/CNG Logs headers to make scanning and comparison much easier.
