@@ -1,6 +1,6 @@
 # OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.0.2** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.0.3** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
@@ -65,10 +65,15 @@ This calculates the net fuel trim difference between running on gas and the petr
 
 ### AI Agent Integration
 - **HTTP API server** (NanoHTTPD on port 8080): Enable in Settings to expose live data as JSON
+  - `GET /api/ping` — ping server, returns uptime and timestamp
   - `GET /api/status` — connection status, fuel mode, VIN
-  - `GET /api/data` — latest sensor data array (all PIDs with values and units)
-  - `GET /api/map` — fuel map data (endpoint reserved)
-- **CORS enabled**: Web-based AI agents can fetch data directly from browser
+  - `GET /api/data` — latest sensor data (all PIDs with values and units)
+  - `GET /api/map?min_hits=N` — binned 2D Fuel Map (Petrol, LPG, Deviation, Tune Assist); filters cells by minimum hits `N` (default `1`)
+  - `DELETE /api/map` — clear/reset in-memory map data
+  - `GET /api/map/summary` — aggregate calibration metrics, max deviation coordinates, and tuning recommendation text
+  - `GET /api/map/export` — download the current map correction grid directly as a CSV file
+  - `POST /api/map/import` — import and override the map session data via a JSON payload
+- **CORS enabled**: Web-based AI agents, MCP clients, and laptops can fetch and modify data directly
 - **Zero polling impact**: API server runs on separate thread; doesn't slow OBD2 polling
 
 ### UI/UX

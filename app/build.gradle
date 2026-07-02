@@ -10,8 +10,8 @@ android {
         applicationId 'com.alpha.obd2logger'
         minSdk 23
         targetSdk 35
-        versionCode 19
-        versionName '3.0.2'
+        versionCode 20
+        versionName '3.0.3'
     }
 
     buildTypes {
@@ -47,4 +47,5 @@ dependencies {
     implementation 'com.github.mik3y:usb-serial-for-android:3.7.3'
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
 }

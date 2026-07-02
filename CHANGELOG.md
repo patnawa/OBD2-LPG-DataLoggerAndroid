@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.3] - 2026-07-02
+### Added & Improved
+- **AI Agent REST API Enhancement**: Rewrote and expanded the local HTTP REST API Server (`ApiServer.java` on port 8080) to support robust, full-featured AI Agent integrations:
+  - Added `GET /api/ping` endpoint providing server uptime and availability.
+  - Fully implemented `GET /api/map` returning binned 2D Fuel Map arrays and cells (Petrol, LPG, Deviation, Tune Assist) supporting `?min_hits=N` filtering.
+  - Added `DELETE /api/map` to clear/reset live session maps.
+  - Added `GET /api/map/summary` returning calibration statistics, absolute average deviations, and smart tuning recommendations.
+  - Added `GET /api/map/export` to download fuel correction maps directly as a CSV file.
+  - Added `POST /api/map/import` to upload and pre-populate historical baseline map grids.
+  - Enabled full CORS support across all methods (`GET`, `POST`, `DELETE`, `OPTIONS`).
+- **Comprehensive Unit Tests**: Added `ApiServerTest.java` verifying all REST API endpoints.
+- **JSON Test Configuration**: Integrated plain JVM JSON testing dependency `org.json:json` in `build.gradle`.
+
 ## [3.0.2] - 2026-06-30
 ### Added
 - **Detailed Formula Explanations in Help Dialog**: Rewrote the "How to read the Map" help dialog (`how_to_read_map_desc` in English and Thai) to explain the formulas and mathematical logic for each tab (Petrol, LPG, Deviation, and Tune Assist) separately.
