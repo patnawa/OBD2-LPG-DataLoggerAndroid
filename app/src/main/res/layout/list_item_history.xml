@@ -5,7 +5,8 @@
     android:orientation="horizontal"
     android:padding="12dp"
     android:background="?attr/selectableItemBackground"
-    android:gravity="center_vertical">
+    android:gravity="center_vertical"
+    android:descendantFocusability="blocksDescendants">
 
     <!-- Log Info -->
     <LinearLayout
