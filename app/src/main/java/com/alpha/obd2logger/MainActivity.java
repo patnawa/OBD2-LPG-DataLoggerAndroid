@@ -1061,6 +1061,35 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             .setPositiveButton("Delete", (d, w) -> {
                 if (selectedFile.delete(this)) {
                     Toast.makeText(this, "File deleted", Toast.LENGTH_SHORT).show();
+                    
+                    // Clean up parent directory if it becomes empty
+                    if (selectedFile.isFile && selectedFile.file != null) {
+                        File parent = selectedFile.file.getParentFile();
+                        if (parent != null && parent.isDirectory()) {
+                            File[] children = parent.listFiles();
+                            if (children == null || children.length == 0) {
+                                parent.delete();
+                            }
+                        }
+                    } else if (selectedFile.isSaf && selectedFile.vin != null && !"General".equals(selectedFile.vin)) {
+                        try {
+                            String savedUriStr = getSharedPreferences("OBD2Prefs", MODE_PRIVATE).getString("custom_log_folder_uri", null);
+                            if (savedUriStr != null) {
+                                Uri treeUri = Uri.parse(savedUriStr);
+                                androidx.documentfile.provider.DocumentFile tree = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
+                                if (tree != null && tree.exists()) {
+                                    androidx.documentfile.provider.DocumentFile sub = tree.findFile(selectedFile.vin);
+                                    if (sub != null && sub.isDirectory()) {
+                                        androidx.documentfile.provider.DocumentFile[] children = sub.listFiles();
+                                        if (children == null || children.length == 0) {
+                                            sub.delete();
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                    
                     loadHistoryFiles();
                 } else {
                     Toast.makeText(this, "Failed to delete file", Toast.LENGTH_SHORT).show();

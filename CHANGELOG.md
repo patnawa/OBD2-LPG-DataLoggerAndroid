@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.5] - 2026-07-03
+### Added & Improved
+- **Automatic empty parent folder cleanup**: Implemented automatic folder deletion when the last log file inside a VIN subdirectory is deleted (both for SAF DocumentFiles and local Files).
+- **Auto folder-view redirect**: Resets selection and automatically redirects back to the main VIN vehicles list if the folder becomes empty.
+- **Robust Path Validation**: Ensured sanitized VIN subfolder paths to prevent illegal naming or directory traversal errors.
+
 ## [3.0.4] - 2026-07-03
 ### Added
 - **VIN Folders Grouping in History/Logs**: Grouped saved session log files (.csv) by their parsed/associated VIN ID into folders on the logs tab. Clicking a VIN folder enters that folder, allowing comparison of log files captured for that specific vehicle. Clicking "Back to Vehicles" returns to the folder list. Added directory scanner support and MediaStore relative path queries to extract VIN info automatically.
