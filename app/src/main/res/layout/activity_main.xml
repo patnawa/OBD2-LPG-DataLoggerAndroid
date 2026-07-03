@@ -1014,9 +1014,40 @@
                         android:textSize="13sp" />
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- Back Button for VIN Folders -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBackToFolders"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Back to Vehicles"
+                    app:icon="@android:drawable/ic_menu_revert"
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone" />
+
+                <!-- VIN Folders Section -->
+                <TextView
+                    android:id="@+id/vinFoldersHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Vehicles (VIN ID)"
+                    android:textColor="@color/primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp" />
+
+                <ListView
+                    android:id="@+id/historyListViewFolders"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:divider="@color/surface2"
+                    android:dividerHeight="1dp" />
+
                 <!-- Compare-mode bar: toggle multi-select to pick a Petrol log + an
                      LPG log and plot both onto one map for cross-file Deviation. -->
                 <LinearLayout
+                    android:id="@+id/compareBarLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"

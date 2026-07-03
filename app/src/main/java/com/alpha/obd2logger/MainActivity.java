@@ -100,6 +100,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView historyFolderText;
     private com.google.android.material.button.MaterialButton btnCompareLogs;
     private TextView compareHintText;
+    private android.widget.ListView historyListViewFolders;
+    private com.google.android.material.button.MaterialButton btnBackToFolders;
+    private TextView vinFoldersHeader;
+    private View compareBarLayout;
+    private TextView petrolLogsHeader;
+    private TextView lpgLogsHeader;
+    private String selectedVinFolder = null;
     // Compare mode: when true the history list shows checkboxes so the user can
     // pick up to 2 logs (e.g. a Petrol log + an LPG log) and plot both onto one map.
     private boolean compareMode = false;
@@ -216,6 +223,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         historyListViewPetrol = findViewById(R.id.historyListViewPetrol);
         historyListViewLpg = findViewById(R.id.historyListViewLpg);
         historyFolderText = findViewById(R.id.historyFolderText);
+        
+        historyListViewFolders = findViewById(R.id.historyListViewFolders);
+        btnBackToFolders = findViewById(R.id.btnBackToFolders);
+        vinFoldersHeader = findViewById(R.id.vinFoldersHeader);
+        compareBarLayout = findViewById(R.id.compareBarLayout);
+        petrolLogsHeader = findViewById(R.id.petrolLogsHeader);
+        lpgLogsHeader = findViewById(R.id.lpgLogsHeader);
+
+        if (btnBackToFolders != null) {
+            btnBackToFolders.setOnClickListener(v -> {
+                selectedVinFolder = null;
+                compareMode = false;
+                compareSelection.clear();
+                loadHistoryFiles();
+            });
+        }
         
         bottomNav = findViewById(R.id.tabBar);
         panelDashboard = findViewById(R.id.panelDashboard);
@@ -748,6 +771,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         boolean isMediaStore;
         boolean isFile;
         File file;
+        String vin;
 
         boolean delete(Context context) {
             if (isSaf && df != null) {
@@ -770,7 +794,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             androidx.documentfile.provider.DocumentFile df = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
             if (df != null && df.exists()) {
                 historyFolderText.setText("Folder: " + df.getName());
-                scanSafFolderRecursively(df, logFiles);
+                scanSafFolderRecursively(df, "General", logFiles);
             } else {
                 historyFolderText.setText("Cannot access custom folder. Using default.");
                 loadDefaultHistory(logFiles);
@@ -790,139 +814,227 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         compareSelection.retainAll(allUris);
 
-        List<HistoryLogFile> petrolFiles = new ArrayList<>();
-        List<HistoryLogFile> lpgFiles = new ArrayList<>();
+        // Group log files by VIN
+        java.util.Map<String, java.util.List<HistoryLogFile>> groups = new java.util.HashMap<>();
         for (HistoryLogFile f : logFiles) {
-            if (f.name != null && f.name.toUpperCase().startsWith("PETROL")) {
-                petrolFiles.add(f);
-            } else {
-                lpgFiles.add(f);
+            String v = f.vin == null || f.vin.trim().isEmpty() ? "General" : f.vin;
+            if (!groups.containsKey(v)) {
+                groups.put(v, new java.util.ArrayList<>());
             }
+            groups.get(v).add(f);
         }
 
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+        if (selectedVinFolder == null) {
+            // Folders view
+            if (btnBackToFolders != null) btnBackToFolders.setVisibility(View.GONE);
+            if (vinFoldersHeader != null) vinFoldersHeader.setVisibility(View.VISIBLE);
+            if (historyListViewFolders != null) historyListViewFolders.setVisibility(View.VISIBLE);
+            if (compareBarLayout != null) compareBarLayout.setVisibility(View.GONE);
+            if (petrolLogsHeader != null) petrolLogsHeader.setVisibility(View.GONE);
+            if (historyListViewPetrol != null) historyListViewPetrol.setVisibility(View.GONE);
+            if (lpgLogsHeader != null) lpgLogsHeader.setVisibility(View.GONE);
+            if (historyListViewLpg != null) historyListViewLpg.setVisibility(View.GONE);
 
-        historyListViewPetrol.setAdapter(new android.widget.BaseAdapter() {
-            @Override
-            public int getCount() {
-                return petrolFiles.size();
+            List<String> vinKeys = new ArrayList<>(groups.keySet());
+            // Sort VIN folders: General/No VIN folder should go last, others alphabetically
+            java.util.Collections.sort(vinKeys, (k1, k2) -> {
+                if ("General".equalsIgnoreCase(k1)) return 1;
+                if ("General".equalsIgnoreCase(k2)) return -1;
+                return k1.compareToIgnoreCase(k2);
+            });
+
+            if (historyListViewFolders != null) {
+                historyListViewFolders.setAdapter(new android.widget.BaseAdapter() {
+                    @Override
+                    public int getCount() {
+                        return vinKeys.size();
+                    }
+
+                    @Override
+                    public Object getItem(int position) {
+                        return vinKeys.get(position);
+                    }
+
+                    @Override
+                    public long getItemId(int position) {
+                        return position;
+                    }
+
+                    @Override
+                    public View getView(int position, View convertView, ViewGroup parent) {
+                        View view = convertView;
+                        if (view == null) {
+                            view = getLayoutInflater().inflate(R.layout.list_item_folder, parent, false);
+                        }
+                        String vinKey = vinKeys.get(position);
+                        TextView nameText = view.findViewById(R.id.folderNameText);
+                        TextView countText = view.findViewById(R.id.folderCountText);
+                        
+                        nameText.setText("General".equalsIgnoreCase(vinKey) ? "General / No VIN" : "VIN: " + vinKey);
+                        int count = groups.get(vinKey).size();
+                        countText.setText(count + " log file" + (count > 1 ? "s" : ""));
+                        return view;
+                    }
+                });
+
+                historyListViewFolders.setOnItemClickListener((parent, view, position, id) -> {
+                    selectedVinFolder = vinKeys.get(position);
+                    loadHistoryFiles();
+                });
+                setListViewHeightBasedOnChildren(historyListViewFolders);
+            }
+        } else {
+            // Files list view inside the selected VIN folder
+            if (btnBackToFolders != null) {
+                btnBackToFolders.setVisibility(View.VISIBLE);
+                btnBackToFolders.setText("Back to Vehicles (" + ("General".equalsIgnoreCase(selectedVinFolder) ? "General" : selectedVinFolder) + ")");
+            }
+            if (vinFoldersHeader != null) vinFoldersHeader.setVisibility(View.GONE);
+            if (historyListViewFolders != null) historyListViewFolders.setVisibility(View.GONE);
+            if (compareBarLayout != null) compareBarLayout.setVisibility(View.VISIBLE);
+            if (petrolLogsHeader != null) petrolLogsHeader.setVisibility(View.VISIBLE);
+            if (historyListViewPetrol != null) historyListViewPetrol.setVisibility(View.VISIBLE);
+            if (lpgLogsHeader != null) lpgLogsHeader.setVisibility(View.VISIBLE);
+            if (historyListViewLpg != null) historyListViewLpg.setVisibility(View.VISIBLE);
+
+            List<HistoryLogFile> filteredFiles = groups.get(selectedVinFolder);
+            if (filteredFiles == null) {
+                filteredFiles = new ArrayList<>();
             }
 
-            @Override
-            public Object getItem(int position) {
-                return petrolFiles.get(position);
-            }
-
-            @Override
-            public long getItemId(int position) {
-                return position;
-            }
-
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                View view = convertView;
-                if (view == null) {
-                    view = getLayoutInflater().inflate(R.layout.list_item_history, parent, false);
-                }
-
-                HistoryLogFile item = petrolFiles.get(position);
-                TextView nameText = view.findViewById(R.id.logNameText);
-                TextView dateText = view.findViewById(R.id.logDateText);
-                View actionLayout = view.findViewById(R.id.actionLayout);
-                android.widget.ImageButton btnShare = view.findViewById(R.id.btnShare);
-                android.widget.ImageButton btnDelete = view.findViewById(R.id.btnDelete);
-                CheckBox compareCheckbox = view.findViewById(R.id.compareCheckbox);
-
-                nameText.setText(item.name);
-                dateText.setText(sdf.format(new Date(item.date)));
-
-                if (compareMode) {
-                    actionLayout.setVisibility(View.GONE);
-                    compareCheckbox.setVisibility(View.VISIBLE);
-                    compareCheckbox.setChecked(compareSelection.contains(item.uri));
+            List<HistoryLogFile> petrolFiles = new ArrayList<>();
+            List<HistoryLogFile> lpgFiles = new ArrayList<>();
+            for (HistoryLogFile f : filteredFiles) {
+                if (f.name != null && f.name.toUpperCase().startsWith("PETROL")) {
+                    petrolFiles.add(f);
                 } else {
-                    actionLayout.setVisibility(View.VISIBLE);
-                    compareCheckbox.setVisibility(View.GONE);
+                    lpgFiles.add(f);
+                }
+            }
 
-                    btnShare.setOnClickListener(v -> shareLogFile(item));
-                    btnDelete.setOnClickListener(v -> deleteLogFile(item));
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+
+            historyListViewPetrol.setAdapter(new android.widget.BaseAdapter() {
+                @Override
+                public int getCount() {
+                    return petrolFiles.size();
                 }
 
-                return view;
-            }
-        });
-
-        historyListViewLpg.setAdapter(new android.widget.BaseAdapter() {
-            @Override
-            public int getCount() {
-                return lpgFiles.size();
-            }
-
-            @Override
-            public Object getItem(int position) {
-                return lpgFiles.get(position);
-            }
-
-            @Override
-            public long getItemId(int position) {
-                return position;
-            }
-
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                View view = convertView;
-                if (view == null) {
-                    view = getLayoutInflater().inflate(R.layout.list_item_history, parent, false);
+                @Override
+                public Object getItem(int position) {
+                    return petrolFiles.get(position);
                 }
 
-                HistoryLogFile item = lpgFiles.get(position);
-                TextView nameText = view.findViewById(R.id.logNameText);
-                TextView dateText = view.findViewById(R.id.logDateText);
-                View actionLayout = view.findViewById(R.id.actionLayout);
-                android.widget.ImageButton btnShare = view.findViewById(R.id.btnShare);
-                android.widget.ImageButton btnDelete = view.findViewById(R.id.btnDelete);
-                CheckBox compareCheckbox = view.findViewById(R.id.compareCheckbox);
+                @Override
+                public long getItemId(int position) {
+                    return position;
+                }
 
-                nameText.setText(item.name);
-                dateText.setText(sdf.format(new Date(item.date)));
+                @Override
+                public View getView(int position, View convertView, ViewGroup parent) {
+                    View view = convertView;
+                    if (view == null) {
+                        view = getLayoutInflater().inflate(R.layout.list_item_history, parent, false);
+                    }
 
+                    HistoryLogFile item = petrolFiles.get(position);
+                    TextView nameText = view.findViewById(R.id.logNameText);
+                    TextView dateText = view.findViewById(R.id.logDateText);
+                    View actionLayout = view.findViewById(R.id.actionLayout);
+                    android.widget.ImageButton btnShare = view.findViewById(R.id.btnShare);
+                    android.widget.ImageButton btnDelete = view.findViewById(R.id.btnDelete);
+                    CheckBox compareCheckbox = view.findViewById(R.id.compareCheckbox);
+
+                    nameText.setText(item.name);
+                    dateText.setText(sdf.format(new Date(item.date)));
+
+                    if (compareMode) {
+                        actionLayout.setVisibility(View.GONE);
+                        compareCheckbox.setVisibility(View.VISIBLE);
+                        compareCheckbox.setChecked(compareSelection.contains(item.uri));
+                    } else {
+                        actionLayout.setVisibility(View.VISIBLE);
+                        compareCheckbox.setVisibility(View.GONE);
+
+                        btnShare.setOnClickListener(v -> shareLogFile(item));
+                        btnDelete.setOnClickListener(v -> deleteLogFile(item));
+                    }
+
+                    return view;
+                }
+            });
+
+            historyListViewLpg.setAdapter(new android.widget.BaseAdapter() {
+                @Override
+                public int getCount() {
+                    return lpgFiles.size();
+                }
+
+                @Override
+                public Object getItem(int position) {
+                    return lpgFiles.get(position);
+                }
+
+                @Override
+                public long getItemId(int position) {
+                    return position;
+                }
+
+                @Override
+                public View getView(int position, View convertView, ViewGroup parent) {
+                    View view = convertView;
+                    if (view == null) {
+                        view = getLayoutInflater().inflate(R.layout.list_item_history, parent, false);
+                    }
+
+                    HistoryLogFile item = lpgFiles.get(position);
+                    TextView nameText = view.findViewById(R.id.logNameText);
+                    TextView dateText = view.findViewById(R.id.logDateText);
+                    View actionLayout = view.findViewById(R.id.actionLayout);
+                    android.widget.ImageButton btnShare = view.findViewById(R.id.btnShare);
+                    android.widget.ImageButton btnDelete = view.findViewById(R.id.btnDelete);
+                    CheckBox compareCheckbox = view.findViewById(R.id.compareCheckbox);
+
+                    nameText.setText(item.name);
+                    dateText.setText(sdf.format(new Date(item.date)));
+
+                    if (compareMode) {
+                        actionLayout.setVisibility(View.GONE);
+                        compareCheckbox.setVisibility(View.VISIBLE);
+                        compareCheckbox.setChecked(compareSelection.contains(item.uri));
+                    } else {
+                        actionLayout.setVisibility(View.VISIBLE);
+                        compareCheckbox.setVisibility(View.GONE);
+
+                        btnShare.setOnClickListener(v -> shareLogFile(item));
+                        btnDelete.setOnClickListener(v -> deleteLogFile(item));
+                    }
+
+                    return view;
+                }
+            });
+
+            historyListViewPetrol.setOnItemClickListener((parent, view, position, id) -> {
+                HistoryLogFile selectedFile = petrolFiles.get(position);
                 if (compareMode) {
-                    actionLayout.setVisibility(View.GONE);
-                    compareCheckbox.setVisibility(View.VISIBLE);
-                    compareCheckbox.setChecked(compareSelection.contains(item.uri));
-                } else {
-                    actionLayout.setVisibility(View.VISIBLE);
-                    compareCheckbox.setVisibility(View.GONE);
-
-                    btnShare.setOnClickListener(v -> shareLogFile(item));
-                    btnDelete.setOnClickListener(v -> deleteLogFile(item));
+                    handleCompareClick(selectedFile.uri);
+                    return;
                 }
+                openReviewActivity(selectedFile);
+            });
 
-                return view;
-            }
-        });
+            historyListViewLpg.setOnItemClickListener((parent, view, position, id) -> {
+                HistoryLogFile selectedFile = lpgFiles.get(position);
+                if (compareMode) {
+                    handleCompareClick(selectedFile.uri);
+                    return;
+                }
+                openReviewActivity(selectedFile);
+            });
 
-        historyListViewPetrol.setOnItemClickListener((parent, view, position, id) -> {
-            HistoryLogFile selectedFile = petrolFiles.get(position);
-            if (compareMode) {
-                handleCompareClick(selectedFile.uri);
-                return;
-            }
-            openReviewActivity(selectedFile);
-        });
-
-        historyListViewLpg.setOnItemClickListener((parent, view, position, id) -> {
-            HistoryLogFile selectedFile = lpgFiles.get(position);
-            if (compareMode) {
-                handleCompareClick(selectedFile.uri);
-                return;
-            }
-            openReviewActivity(selectedFile);
-        });
-
-        // Size both ListViews to fit ALL rows so the OUTER ScrollView can scroll
-        setListViewHeightBasedOnChildren(historyListViewPetrol);
-        setListViewHeightBasedOnChildren(historyListViewLpg);
+            setListViewHeightBasedOnChildren(historyListViewPetrol);
+            setListViewHeightBasedOnChildren(historyListViewLpg);
+        }
         updateCompareUi();
     }
 
@@ -1081,7 +1193,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             String[] projection = new String[] {
                 android.provider.MediaStore.Downloads._ID,
                 android.provider.MediaStore.Downloads.DISPLAY_NAME,
-                android.provider.MediaStore.Downloads.DATE_MODIFIED
+                android.provider.MediaStore.Downloads.DATE_MODIFIED,
+                android.provider.MediaStore.Downloads.RELATIVE_PATH
             };
             String selection = android.provider.MediaStore.Downloads.RELATIVE_PATH + " LIKE ? AND " +
                                android.provider.MediaStore.Downloads.DISPLAY_NAME + " LIKE ?";
@@ -1092,18 +1205,39 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     int idCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Downloads._ID);
                     int nameCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Downloads.DISPLAY_NAME);
                     int dateCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Downloads.DATE_MODIFIED);
+                    int relPathCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Downloads.RELATIVE_PATH);
                     while (cursor.moveToNext()) {
                         long id = cursor.getLong(idCol);
                         String name = cursor.getString(nameCol);
                         if (name != null && name.startsWith("CorrectionMap_")) continue;
                         long date = cursor.getLong(dateCol) * 1000L;
+                        String relPath = cursor.getString(relPathCol);
                         Uri contentUri = android.content.ContentUris.withAppendedId(collection, id);
                         
+                        String vin = "General";
+                        if (relPath != null) {
+                            String cleanPath = relPath.replace("Download/OBD2LPGLogger/", "")
+                                                      .replace("Downloads/OBD2LPGLogger/", "")
+                                                      .replace("Download/OBD2LPGLogger", "")
+                                                      .replace("Downloads/OBD2LPGLogger", "");
+                            if (cleanPath.startsWith("/")) {
+                                cleanPath = cleanPath.substring(1);
+                            }
+                            if (cleanPath.endsWith("/")) {
+                                cleanPath = cleanPath.substring(0, cleanPath.length() - 1);
+                            }
+                            cleanPath = cleanPath.trim();
+                            if (!cleanPath.isEmpty()) {
+                                vin = cleanPath;
+                            }
+                        }
+
                         HistoryLogFile hlf = new HistoryLogFile();
                         hlf.uri = contentUri;
                         hlf.name = name;
                         hlf.date = date;
                         hlf.isMediaStore = true;
+                        hlf.vin = vin;
                         logFiles.add(hlf);
                     }
                 }
@@ -1113,17 +1247,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         } else {
             File folder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "OBD2LPGLogger");
             if (folder.exists()) {
-                scanFolderRecursively(folder, logFiles);
+                scanFolderRecursively(folder, "General", logFiles);
             }
         }
     }
 
-    private void scanFolderRecursively(File dir, List<HistoryLogFile> logFiles) {
+    private void scanFolderRecursively(File dir, String currentVin, List<HistoryLogFile> logFiles) {
         File[] files = dir.listFiles();
         if (files != null) {
             for (File f : files) {
                 if (f.isDirectory()) {
-                    scanFolderRecursively(f, logFiles);
+                    scanFolderRecursively(f, f.getName(), logFiles);
                 } else if (f.getName().endsWith(".csv") && !f.getName().startsWith("CorrectionMap_")) {
                     HistoryLogFile hlf = new HistoryLogFile();
                     hlf.uri = androidx.core.content.FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".fileprovider", f);
@@ -1131,16 +1265,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     hlf.date = f.lastModified();
                     hlf.isFile = true;
                     hlf.file = f;
+                    hlf.vin = currentVin;
                     logFiles.add(hlf);
                 }
             }
         }
     }
 
-    private void scanSafFolderRecursively(androidx.documentfile.provider.DocumentFile dir, List<HistoryLogFile> logFiles) {
+    private void scanSafFolderRecursively(androidx.documentfile.provider.DocumentFile dir, String currentVin, List<HistoryLogFile> logFiles) {
         for (androidx.documentfile.provider.DocumentFile f : dir.listFiles()) {
             if (f.isDirectory()) {
-                scanSafFolderRecursively(f, logFiles);
+                scanSafFolderRecursively(f, f.getName(), logFiles);
             } else if (f.getName() != null && f.getName().endsWith(".csv") && !f.getName().startsWith("CorrectionMap_")) {
                 HistoryLogFile hlf = new HistoryLogFile();
                 hlf.uri = f.getUri();
@@ -1148,6 +1283,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 hlf.date = f.lastModified();
                 hlf.isSaf = true;
                 hlf.df = f;
+                hlf.vin = currentVin;
                 logFiles.add(hlf);
             }
         }

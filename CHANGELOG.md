@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.4] - 2026-07-03
+### Added
+- **VIN Folders Grouping in History/Logs**: Grouped saved session log files (.csv) by their parsed/associated VIN ID into folders on the logs tab. Clicking a VIN folder enters that folder, allowing comparison of log files captured for that specific vehicle. Clicking "Back to Vehicles" returns to the folder list. Added directory scanner support and MediaStore relative path queries to extract VIN info automatically.
+
 ## [3.0.3] - 2026-07-02
 ### Added & Improved
 - **AI Agent REST API Enhancement**: Rewrote and expanded the local HTTP REST API Server (`ApiServer.java` on port 8080) to support robust, full-featured AI Agent integrations:
