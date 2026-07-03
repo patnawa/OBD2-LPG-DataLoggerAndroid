@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.6] - 2026-07-03
+### Added
+- **Delete Vehicle Folder capability**: Added a trash can button to each vehicle (VIN) folder row in the history list. Clicking it prompts for confirmation, then deletes all log files contained inside that folder, automatically cleans up the directory, and refreshes the folder view.
+
 ## [3.0.5] - 2026-07-03
 ### Added & Improved
 - **Automatic empty parent folder cleanup**: Implemented automatic folder deletion when the last log file inside a VIN subdirectory is deleted (both for SAF DocumentFiles and local Files).

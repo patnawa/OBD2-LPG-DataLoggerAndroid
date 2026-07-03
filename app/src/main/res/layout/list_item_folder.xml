@@ -43,6 +43,19 @@
             android:layout_marginTop="2dp" />
     </LinearLayout>
 
+    <!-- Delete Button -->
+    <ImageButton
+        android:id="@+id/btnDeleteFolder"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@android:drawable/ic_menu_delete"
+        android:tint="@color/danger"
+        android:contentDescription="Delete Folder"
+        android:focusable="false"
+        android:clickable="true"
+        android:layout_marginEnd="8dp" />
+
     <!-- Chevron Icon -->
     <ImageView
         android:layout_width="20dp"

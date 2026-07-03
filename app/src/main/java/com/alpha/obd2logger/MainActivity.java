@@ -869,10 +869,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         String vinKey = vinKeys.get(position);
                         TextView nameText = view.findViewById(R.id.folderNameText);
                         TextView countText = view.findViewById(R.id.folderCountText);
+                        android.widget.ImageButton btnDeleteFolder = view.findViewById(R.id.btnDeleteFolder);
                         
                         nameText.setText("General".equalsIgnoreCase(vinKey) ? "General / No VIN" : "VIN: " + vinKey);
                         int count = groups.get(vinKey).size();
                         countText.setText(count + " log file" + (count > 1 ? "s" : ""));
+
+                        if (btnDeleteFolder != null) {
+                            btnDeleteFolder.setOnClickListener(v -> deleteVinFolder(vinKey, groups.get(vinKey)));
+                        }
                         return view;
                     }
                 });
@@ -1094,6 +1099,54 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 } else {
                     Toast.makeText(this, "Failed to delete file", Toast.LENGTH_SHORT).show();
                 }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void deleteVinFolder(String vinKey, List<HistoryLogFile> files) {
+        if (files == null || files.isEmpty()) return;
+        String titleName = "General".equalsIgnoreCase(vinKey) ? "General / No VIN" : "VIN: " + vinKey;
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("Confirm Delete Folder")
+            .setMessage("Are you sure you want to delete folder \"" + titleName + "\" and all of its " + files.size() + " logs?")
+            .setPositiveButton("Delete", (d, w) -> {
+                boolean allSuccess = true;
+                for (HistoryLogFile f : files) {
+                    if (!f.delete(this)) {
+                        allSuccess = false;
+                    }
+                }
+                
+                // Also clean up physical empty folder if applicable
+                HistoryLogFile firstFile = files.get(0);
+                if (firstFile.isFile && firstFile.file != null) {
+                    File parent = firstFile.file.getParentFile();
+                    if (parent != null && parent.isDirectory()) {
+                        parent.delete();
+                    }
+                } else if (firstFile.isSaf && firstFile.vin != null && !"General".equals(firstFile.vin)) {
+                    try {
+                        String savedUriStr = getSharedPreferences("OBD2Prefs", MODE_PRIVATE).getString("custom_log_folder_uri", null);
+                        if (savedUriStr != null) {
+                            Uri treeUri = Uri.parse(savedUriStr);
+                            androidx.documentfile.provider.DocumentFile tree = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
+                            if (tree != null && tree.exists()) {
+                                androidx.documentfile.provider.DocumentFile sub = tree.findFile(firstFile.vin);
+                                if (sub != null && sub.isDirectory()) {
+                                    sub.delete();
+                                }
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                if (allSuccess) {
+                    Toast.makeText(this, "Folder and logs deleted", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Failed to delete some logs", Toast.LENGTH_SHORT).show();
+                }
+                loadHistoryFiles();
             })
             .setNegativeButton("Cancel", null)
             .show();
