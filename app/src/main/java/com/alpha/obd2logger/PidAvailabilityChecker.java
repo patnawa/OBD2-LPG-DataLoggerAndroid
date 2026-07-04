@@ -53,9 +53,9 @@ public final class PidAvailabilityChecker {
         List<String> supported = new ArrayList<>();
         boolean anyResponse = false;
 
-        // Query PID 0x00, 0x20, 0x40 — each covers a 32-PID range
-        String[] bitmapPids = {"0100", "0120", "0140"};
-        int[] bitmapBases = {0x00, 0x20, 0x40};
+        // Query PID 0x00, 0x20, 0x40, 0x60 — each covers a 32-PID range
+        String[] bitmapPids = {"0100", "0120", "0140", "0160"};
+        int[] bitmapBases = {0x00, 0x20, 0x40, 0x60};
 
         for (int i = 0; i < bitmapPids.length; i++) {
             String response = elm.sendCommandRaw(bitmapPids[i]);

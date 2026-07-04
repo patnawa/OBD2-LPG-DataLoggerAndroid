@@ -54,6 +54,7 @@ public final class LoggerService extends Service {
     }
 
     private ExecutorService executor;
+    private ExecutorService dtcExecutor;
     private PowerManager.WakeLock wakeLock;
     private BaseDriver driver;
     private volatile boolean running = false;
@@ -64,6 +65,7 @@ public final class LoggerService extends Service {
 
     public static final java.util.List<DtcCode> lastStoredDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
     public static final java.util.List<DtcCode> lastPendingDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
+    public static final java.util.List<DtcCode> lastPermanentDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     public interface DtcClearTrigger {
         boolean clear();
@@ -78,6 +80,8 @@ public final class LoggerService extends Service {
         void onPidsDetected(int supportedCount, int totalCount, boolean fromLiveQuery);
         void onDeviceDetected(VLinkerOptimizer.DeviceType deviceType);
         void onAdapterCheckResult(boolean isStandard, String details);
+        void onDtcAutoScan(int storedCount, int pendingCount, int permanentCount);
+        void onNewDtcDetected(java.util.List<DtcCode> newCodes);
     }
 
     public static void setCallback(LoggerCallback cb) {
@@ -134,6 +138,7 @@ public final class LoggerService extends Service {
         running = true;
         recordCount = 0;
         executor = Executors.newSingleThreadExecutor();
+        dtcExecutor = Executors.newSingleThreadExecutor();
         executor.submit(() -> runLogger(config));
     }
 
@@ -218,6 +223,27 @@ public final class LoggerService extends Service {
             }
         }
 
+        // --- Auto-scan DTCs ---
+        try {
+            List<DtcCode> stored = DtcReader.readStoredDtcs(driver);
+            List<DtcCode> pending = DtcReader.readPendingDtcs(driver);
+            List<DtcCode> permanent = DtcReader.readPermanentDtcs(driver);
+            
+            lastStoredDtcs.clear();
+            lastStoredDtcs.addAll(stored);
+            lastPendingDtcs.clear();
+            lastPendingDtcs.addAll(pending);
+            lastPermanentDtcs.clear();
+            lastPermanentDtcs.addAll(permanent);
+            
+            LoggerCallback cbDtc = getCallback();
+            if (cbDtc != null) {
+                mainHandler.post(() -> cbDtc.onDtcAutoScan(stored.size(), pending.size(), permanent.size()));
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "DTC Auto-scan failed", e);
+        }
+
         // --- Auto-detect supported PIDs ---
         List<PIDDefinition> allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgCritical() : PIDCatalogue.getAll();
         List<PIDDefinition> pids = allPids;
@@ -232,23 +258,30 @@ public final class LoggerService extends Service {
             }
         } else if (driver instanceof ElmDriver) {
             // Real adapter: query the vehicle for supported PIDs
-            notifyStatus("Detecting supported PIDs...", false);
-            List<String> supportedHex = PidAvailabilityChecker.querySupportedPids(driver);
-
+            List<String> supportedHex = getCachedPids(config.vin);
             if (supportedHex != null && !supportedHex.isEmpty()) {
                 pids = PidAvailabilityChecker.filterCatalogue(supportedHex, allPids);
                 detectedFromLive = true;
-                Log.i(TAG, "Live detection: " + pids.size() + "/" + allPids.size() + " PIDs supported");
+                Log.i(TAG, "Cached PIDs loaded for VIN " + config.vin + ": " + pids.size() + " PIDs");
             } else {
-                // Fallback: use VIN-based brand/year profile
-                Log.w(TAG, "Live PID detection failed — trying VIN-based profile");
-                java.util.Set<String> brandPids = BrandYearProfile.getProfileFromVin(config.vin);
-                if (brandPids != null) {
-                    pids = PidAvailabilityChecker.filterCatalogue(
-                            new ArrayList<>(brandPids), allPids);
-                    Log.i(TAG, "VIN profile: " + pids.size() + "/" + allPids.size() + " PIDs");
+                notifyStatus("Detecting supported PIDs...", false);
+                supportedHex = PidAvailabilityChecker.querySupportedPids(driver);
+
+                if (supportedHex != null && !supportedHex.isEmpty()) {
+                    pids = PidAvailabilityChecker.filterCatalogue(supportedHex, allPids);
+                    detectedFromLive = true;
+                    cachePids(config.vin, supportedHex);
+                    Log.i(TAG, "Live detection: " + pids.size() + "/" + allPids.size() + " PIDs supported");
+                } else {
+                    // Fallback: use VIN-based brand/year profile
+                    Log.w(TAG, "Live PID detection failed — trying VIN-based profile");
+                    java.util.Set<String> brandPids = BrandYearProfile.getProfileFromVin(config.vin);
+                    if (brandPids != null) {
+                        pids = PidAvailabilityChecker.filterCatalogue(
+                                new ArrayList<>(brandPids), allPids);
+                        Log.i(TAG, "VIN profile: " + pids.size() + "/" + allPids.size() + " PIDs");
+                    }
                 }
-                // If VIN profile also failed, keep allPids (current behavior)
             }
 
             // Notify UI of detection results
@@ -264,18 +297,82 @@ public final class LoggerService extends Service {
         final List<PIDDefinition> finalPids = pids;
         SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US);
         long started = android.os.SystemClock.elapsedRealtime();
+        final java.util.Map<String, Integer> consecutiveFailures = new java.util.HashMap<>();
 
         try {
             writer = new DataWriter(this, sessionId, finalPids, config.vin);
             updateNotification("Logging: 0 records", 0);
 
+            long lastDtcCheckMs = android.os.SystemClock.elapsedRealtime();
+
             while (running) {
+                long nowMs = android.os.SystemClock.elapsedRealtime();
+                if (nowMs - lastDtcCheckMs >= 60000) {
+                    lastDtcCheckMs = nowMs;
+                    ExecutorService de = dtcExecutor;
+                    if (de != null && !de.isShutdown()) {
+                        de.submit(() -> {
+                            try {
+                                List<DtcCode> stored = DtcReader.readStoredDtcs(driver);
+                                List<DtcCode> pending = DtcReader.readPendingDtcs(driver);
+                                List<DtcCode> permanent = DtcReader.readPermanentDtcs(driver);
+                                
+                                List<DtcCode> newCodes = new ArrayList<>();
+                                for (DtcCode c : stored) {
+                                    if (!lastStoredDtcs.contains(c)) {
+                                        newCodes.add(c);
+                                    }
+                                }
+                                for (DtcCode c : pending) {
+                                    if (!lastPendingDtcs.contains(c)) {
+                                        newCodes.add(c);
+                                    }
+                                }
+                                
+                                lastStoredDtcs.clear();
+                                lastStoredDtcs.addAll(stored);
+                                lastPendingDtcs.clear();
+                                lastPendingDtcs.addAll(pending);
+                                lastPermanentDtcs.clear();
+                                lastPermanentDtcs.addAll(permanent);
+                                
+                                if (!newCodes.isEmpty()) {
+                                    LoggerCallback cbDtc = getCallback();
+                                    if (cbDtc != null) {
+                                        mainHandler.post(() -> cbDtc.onNewDtcDetected(newCodes));
+                                    }
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Background periodic DTC scan failed", e);
+                            }
+                        });
+                    }
+                }
                 Map<String, Double> batch = driver.queryPidBatch(finalPids);
                 List<SensorSample> samples = new ArrayList<>();
+                List<PIDDefinition> toRemove = new ArrayList<>();
+                
                 for (PIDDefinition pid : finalPids) {
                     Double value = batch.get(pid.getName());
                     samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
                             value == null ? "err" : "ok"));
+                    
+                    if (value == null) {
+                        int fails = consecutiveFailures.getOrDefault(pid.key(), 0) + 1;
+                        consecutiveFailures.put(pid.key(), fails);
+                        if (fails >= 3) {
+                            toRemove.add(pid);
+                        }
+                    } else {
+                        consecutiveFailures.put(pid.key(), 0);
+                    }
+                }
+                
+                if (!toRemove.isEmpty()) {
+                    finalPids.removeAll(toRemove);
+                    for (PIDDefinition p : toRemove) {
+                        Log.w(TAG, "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
+                    }
                 }
 
                 DataRecord record = new DataRecord(
@@ -346,6 +443,10 @@ public final class LoggerService extends Service {
             // and blocking here can cause ANR (Application Not Responding).
             executor = null;
         }
+        if (dtcExecutor != null) {
+            dtcExecutor.shutdownNow();
+            dtcExecutor = null;
+        }
     }
 
     private void publishRecord(DataRecord record, int count) {
@@ -407,6 +508,30 @@ public final class LoggerService extends Service {
             wakeLock.release();
             wakeLock = null;
         }
+    }
+
+    private List<String> getCachedPids(String vin) {
+        if (vin == null || vin.isEmpty()) return null;
+        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
+        String cached = prefs.getString("pids_cache_" + vin, null);
+        if (cached == null || cached.isEmpty()) return null;
+        
+        List<String> list = new ArrayList<>();
+        for (String s : cached.split(",")) {
+            list.add(s.trim());
+        }
+        return list;
+    }
+
+    private void cachePids(String vin, List<String> pids) {
+        if (vin == null || vin.isEmpty() || pids == null || pids.isEmpty()) return;
+        StringBuilder sb = new StringBuilder();
+        for (String s : pids) {
+            if (sb.length() > 0) sb.append(",");
+            sb.append(s);
+        }
+        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
+        prefs.edit().putString("pids_cache_" + vin, sb.toString()).apply();
     }
 
     @Override

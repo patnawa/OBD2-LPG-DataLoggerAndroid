@@ -89,29 +89,52 @@ public final class BrandYearProfile {
                 || wmi.startsWith("4A3") || wmi.startsWith("4A4")) return Brand.MITSUBISHI;
         if (wmi.startsWith("JF")) return Brand.SUBARU;
         if (wmi.startsWith("JS")) return Brand.SUZUKI;
+        if (wmi.startsWith("JAL") || wmi.startsWith("JDA")) return Brand.ISUZU;
+        if (wmi.startsWith("JH5") || wmi.startsWith("JNK")) return Brand.HINO;
         if (wmi.startsWith("J")) return Brand.TOYOTA; // Default Japanese
 
         // Korean manufacturers (K)
-        if (wmi.startsWith("KM") || wmi.startsWith("KN") || wmi.startsWith("K")) return Brand.HYUNDAI;
+        if (wmi.startsWith("KN")) return Brand.KIA;
+        if (wmi.startsWith("KM")) return Brand.HYUNDAI;
+        if (wmi.startsWith("K")) return Brand.HYUNDAI; // Default Korean
 
-        // US manufacturers (1, 4)
+        // US manufacturers (1, 4, 5, 2, 3)
+        if (wmi.startsWith("1G1") || wmi.startsWith("1GC") || wmi.startsWith("1GN")) return Brand.CHEVROLET;
         if (wmi.startsWith("1F") || wmi.startsWith("1FA")) return Brand.FORD;
-        if (wmi.startsWith("1G") || wmi.startsWith("1G1")) return Brand.GM;
-        if (wmi.startsWith("1C") || wmi.startsWith("2C")) return Brand.CHRYSLER;
-        if (wmi.startsWith("1") || wmi.startsWith("4")) return Brand.GM; // US default
+        if (wmi.startsWith("1G")) return Brand.GM;
+        if (wmi.startsWith("1J") || wmi.startsWith("1C9")) return Brand.JEEP;
+        if (wmi.startsWith("1D") || wmi.startsWith("2D") || wmi.startsWith("3D")) return Brand.DODGE;
+        if (wmi.startsWith("1C") || wmi.startsWith("2C") || wmi.startsWith("3C")) return Brand.CHRYSLER;
+        if (wmi.startsWith("1") || wmi.startsWith("4") || wmi.startsWith("5")) return Brand.GM; // US default
 
         // German manufacturers (W, S)
+        if (wmi.startsWith("WAU") || wmi.startsWith("WUA")) return Brand.AUDI;
+        if (wmi.startsWith("WP0") || wmi.startsWith("WP1")) return Brand.PORSCHE;
         if (wmi.startsWith("WBA") || wmi.startsWith("WBS") || wmi.startsWith("WBW")) return Brand.BMW;
         if (wmi.startsWith("WDB") || wmi.startsWith("WDD") || wmi.startsWith("WDC")) return Brand.MERCEDES;
-        if (wmi.startsWith("WVW") || wmi.startsWith("WV1") || wmi.startsWith("WAU")) return Brand.VOLKSWAGEN;
+        if (wmi.startsWith("WVW") || wmi.startsWith("WV1")) return Brand.VOLKSWAGEN;
         if (wmi.startsWith("W") || wmi.startsWith("S")) return Brand.VOLKSWAGEN; // German default
 
-        // European manufacturers (V, 3)
+        // European / French / Italian (V, Z, 3, Y, X)
+        if (wmi.startsWith("VF1")) return Brand.RENAULT;
+        if (wmi.startsWith("VF7")) return Brand.CITROEN;
+        if (wmi.startsWith("VF3")) return Brand.PEUGEOT;
         if (wmi.startsWith("VS") || wmi.startsWith("VSS")) return Brand.VOLVO;
-        if (wmi.startsWith("V") || wmi.startsWith("3")) return Brand.PEUGEOT; // European default
+        if (wmi.startsWith("ZFA")) return Brand.FIAT;
+        if (wmi.startsWith("ZAR")) return Brand.ALFA_ROMEO;
+        if (wmi.startsWith("Z")) return Brand.FIAT; // Italian default
+        
+        // Indian manufacturers (M)
+        if (wmi.startsWith("MAT")) return Brand.TATA;
+        if (wmi.startsWith("MA1") || wmi.startsWith("MA3")) return Brand.MAHINDRA;
 
-        // Italian manufacturers (Z)
-        if (wmi.startsWith("Z")) return Brand.FIAT;
+        // Chinese manufacturers (L)
+        if (wmi.startsWith("LFV")) return Brand.VAG; // FAW-VW
+        if (wmi.startsWith("LSG")) return Brand.CHEVROLET; // SAIC-GM
+        if (wmi.startsWith("LVS")) return Brand.FORD; // Changan Ford
+        if (wmi.startsWith("LTV")) return Brand.TOYOTA;
+        if (wmi.startsWith("LHG")) return Brand.HONDA;
+        if (wmi.startsWith("LBV")) return Brand.BMW;
 
         return Brand.GENERIC;
     }

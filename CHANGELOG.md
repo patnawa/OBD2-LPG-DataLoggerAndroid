@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.8] - 2026-07-04
+### Added & Improved
+- **Comprehensive DTC Diagnostic Scanner Suite**:
+  - **Freeze Frame Snapshot**: Added reading of Mode 02 freeze frame data (RPM, Speed, Coolant, Load, STFT/LTFT trims, MAP, IAT) inside `FreezeFrameReader` and displayed it as a clean engine snapshot card on trigger.
+  - **Readiness Monitor Dashboard Grid**: Redesigned readiness monitors tab into a visually appealing two-column layout using colored indicators (🟢 complete / 🔴 incomplete) and automated spark-ignition vs compression-ignition (gasoline vs diesel) test name detection.
+  - **DTC History Database (SQLite)**: Created a local SQLite history storage (`DtcHistoryDb`) recording each DTC scan's stored, pending, and permanent codes, with comparison highlight diffs. Added long-press action on "Read DTCs" to view vehicle scan history.
+  - **PDF Diagnostic Report Export**: Implemented native Android `PdfDocument` generation allowing export of complete vehicle reports (DTCs, readiness status, freeze frames) to shareable PDF files directly without adding external library size.
+  - **Background DTC Monitoring Alert**: Added an automatic check (every 60 seconds) during active logging to scan for new fault codes and trigger notifications if errors arise.
+  - **WMI Brand Detection Fixes**: Refactored `BrandYearProfile` WMI prefix mappings to properly support Kia (KN), Audi, Dodge, Jeep, Chevrolet, Renault, Citroen, Tata, Mahindra, Isuzu, Hino, and Chinese vehicle manufacturers.
+  - **PID Availability Caching**: Integrated persistent caching of supported OBD2 PIDs to eliminate redundant live bitmap queries on reconnection.
+  - **PID Blacklisting**: Automatically drops unsupported sensors returning 3 consecutive failed queries to reduce CAN bus latency.
+  - **4-Byte PID Support**: Expanded `FormulaEvaluator` with `D` variable support to parse and evaluate standard 4-byte PID responses.
+
 ## [3.0.7] - 2026-07-04
 ### Added & Improved
 - **Simulated Diagnostic Commands**: Added simulation support for Modes 03 (stored codes), 07 (pending codes), 04 (clear codes), 0101 (readiness monitors), and 0902 (VIN queries) inside `SimulationDriver`. Decoupled diagnostic execution by declaring a unified raw command interface `sendCommandRaw` in `BaseDriver`.

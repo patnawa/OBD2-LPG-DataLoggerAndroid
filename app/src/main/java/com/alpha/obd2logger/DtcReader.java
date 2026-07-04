@@ -96,6 +96,17 @@ public final class DtcReader {
     }
 
     /**
+     * Read permanent DTCs (Mode 0A).
+     */
+    public static List<DtcCode> readPermanentDtcs(BaseDriver driver) {
+        if (driver == null || !driver.isConnected()) {
+            return new ArrayList<>();
+        }
+        String response = driver.sendCommandRaw("0A");
+        return parseDtcResponse(response, "4A");
+    }
+
+    /**
      * Clear all DTCs and reset MIL (Mode 04).
      * @return true if command was sent successfully
      */
@@ -104,13 +115,11 @@ public final class DtcReader {
             return false;
         }
         String response = driver.sendCommandRaw("04");
-        return response != null && !response.isEmpty();
-    }
-
-    private static String normalizeHex(String response) {
-        String normalized = response.replace("\r\n", "\n").replace('\r', '\n');
-        normalized = normalized.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "");
-        normalized = normalized.replaceAll("[^0-9A-Fa-f]", "");
-        return normalized.toUpperCase();
+        if (response == null || response.isEmpty()) {
+            return false;
+        }
+        // Normalize and verify that response contains positive confirmation "44"
+        String clean = response.replaceAll("[^0-9A-Fa-f]", "");
+        return clean.contains("44");
     }
 }

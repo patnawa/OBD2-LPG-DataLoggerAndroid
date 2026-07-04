@@ -9,9 +9,11 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.app.PendingIntent;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.hardware.usb.UsbManager;
-import android.app.PendingIntent;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 import android.os.Environment;
@@ -120,6 +122,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private volatile ExecutorService dtcExecutor;
     private final List<DtcCode> lastStoredDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final List<DtcCode> lastPendingDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<DtcCode> lastPermanentDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private volatile FreezeFrameData lastFreezeFrame = null;
+    private DtcHistoryDb dtcHistoryDb;
     private volatile boolean running;
     private DataWriter currentWriter;
     private volatile BaseDriver currentDriver;
@@ -142,6 +147,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         try {
+            DtcDatabase.init(this);
             android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
             int currentTheme = prefs.getInt("app_theme", androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
             androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(currentTheme);
@@ -736,6 +742,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // DTC
         btnReadDtc.setOnClickListener(v -> readDtcs());
+        btnReadDtc.setOnLongClickListener(v -> {
+            showScanHistoryDialog();
+            return true;
+        });
         btnClearDtc.setOnClickListener(v -> clearDtcs());
         btnReadVin.setOnClickListener(v -> readVin());
         btnReadiness.setOnClickListener(v -> checkReadiness());
@@ -1811,6 +1821,67 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         });
     }
 
+    @Override
+    public void onDtcAutoScan(int storedCount, int pendingCount, int permanentCount) {
+        runOnUiThread(() -> {
+            int total = storedCount + pendingCount;
+            if (total > 0) {
+                Toast.makeText(this, "⚠️ Auto-scan: Found " + total + " active DTC codes!", Toast.LENGTH_LONG).show();
+            }
+            updateDtcBadge(storedCount, pendingCount, permanentCount);
+        });
+    }
+
+    @Override
+    public void onNewDtcDetected(List<DtcCode> newCodes) {
+        runOnUiThread(() -> {
+            StringBuilder sb = new StringBuilder();
+            for (DtcCode c : newCodes) {
+                if (sb.length() > 0) sb.append(", ");
+                sb.append(c.getCode());
+            }
+            Toast.makeText(this, "🚨 NEW DTC DETECTED: " + sb.toString(), Toast.LENGTH_LONG).show();
+            
+            // Build and show notification
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) {
+                // Reuse existing channel id from LoggerService (CHANNEL_ID = "OBD2_LOGGER_CHANNEL" or similar)
+                // Let's create a notification channel if not exist
+                String channelId = "obd2_dtc_alerts";
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    NotificationChannel channel = new NotificationChannel(
+                            channelId, "OBD2 DTC Alerts", NotificationManager.IMPORTANCE_HIGH);
+                    nm.createNotificationChannel(channel);
+                }
+                androidx.core.app.NotificationCompat.Builder builder = new androidx.core.app.NotificationCompat.Builder(this, channelId)
+                        .setContentTitle("🚨 New Fault Code Detected")
+                        .setContentText("DTCs: " + sb.toString())
+                        .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                        .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH);
+                nm.notify(9999, builder.build());
+            }
+        });
+    }
+
+    private void updateDtcBadge(int storedCount, int pendingCount, int permanentCount) {
+        int total = storedCount + pendingCount;
+        if (bottomNav != null) {
+            com.google.android.material.badge.BadgeDrawable badge = bottomNav.getOrCreateBadge(R.id.nav_dtc);
+            if (total > 0) {
+                badge.setVisible(true);
+                badge.setNumber(total);
+                if (storedCount > 0) {
+                    badge.setBackgroundColor(getColorCompat(R.color.danger));
+                } else {
+                    badge.setBackgroundColor(getColorCompat(R.color.warning));
+                }
+            } else {
+                badge.setVisible(false);
+                badge.clearNumber();
+            }
+        }
+    }
+
     // --- Dashboard updates ---
 
     private void updateDashboard(DataRecord record) {
@@ -1920,6 +1991,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcExecutor.submit(() -> {
             List<DtcCode> stored = DtcReader.readStoredDtcs(currentDriver);
             List<DtcCode> pending = DtcReader.readPendingDtcs(currentDriver);
+            List<DtcCode> permanent = DtcReader.readPermanentDtcs(currentDriver);
+            
+            FreezeFrameData ffData = null;
+            if (!stored.isEmpty() || !pending.isEmpty()) {
+                ffData = FreezeFrameReader.readFreezeFrame(currentDriver);
+            }
+            lastFreezeFrame = ffData;
             
             lastStoredDtcs.clear();
             lastStoredDtcs.addAll(stored);
@@ -1930,16 +2008,28 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             LoggerService.lastStoredDtcs.addAll(stored);
             LoggerService.lastPendingDtcs.clear();
             LoggerService.lastPendingDtcs.addAll(pending);
+            LoggerService.lastPermanentDtcs.clear();
+            LoggerService.lastPermanentDtcs.addAll(permanent);
             
-            runOnUiThread(() -> displayDtcs(stored, pending));
+            if (dtcHistoryDb == null) {
+                dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
+            }
+            String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
+            String ffJson = ffData != null ? ffData.toJsonObject().toString() : null;
+            dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
+            
+            runOnUiThread(() -> {
+                displayDtcs(stored, pending, permanent);
+                updateDtcBadge(stored.size(), pending.size(), permanent.size());
+            });
         });
     }
 
-    private void displayDtcs(List<DtcCode> stored, List<DtcCode> pending) {
+    private void displayDtcs(List<DtcCode> stored, List<DtcCode> pending, List<DtcCode> permanent) {
         dtcListContainer.removeAllViews();
-        int total = stored.size() + pending.size();
+        int total = stored.size() + pending.size() + permanent.size();
 
-        if (stored.isEmpty() && pending.isEmpty()) {
+        if (stored.isEmpty() && pending.isEmpty() && permanent.isEmpty()) {
             dtcStatusText.setText(getString(R.string.no_dtcs));
             dtcStatusText.setTextColor(getColorCompat(R.color.accent));
             return;
@@ -1949,14 +2039,89 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcStatusText.setTextColor(getColorCompat(R.color.danger));
 
         if (!stored.isEmpty()) {
-            addDtcSection("Stored DTCs", stored, R.color.danger);
+            addDtcSection("Stored DTCs (Active)", stored, R.color.danger, "🔍");
         }
         if (!pending.isEmpty()) {
-            addDtcSection("Pending DTCs", pending, R.color.warning);
+            addDtcSection("Pending DTCs (Warm-up)", pending, R.color.warning, "⏳");
         }
+        if (!permanent.isEmpty()) {
+            addDtcSection("Permanent DTCs (History)", permanent, R.color.primary, "🔒");
+        }
+
+        // Freeze Frame Snapshot Display
+        if (lastFreezeFrame != null && !lastFreezeFrame.getValues().isEmpty()) {
+            TextView ffTitleView = new TextView(this);
+            ffTitleView.setText("❄️ Freeze Frame (Snapshot at Trigger)");
+            ffTitleView.setTextColor(getColorCompat(R.color.accent));
+            ffTitleView.setTextSize(14);
+            ffTitleView.setPadding(0, 12, 0, 6);
+            ffTitleView.setTypeface(null, android.graphics.Typeface.BOLD);
+            dtcListContainer.addView(ffTitleView);
+
+            LinearLayout ffLayout = new LinearLayout(this);
+            ffLayout.setOrientation(LinearLayout.VERTICAL);
+            ffLayout.setPadding(12, 12, 12, 12);
+            ffLayout.setBackgroundResource(R.color.surface2);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.bottomMargin = 8;
+            ffLayout.setLayoutParams(lp);
+
+            java.util.Map<String, Double> ffVals = lastFreezeFrame.getValues();
+            String[] displayPids = {"0C", "0D", "05", "04", "06", "07", "0B", "0F"};
+            String[] displayNames = {"Engine RPM", "Vehicle Speed", "Coolant Temp", "Calculated Load", "STFT Bank 1", "LTFT Bank 1", "Intake MAP", "Intake Air Temp"};
+            
+            for (int i = 0; i < displayPids.length; i++) {
+                String pidHex = displayPids[i];
+                if (ffVals.containsKey(pidHex)) {
+                    TextView tv = new TextView(this);
+                    tv.setText("  • " + displayNames[i] + ": " + lastFreezeFrame.getFormattedValue(pidHex));
+                    tv.setTextColor(getColorCompat(R.color.text));
+                    tv.setTextSize(12);
+                    tv.setPadding(4, 2, 4, 2);
+                    ffLayout.addView(tv);
+                }
+            }
+            dtcListContainer.addView(ffLayout);
+        }
+
+        // Add Export PDF Report button at the bottom of list if DTCs or freeze frame exist
+        Button exportBtn = new Button(this);
+        exportBtn.setText("📤 Export PDF Report");
+        exportBtn.setOnClickListener(v -> exportDtcReport());
+        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        btnLp.topMargin = 16;
+        exportBtn.setLayoutParams(btnLp);
+        dtcListContainer.addView(exportBtn);
     }
 
-    private void addDtcSection(String title, List<DtcCode> codes, int colorRes) {
+    private void exportDtcReport() {
+        String vin = headerVin.getText().toString().replace("VIN: ", "").trim();
+        if (vin.isEmpty()) {
+            vin = "UNKNOWN_VIN";
+        }
+        File pdfFile = DtcReportExporter.exportReportToPdf(this, vin, lastStoredDtcs, lastPendingDtcs, lastPermanentDtcs, lastFreezeFrame);
+        if (pdfFile == null) {
+            Toast.makeText(this, "Failed to generate PDF report.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Temporary bypass VmPolicy restriction to share file
+        android.os.StrictMode.VmPolicy.Builder builder = new android.os.StrictMode.VmPolicy.Builder();
+        android.os.StrictMode.setVmPolicy(builder.build());
+
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("application/pdf");
+        intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(pdfFile));
+        intent.putExtra(Intent.EXTRA_SUBJECT, "OBD2 Vehicle Diagnostic Report - " + vin);
+        intent.putExtra(Intent.EXTRA_TEXT, "Attached is the OBD2 PDF diagnostic report for vehicle VIN: " + vin);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(intent, "Share Diagnostic PDF Report"));
+        Toast.makeText(this, "PDF Report generated: " + pdfFile.getName(), Toast.LENGTH_LONG).show();
+    }
+
+    private void addDtcSection(String title, List<DtcCode> codes, int colorRes, String iconPrefix) {
         TextView titleView = new TextView(this);
         titleView.setText(title + " (" + codes.size() + ")");
         titleView.setTextColor(getColorCompat(colorRes));
@@ -1967,8 +2132,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         for (DtcCode dtc : codes) {
             TextView codeView = new TextView(this);
-            codeView.setText("🔍  " + dtc.getCode() + " — " + dtc.getDescription());
-            codeView.setTextColor(getColorCompat(R.color.text));
+            codeView.setText(iconPrefix + "  " + dtc.getCode() + " — " + dtc.getDescription());
+            
+            // Severity Color Coding
+            int severityColor = getColorCompat(R.color.text);
+            switch (dtc.getSeverity()) {
+                case CRITICAL:
+                    severityColor = getColorCompat(R.color.danger);
+                    break;
+                case WARNING:
+                    severityColor = getColorCompat(R.color.warning);
+                    break;
+                case INFO:
+                    severityColor = getColorCompat(R.color.accent);
+                    break;
+            }
+            codeView.setTextColor(severityColor);
             codeView.setTextSize(13);
             codeView.setPadding(8, 6, 8, 6);
             codeView.setBackgroundResource(R.color.surface2);
@@ -1990,6 +2169,59 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
     }
 
+    private void showScanHistoryDialog() {
+        if (dtcHistoryDb == null) {
+            dtcHistoryDb = new DtcHistoryDb(this);
+        }
+        String rawVin = headerVin.getText().toString().replace("VIN: ", "").trim();
+        final String vin = rawVin.isEmpty() ? "UNKNOWN_VIN" : rawVin;
+        List<DtcHistoryDb.DtcHistoryRecord> history = dtcHistoryDb.getHistory(vin);
+        
+        if (history.isEmpty()) {
+            Toast.makeText(this, "No history found for this vehicle.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(32, 24, 32, 24);
+
+        String lastDate = "";
+        for (DtcHistoryDb.DtcHistoryRecord r : history) {
+            if (!r.date.equals(lastDate)) {
+                lastDate = r.date;
+                TextView dateHeader = new TextView(this);
+                dateHeader.setText("📅 " + r.date);
+                dateHeader.setTextColor(getColorCompat(R.color.accent));
+                dateHeader.setTextSize(14);
+                dateHeader.setTypeface(null, android.graphics.Typeface.BOLD);
+                dateHeader.setPadding(0, 16, 0, 8);
+                container.addView(dateHeader);
+            }
+
+            TextView item = new TextView(this);
+            String prefix = "stored".equals(r.type) ? "🔴 Stored: " : ("pending".equals(r.type) ? "⏳ Pending: " : ("permanent".equals(r.type) ? "🔒 Permanent: " : "🟢 Clean: "));
+            item.setText("  " + prefix + r.code + " - " + r.description);
+            item.setTextColor(getColorCompat("clean".equals(r.type) ? R.color.accent : R.color.text));
+            item.setTextSize(12);
+            item.setPadding(8, 4, 8, 4);
+            container.addView(item);
+        }
+
+        androidx.core.widget.NestedScrollView scrollView = new androidx.core.widget.NestedScrollView(this);
+        scrollView.addView(container);
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("📜 Diagnostic Scan History")
+                .setView(scrollView)
+                .setPositiveButton("Close", null)
+                .setNegativeButton("Clear History", (dialog, which) -> {
+                    dtcHistoryDb.clearHistory(vin);
+                    Toast.makeText(this, "History cleared for this vehicle.", Toast.LENGTH_SHORT).show();
+                })
+                .show();
+    }
+
     private void clearDtcs() {
         if (currentDriver == null || !currentDriver.isConnected()) {
             dtcStatusText.setText("Not connected. Start logging first.");
@@ -2001,14 +2233,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (success) {
                 lastStoredDtcs.clear();
                 lastPendingDtcs.clear();
+                lastPermanentDtcs.clear();
+                lastFreezeFrame = null;
                 LoggerService.lastStoredDtcs.clear();
                 LoggerService.lastPendingDtcs.clear();
+                LoggerService.lastPermanentDtcs.clear();
             }
             runOnUiThread(() -> {
                 if (success) {
                     dtcStatusText.setText("DTCs cleared. MIL should reset after next drive cycle.");
                     dtcStatusText.setTextColor(getColorCompat(R.color.accent));
                     dtcListContainer.removeAllViews();
+                    updateDtcBadge(0, 0, 0);
                 } else {
                     dtcStatusText.setText("Failed to clear DTCs.");
                     dtcStatusText.setTextColor(getColorCompat(R.color.danger));
@@ -2060,22 +2296,46 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         milView.setText(String.format(Locale.US, "MIL: %s | DTCs: %d | %s",
                 rm.isMilOn() ? "ON ⚠" : "OFF ✓",
                 rm.getDtcCount(),
-                rm.isAllReady() ? "All monitors ready ✓" : "Not all monitors ready"));
+                rm.isAllReady() ? "Smog Check: READY ✓" : "Smog Check: NOT READY"));
         milView.setTextColor(getColorCompat(rm.isMilOn() ? R.color.danger : R.color.accent));
         milView.setTextSize(14);
         milView.setPadding(0, 12, 0, 8);
         milView.setTypeface(null, android.graphics.Typeface.BOLD);
         readinessContainer.addView(milView);
 
+        LinearLayout currentRow = null;
+        int colCount = 0;
+
         for (ReadinessMonitor.MonitorStatus m : rm.getMonitors()) {
             if (!m.available) continue;
+
+            if (colCount % 2 == 0) {
+                currentRow = new LinearLayout(this);
+                currentRow.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                lp.bottomMargin = 8;
+                currentRow.setLayoutParams(lp);
+                readinessContainer.addView(currentRow);
+            }
+
             TextView mv = new TextView(this);
-            String icon = m.complete ? "✓" : "✗";
-            mv.setText(String.format("  %s  %s", icon, m.name));
-            mv.setTextColor(getColorCompat(m.complete ? R.color.accent : R.color.warning));
-            mv.setTextSize(13);
-            mv.setPadding(8, 4, 8, 4);
-            readinessContainer.addView(mv);
+            String icon = m.complete ? "🟢  " : "🔴  ";
+            mv.setText(icon + m.name);
+            mv.setTextColor(getColorCompat(m.complete ? R.color.text : R.color.warning));
+            mv.setTextSize(12);
+            mv.setPadding(12, 10, 12, 10);
+            mv.setBackgroundResource(R.color.surface2);
+
+            LinearLayout.LayoutParams cellLp = new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
+            if (colCount % 2 == 0) {
+                cellLp.rightMargin = 8;
+            }
+            mv.setLayoutParams(cellLp);
+
+            currentRow.addView(mv);
+            colCount++;
         }
 
         dtcStatusText.setText("Readiness check complete.");

@@ -23,6 +23,40 @@ public final class DtcCode {
         return description;
     }
 
+    public enum Severity {
+        CRITICAL,
+        WARNING,
+        INFO
+    }
+
+    public Severity getSeverity() {
+        if (code == null || code.isEmpty()) {
+            return Severity.INFO;
+        }
+        char prefix = code.charAt(0);
+        char second = code.length() > 1 ? code.charAt(1) : ' ';
+        if (prefix == 'P' && second == '0') {
+            return Severity.CRITICAL;
+        } else if (prefix == 'B') {
+            return Severity.INFO;
+        } else {
+            return Severity.WARNING;
+        }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DtcCode dtcCode = (DtcCode) o;
+        return code != null ? code.equals(dtcCode.code) : dtcCode.code == null;
+    }
+
+    @Override
+    public int hashCode() {
+        return code != null ? code.hashCode() : 0;
+    }
+
     /**
      * Decode a 2-byte DTC from raw hex into the standard P/C/B/U format.
      * First 2 bits of byte A encode the system letter:
@@ -44,7 +78,11 @@ public final class DtcCode {
         int digit4 = byteB & 0x0F;
 
         String code = String.format(Locale.US, "%c%X%X%X%X", system, digit1, digit2, digit3, digit4);
-        return new DtcCode(code, lookupDescription(code));
+        String desc = DtcDatabase.lookup(code);
+        if (desc == null) {
+            desc = lookupDescription(code);
+        }
+        return new DtcCode(code, desc);
     }
 
     /**

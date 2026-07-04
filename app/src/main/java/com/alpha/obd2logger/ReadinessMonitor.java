@@ -29,6 +29,7 @@ public final class ReadinessMonitor {
 
     private final boolean milOn;
     private final int dtcCount;
+    private final boolean isDiesel;
     private final List<MonitorStatus> monitors;
 
     public static class MonitorStatus {
@@ -47,14 +48,16 @@ public final class ReadinessMonitor {
         }
     }
 
-    public ReadinessMonitor(boolean milOn, int dtcCount, List<MonitorStatus> monitors) {
+    public ReadinessMonitor(boolean milOn, int dtcCount, boolean isDiesel, List<MonitorStatus> monitors) {
         this.milOn = milOn;
         this.dtcCount = dtcCount;
+        this.isDiesel = isDiesel;
         this.monitors = monitors;
     }
 
     public boolean isMilOn() { return milOn; }
     public int getDtcCount() { return dtcCount; }
+    public boolean isDiesel() { return isDiesel; }
     public List<MonitorStatus> getMonitors() { return monitors; }
 
     public boolean isAllReady() {
@@ -72,7 +75,7 @@ public final class ReadinessMonitor {
      */
     public static ReadinessMonitor parse(String response) {
         if (response == null || response.isEmpty()) {
-            return new ReadinessMonitor(false, 0, new ArrayList<>());
+            return new ReadinessMonitor(false, 0, false, new ArrayList<>());
         }
 
         String hex = response.replace("\r\n", "\n").replace('\r', '\n');
@@ -81,14 +84,14 @@ public final class ReadinessMonitor {
 
         int idx = hex.indexOf("4101");
         if (idx < 0) {
-            return new ReadinessMonitor(false, 0, new ArrayList<>());
+            return new ReadinessMonitor(false, 0, false, new ArrayList<>());
         }
 
         String data = hex.substring(idx + 4);
         // Require at least 3 data bytes (A B C) — pre-2008 non-CAN vehicles
         // may return only 3 bytes (no byte D for Group 2 monitors).
         if (data.length() < 6) {
-            return new ReadinessMonitor(false, 0, new ArrayList<>());
+            return new ReadinessMonitor(false, 0, false, new ArrayList<>());
         }
 
         int byteA = Integer.parseInt(data.substring(0, 2), 16);
@@ -99,6 +102,9 @@ public final class ReadinessMonitor {
         boolean mil = (byteA & 0x80) != 0;
         int dtcCount = byteA & 0x7F;
 
+        // Byte B bit 3: 0 = Spark (gasoline/LPG), 1 = Compression (diesel)
+        boolean diesel = (byteB & 0x08) != 0;
+
         List<MonitorStatus> monitors = new ArrayList<>();
         // Group 1 (bits in B for availability, C for completeness) per SAE J1979.
         // Bit 0 is Reserved and skipped.
@@ -106,28 +112,34 @@ public final class ReadinessMonitor {
         monitors.add(new MonitorStatus("Misfire",          (byteB & 0x02) != 0, (byteC & 0x02) == 0));
         monitors.add(new MonitorStatus("Fuel System",      (byteB & 0x04) != 0, (byteC & 0x04) == 0));
         monitors.add(new MonitorStatus("Components",       (byteB & 0x08) != 0, (byteC & 0x08) == 0));
-        // Bits 4-7: complete when the bit is SET in byteC.
-        monitors.add(new MonitorStatus("Catalyst",         (byteB & 0x10) != 0, (byteC & 0x10) != 0));
-        monitors.add(new MonitorStatus("Heated Catalyst",  (byteB & 0x20) != 0, (byteC & 0x20) != 0));
-        monitors.add(new MonitorStatus("EVAP",             (byteB & 0x40) != 0, (byteC & 0x40) != 0));
-        monitors.add(new MonitorStatus("Secondary Air",    (byteB & 0x80) != 0, (byteC & 0x80) != 0));
-        // Group 2 (byte D): Non-continuous monitors per SAE J1979.
-        // Byte D contains ONLY status (completion) bits: bit 3=O2 Heater,
-        // bit 4=O2 Sensor, bit 5=EGR, bit 6=Particulate Filter, bit 7=NOx/SOR.
-        // Availability for these monitors is in a separate PID (Mode 01 PID 41),
-        // not in byte D. We mark them all as available=true since we can't query
-        // PID 41 from here, and set complete=bit_is_SET (1=complete for Group 2).
-        //
-        // BUG FIX: The old code used overlapping bit pairs where each monitor's
-        // "complete" bit was the next monitor's "available" bit. The correct
-        // mapping uses bits 3-7 of byte D for ALL status bits with no overlap.
-        monitors.add(new MonitorStatus("EGR",              true, (byteD & 0x20) != 0));
-        monitors.add(new MonitorStatus("Particulate Filter", true, (byteD & 0x40) != 0));
-        monitors.add(new MonitorStatus("NOx/SOR",          true, (byteD & 0x80) != 0));
-        monitors.add(new MonitorStatus("O2 Sensor",        true, (byteD & 0x10) != 0));
-        monitors.add(new MonitorStatus("O2 Sensor Heater", true, (byteD & 0x08) != 0));
 
-        return new ReadinessMonitor(mil, dtcCount, monitors);
+        if (!diesel) {
+            // Gasoline / Spark Ignition Monitors
+            monitors.add(new MonitorStatus("Catalyst",         (byteB & 0x10) != 0, (byteC & 0x10) != 0));
+            monitors.add(new MonitorStatus("Heated Catalyst",  (byteB & 0x20) != 0, (byteC & 0x20) != 0));
+            monitors.add(new MonitorStatus("EVAP",             (byteB & 0x40) != 0, (byteC & 0x40) != 0));
+            monitors.add(new MonitorStatus("Secondary Air",    (byteB & 0x80) != 0, (byteC & 0x80) != 0));
+
+            // Group 2 (byte D) Gasoline
+            monitors.add(new MonitorStatus("EGR/VVT System",   true, (byteD & 0x20) != 0));
+            monitors.add(new MonitorStatus("O2 Sensor",        true, (byteD & 0x10) != 0));
+            monitors.add(new MonitorStatus("O2 Sensor Heater", true, (byteD & 0x08) != 0));
+        } else {
+            // Diesel / Compression Ignition Monitors
+            monitors.add(new MonitorStatus("NMHC Catalyst",    (byteB & 0x10) != 0, (byteC & 0x10) != 0));
+            monitors.add(new MonitorStatus("NOx Catalyst",     (byteB & 0x20) != 0, (byteC & 0x20) != 0));
+            monitors.add(new MonitorStatus("Boost Pressure",   (byteB & 0x40) != 0, (byteC & 0x40) != 0));
+            monitors.add(new MonitorStatus("exhaust Gas Sensor", (byteB & 0x80) != 0, (byteC & 0x80) != 0));
+
+            // Group 2 (byte D) Diesel
+            monitors.add(new MonitorStatus("EGR/VVT System",   true, (byteD & 0x20) != 0));
+            monitors.add(new MonitorStatus("PM Filter Active", true, (byteD & 0x08) != 0));
+            monitors.add(new MonitorStatus("DPF/Particulate",  true, (byteD & 0x40) != 0));
+            monitors.add(new MonitorStatus("NOx/SCR Monitor",  true, (byteD & 0x80) != 0));
+            monitors.add(new MonitorStatus("exhaust Gas Temp",  true, (byteD & 0x10) != 0));
+        }
+
+        return new ReadinessMonitor(mil, dtcCount, diesel, monitors);
     }
 
     /**
@@ -135,7 +147,7 @@ public final class ReadinessMonitor {
      */
     public static ReadinessMonitor read(BaseDriver driver) {
         if (driver == null || !driver.isConnected()) {
-            return new ReadinessMonitor(false, 0, new ArrayList<>());
+            return new ReadinessMonitor(false, 0, false, new ArrayList<>());
         }
         String response = driver.sendCommandRaw("0101");
         return parse(response);

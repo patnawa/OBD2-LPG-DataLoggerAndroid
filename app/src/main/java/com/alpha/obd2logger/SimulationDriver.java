@@ -89,6 +89,20 @@ public final class SimulationDriver extends BaseDriver {
     @Override
     public String sendCommandRaw(String command) {
         if (command == null) return "";
+        if (command.startsWith("02") && command.length() >= 4) {
+            String pid = command.substring(2, 4);
+            switch (pid) {
+                case "0C": return "42 0C 1A F8"; // RPM: 1726
+                case "0D": return "42 0D 3C";    // Speed: 60 km/h
+                case "05": return "42 05 5F";    // Coolant: 55 C
+                case "04": return "42 04 6B";    // Load: 42%
+                case "06": return "42 06 96";    // STFT B1: +17.2%
+                case "07": return "42 07 8F";    // LTFT B1: +11.7%
+                case "0B": return "42 0B 32";    // MAP: 50 kPa
+                case "0F": return "42 0F 46";    // IAT: 30 C
+                default: return "42 " + pid + " 00";
+            }
+        }
         switch (command) {
             case "03":
                 // Mode 03 (stored codes): returns P0171 (System too lean Bank 1) and P0300 (Random misfire)
@@ -96,6 +110,9 @@ public final class SimulationDriver extends BaseDriver {
             case "07":
                 // Mode 07 (pending codes): returns P0301 (Cylinder 1 misfire)
                 return "47 01 03 01";
+            case "0A":
+                // Mode 0A (permanent codes): returns P0171 (System too lean Bank 1)
+                return "4A 01 01 71";
             case "04":
                 // Mode 04 (clear codes)
                 return "44";

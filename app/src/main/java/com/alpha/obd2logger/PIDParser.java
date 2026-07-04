@@ -111,9 +111,10 @@ public final class PIDParser {
             int rawA = parseHexByte(dataHex, 0);
             int rawB = dataHex.length() >= 4 ? parseHexByte(dataHex, 2) : 0;
             int rawC = dataHex.length() >= 6 ? parseHexByte(dataHex, 4) : 0;
+            int rawD = dataHex.length() >= 8 ? parseHexByte(dataHex, 6) : 0;
 
             FormulaEvaluator evaluator = new FormulaEvaluator(pidDef.getFormula());
-            double value = evaluator.evaluate(rawA, rawB, rawC);
+            double value = evaluator.evaluate(rawA, rawB, rawC, rawD);
 
             if (pidDef.getMinVal() <= value && value <= pidDef.getMaxVal()) {
                 return Math.round(value * 10000.0) / 10000.0;
@@ -199,24 +200,24 @@ public final class PIDParser {
             this.input = input.replace(" ", "").toUpperCase();
         }
 
-        double evaluate(int a, int b, int c) {
-            double value = parseExpression(a, b, c);
+        double evaluate(int a, int b, int c, int d) {
+            double value = parseExpression(a, b, c, d);
             if (pos != input.length()) {
                 throw new IllegalArgumentException("Unparsed formula tail at " + pos);
             }
             return value;
         }
 
-        private double parseExpression(int a, int b, int c) {
-            double value = parseTerm(a, b, c);
+        private double parseExpression(int a, int b, int c, int d) {
+            double value = parseTerm(a, b, c, d);
             while (pos < input.length()) {
                 char ch = input.charAt(pos);
                 if (ch == '+') {
                     pos++;
-                    value += parseTerm(a, b, c);
+                    value += parseTerm(a, b, c, d);
                 } else if (ch == '-') {
                     pos++;
-                    value -= parseTerm(a, b, c);
+                    value -= parseTerm(a, b, c, d);
                 } else {
                     break;
                 }
@@ -224,16 +225,16 @@ public final class PIDParser {
             return value;
         }
 
-        private double parseTerm(int a, int b, int c) {
-            double value = parseFactor(a, b, c);
+        private double parseTerm(int a, int b, int c, int d) {
+            double value = parseFactor(a, b, c, d);
             while (pos < input.length()) {
                 char ch = input.charAt(pos);
                 if (ch == '*') {
                     pos++;
-                    value *= parseFactor(a, b, c);
+                    value *= parseFactor(a, b, c, d);
                 } else if (ch == '/') {
                     pos++;
-                    value /= parseFactor(a, b, c);
+                    value /= parseFactor(a, b, c, d);
                 } else {
                     break;
                 }
@@ -241,22 +242,22 @@ public final class PIDParser {
             return value;
         }
 
-        private double parseFactor(int a, int b, int c) {
+        private double parseFactor(int a, int b, int c, int d) {
             if (pos >= input.length()) {
                 throw new IllegalArgumentException("Unexpected end of formula");
             }
             char ch = input.charAt(pos);
             if (ch == '+') {
                 pos++;
-                return parseFactor(a, b, c);
+                return parseFactor(a, b, c, d);
             }
             if (ch == '-') {
                 pos++;
-                return -parseFactor(a, b, c);
+                return -parseFactor(a, b, c, d);
             }
             if (ch == '(') {
                 pos++;
-                double value = parseExpression(a, b, c);
+                double value = parseExpression(a, b, c, d);
                 if (pos >= input.length() || input.charAt(pos) != ')') {
                     throw new IllegalArgumentException("Missing closing parenthesis");
                 }
@@ -286,6 +287,10 @@ public final class PIDParser {
             if (ch == 'C') {
                 pos++;
                 return c;
+            }
+            if (ch == 'D') {
+                pos++;
+                return d;
             }
             throw new IllegalArgumentException("Unexpected character: " + ch);
         }
