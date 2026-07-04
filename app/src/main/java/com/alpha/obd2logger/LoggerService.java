@@ -246,7 +246,10 @@ public final class LoggerService extends Service {
 
         // --- Auto-detect supported PIDs ---
         List<PIDDefinition> allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgCritical() : PIDCatalogue.getAll();
-        List<PIDDefinition> pids = allPids;
+        // Always make a mutable copy — PIDCatalogue returns unmodifiable lists,
+        // and removeAll() in the logging loop would throw UnsupportedOperationException
+        // if PID detection fails and we end up using the original list.
+        List<PIDDefinition> pids = new ArrayList<>(allPids);
         boolean detectedFromLive = false;
 
         if (driver instanceof SimulationDriver) {

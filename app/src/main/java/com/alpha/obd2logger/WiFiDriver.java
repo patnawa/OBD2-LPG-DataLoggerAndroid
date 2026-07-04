@@ -70,6 +70,7 @@ public final class WiFiDriver extends ElmDriver {
         if (outputStream == null || inputStream == null) {
             return "";
         }
+        commandLock.lock();
         try {
             outputStream.write((command + "\r").getBytes(StandardCharsets.US_ASCII));
             outputStream.flush();
@@ -104,6 +105,8 @@ public final class WiFiDriver extends ElmDriver {
             return response.toString();
         } catch (IOException ignored) {
             return "";
+        } finally {
+            commandLock.unlock();
         }
     }
 }

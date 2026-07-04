@@ -8,6 +8,14 @@ public abstract class BaseDriver {
     protected final LoggerConfig config;
     protected volatile boolean connected;
 
+    /**
+     * Lock that serializes all OBD2 command I/O. The logger thread and DTC
+     * executor thread both call sendCommand() concurrently on the same driver.
+     * Without this lock, writes/reads interleave and corrupt OBD responses.
+     */
+    protected final java.util.concurrent.locks.ReentrantLock commandLock =
+            new java.util.concurrent.locks.ReentrantLock();
+
     protected BaseDriver(LoggerConfig config) {
         this.config = config;
     }

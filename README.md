@@ -1,6 +1,6 @@
 # OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.1.0** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.1.1** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
@@ -172,6 +172,15 @@ app/src/main/java/com/alpha/obd2logger/
 ├── FuelMode.java            # Fuel enum (PETROL/LPG_CNG)
 └── LocaleHelper.java        # Thai/English locale switcher
 ```
+
+## Changelog
+
+### v3.1.1 (2026-07-04) — Bug Hunt: Threading & vLinker Fixes
+- **[HIGH] vLinker optimizations were dead code** — `detectDevice()` checked `isConnected()` before `connected` was set, so all vLinker-specific AT commands (ATST32/ATST1A/ATST23, ATAT1/ATAT2, 6-PID chunks) never applied. Every adapter got generic ELM327 settings. Fixed by removing the premature guard.
+- **[HIGH] Concurrent OBD2 command corruption** — Logger thread and DTC executor thread both called `sendCommand()` on the same driver simultaneously, interleaving writes/reads and corrupting responses. Added `ReentrantLock` to all 4 drivers (USB, WiFi, BT SPP, BLE).
+- **[HIGH] removeAll() crash on unmodifiable PID list** — When PID detection failed, `LoggerService` tried to `removeAll()` on `PIDCatalogue.getAll()` which returns an unmodifiable list → `UnsupportedOperationException`. Now always uses a mutable copy.
+- **[HIGH] FuelMapView thread-unsafe HashMap** — Background log replay thread wrote to `HashMap` while UI thread read/iterated → `ConcurrentModificationException`. Changed to `ConcurrentHashMap`.
+- **[MEDIUM] Bluetooth SPP socket leak** — When standard RFCOMM `connect()` failed, the old socket wasn't closed before creating the fallback socket via reflection, leaking native Bluetooth resources.
 
 ## License
 

@@ -57,7 +57,12 @@ public final class VLinkerOptimizer {
      * @return detected device type, or GENERIC_ELM327 if not a vLinker
      */
     public static DeviceType detectDevice(ElmDriver elm) {
-        if (elm == null || !elm.isConnected()) {
+        // NOTE: Do NOT check elm.isConnected() here — this method is called from
+        // initializeElm327() BEFORE connected is set to true. The ELM327 AT layer
+        // is already alive at this point (ATZ/ATE0/etc. just succeeded), so
+        // sendCommandRaw() works fine. Checking isConnected() here would always
+        // return UNKNOWN, making all vLinker optimizations dead code.
+        if (elm == null) {
             return DeviceType.UNKNOWN;
         }
 
@@ -115,7 +120,9 @@ public final class VLinkerOptimizer {
      * @param config logger config (for transport mode, protocol, etc.)
      */
     public static void applyOptimizations(ElmDriver elm, DeviceType deviceType, LoggerConfig config) {
-        if (elm == null || !elm.isConnected() || deviceType == DeviceType.UNKNOWN) {
+        // NOTE: Do NOT check elm.isConnected() — called from initializeElm327()
+        // before connected is set to true. See detectDevice() comment.
+        if (elm == null || deviceType == DeviceType.UNKNOWN) {
             return;
         }
 

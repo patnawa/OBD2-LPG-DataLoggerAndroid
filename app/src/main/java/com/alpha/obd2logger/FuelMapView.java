@@ -10,7 +10,7 @@ import android.view.View;
 
 import androidx.annotation.Nullable;
 
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -36,8 +36,8 @@ public class FuelMapView extends View {
     };
 
     // Data store: Map<GridKey, TrimData>
-    private final Map<String, TrimData> petrolData = new HashMap<>();
-    private final Map<String, TrimData> lpgData = new HashMap<>();
+    private final Map<String, TrimData> petrolData = new ConcurrentHashMap<>();
+    private final Map<String, TrimData> lpgData = new ConcurrentHashMap<>();
     
     private MapMode currentMode = MapMode.PETROL;
     

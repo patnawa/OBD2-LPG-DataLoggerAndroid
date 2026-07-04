@@ -212,35 +212,39 @@ public final class BleDriver extends ElmDriver {
         if (gatt == null || writeChar == null) {
             return "";
         }
-
-        // Clear any stale response
-        responseQueue.clear();
-        synchronized (notifyBuffer) {
-            notifyBuffer.setLength(0);
-        }
-
+        commandLock.lock();
         try {
-            // BLE has MTU limits — split long commands if needed
-            byte[] data = (command + "\r").getBytes(java.nio.charset.StandardCharsets.US_ASCII);
-            // setValue() is deprecated in API 33+ but remains the most compatible
-            // approach for older API levels; the GATT callback relies on it here.
-            writeChar.setValue(data);
-            int props = writeChar.getProperties();
-            if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) {
-                writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-            } else if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) {
-                writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+            // Clear any stale response
+            responseQueue.clear();
+            synchronized (notifyBuffer) {
+                notifyBuffer.setLength(0);
             }
-            if (!gatt.writeCharacteristic(writeChar)) {
-                // Write was not accepted by the GATT layer — command would be lost
+
+            try {
+                // BLE has MTU limits — split long commands if needed
+                byte[] data = (command + "\r").getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+                // setValue() is deprecated in API 33+ but remains the most compatible
+                // approach for older API levels; the GATT callback relies on it here.
+                writeChar.setValue(data);
+                int props = writeChar.getProperties();
+                if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) {
+                    writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                } else if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) {
+                    writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                }
+                if (!gatt.writeCharacteristic(writeChar)) {
+                    // Write was not accepted by the GATT layer — command would be lost
+                    return "";
+                }
+
+                // Wait for response with '>' prompt
+                String response = responseQueue.poll(config.connectionTimeoutMs, TimeUnit.MILLISECONDS);
+                return response != null ? response : "";
+            } catch (Exception e) {
                 return "";
             }
-
-            // Wait for response with '>' prompt
-            String response = responseQueue.poll(config.connectionTimeoutMs, TimeUnit.MILLISECONDS);
-            return response != null ? response : "";
-        } catch (Exception e) {
-            return "";
+        } finally {
+            commandLock.unlock();
         }
     }
 

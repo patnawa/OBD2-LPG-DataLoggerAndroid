@@ -58,6 +58,9 @@ public final class SerialDriver extends ElmDriver {
                 socket.connect();
             } catch (IOException e) {
                 android.util.Log.w("OBD2Logger", "Standard RFCOMM connection failed, trying reflection fallback...", e);
+                // Close the failed socket before creating a new one to avoid
+                // leaking the native Bluetooth socket resource.
+                try { socket.close(); } catch (IOException ignored) {}
                 try {
                     socket = (BluetoothSocket) device.getClass().getMethod("createRfcommSocket", int.class).invoke(device, 1);
                     socket.connect();
@@ -115,6 +118,7 @@ public final class SerialDriver extends ElmDriver {
         if (outputStream == null || inputStream == null) {
             return "";
         }
+        commandLock.lock();
         try {
             outputStream.write((command + "\r").getBytes(StandardCharsets.US_ASCII));
             outputStream.flush();
@@ -149,6 +153,8 @@ public final class SerialDriver extends ElmDriver {
             return response.toString();
         } catch (IOException ignored) {
             return "";
+        } finally {
+            commandLock.unlock();
         }
     }
 }

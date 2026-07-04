@@ -99,6 +99,7 @@ public class UsbDriver extends ElmDriver {
         if (usbSerialPort == null) {
             return "";
         }
+        commandLock.lock();
         try {
             // 1. Flush any leftover data from previous command before sending
             usbSerialPort.purgeHwBuffers(true, true);
@@ -135,6 +136,8 @@ public class UsbDriver extends ElmDriver {
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             return "";
+        } finally {
+            commandLock.unlock();
         }
     }
 }
