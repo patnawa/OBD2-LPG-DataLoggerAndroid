@@ -110,18 +110,21 @@ for run in data.get('workflow_runs', []):
     fi
 }
 
+DOWNLOAD_DIR="/sdcard/Download/obd2datalogger"
+
 cmd_download() {
     log "Downloading APK from latest successful build..."
     
     cd "$REPO_DIR"
+    mkdir -p "$DOWNLOAD_DIR"
     
     if command -v gh &>/dev/null; then
         # Find latest successful run
         RUN_ID=$(gh run list --limit 1 --status success --json databaseId -q '.[0].databaseId' 2>/dev/null)
         if [ -n "$RUN_ID" ]; then
-            gh run download "$RUN_ID" -n OBD2LPGLogger-debug -D ./build-output/
-            ok "APK downloaded to ./build-output/"
-            ls -lh ./build-output/*.apk 2>/dev/null
+            gh run download "$RUN_ID" -n OBD2LPGLogger-debug -D "$DOWNLOAD_DIR/"
+            ok "APK downloaded to $DOWNLOAD_DIR/"
+            ls -lh "$DOWNLOAD_DIR"/*.apk 2>/dev/null
         else
             err "No successful runs found"
         fi
@@ -152,6 +155,6 @@ case "${1:-help}" in
         echo "  1. Edit code in Termux or Android Studio"
         echo "  2. Run: build-apk.sh github"
         echo "  3. Wait ~3-5 min, then: build-apk.sh download"
-        echo "  4. Install: adb install build-output/app-debug.apk"
+        echo "  4. Install: adb install /sdcard/Download/obd2datalogger/app-debug.apk"
         ;;
 esac
