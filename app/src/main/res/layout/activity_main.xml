@@ -448,7 +448,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge1"
                             android:layout_width="match_parent"
-                            android:layout_height="200dp"
+                            android:layout_height="280dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -467,7 +467,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge2"
                             android:layout_width="match_parent"
-                            android:layout_height="200dp"
+                            android:layout_height="280dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
@@ -494,7 +494,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge3"
                             android:layout_width="match_parent"
-                            android:layout_height="180dp"
+                            android:layout_height="260dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -513,7 +513,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge4"
                             android:layout_width="match_parent"
-                            android:layout_height="180dp"
+                            android:layout_height="260dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
