@@ -1,6 +1,6 @@
 # OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.0.7** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.1.0** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
@@ -42,16 +42,21 @@ This calculates the net fuel trim difference between running on gas and the petr
 - **Goal**: Adjust the LPG map until the Deviation is close to **0%** across all cells.
 
 ### Live Dashboard
-- **4 customizable gauges**: Analog gauge views with neon glow, warning zones, and tick marks
+- **4 customizable gauges**: Professional analog gauges with tapered needle, arc number labels, smooth animation, peak value indicator, 3D hub cap, per-gauge color themes (RPM=red, Speed=cyan, Temp=amber, Load=green), and warning zones
 - **4 dashboard value cards**: Long-press to swap which PID each card shows
 - **5 real-time graphs**: Rolling line charts with auto-scaling, fill area, and current-value indicators
 - **Readings table**: Full PID list with values, units, and ok/err status
 - **Tuning status**: Real-time LEAN/RICH/OK analysis with recommendations (Thai/English)
 
 ### Diagnostics
-- **DTC scanning**: Read stored (Mode 03) and pending (Mode 07) Diagnostic Trouble Codes with descriptions
+- **DTC scanning**: Read stored (Mode 03), pending (Mode 07), and permanent (Mode 0A) Diagnostic Trouble Codes with descriptions
+- **Mode 06 Monitor Test Results**: Read actual test values, min/max thresholds, and pass/fail for all monitors (Catalyst, O2, EGR, EVAP, Misfire)
+- **Per-DTC Freeze Frames**: Individual freeze frame snapshot for each stored DTC with 10 PIDs
+- **DTC Enrichment**: 157 codes with probable causes, repair suggestions, emissions flags, and drive cycles to clear
+- **Scan Comparison**: Shows NEW and CLEARED codes vs previous scan
 - **Clear DTCs**: Send Mode 04 to clear codes and reset MIL
 - **VIN reader**: Read 17-character VIN via Mode 09 PID 02 (multi-frame ISO-TP)
+- **ECU Calibration**: Read Cal-ID and CVN via Mode 09 for emissions compliance
 - **Readiness monitors**: Check emission inspection readiness — Misfire, Fuel System, Components, Catalyst, Heated Catalyst, EVAP, Secondary Air, EGR, Particulate Filter, NOx/SOR, O2 Sensor, O2 Heater
 
 ### Adapter Support
@@ -116,7 +121,7 @@ app/build/outputs/apk/debug/app-debug.apk (~5.8 MB)
 - **USB**: usb-serial-for-android v3.7.3 (mik3y)
 - **API server**: NanoHTTPD 2.3.1
 - **Architecture**: Catalogue pattern — PIDs defined once in `PIDCatalogue.java`, auto-flow through querying, logging, and display
-- **Testing**: JUnit 4, 59 unit tests (PID parsing, log replay, PID availability, vLinker optimizer)
+- **Testing**: JUnit 4, 75 unit tests (PID parsing, log replay, PID availability, vLinker optimizer)
 
 ## Project Structure
 
@@ -143,13 +148,21 @@ app/src/main/java/com/alpha/obd2logger/
 ├── SensorSample.java        # Single PID sample data class
 ├── FuelMapView.java         # 2D fuel map grid view (RPM × MAP)
 ├── GraphView.java           # Real-time line graph
-├── GaugeView.java           # Analog gauge with needle
+├── GaugeView.java           # Professional analog gauge (tapered needle, labels, animation)
 ├── LPGAnalyzer.java         # STFT+LTFT analysis (LEAN/RICH/OK)
 ├── FuelTrimResult.java      # Analysis result data class
 ├── PidAvailabilityChecker.java  # SAE J1979 PID bitmap queries
 ├── BrandYearProfile.java    # VIN-based brand/year PID profile fallback
-├── DtcReader.java           # Mode 03/07 DTC reader
+├── DtcReader.java           # Mode 03/07/0A DTC reader
 ├── DtcCode.java             # DTC code parser (SAE J2010)
+├── DtcEnrichment.java       # DTC enrichment DB (causes, fixes, emissions)
+├── DtcComparison.java       # Scan comparison (new/cleared/persisting)
+├── DtcReportExporter.java   # PDF diagnostic report export
+├── DtcHistoryDb.java        # SQLite DTC scan history per VIN
+├── Mode06Reader.java        # Mode 06 monitor test results reader
+├── Mode06Result.java        # Mode 06 result model + monitor names
+├── UasDecoder.java          # SAE J1979 Unit And Scaling decoder
+├── Mode09Reader.java        # Cal-ID and CVN reader
 ├── ReadinessMonitor.java    # Mode 01 PID 01 readiness parser
 ├── VinReader.java           # Mode 09 PID 02 VIN reader
 ├── ApiServer.java           # NanoHTTPD REST API server

@@ -148,6 +148,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     protected void onCreate(Bundle savedInstanceState) {
         try {
             DtcDatabase.init(this);
+            DtcEnrichment.init(this);
             android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
             int currentTheme = prefs.getInt("app_theme", androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
             androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(currentTheme);
@@ -601,13 +602,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void setupGauges() {
         GaugeView[] gauges = {gauge1, gauge2, gauge3, gauge4};
+        // Per-gauge color themes: {arc, needle, warning}
+        // Gauge 0=RPM(red), 1=Speed(cyan), 2=Temp(amber), 3=Load(green)
+        int[][] gaugeThemes = {
+            {0xFFFF2A55, 0xFFFF2A55, 0xFFFF0000}, // RPM — red
+            {0xFF00E5FF, 0xFF00E5FF, 0xFFFF2A55}, // Speed — cyan
+            {0xFFFFD600, 0xFFFFD600, 0xFFFF2A55}, // Temp — amber
+            {0xFF00FFA3, 0xFF00FFA3, 0xFFFFD600}, // Load — green
+        };
         for (int i=0; i<4; i++) {
             PIDDefinition pid = PIDDefinition.findByKey(prefGaugePids[i]);
             if (pid != null && gauges[i] != null) {
                 gauges[i].setRange((float)pid.getMinVal(), (float)pid.getMaxVal());
                 gauges[i].setLabel(pid.getName());
                 gauges[i].setUnit(pid.getUnit());
-                gauges[i].setColors(0xFF38BDF8, 0xFF22C55E);
+                int[] theme = gaugeThemes[i];
+                gauges[i].setFullColors(theme[0], theme[1], theme[2]);
+                // Set warning at 80% of max for RPM, 90% for others
+                gauges[i].setWarningStart(i == 0 ? 0.75f : 0.85f);
             }
         }
     }
@@ -1993,11 +2005,30 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             List<DtcCode> pending = DtcReader.readPendingDtcs(currentDriver);
             List<DtcCode> permanent = DtcReader.readPermanentDtcs(currentDriver);
             
+            // Read Mode 06 — on-board monitor test results
+            List<Mode06Result> mode06Results = Mode06Reader.readDiagnostic(currentDriver);
+            
+            // Read per-DTC freeze frames
+            List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames = FreezeFrameReader.readAllFreezeFrames(currentDriver);
+            
+            // Read Mode 09 — Cal-ID and CVN
+            List<Mode09Reader.CalIdEntry> calIds = Mode09Reader.readCalIds(currentDriver);
+            List<Mode09Reader.CvnEntry> cvns = Mode09Reader.readCvns(currentDriver);
+            
             FreezeFrameData ffData = null;
             if (!stored.isEmpty() || !pending.isEmpty()) {
                 ffData = FreezeFrameReader.readFreezeFrame(currentDriver);
             }
             lastFreezeFrame = ffData;
+            
+            // Scan comparison — compare with previous scan
+            if (dtcHistoryDb == null) {
+                dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
+            }
+            String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
+            if (vinStr.isEmpty()) vinStr = "UNKNOWN_VIN";
+            List<DtcHistoryDb.DtcHistoryRecord> history = dtcHistoryDb.getHistory(vinStr);
+            DtcComparison comparison = DtcComparison.compareWithHistory(history, stored, pending);
             
             lastStoredDtcs.clear();
             lastStoredDtcs.addAll(stored);
@@ -2011,21 +2042,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             LoggerService.lastPermanentDtcs.clear();
             LoggerService.lastPermanentDtcs.addAll(permanent);
             
-            if (dtcHistoryDb == null) {
-                dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
-            }
-            String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
             String ffJson = ffData != null ? ffData.toJsonObject().toString() : null;
             dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
             
             runOnUiThread(() -> {
-                displayDtcs(stored, pending, permanent);
+                displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
                 updateDtcBadge(stored.size(), pending.size(), permanent.size());
             });
         });
     }
 
-    private void displayDtcs(List<DtcCode> stored, List<DtcCode> pending, List<DtcCode> permanent) {
+    private void displayDtcs(List<DtcCode> stored, List<DtcCode> pending, List<DtcCode> permanent,
+                              List<Mode06Result> mode06Results,
+                              List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames,
+                              List<Mode09Reader.CalIdEntry> calIds,
+                              List<Mode09Reader.CvnEntry> cvns,
+                              DtcComparison comparison) {
         dtcListContainer.removeAllViews();
         int total = stored.size() + pending.size() + permanent.size();
 
@@ -2038,6 +2070,35 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcStatusText.setText(String.format(Locale.US, getString(R.string.dtc_count), total));
         dtcStatusText.setTextColor(getColorCompat(R.color.danger));
 
+        // --- Scan Comparison (NEW / CLEARED) ---
+        if (comparison != null && comparison.hasPreviousScan()) {
+            if (comparison.hasChanges()) {
+                TextView compView = new TextView(this);
+                compView.setText("🔄 " + comparison.getSummary());
+                compView.setTextColor(getColorCompat(R.color.warning));
+                compView.setTextSize(14);
+                compView.setPadding(0, 8, 0, 8);
+                compView.setTypeface(null, android.graphics.Typeface.BOLD);
+                dtcListContainer.addView(compView);
+
+                // Show NEW codes prominently
+                if (!comparison.getNewCodes().isEmpty()) {
+                    addDtcSection("🆕 NEW Since Last Scan", comparison.getNewCodes(), R.color.danger, "🆕");
+                }
+                // Show CLEARED codes
+                if (!comparison.getClearedCodes().isEmpty()) {
+                    addDtcSection("✅ CLEARED Since Last Scan", comparison.getClearedCodes(), R.color.accent, "✅");
+                }
+            } else if (comparison.getPersistingCodes().size() > 0) {
+                TextView compView = new TextView(this);
+                compView.setText("ℹ️ Same codes as last scan — " + comparison.getPersistingCodes().size() + " persisting");
+                compView.setTextColor(getColorCompat(R.color.muted));
+                compView.setTextSize(12);
+                compView.setPadding(0, 8, 0, 4);
+                dtcListContainer.addView(compView);
+            }
+        }
+
         if (!stored.isEmpty()) {
             addDtcSection("Stored DTCs (Active)", stored, R.color.danger, "🔍");
         }
@@ -2048,13 +2109,55 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             addDtcSection("Permanent DTCs (History)", permanent, R.color.primary, "🔒");
         }
 
-        // Freeze Frame Snapshot Display
-        if (lastFreezeFrame != null && !lastFreezeFrame.getValues().isEmpty()) {
+        // --- Per-DTC Freeze Frames ---
+        if (perDtcFrames != null && !perDtcFrames.isEmpty()) {
+            TextView ffHeader = new TextView(this);
+            ffHeader.setText("❄️ Freeze Frame Snapshots (per DTC)");
+            ffHeader.setTextColor(getColorCompat(R.color.accent));
+            ffHeader.setTextSize(14);
+            ffHeader.setPadding(0, 16, 0, 6);
+            ffHeader.setTypeface(null, android.graphics.Typeface.BOLD);
+            dtcListContainer.addView(ffHeader);
+
+            for (FreezeFrameReader.FreezeFrameEntry entry : perDtcFrames) {
+                LinearLayout ffLayout = new LinearLayout(this);
+                ffLayout.setOrientation(LinearLayout.VERTICAL);
+                ffLayout.setPadding(12, 8, 12, 8);
+                ffLayout.setBackgroundResource(R.color.surface2);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                lp.bottomMargin = 6;
+                ffLayout.setLayoutParams(lp);
+
+                TextView ffDtcTitle = new TextView(this);
+                ffDtcTitle.setText("  " + entry.getDtcCode() + " — Frame #" + entry.getFrameNumber());
+                ffDtcTitle.setTextColor(getColorCompat(R.color.warning));
+                ffDtcTitle.setTextSize(12);
+                ffDtcTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+                ffLayout.addView(ffDtcTitle);
+
+                String[] displayPids = {"0C", "0D", "05", "04", "06", "07", "0B", "0F", "0E", "11"};
+                String[] displayNames = {"RPM", "Speed", "Coolant", "Load", "STFT B1", "LTFT B1", "MAP", "IAT", "Timing", "Throttle"};
+                java.util.Map<String, Double> vals = entry.getData().getValues();
+                for (int i = 0; i < displayPids.length; i++) {
+                    if (vals.containsKey(displayPids[i])) {
+                        TextView tv = new TextView(this);
+                        tv.setText("    " + displayNames[i] + ": " + entry.getData().getFormattedValue(displayPids[i]));
+                        tv.setTextColor(getColorCompat(R.color.text));
+                        tv.setTextSize(11);
+                        tv.setPadding(4, 1, 4, 1);
+                        ffLayout.addView(tv);
+                    }
+                }
+                dtcListContainer.addView(ffLayout);
+            }
+        } else if (lastFreezeFrame != null && !lastFreezeFrame.getValues().isEmpty()) {
+            // Fallback: show generic freeze frame if per-DTC not available
             TextView ffTitleView = new TextView(this);
             ffTitleView.setText("❄️ Freeze Frame (Snapshot at Trigger)");
             ffTitleView.setTextColor(getColorCompat(R.color.accent));
             ffTitleView.setTextSize(14);
-            ffTitleView.setPadding(0, 12, 0, 6);
+            ffTitleView.setPadding(0, 16, 0, 6);
             ffTitleView.setTypeface(null, android.graphics.Typeface.BOLD);
             dtcListContainer.addView(ffTitleView);
 
@@ -2067,15 +2170,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             lp.bottomMargin = 8;
             ffLayout.setLayoutParams(lp);
 
-            java.util.Map<String, Double> ffVals = lastFreezeFrame.getValues();
             String[] displayPids = {"0C", "0D", "05", "04", "06", "07", "0B", "0F"};
-            String[] displayNames = {"Engine RPM", "Vehicle Speed", "Coolant Temp", "Calculated Load", "STFT Bank 1", "LTFT Bank 1", "Intake MAP", "Intake Air Temp"};
-            
+            String[] displayNames = {"RPM", "Speed", "Coolant", "Load", "STFT B1", "LTFT B1", "MAP", "IAT"};
+            java.util.Map<String, Double> ffVals = lastFreezeFrame.getValues();
             for (int i = 0; i < displayPids.length; i++) {
-                String pidHex = displayPids[i];
-                if (ffVals.containsKey(pidHex)) {
+                if (ffVals.containsKey(displayPids[i])) {
                     TextView tv = new TextView(this);
-                    tv.setText("  • " + displayNames[i] + ": " + lastFreezeFrame.getFormattedValue(pidHex));
+                    tv.setText("  • " + displayNames[i] + ": " + lastFreezeFrame.getFormattedValue(displayPids[i]));
                     tv.setTextColor(getColorCompat(R.color.text));
                     tv.setTextSize(12);
                     tv.setPadding(4, 2, 4, 2);
@@ -2083,6 +2184,92 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 }
             }
             dtcListContainer.addView(ffLayout);
+        }
+
+        // --- Mode 06 — Monitor Test Results ---
+        if (mode06Results != null && !mode06Results.isEmpty()) {
+            TextView m06Header = new TextView(this);
+            m06Header.setText("🔬 Mode 06 — Monitor Test Results");
+            m06Header.setTextColor(getColorCompat(R.color.accent));
+            m06Header.setTextSize(14);
+            m06Header.setPadding(0, 16, 0, 6);
+            m06Header.setTypeface(null, android.graphics.Typeface.BOLD);
+            dtcListContainer.addView(m06Header);
+
+            for (Mode06Result m06 : mode06Results) {
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.VERTICAL);
+                row.setPadding(12, 6, 12, 6);
+                row.setBackgroundResource(R.color.surface2);
+                LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                rowLp.bottomMargin = 4;
+                row.setLayoutParams(rowLp);
+
+                // Test name line
+                TextView nameView = new TextView(this);
+                String passIcon = m06.isPassed() ? "✅" : "❌";
+                nameView.setText(passIcon + " " + m06.getMonitorName() + " — " + m06.getTestName());
+                nameView.setTextColor(m06.isPassed() ? getColorCompat(R.color.accent) : getColorCompat(R.color.danger));
+                nameView.setTextSize(12);
+                nameView.setTypeface(null, android.graphics.Typeface.BOLD);
+                row.addView(nameView);
+
+                // Value line
+                TextView valView = new TextView(this);
+                String unit = m06.getUnit().isEmpty() ? "" : " " + m06.getUnit();
+                valView.setText(String.format(Locale.US,
+                    "    Value: %.2f%s  |  Min: %.2f  |  Max: %.2f%s",
+                    m06.getScaledValue(), unit,
+                    m06.getScaledMin(), m06.getScaledMax(), unit));
+                valView.setTextColor(getColorCompat(R.color.text));
+                valView.setTextSize(11);
+                row.addView(valView);
+
+                dtcListContainer.addView(row);
+            }
+        }
+
+        // --- Mode 09 — Cal-ID / CVN ---
+        if ((calIds != null && !calIds.isEmpty()) || (cvns != null && !cvns.isEmpty())) {
+            TextView m09Header = new TextView(this);
+            m09Header.setText("🔧 ECU Calibration Info (Mode 09)");
+            m09Header.setTextColor(getColorCompat(R.color.accent));
+            m09Header.setTextSize(14);
+            m09Header.setPadding(0, 16, 0, 6);
+            m09Header.setTypeface(null, android.graphics.Typeface.BOLD);
+            dtcListContainer.addView(m09Header);
+
+            LinearLayout m09Layout = new LinearLayout(this);
+            m09Layout.setOrientation(LinearLayout.VERTICAL);
+            m09Layout.setPadding(12, 8, 12, 8);
+            m09Layout.setBackgroundResource(R.color.surface2);
+            LinearLayout.LayoutParams m09Lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            m09Lp.bottomMargin = 6;
+            m09Layout.setLayoutParams(m09Lp);
+
+            if (calIds != null) {
+                for (Mode09Reader.CalIdEntry cal : calIds) {
+                    TextView tv = new TextView(this);
+                    tv.setText("  Cal-ID " + (cal.getEcuIndex() + 1) + ": " + cal.getCalId());
+                    tv.setTextColor(getColorCompat(R.color.text));
+                    tv.setTextSize(12);
+                    tv.setPadding(4, 2, 4, 2);
+                    m09Layout.addView(tv);
+                }
+            }
+            if (cvns != null) {
+                for (Mode09Reader.CvnEntry cvn : cvns) {
+                    TextView tv = new TextView(this);
+                    tv.setText("  CVN " + (cvn.getEcuIndex() + 1) + ": " + cvn.getCvn());
+                    tv.setTextColor(getColorCompat(R.color.text));
+                    tv.setTextSize(12);
+                    tv.setPadding(4, 2, 4, 2);
+                    m09Layout.addView(tv);
+                }
+            }
+            dtcListContainer.addView(m09Layout);
         }
 
         // Add Export PDF Report button at the bottom of list if DTCs or freeze frame exist
@@ -2131,9 +2318,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcListContainer.addView(titleView);
 
         for (DtcCode dtc : codes) {
-            TextView codeView = new TextView(this);
-            codeView.setText(iconPrefix + "  " + dtc.getCode() + " — " + dtc.getDescription());
-            
+            // Build expandable DTC card with enrichment data
+            LinearLayout cardLayout = new LinearLayout(this);
+            cardLayout.setOrientation(LinearLayout.VERTICAL);
+            cardLayout.setPadding(10, 8, 10, 8);
+            cardLayout.setBackgroundResource(R.color.surface2);
+            LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            cardLp.bottomMargin = 4;
+            cardLayout.setLayoutParams(cardLp);
+
             // Severity Color Coding
             int severityColor = getColorCompat(R.color.text);
             switch (dtc.getSeverity()) {
@@ -2147,25 +2341,71 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     severityColor = getColorCompat(R.color.accent);
                     break;
             }
+
+            // Code + description line
+            TextView codeView = new TextView(this);
+            DtcEnrichment.EnrichmentData enrich = DtcEnrichment.lookup(dtc.getCode());
+            String emissionsTag = (enrich != null && enrich.isEmissionsRelated()) ? " [Emissions]" : "";
+            String systemTag = (enrich != null && !enrich.getSystem().isEmpty()) ? " — " + enrich.getSystem() : "";
+            codeView.setText(iconPrefix + "  " + dtc.getCode() + " — " + dtc.getDescription() + emissionsTag + systemTag);
             codeView.setTextColor(severityColor);
             codeView.setTextSize(13);
-            codeView.setPadding(8, 6, 8, 6);
-            codeView.setBackgroundResource(R.color.surface2);
             codeView.setClickable(true);
             codeView.setFocusable(true);
-            
-            codeView.setOnClickListener(v -> {
+            cardLayout.addView(codeView);
+
+            // Show enrichment data if available (causes + fixes)
+            if (enrich != null) {
+                // Causes
+                if (!enrich.getCauses().isEmpty()) {
+                    TextView causesView = new TextView(this);
+                    StringBuilder causesSb = new StringBuilder("    Possible Causes:\n");
+                    for (int ci = 0; ci < enrich.getCauses().size(); ci++) {
+                        causesSb.append("      • ").append(enrich.getCauses().get(ci));
+                        if (ci < enrich.getCauses().size() - 1) causesSb.append("\n");
+                    }
+                    causesView.setText(causesSb.toString());
+                    causesView.setTextColor(getColorCompat(R.color.text));
+                    causesView.setTextSize(11);
+                    causesView.setPadding(0, 4, 0, 2);
+                    cardLayout.addView(causesView);
+                }
+
+                // Fixes
+                if (!enrich.getFixes().isEmpty()) {
+                    TextView fixesView = new TextView(this);
+                    StringBuilder fixesSb = new StringBuilder("    Suggested Repair:\n");
+                    for (int fi = 0; fi < enrich.getFixes().size(); fi++) {
+                        fixesSb.append("      ").append(fi + 1).append(". ").append(enrich.getFixes().get(fi));
+                        if (fi < enrich.getFixes().size() - 1) fixesSb.append("\n");
+                    }
+                    fixesView.setText(fixesSb.toString());
+                    fixesView.setTextColor(getColorCompat(R.color.accent));
+                    fixesView.setTextSize(11);
+                    fixesView.setPadding(0, 2, 0, 4);
+                    cardLayout.addView(fixesView);
+                }
+
+                // Drive cycles to clear
+                if (enrich.getDriveCyclesToClear() > 0) {
+                    TextView dcView = new TextView(this);
+                    dcView.setText("    Drive cycles to clear: " + enrich.getDriveCyclesToClear());
+                    dcView.setTextColor(getColorCompat(R.color.muted));
+                    dcView.setTextSize(10);
+                    dcView.setPadding(0, 2, 0, 0);
+                    cardLayout.addView(dcView);
+                }
+            }
+
+            // Tap to Google search
+            cardLayout.setOnClickListener(v -> {
                 String url = "https://www.google.com/search?q=OBD2+code+" + dtc.getCode();
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                 startActivity(browserIntent);
                 Toast.makeText(this, "Searching " + dtc.getCode() + " on Google...", Toast.LENGTH_SHORT).show();
             });
 
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.bottomMargin = 4;
-            codeView.setLayoutParams(lp);
-            dtcListContainer.addView(codeView);
+            dtcListContainer.addView(cardLayout);
         }
     }
 

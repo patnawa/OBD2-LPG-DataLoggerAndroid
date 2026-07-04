@@ -1,0 +1,1258 @@
+{
+  "P0100": {
+    "causes": ["Dirty or contaminated MAF sensor", "Damaged MAF sensor wiring or connector", "Failed mass air flow sensor", "Clogged air filter restricting flow", "Intake air leak near sensor"],
+    "fixes": ["Clean MAF sensor with MAF-specific cleaner", "Inspect and repair wiring harness to MAF", "Replace mass air flow sensor", "Replace air filter"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Intake/Air"
+  },
+  "P0101": {
+    "causes": ["Dirty MAF sensor element", "Vacuum leak after MAF sensor", "Restricted exhaust (clogged catalytic converter)", "Incorrect MAF sensor installed", "PCV system malfunction"],
+    "fixes": ["Clean MAF sensor", "Perform smoke test for vacuum leaks", "Check exhaust backpressure", "Verify correct MAF sensor part number", "Inspect PCV valve and hoses"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0102": {
+    "causes": ["Faulty MAF sensor", "MAF sensor wiring short to ground", "Loose or corroded MAF connector", "Obstructed MAF sensor screen", "ECM failure"],
+    "fixes": ["Check MAF sensor voltage output with scan tool", "Inspect wiring for shorts or damage", "Clean or replace MAF sensor", "Check connector pins for corrosion"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0103": {
+    "causes": ["MAF sensor internal failure", "Wiring short to voltage", "Intermittent connector fault", "Water intrusion in sensor housing"],
+    "fixes": ["Test MAF sensor signal voltage (should vary with RPM)", "Check for wiring damage or chafing", "Replace MAF sensor if out of spec", "Dry out and seal connector if water damaged"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0105": {
+    "causes": ["Faulty MAP sensor", "MAP sensor vacuum hose cracked or disconnected", "Wiring issue to MAP sensor", "Clogged MAP sensor port", "ECM malfunction"],
+    "fixes": ["Inspect MAP sensor vacuum hose and replace if cracked", "Test MAP sensor voltage output", "Replace MAP sensor", "Check for ECM software update"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0106": {
+    "causes": ["Faulty MAP sensor", "Intermittent vacuum leak", "EGR valve stuck open", "Restricted exhaust", "Barometric pressure out of range"],
+    "fixes": ["Compare MAP sensor reading to barometric pressure at KOEO", "Test MAP sensor with hand vacuum pump", "Check EGR valve operation", "Replace MAP sensor if readings erratic"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0107": {
+    "causes": ["MAP sensor wiring short to ground", "Failed MAP sensor", "Open circuit in MAP signal wire", "Damaged connector pins", "ECM internal fault"],
+    "fixes": ["Check 5V reference voltage at MAP connector", "Test MAP sensor ground circuit", "Replace MAP sensor", "Inspect and repair wiring harness"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0108": {
+    "causes": ["MAP sensor wiring short to power", "Failed MAP sensor reading high", "Vacuum hose disconnected from MAP", "Restricted intake causing high pressure"],
+    "fixes": ["Check MAP signal voltage (should be ~1V at idle)", "Inspect vacuum hose routing", "Replace MAP sensor", "Check for intake restrictions"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0110": {
+    "causes": ["Faulty IAT sensor", "IAT sensor wiring damage", "Corroded connector at IAT", "Open or short in signal circuit"],
+    "fixes": ["Test IAT sensor resistance with multimeter", "Inspect wiring and connector", "Replace IAT sensor", "Check for water intrusion in connector"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0112": {
+    "causes": ["IAT sensor reading extremely hot (short to ground)", "Damaged IAT sensor", "Wiring short to ground", "Aftermarket intake too close to exhaust"],
+    "fixes": ["Check IAT sensor resistance (lower = hotter)", "Inspect wiring for shorts", "Replace IAT sensor", "Relocate sensor if heat-soaked"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0113": {
+    "causes": ["IAT sensor reading extremely cold (open circuit)", "Disconnected IAT sensor", "Faulty IAT sensor", "Wiring open circuit", "Damaged connector"],
+    "fixes": ["Check IAT sensor connection", "Test IAT resistance (should be 2k-4k ohms at room temp)", "Replace IAT sensor", "Repair open wire in circuit"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0115": {
+    "causes": ["Faulty ECT sensor", "Low coolant level", "ECT wiring short or open", "Thermostat stuck open", "Corroded ECT connector"],
+    "fixes": ["Check coolant level and condition", "Test ECT sensor resistance vs. temperature chart", "Replace ECT sensor", "Replace thermostat if stuck open", "Flush connector with electrical cleaner"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Cooling"
+  },
+  "P0116": {
+    "causes": ["Thermostat stuck open causing slow warm-up", "Faulty ECT sensor giving erratic readings", "Low coolant level", "Wrong thermostat installed"],
+    "fixes": ["Monitor ECT sensor warm-up with scan tool", "Replace thermostat", "Verify correct thermostat temperature rating", "Replace ECT sensor if readings erratic"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Cooling"
+  },
+  "P0117": {
+    "causes": ["ECT sensor short to ground", "Faulty ECT sensor", "Wiring harness damage near exhaust", "Low coolant causing sensor to read air temp"],
+    "fixes": ["Check coolant level and fill if low", "Test ECT sensor resistance", "Inspect wiring near hot components", "Replace ECT sensor"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Cooling"
+  },
+  "P0118": {
+    "causes": ["ECT sensor open circuit", "Disconnected ECT sensor", "Faulty ECT sensor reading cold", "Damaged wiring to ECT"],
+    "fixes": ["Check ECT sensor connector", "Test ECT resistance (should not be infinite)", "Replace ECT sensor", "Repair wiring harness"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Cooling"
+  },
+  "P0120": {
+    "causes": ["Faulty TPS sensor A", "Throttle body contamination", "TPS wiring issue", "Loose throttle body mounting", "Accelerator pedal position sensor fault"],
+    "fixes": ["Clean throttle body", "Check TPS voltage sweep with scan tool", "Replace throttle position sensor", "Inspect and repair TPS wiring"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0121": {
+    "causes": ["TPS sensor intermittent signal", "Worn throttle shaft bushing", "Dirty throttle body", "Loose TPS mounting", "APP/TPS correlation fault"],
+    "fixes": ["Perform TPS relearn procedure", "Clean throttle body and plate", "Replace TPS sensor", "Check throttle cable for binding"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0122": {
+    "causes": ["TPS signal low voltage", "TPS wiring short to ground", "Failed TPS sensor", "5V reference circuit issue", "Damaged connector"],
+    "fixes": ["Check 5V reference at TPS connector", "Test TPS signal voltage at closed throttle (~0.5V)", "Replace TPS sensor", "Repair wiring harness"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0123": {
+    "causes": ["TPS signal high voltage", "TPS wiring short to 12V", "Failed TPS sensor", "Ground circuit open", "Accelerator pedal stuck"],
+    "fixes": ["Check TPS signal voltage at WOT (should be ~4.5V max)", "Inspect wiring for shorts to power", "Replace TPS sensor", "Check throttle cable and pedal assembly"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0125": {
+    "causes": ["Thermostat stuck open", "Low coolant level", "Faulty ECT sensor", "Radiator fan running constantly", "Extreme cold ambient temperature"],
+    "fixes": ["Replace thermostat", "Check and correct coolant level", "Test ECT sensor accuracy", "Check cooling fan control circuit"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Cooling"
+  },
+  "P0128": {
+    "causes": ["Thermostat stuck open or opening too early", "Low coolant level", "Faulty ECT sensor reading high", "Missing or incorrect radiator cap", "Cooling fan stuck on"],
+    "fixes": ["Replace thermostat with correct temperature rating", "Verify coolant level and bleed air from system", "Test ECT sensor against known temperature", "Check fan relay and control module"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Cooling"
+  },
+  "P0130": {
+    "causes": ["Faulty upstream O2 sensor (Bank 1)", "O2 sensor heater failure", "Exhaust leak before O2 sensor", "Wiring damage to O2 sensor", "Fuel trim issue causing lean/rich"],
+    "fixes": ["Test O2 sensor signal with scan tool (should oscillate 0.1-0.9V)", "Check for exhaust leaks", "Replace upstream O2 sensor", "Inspect O2 sensor wiring harness"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0131": {
+    "causes": ["O2 sensor stuck lean (low voltage)", "Exhaust leak upstream of sensor", "Fuel delivery issue (low fuel pressure)", "Vacuum leak on intake manifold", "Faulty O2 sensor"],
+    "fixes": ["Check for exhaust leaks with backpressure test", "Test fuel pressure", "Perform smoke test for vacuum leaks", "Replace O2 sensor if biased lean"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0132": {
+    "causes": ["O2 sensor stuck rich (high voltage)", "Short to power in O2 signal wire", "Fuel pressure too high", "Leaking injector flooding cylinder", "Faulty O2 sensor"],
+    "fixes": ["Check O2 sensor signal voltage", "Test fuel pressure (should be spec)", "Check for leaking injectors (fuel trim analysis)", "Replace O2 sensor if shorted internally"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0133": {
+    "causes": ["Sluggish O2 sensor response", "Contaminated O2 sensor (silicone, lead, coolant)", "Exhaust leak near sensor", "O2 sensor aged beyond useful life", "Catalytic converter degradation upstream"],
+    "fixes": ["Monitor O2 sensor switching speed with scan tool", "Replace upstream O2 sensor", "Repair exhaust leaks", "Check for coolant or oil contamination in exhaust"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0134": {
+    "causes": ["O2 sensor not switching (inactive)", "Failed O2 sensor heater", "Wiring open circuit to O2 sensor", "O2 sensor contaminated or coated", "Blown fuse for O2 heater circuit"],
+    "fixes": ["Check O2 heater fuse and relay", "Test O2 sensor heater resistance (typically 4-40 ohms)", "Replace O2 sensor", "Inspect wiring from O2 sensor to ECM"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0135": {
+    "causes": ["O2 sensor heater element failure", "Blown O2 heater fuse", "Wiring short or open in heater circuit", "Faulty O2 heater relay", "Corroded O2 sensor connector"],
+    "fixes": ["Check O2 heater fuse", "Test heater circuit resistance at sensor connector", "Replace O2 sensor (heater not serviceable separately)", "Repair wiring to O2 sensor heater"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0136": {
+    "causes": ["Faulty downstream O2 sensor (Bank 1)", "O2 sensor heater circuit fault", "Exhaust leak between catalyst and sensor", "Wiring damage to downstream O2", "Catalytic converter failure affecting O2 reading"],
+    "fixes": ["Test downstream O2 sensor signal", "Check for exhaust leaks downstream of catalyst", "Replace downstream O2 sensor", "Inspect wiring and connector"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0137": {
+    "causes": ["Downstream O2 sensor stuck low", "Wiring short to ground on O2 signal", "Exhaust leak after catalyst", "Failed downstream O2 sensor"],
+    "fixes": ["Check downstream O2 signal with scan tool", "Inspect wiring for shorts to ground", "Repair exhaust leaks", "Replace downstream O2 sensor"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0138": {
+    "causes": ["Downstream O2 sensor stuck high", "Short to power in signal wire", "Catalytic converter failure (fuel breakthrough)", "Failed downstream O2 sensor"],
+    "fixes": ["Monitor downstream O2 voltage", "Check for wiring short to voltage", "Test catalytic converter efficiency", "Replace downstream O2 sensor"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0140": {
+    "causes": ["Downstream O2 sensor inactive", "Failed O2 sensor heater", "Open circuit in O2 wiring", "Catalytic converter removed or hollowed", "Blown fuse"],
+    "fixes": ["Check O2 heater fuse and circuit", "Test O2 sensor heater resistance", "Replace downstream O2 sensor", "Verify catalytic converter is present and functional"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0141": {
+    "causes": ["Downstream O2 heater failure", "Blown heater fuse", "Wiring short or open in heater circuit", "Failed O2 sensor", "Connector corrosion"],
+    "fixes": ["Check O2 heater fuse", "Test heater circuit voltage at connector", "Replace downstream O2 sensor", "Clean and protect connector"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0150": {
+    "causes": ["Faulty upstream O2 sensor (Bank 2)", "O2 sensor heater failure", "Wiring damage Bank 2 upstream", "Exhaust leak on Bank 2", "Fuel system imbalance Bank 2"],
+    "fixes": ["Test Bank 2 upstream O2 sensor signal", "Check O2 heater operation", "Inspect Bank 2 exhaust for leaks", "Replace Bank 2 upstream O2 sensor"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0155": {
+    "causes": ["Bank 2 upstream O2 heater failure", "Blown heater fuse", "Wiring fault in Bank 2 O2 heater circuit", "Failed O2 sensor", "Connector corrosion Bank 2"],
+    "fixes": ["Check fuse for Bank 2 O2 heater", "Test heater resistance at connector", "Replace Bank 2 upstream O2 sensor", "Repair wiring as needed"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0161": {
+    "causes": ["Bank 2 downstream O2 heater failure", "Blown fuse", "Wiring open or short in heater circuit", "Failed O2 sensor", "Connector damage"],
+    "fixes": ["Check O2 heater fuse", "Test heater element resistance", "Replace Bank 2 downstream O2 sensor", "Inspect and repair wiring"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P0170": {
+    "causes": ["Fuel trim malfunction (Bank 1)", "Vacuum leak", "Dirty or failing MAF sensor", "Fuel injector issue", "Low fuel pressure", "Exhaust leak before O2 sensor"],
+    "fixes": ["Check long-term and short-term fuel trims with scan tool", "Smoke test intake for vacuum leaks", "Clean or replace MAF sensor", "Test fuel pressure and volume", "Inspect injectors"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Ignition/Fuel"
+  },
+  "P0171": {
+    "causes": ["System too lean Bank 1", "Vacuum leak (intake manifold gasket, PCV, brake booster hose)", "Weak fuel pump", "Dirty/clogged fuel injectors", "Faulty MAF sensor underreading", "Cracked exhaust manifold"],
+    "fixes": ["Smoke test intake system for leaks", "Test fuel pressure (KOEO and running)", "Clean MAF sensor", "Check fuel injector flow rates", "Repair exhaust leaks before O2 sensor"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Ignition/Fuel"
+  },
+  "P0172": {
+    "causes": ["System too rich Bank 1", "Leaking fuel injector", "High fuel pressure (stuck regulator)", "Purge valve stuck open", "Faulty MAF sensor overreading", "Clogged air filter"],
+    "fixes": ["Check fuel pressure regulator vacuum hose for fuel smell", "Test fuel pressure", "Check purge valve operation", "Clean or replace MAF sensor", "Replace air filter if dirty"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Ignition/Fuel"
+  },
+  "P0174": {
+    "causes": ["System too lean Bank 2", "Vacuum leak on Bank 2 intake", "Weak fuel pump (affects both banks)", "Dirty MAF sensor", "Cracked intake boot or hose", "Clogged fuel filter"],
+    "fixes": ["Smoke test for vacuum leaks focusing on Bank 2", "Test fuel pressure under load", "Clean MAF sensor", "Replace fuel filter", "Inspect all intake hoses and clamps"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Ignition/Fuel"
+  },
+  "P0175": {
+    "causes": ["System too rich Bank 2", "Leaking fuel injector Bank 2", "High fuel pressure", "EVAP purge valve stuck open", "Faulty MAF sensor", "Oil-soaked air filter"],
+    "fixes": ["Check fuel pressure regulator", "Test purge valve with vacuum pump", "Clean MAF sensor", "Check fuel injector balance rates", "Replace air filter"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Ignition/Fuel"
+  },
+  "P0190": {
+    "causes": ["Faulty fuel rail pressure sensor", "Wiring issue to FRP sensor", "Fuel pressure regulator failure", "Clogged fuel filter causing pressure issues", "Weak fuel pump"],
+    "fixes": ["Test fuel rail pressure sensor voltage", "Inspect wiring to FRP sensor", "Replace fuel rail pressure sensor", "Replace fuel filter", "Test fuel pump output"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Ignition/Fuel"
+  },
+  "P0191": {
+    "causes": ["Fuel rail pressure sensor out of range", "Intermittent wiring fault", "Fuel pressure fluctuation", "Failing fuel pump", "Restricted fuel line"],
+    "fixes": ["Monitor fuel rail pressure with scan tool", "Check fuel pressure at idle and under load", "Replace fuel rail pressure sensor if erratic", "Test fuel pump amperage draw"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Ignition/Fuel"
+  },
+  "P0200": {
+    "causes": ["Injector circuit malfunction", "Faulty injector driver in ECM", "Wiring harness damage to injectors", "Corroded injector connector", "Shorted fuel injector"],
+    "fixes": ["Test injector resistance (typically 11-18 ohms)", "Check injector connectors for damage", "Test injector pulse with noid light", "Inspect wiring harness for chafing", "Replace faulty injector"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0201": {
+    "causes": ["Open or short in cylinder 1 injector circuit", "Failed cylinder 1 injector", "Wiring damage to injector 1", "ECM driver failure for cylinder 1", "Corroded injector connector"],
+    "fixes": ["Test cylinder 1 injector with noid light", "Measure injector resistance", "Check wiring from ECM to injector", "Replace cylinder 1 injector if open/shorted", "Repair connector pins"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0202": {
+    "causes": ["Cylinder 2 injector circuit fault", "Failed cylinder 2 injector", "Wiring open/short to cylinder 2 injector", "ECM driver fault", "Dirty or clogged injector"],
+    "fixes": ["Test cylinder 2 injector circuit with noid light", "Measure injector resistance", "Check wiring from ECM to injector 2", "Replace or clean cylinder 2 injector"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0203": {
+    "causes": ["Cylinder 3 injector circuit malfunction", "Failed cylinder 3 injector", "Wiring harness issue", "ECM driver circuit fault", "Connector corrosion"],
+    "fixes": ["Test noid light on cylinder 3 injector connector", "Check injector resistance", "Inspect wiring for damage", "Replace cylinder 3 injector if faulty"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0204": {
+    "causes": ["Cylinder 4 injector circuit fault", "Failed cylinder 4 injector", "Open or short in injector wiring", "ECM internal driver failure", "Dirty/clogged injector nozzle"],
+    "fixes": ["Perform noid light test at cylinder 4", "Check injector coil resistance", "Repair wiring harness to injector 4", "Replace injector if out of spec"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0205": {
+    "causes": ["Cylinder 5 injector circuit malfunction", "Failed cylinder 5 injector", "Wiring damage", "ECM driver fault", "Connector pin backed out"],
+    "fixes": ["Test cylinder 5 injector with noid light", "Check injector resistance", "Inspect connector for pin push-out", "Replace cylinder 5 injector if needed"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0206": {
+    "causes": ["Cylinder 6 injector circuit fault", "Failed cylinder 6 injector", "Wiring open/short", "ECM driver failure", "Internal injector mechanical failure"],
+    "fixes": ["Noid light test on cylinder 6", "Measure injector resistance", "Check wiring harness continuity", "Replace cylinder 6 injector"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0217": {
+    "causes": ["Engine overheating condition", "Low coolant level", "Faulty thermostat stuck closed", "Failed water pump", "Clogged radiator", "Head gasket failure"],
+    "fixes": ["Check coolant level and condition", "Test thermostat operation", "Inspect water pump for impeller damage", "Flush cooling system", "Pressure test cooling system for leaks"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Cooling"
+  },
+  "P0218": {
+    "causes": ["Transmission fluid overheating", "Low transmission fluid level", "Clogged transmission cooler", "Towing heavy load", "Internal transmission failure causing excessive heat"],
+    "fixes": ["Check transmission fluid level and condition", "Inspect transmission cooler lines and radiator cooler", "Flush transmission cooler", "Add auxiliary transmission cooler if towing"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "critical",
+    "system": "Transmission"
+  },
+  "P0220": {
+    "causes": ["Faulty throttle position sensor B", "TPS wiring issue", "Electronic throttle body malfunction", "APP sensor correlation fault", "Dirty throttle plate"],
+    "fixes": ["Check TPS B voltage signal", "Clean throttle body", "Perform throttle relearn procedure", "Replace throttle position sensor", "Check APP sensor operation"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0230": {
+    "causes": ["Fuel pump primary circuit malfunction", "Faulty fuel pump relay", "Wiring fault in fuel pump circuit", "Bad fuel pump ground", "Blown fuel pump fuse"],
+    "fixes": ["Check fuel pump fuse", "Test fuel pump relay", "Check for voltage at fuel pump connector", "Test fuel pump ground circuit", "Replace fuel pump relay or pump as needed"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0231": {
+    "causes": ["Fuel pump secondary circuit low", "Fuel pump wiring short to ground", "Faulty fuel pump", "Wiring harness damage near fuel tank", "Poor fuel pump ground"],
+    "fixes": ["Check fuel pump voltage at connector", "Inspect wiring from relay to pump", "Test fuel pump amperage draw", "Repair or replace fuel pump wiring", "Replace fuel pump if drawing excessive current"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0232": {
+    "causes": ["Fuel pump secondary circuit high", "Short to power in fuel pump wiring", "Faulty fuel pump relay stuck closed", "Wiring harness short", "ECM driver fault"],
+    "fixes": ["Check fuel pump relay for stuck contacts", "Inspect wiring for shorts to battery voltage", "Test ECM fuel pump driver output", "Repair wiring short circuit"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0243": {
+    "causes": ["Faulty turbocharger wastegate solenoid A", "Wastegate solenoid wiring issue", "Boost pressure too high", "Wastegate stuck closed", "Vacuum leak in boost control system"],
+    "fixes": ["Test wastegate solenoid operation with scan tool", "Check wastegate solenoid resistance", "Inspect vacuum hoses to wastegate actuator", "Replace wastegate solenoid", "Check wastegate mechanical movement"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Turbo"
+  },
+  "P0244": {
+    "causes": ["Wastegate solenoid A range/performance fault", "Sticking wastegate valve", "Boost control hose routing incorrect", "Faulty boost pressure sensor", "Wastegate actuator spring weakened"],
+    "fixes": ["Verify wastegate opens and closes freely", "Check boost pressure sensor readings", "Inspect boost control hose routing", "Replace wastegate actuator or solenoid"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Turbo"
+  },
+  "P0245": {
+    "causes": ["Wastegate solenoid A low voltage", "Wiring short to ground in wastegate circuit", "Failed wastegate solenoid", "Connector fault", "ECM driver issue"],
+    "fixes": ["Check wastegate solenoid wiring", "Test solenoid resistance", "Replace wastegate solenoid", "Repair wiring harness"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Turbo"
+  },
+  "P0299": {
+    "causes": ["Turbocharger underboost condition", "Wastegate stuck open", "Boost leak in intercooler piping", "Faulty boost pressure sensor", "Turbocharger wear/damage", "Clogged air filter restricting turbo inlet"],
+    "fixes": ["Inspect intercooler piping for leaks", "Check wastegate operation", "Test boost pressure sensor", "Inspect turbo compressor wheel for damage", "Replace air filter"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Turbo"
+  },
+  "P0300": {
+    "causes": ["Worn or fouled spark plugs", "Faulty ignition coil(s)", "Vacuum leak", "Low fuel pressure", "Failed or clogged fuel injector", "Low compression (head gasket, valve, ring)"],
+    "fixes": ["Replace spark plugs", "Test and replace ignition coils", "Smoke test for vacuum leaks", "Test fuel pressure and volume", "Perform cylinder compression test"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0301": {
+    "causes": ["Cylinder 1 spark plug fouled or worn", "Cylinder 1 ignition coil failure", "Cylinder 1 fuel injector clogged or failed", "Low compression in cylinder 1", "Vacuum leak at cylinder 1 intake runner"],
+    "fixes": ["Swap cylinder 1 coil to another cylinder to isolate fault", "Inspect spark plug condition", "Test cylinder 1 compression", "Check fuel injector pulse and flow", "Replace spark plug and coil as needed"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0302": {
+    "causes": ["Cylinder 2 spark plug worn or fouled", "Cylinder 2 ignition coil faulty", "Cylinder 2 fuel injector issue", "Low compression cylinder 2", "Worn valve seals on cylinder 2"],
+    "fixes": ["Swap coil from cylinder 2 to verify", "Replace spark plug", "Test cylinder 2 compression", "Check injector flow rate", "Perform cylinder leak-down test"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0303": {
+    "causes": ["Cylinder 3 spark plug fault", "Cylinder 3 ignition coil failure", "Cylinder 3 injector clogged", "Head gasket leak at cylinder 3", "Worn piston rings cylinder 3"],
+    "fixes": ["Swap cylinder 3 coil to isolate", "Replace spark plug in cylinder 3", "Compression test cylinder 3", "Check injector operation with noid light", "Leak-down test if compression low"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0304": {
+    "causes": ["Cylinder 4 spark plug worn", "Cylinder 4 ignition coil defective", "Cylinder 4 fuel injector problem", "Low compression cylinder 4", "Carbon buildup on intake valves"],
+    "fixes": ["Test by swapping cylinder 4 coil", "Inspect and replace spark plug", "Compression test cylinder 4", "Clean or replace fuel injector", "Perform intake valve cleaning if GDI engine"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0305": {
+    "causes": ["Cylinder 5 misfire detected", "Faulty spark plug or coil on cylinder 5", "Fuel injector malfunction cylinder 5", "Low compression", "Intake air leak near cylinder 5"],
+    "fixes": ["Swap coil and plug to isolate", "Test cylinder 5 compression", "Check fuel injector flow", "Smoke test intake manifold", "Replace ignition components as needed"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0306": {
+    "causes": ["Cylinder 6 misfire detected", "Defective ignition coil cylinder 6", "Worn spark plug", "Fuel delivery issue to cylinder 6", "Mechanical engine issue (valve, ring)"],
+    "fixes": ["Perform coil swap test", "Replace spark plug", "Test fuel injector", "Compression and leak-down test", "Inspect cam lobe for cylinder 6"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Ignition/Fuel"
+  },
+  "P0315": {
+    "causes": ["Crankshaft position system variation not learned", "PCM replaced without relearn", "Flywheel/flexplate replaced", "Crankshaft sensor replaced without relearn"],
+    "fixes": ["Perform CKP system variation learn procedure with scan tool", "Drive vehicle through specific relearn conditions", "Ensure no DTCs present before relearn", "Consult service manual for exact procedure"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 1,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0325": {
+    "causes": ["Faulty knock sensor 1 (Bank 1)", "Knock sensor wiring damage", "Engine detonation from low octane fuel", "Loose or corroded knock sensor connector", "Incorrect knock sensor torque during installation"],
+    "fixes": ["Test knock sensor with scan tool (should respond to tapping near sensor)", "Inspect knock sensor wiring", "Replace knock sensor", "Use correct fuel octane rating", "Torque knock sensor to spec"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0330": {
+    "causes": ["Faulty knock sensor 2 (Bank 2)", "Wiring damage to knock sensor 2", "Connector corrosion", "Wrong fuel octane causing persistent knock", "Loose knock sensor"],
+    "fixes": ["Check knock sensor 2 wiring and connector", "Test knock sensor signal with scan tool", "Replace knock sensor 2", "Verify correct fuel being used", "Retorque to specification"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0335": {
+    "causes": ["Faulty crankshaft position sensor", "CKP sensor wiring damage", "Reluctor ring (tone wheel) damage", "CKP sensor air gap incorrect", "Metal debris on sensor tip", "ECM failure"],
+    "fixes": ["Check CKP sensor output with oscilloscope", "Inspect reluctor ring through sensor hole", "Replace CKP sensor", "Check CKP sensor air gap", "Clean any metal debris from sensor"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "critical",
+    "system": "Sensor"
+  },
+  "P0336": {
+    "causes": ["CKP sensor signal erratic", "Damaged reluctor ring tooth", "CKP sensor wiring intermittent", "Excessive air gap", "Electrical interference"],
+    "fixes": ["Monitor CKP signal with scan tool at various RPMs", "Inspect tone wheel for damage", "Replace CKP sensor", "Check wiring routing away from ignition wires"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0340": {
+    "causes": ["Faulty camshaft position sensor", "CMP sensor wiring fault", "Timing chain stretch or jump", "CMP sensor reluctor damage", "ECM internal fault"],
+    "fixes": ["Check CMP sensor signal with scan tool or oscilloscope", "Inspect CMP sensor wiring and connector", "Check timing chain alignment", "Replace CMP sensor", "Verify camshaft timing marks"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "critical",
+    "system": "Sensor"
+  },
+  "P0341": {
+    "causes": ["CMP sensor signal out of range", "Timing chain stretched", "CMP sensor air gap incorrect", "Damaged CMP reluctor wheel", "Loose CMP sensor mounting"],
+    "fixes": ["Check camshaft timing with timing light or scan tool", "Inspect CMP sensor mounting and air gap", "Replace CMP sensor", "Check timing chain for stretch", "Verify valve timing"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0400": {
+    "causes": ["EGR flow malfunction", "Carbon-clogged EGR valve", "Faulty EGR valve", "EGR passages blocked with carbon", "EGR vacuum hose disconnected or cracked", "DPFE sensor faulty"],
+    "fixes": ["Remove and inspect EGR valve", "Clean EGR passages and valve", "Replace EGR valve if stuck or damaged", "Check EGR vacuum control hoses", "Test DPFE sensor if equipped"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "EGR"
+  },
+  "P0401": {
+    "causes": ["EGR flow insufficient", "EGR valve carbon buildup", "EGR port restricted", "EGR vacuum control solenoid faulty", "DPFE sensor reading low", "EGR tube blocked"],
+    "fixes": ["Clean EGR valve and passages", "Check EGR vacuum solenoid operation", "Test DPFE sensor output", "Replace EGR valve if cleaning doesn't help", "Inspect EGR tube for restrictions"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "EGR"
+  },
+  "P0402": {
+    "causes": ["EGR flow excessive", "EGR valve stuck open", "EGR valve seat damaged", "EGR vacuum control stuck in open position", "DPFE sensor reading high"],
+    "fixes": ["Check EGR valve for proper seating", "Clean EGR valve and seat", "Replace EGR valve if it won't close", "Test EGR vacuum control solenoid", "Check DPFE sensor calibration"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "EGR"
+  },
+  "P0410": {
+    "causes": ["Secondary air injection system malfunction", "AIR pump failure", "AIR pump check valve stuck", "AIR diverter valve faulty", "Wiring to AIR pump damaged", "Blown AIR pump fuse"],
+    "fixes": ["Check AIR pump fuse and relay", "Test AIR pump operation", "Inspect check valve for exhaust backflow damage", "Replace AIR diverter valve", "Test AIR system with scan tool bi-directional control"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Emissions/EVAP"
+  },
+  "P0420": {
+    "causes": ["Catalytic converter below efficiency threshold (Bank 1)", "Failed catalytic converter", "Downstream O2 sensor faulty", "Exhaust leak between upstream and downstream O2", "Engine misfire damaging catalyst", "Oil or coolant contamination of catalyst"],
+    "fixes": ["Monitor downstream O2 sensor voltage (should be steady ~0.5-0.7V)", "Check for exhaust leaks", "Repair any engine misfires first", "Replace catalytic converter if efficiency below threshold", "Fix any oil or coolant consumption issues"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 4,
+    "severity": "warning",
+    "system": "Catalyst"
+  },
+  "P0430": {
+    "causes": ["Catalytic converter below efficiency threshold (Bank 2)", "Failed Bank 2 catalytic converter", "Downstream O2 sensor Bank 2 faulty", "Exhaust leak on Bank 2", "Engine misfire on Bank 2 damaging catalyst"],
+    "fixes": ["Monitor Bank 2 downstream O2 sensor", "Check for exhaust leaks Bank 2", "Fix any misfires before replacing catalyst", "Replace Bank 2 catalytic converter", "Verify upstream O2 sensors are functioning correctly"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 4,
+    "severity": "warning",
+    "system": "Catalyst"
+  },
+  "P0440": {
+    "causes": ["EVAP system malfunction", "Loose or missing gas cap", "Cracked EVAP hose or canister", "Faulty EVAP purge valve", "Leaking EVAP vent valve", "Cracked charcoal canister"],
+    "fixes": ["Check gas cap and tighten or replace", "Perform EVAP smoke test", "Check purge valve operation", "Inspect charcoal canister for cracks", "Replace EVAP hoses if cracked"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 4,
+    "severity": "warning",
+    "system": "Emissions/EVAP"
+  },
+  "P0441": {
+    "causes": ["EVAP purge flow incorrect", "Faulty purge valve (stuck open or closed)", "Kinked or blocked EVAP hose", "Faulty vent valve", "Charcoal canister saturated"],
+    "fixes": ["Test purge valve with vacuum pump", "Check purge valve resistance and operation", "Inspect EVAP hoses for kinks or damage", "Replace purge valve", "Replace charcoal canister if saturated"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 4,
+    "severity": "warning",
+    "system": "Emissions/EVAP"
+  },
+  "P0442": {
+    "causes": ["Small EVAP leak detected", "Slightly loose gas cap", "Small crack in EVAP hose", "Minor leak at EVAP canister", "Faulty seal on purge or vent valve"],
+    "fixes": ["Tighten or replace gas cap", "Perform EVAP smoke test to find small leak", "Inspect all EVAP hoses and connections", "Check canister and valve seals", "Clear code and monitor for return"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 4,
+    "severity": "info",
+    "system": "Emissions/EVAP"
+  },
+  "P0443": {
+    "causes": ["EVAP purge control valve circuit malfunction", "Faulty purge solenoid", "Wiring short or open to purge valve", "Connector corrosion at purge valve", "ECM driver fault"],
+    "fixes": ["Test purge valve resistance", "Check purge valve connector", "Test purge valve with bi-directional control", "Replace purge solenoid valve", "Repair wiring if open or shorted"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Emissions/EVAP"
+  },
+  "P0446": {
+    "causes": ["EVAP vent valve circuit malfunction", "Faulty vent solenoid", "Wiring issue to vent valve", "Vent valve stuck closed (preventing purge)", "Blocked vent filter", "Connector fault"],
+    "fixes": ["Test vent valve operation with scan tool", "Check vent valve resistance", "Inspect vent filter for blockage", "Replace vent valve solenoid", "Repair wiring to vent valve"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 4,
+    "severity": "warning",
+    "system": "Emissions/EVAP"
+  },
+  "P0452": {
+    "causes": ["EVAP pressure sensor reading low", "Fuel tank pressure sensor fault", "Wiring short to ground", "Fuel tank pressure sensor connector issue", "Damaged sensor"],
+    "fixes": ["Test fuel tank pressure sensor voltage", "Inspect wiring to sensor", "Replace fuel tank pressure sensor", "Check connector for damage"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Emissions/EVAP"
+  },
+  "P0453": {
+    "causes": ["EVAP pressure sensor reading high", "Faulty fuel tank pressure sensor", "Wiring short to voltage", "Sensor connector issue", "Fuel tank overfilled"],
+    "fixes": ["Test fuel tank pressure sensor", "Check wiring for shorts to power", "Replace fuel tank pressure sensor", "Ensure fuel tank not overfilled (stop at first click)"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Emissions/EVAP"
+  },
+  "P0455": {
+    "causes": ["Large EVAP leak detected", "Gas cap missing or very loose", "Major EVAP hose disconnected or broken", "Fuel filler neck damage", "Charcoal canister cracked", "Fuel tank puncture or seam leak"],
+    "fixes": ["Check gas cap (most common cause)", "Perform EVAP smoke test", "Inspect all EVAP hoses for disconnection", "Check fuel filler neck for cracks", "Replace charcoal canister if cracked"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 4,
+    "severity": "warning",
+    "system": "Emissions/EVAP"
+  },
+  "P0456": {
+    "causes": ["Very small EVAP leak detected", "Gas cap not fully tightened", "Hairline crack in EVAP hose", "Worn seal on gas cap", "Minor leak at canister connection"],
+    "fixes": ["Tighten gas cap until 3 clicks", "Replace gas cap with OEM part", "Smoke test EVAP system for tiny leaks", "Inspect and replace EVAP hoses if cracked", "Clear code and drive through 2-3 complete EVAP monitors"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 4,
+    "severity": "info",
+    "system": "Emissions/EVAP"
+  },
+  "P0460": {
+    "causes": ["Fuel level sensor circuit malfunction", "Faulty fuel level sender", "Wiring damage between sender and instrument cluster", "Corroded fuel level sensor connector", "Fuel gauge erratic"],
+    "fixes": ["Test fuel level sensor resistance at different fuel levels", "Check wiring from fuel tank sender", "Clean or replace fuel level sensor connector", "Replace fuel level sender unit"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "info",
+    "system": "Sensor"
+  },
+  "P0500": {
+    "causes": ["Vehicle speed sensor malfunction", "Faulty VSS", "VSS wiring damage", "Damaged speedometer drive gear", "ABS wheel speed sensor fault affecting VSS signal"],
+    "fixes": ["Test VSS signal with scan tool while driving", "Check VSS wiring and connector", "Replace VSS sensor", "Check ABS wheel speed sensors", "Inspect speedometer gear if mechanical"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0505": {
+    "causes": ["Idle air control system malfunction", "Dirty or stuck IAC valve", "Carbon buildup in idle air passage", "IAC motor wiring fault", "Vacuum leak affecting idle", "Throttle body dirty"],
+    "fixes": ["Clean throttle body and IAC passage", "Test IAC valve operation with scan tool", "Replace IAC valve if stuck", "Check for vacuum leaks", "Perform idle relearn procedure"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0506": {
+    "causes": ["Idle speed lower than expected", "Dirty throttle body", "IAC valve malfunction", "Vacuum leak", "Carbon buildup in intake", "PCV valve stuck open"],
+    "fixes": ["Clean throttle body and idle air passages", "Perform idle relearn procedure", "Check IAC valve operation", "Test for vacuum leaks", "Replace PCV valve if stuck open"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0507": {
+    "causes": ["Idle speed higher than expected", "Vacuum leak", "IAC valve stuck open", "Throttle plate not closing fully", "Carbon buildup preventing throttle from seating", "Faulty idle control motor"],
+    "fixes": ["Check for vacuum leaks (especially intake manifold gasket)", "Clean throttle body", "Check throttle cable for proper free play", "Perform idle relearn", "Replace IAC valve if stuck open"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P0510": {
+    "causes": ["Closed throttle position switch malfunction", "Faulty idle switch in TPS", "TPS wiring issue", "Throttle body mechanical issue", "Incorrect TPS adjustment"],
+    "fixes": ["Test closed throttle position switch voltage", "Check TPS at idle position", "Adjust or replace TPS", "Clean throttle body", "Check for TSB updates"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0520": {
+    "causes": ["Engine oil pressure sensor/switch circuit malfunction", "Faulty oil pressure sensor", "Wiring fault to oil pressure sensor", "Connector corrosion", "Incorrect oil viscosity"],
+    "fixes": ["Test oil pressure with mechanical gauge", "Check oil pressure sensor wiring", "Replace oil pressure sensor", "Verify correct oil viscosity", "Clean connector"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0521": {
+    "causes": ["Oil pressure sensor range/performance issue", "Low oil level", "Oil viscosity too thin", "Worn oil pump", "Oil pressure sensor inaccurate", "Clogged oil pickup tube"],
+    "fixes": ["Check oil level and condition", "Verify correct oil viscosity", "Test oil pressure with mechanical gauge", "Replace oil pressure sensor", "Check oil pump and pickup tube if pressure low"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Sensor"
+  },
+  "P0560": {
+    "causes": ["System voltage malfunction", "Weak or failing battery", "Faulty alternator", "Poor battery connections", "Corroded battery terminals", "Parasitic drain"],
+    "fixes": ["Test battery condition and load test", "Test alternator output (should be 13.5-14.5V)", "Clean battery terminals and connections", "Check for parasitic draw with ammeter", "Replace battery or alternator as needed"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Electrical"
+  },
+  "P0562": {
+    "causes": ["System voltage low", "Failing alternator", "Worn alternator drive belt", "Faulty voltage regulator", "Poor ground connections", "Weak battery"],
+    "fixes": ["Check alternator output voltage", "Inspect drive belt condition and tension", "Test battery condition", "Check battery cables and ground straps", "Replace alternator or voltage regulator"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Electrical"
+  },
+  "P0563": {
+    "causes": ["System voltage high", "Faulty voltage regulator (stuck high)", "Alternator overcharging", "Poor ground causing voltage spike", "Aftermarket electronics drawing excess current"],
+    "fixes": ["Check alternator output (should not exceed 15V)", "Test voltage regulator", "Check ground connections", "Remove aftermarket electronics and retest", "Replace alternator if overcharging"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Electrical"
+  },
+  "P0600": {
+    "causes": ["Serial communication link malfunction", "CAN bus wiring fault", "ECM internal failure", "Damaged communication wiring between modules", "Corroded connector at ECM", "Aftermarket device interfering with CAN bus"],
+    "fixes": ["Check CAN bus wiring with oscilloscope", "Inspect ECM connectors for corrosion or damage", "Check for aftermarket devices on CAN bus", "Test ECM power and ground circuits", "Replace ECM if internal failure confirmed"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 1,
+    "severity": "critical",
+    "system": "Electrical"
+  },
+  "P0601": {
+    "causes": ["ECM internal memory checksum error", "ECM internal failure", "Voltage spike damaged ECM", "Failed ECM programming", "Defective ECM"],
+    "fixes": ["Attempt ECM reflash with latest calibration", "Check battery voltage and charging system", "Check for voltage spikes from bad alternator", "Replace ECM if reflashing fails", "Program new ECM to vehicle"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 1,
+    "severity": "critical",
+    "system": "Electrical"
+  },
+  "P0602": {
+    "causes": ["ECM programming error", "Failed ECM flash update", "Incorrect calibration installed", "ECM internal fault", "Battery voltage low during programming"],
+    "fixes": ["Reflash ECM with correct calibration", "Ensure stable battery voltage during programming (use battery tender)", "Check TSB for updated calibration", "Replace ECM if unresponsive to programming"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 1,
+    "severity": "critical",
+    "system": "Electrical"
+  },
+  "P0603": {
+    "causes": ["ECM KAM (Keep Alive Memory) error", "Battery recently disconnected", "Low battery voltage", "ECM power supply interrupted", "Faulty ECM"],
+    "fixes": ["Clear codes and drive to relearn fuel trims and idle", "Check battery connections", "Test battery and charging system", "Check ECM power and ground circuits", "Reflash ECM if persistent"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 1,
+    "severity": "info",
+    "system": "Electrical"
+  },
+  "P0604": {
+    "causes": ["ECM RAM error", "Internal ECM hardware failure", "Voltage spike or low voltage condition", "Defective ECM"],
+    "fixes": ["Check battery and charging system for voltage irregularities", "Attempt ECM reflash", "Replace ECM if RAM error persists", "Ensure clean power supply to ECM"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 1,
+    "severity": "critical",
+    "system": "Electrical"
+  },
+  "P0606": {
+    "causes": ["ECM/PCM processor fault", "Internal ECM failure", "Electromagnetic interference", "Voltage spike damaged processor", "Software corruption"],
+    "fixes": ["Check all ECM power and ground circuits", "Reflash ECM with latest software", "Check for EMI sources near ECM wiring", "Replace ECM if processor fault confirmed"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 1,
+    "severity": "critical",
+    "system": "Electrical"
+  },
+  "P0700": {
+    "causes": ["Transmission control system malfunction", "Faulty TCM (Transmission Control Module)", "TCM communication fault with ECM", "Transmission internal mechanical issue", "Wiring fault between TCM and ECM", "Low transmission fluid"],
+    "fixes": ["Scan TCM for additional transmission codes", "Check transmission fluid level and condition", "Inspect TCM wiring and connectors", "Check for TCM software updates", "Diagnose transmission-specific codes first"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0703": {
+    "causes": ["Brake switch circuit malfunction", "Faulty brake light switch", "Brake switch misadjusted", "Wiring fault in brake switch circuit", "Brake switch stuck on or off"],
+    "fixes": ["Test brake light switch operation", "Check brake light switch adjustment", "Replace brake light switch", "Check brake light fuse", "Inspect wiring from brake switch to TCM/ECM"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0705": {
+    "causes": ["Transmission range sensor (TR) circuit malfunction", "Faulty TR sensor / neutral safety switch", "TR sensor misadjusted", "Wiring fault to TR sensor", "Connector corrosion at TR sensor", "Shift linkage misadjusted"],
+    "fixes": ["Check TR sensor adjustment", "Test TR sensor voltage at each gear position", "Replace TR sensor", "Adjust shift linkage", "Clean TR sensor connector"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0706": {
+    "causes": ["TR sensor range/performance", "Intermittent TR sensor signal", "TR sensor out of adjustment", "Worn shift linkage bushing", "Faulty TR sensor"],
+    "fixes": ["Adjust TR sensor", "Replace TR sensor", "Check shift linkage for worn bushings", "Verify PRNDL display matches actual gear"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0710": {
+    "causes": ["Transmission fluid temperature sensor malfunction", "Faulty TFT sensor", "Wiring fault to TFT sensor", "Low or degraded transmission fluid", "Connector corrosion"],
+    "fixes": ["Check transmission fluid level and condition", "Test TFT sensor resistance vs. temperature", "Inspect TFT sensor wiring and connector", "Replace TFT sensor", "Service transmission fluid if degraded"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0711": {
+    "causes": ["TFT sensor circuit range/performance", "TFT sensor reading out of expected range", "Dirty or degraded transmission fluid", "Internal transmission overheating", "Faulty TFT sensor"],
+    "fixes": ["Check transmission fluid condition", "Monitor TFT sensor with scan tool during warm-up", "Replace TFT sensor if readings erratic", "Service transmission", "Check transmission cooler for restrictions"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0712": {
+    "causes": ["TFT sensor circuit low input", "TFT sensor short to ground", "Wiring short in TFT circuit", "Failed TFT sensor", "Transmission overfilled"],
+    "fixes": ["Test TFT sensor resistance", "Check wiring for shorts to ground", "Replace TFT sensor", "Check transmission fluid level"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0713": {
+    "causes": ["TFT sensor circuit high input", "TFT sensor open circuit", "Disconnected TFT sensor", "Failed TFT sensor", "Wiring open in TFT circuit"],
+    "fixes": ["Check TFT sensor connector", "Test TFT sensor resistance", "Replace TFT sensor", "Repair open wire in circuit"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0715": {
+    "causes": ["Input/turbine speed sensor circuit malfunction", "Faulty input speed sensor", "Input speed sensor wiring damage", "Sensor air gap incorrect", "Damaged tone ring inside transmission", "Metal debris on sensor"],
+    "fixes": ["Check input speed sensor wiring and connector", "Test input speed sensor signal with scan tool", "Replace input speed sensor", "Check sensor air gap", "Inspect for metal debris"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0720": {
+    "causes": ["Output speed sensor circuit malfunction", "Faulty output speed sensor", "OSS wiring damage", "Sensor air gap incorrect", "Damaged tone ring on output shaft", "Connector fault"],
+    "fixes": ["Test output speed sensor signal with scan tool", "Check OSS wiring and connector", "Replace output speed sensor", "Compare VSS and OSS readings", "Inspect output shaft tone ring"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0730": {
+    "causes": ["Incorrect gear ratio detected", "Worn clutch packs or bands", "Slipping transmission", "Low or degraded transmission fluid", "Faulty shift solenoids", "Internal transmission mechanical failure"],
+    "fixes": ["Check transmission fluid level and condition", "Test for clutch slippage with stall test", "Scan for specific gear ratio codes", "Replace shift solenoids if applicable", "Overhaul or replace transmission if mechanical failure"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "critical",
+    "system": "Transmission"
+  },
+  "P0740": {
+    "causes": ["Torque converter clutch circuit malfunction", "Faulty TCC solenoid", "TCC solenoid wiring fault", "Worn torque converter clutch", "Low transmission fluid pressure", "Internal seal leak"],
+    "fixes": ["Check TCC solenoid operation with scan tool", "Test TCC solenoid resistance", "Check transmission fluid pressure", "Replace TCC solenoid", "Replace torque converter if clutch is worn"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0741": {
+    "causes": ["TCC solenoid stuck off", "Worn torque converter clutch material", "Internal transmission seal leak", "Low line pressure", "Faulty TCC solenoid valve"],
+    "fixes": ["Monitor TCC slip speed with scan tool", "Check transmission fluid pressure", "Replace TCC solenoid valve", "Overhaul transmission if converter clutch worn", "Check for technical service bulletins"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0742": {
+    "causes": ["TCC solenoid stuck on", "TCC solenoid mechanical failure", "Debris in valve body causing solenoid to stick", "Wiring short causing solenoid to stay energized", "Warped converter"],
+    "fixes": ["Check TCC solenoid operation", "Check transmission fluid condition for debris", "Replace TCC solenoid", "Flush and service transmission", "Replace torque converter if warped"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0743": {
+    "causes": ["TCC solenoid electrical circuit fault", "TCC solenoid wiring open or short", "Failed TCC solenoid", "Connector fault at transmission", "TCM internal fault"],
+    "fixes": ["Test TCC solenoid resistance", "Check TCC solenoid wiring and connector", "Replace TCC solenoid", "Check TCM power and ground"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0744": {
+    "causes": ["TCC solenoid intermittent", "Intermittent wiring fault", "TCC solenoid mechanically sticking", "Valve body wear", "Debris in transmission fluid"],
+    "fixes": ["Monitor TCC operation over extended drive", "Check TCC solenoid wiring for intermittent faults", "Service transmission fluid", "Replace TCC solenoid if sticking"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0748": {
+    "causes": ["Pressure control solenoid A electrical fault", "Wiring open or short to pressure solenoid", "Failed pressure control solenoid", "Connector corrosion", "Low transmission fluid"],
+    "fixes": ["Check transmission fluid level", "Test pressure control solenoid resistance", "Inspect solenoid wiring and connector", "Replace pressure control solenoid", "Repair wiring as needed"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0750": {
+    "causes": ["Shift solenoid A malfunction", "Shift solenoid A stuck or failed", "Wiring fault to shift solenoid A", "Low transmission fluid", "Valve body issue", "Internal transmission damage"],
+    "fixes": ["Test shift solenoid A resistance", "Check transmission fluid level and condition", "Inspect solenoid wiring and connector", "Replace shift solenoid A", "Service valve body if needed"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0751": {
+    "causes": ["Shift solenoid A stuck off", "Mechanical failure in solenoid A", "Debris preventing solenoid operation", "Low line pressure", "Valve body wear"],
+    "fixes": ["Check shift solenoid A operation with scan tool", "Service transmission fluid and filter", "Replace shift solenoid A", "Check line pressure", "Inspect valve body for wear"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0752": {
+    "causes": ["Shift solenoid A stuck on", "Solenoid A mechanical failure", "Wiring short keeping solenoid energized", "Debris in valve body", "Low fluid level"],
+    "fixes": ["Test shift solenoid A operation", "Check wiring for shorts", "Replace shift solenoid A", "Service transmission", "Verify correct fluid level"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0755": {
+    "causes": ["Shift solenoid B malfunction", "Shift solenoid B stuck or failed", "Wiring fault to shift solenoid B", "Low transmission fluid", "Valve body contamination"],
+    "fixes": ["Test shift solenoid B resistance", "Check transmission fluid condition", "Inspect solenoid B wiring and connector", "Replace shift solenoid B", "Clean or service valve body"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0756": {
+    "causes": ["Shift solenoid B stuck off", "Mechanical failure of solenoid B", "Debris in transmission", "Low line pressure", "Valve body wear"],
+    "fixes": ["Check solenoid B operation with scan tool", "Service transmission fluid and filter", "Replace shift solenoid B", "Test line pressure", "Inspect valve body"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0758": {
+    "causes": ["Shift solenoid B electrical fault", "Solenoid B wiring open or shorted", "Failed shift solenoid B", "Connector fault", "TCM fault"],
+    "fixes": ["Test shift solenoid B resistance", "Check wiring and connector", "Replace shift solenoid B", "Repair wiring if damaged"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0760": {
+    "causes": ["Shift solenoid C malfunction", "Shift solenoid C stuck or failed", "Wiring fault to solenoid C", "Valve body contamination", "Internal transmission issue"],
+    "fixes": ["Test shift solenoid C resistance", "Check solenoid C wiring and connector", "Replace shift solenoid C", "Service transmission", "Inspect valve body"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0765": {
+    "causes": ["Shift solenoid D malfunction", "Shift solenoid D stuck or failed", "Wiring fault to solenoid D", "Transmission fluid contamination", "Valve body issue"],
+    "fixes": ["Test shift solenoid D operation", "Check solenoid D wiring and connector", "Replace shift solenoid D", "Service transmission fluid and filter", "Inspect valve body"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0770": {
+    "causes": ["Shift solenoid E malfunction", "Shift solenoid E stuck or failed", "Wiring fault to solenoid E", "Transmission fluid condition issue", "Valve body wear"],
+    "fixes": ["Test shift solenoid E resistance", "Check solenoid E wiring and connector", "Replace shift solenoid E", "Service transmission", "Inspect valve body"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P0780": {
+    "causes": ["Shift solenoid fault (general)", "Multiple shift solenoid failures", "Low transmission fluid pressure", "Internal mechanical failure", "Worn clutch packs", "TCM fault"],
+    "fixes": ["Check all shift solenoid resistances", "Check transmission fluid level and condition", "Test line pressure", "Service transmission", "Rebuild or replace transmission if multiple solenoids fail"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Transmission"
+  },
+  "P2000": {
+    "causes": ["NOx trap efficiency below threshold (Bank 1)", "Contaminated NOx catalyst", "Rich fuel mixture degrading NOx trap", "Failed downstream NOx sensor", "Low fuel quality (high sulfur)"],
+    "fixes": ["Check for engine misfires or rich running conditions", "Use quality fuel with low sulfur content", "Replace NOx catalyst if contaminated", "Check NOx sensor operation", "Verify EGR system operation"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 4,
+    "severity": "warning",
+    "system": "Catalyst"
+  },
+  "P2096": {
+    "causes": ["Post-catalyst fuel trim too lean (Bank 1)", "Exhaust leak after catalyst", "Faulty downstream O2 sensor", "Catalytic converter efficiency issue", "Upstream fuel system lean condition"],
+    "fixes": ["Check for exhaust leaks downstream of catalyst", "Monitor downstream O2 sensor readings", "Repair upstream lean condition first (P0171)", "Replace downstream O2 sensor if biased", "Check catalytic converter condition"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P2097": {
+    "causes": ["Post-catalyst fuel trim too rich (Bank 1)", "Downstream O2 sensor faulty", "Upstream fuel system rich condition", "Catalytic converter failure", "Oil or coolant burning in exhaust"],
+    "fixes": ["Monitor downstream O2 sensor for stuck rich", "Repair upstream rich condition (P0172)", "Check for oil or coolant consumption", "Replace downstream O2 sensor if biased", "Test catalytic converter"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P2101": {
+    "causes": ["Electronic throttle control motor circuit range/performance", "Faulty throttle body motor", "Throttle body binding or sticking", "Wiring fault to throttle motor", "Failed APP sensor correlation"],
+    "fixes": ["Perform throttle body relearn", "Clean throttle body", "Check throttle motor wiring", "Replace throttle body assembly", "Check APP sensor operation"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Intake/Air"
+  },
+  "P2104": {
+    "causes": ["Throttle control system forced idle (limp mode)", "Electronic throttle body failure", "APP sensor fault", "Throttle body motor wiring issue", "TCM or ECM fault triggering limp mode"],
+    "fixes": ["Check for related throttle codes (P2101, P2111, P2112)", "Clean and inspect throttle body", "Test APP sensor signal", "Perform electronic throttle body relearn", "Replace throttle body if motor faulty"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 2,
+    "severity": "critical",
+    "system": "Intake/Air"
+  },
+  "P2106": {
+    "causes": ["Throttle actuator control system forced limited power", "Electronic throttle body failure", "Multiple throttle-related codes stored", "APP/TPS correlation fault", "Wiring issue to throttle actuator"],
+    "fixes": ["Diagnose and repair primary throttle code first", "Check throttle body motor operation", "Test APP and TPS sensors", "Perform throttle relearn after repairs", "Replace throttle body if actuator motor failed"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 2,
+    "severity": "critical",
+    "system": "Intake/Air"
+  },
+  "P2110": {
+    "causes": ["Throttle actuator control system forced limited RPM", "Electronic throttle body malfunction", "Throttle plate binding", "Throttle motor wiring fault", "Severe engine or transmission issue triggering protection"],
+    "fixes": ["Check for primary throttle DTCs", "Clean throttle body", "Check throttle plate movement manually (key off)", "Test throttle motor", "Replace throttle body assembly if needed"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 2,
+    "severity": "critical",
+    "system": "Intake/Air"
+  },
+  "P2111": {
+    "causes": ["Throttle body stuck open", "Carbon buildup holding throttle plate open", "Throttle body motor failure (stuck open position)", "Return spring broken", "Wiring fault keeping motor energized"],
+    "fixes": ["Clean throttle body thoroughly", "Check throttle plate return spring", "Test throttle motor operation", "Perform throttle relearn", "Replace throttle body if plate won't close"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Intake/Air"
+  },
+  "P2112": {
+    "causes": ["Throttle body stuck closed", "Carbon buildup holding throttle plate closed", "Throttle motor failure (stuck closed position)", "Throttle body mechanical binding", "Wiring fault to motor"],
+    "fixes": ["Clean throttle body and plate", "Check throttle plate for free movement", "Test throttle motor bidirectional", "Replace throttle body if plate stuck", "Perform throttle relearn after cleaning"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Intake/Air"
+  },
+  "P2119": {
+    "causes": ["Throttle body airflow incorrect", "Electronic throttle body internal fault", "Throttle plate position not matching commanded", "Carbon buildup", "Throttle body motor intermittent"],
+    "fixes": ["Clean throttle body", "Perform throttle body relearn procedure", "Check for TSB on throttle body", "Replace throttle body if relearn fails", "Monitor throttle position with scan tool"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P2135": {
+    "causes": ["TPS sensor A/B voltage correlation error", "Faulty throttle position sensor", "APP sensor fault", "Wiring issue between TPS and ECM", "Electronic throttle body failure"],
+    "fixes": ["Check TPS A and B voltage signals (should be 2:1 ratio)", "Inspect TPS wiring", "Perform throttle body relearn", "Replace TPS or throttle body", "Check APP sensor signals"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Sensor"
+  },
+  "P2138": {
+    "causes": ["APP sensor D/E voltage correlation error", "Faulty accelerator pedal position sensor", "APP sensor wiring fault", "Connector issue at APP sensor", "Worn APP sensor potentiometer"],
+    "fixes": ["Check APP sensor D and E signal voltages", "Inspect APP sensor wiring and connector", "Replace accelerator pedal assembly", "Check for TSB updates", "Verify APP sensor 5V reference"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "critical",
+    "system": "Sensor"
+  },
+  "P2195": {
+    "causes": ["O2 sensor signal stuck lean (Bank 1 Sensor 1)", "Exhaust leak upstream", "Fuel delivery issue", "Vacuum leak", "Faulty O2 sensor biased lean", "Fuel injector partially clogged"],
+    "fixes": ["Monitor upstream O2 signal with scan tool", "Check for exhaust leaks", "Smoke test for vacuum leaks", "Test fuel pressure", "Replace O2 sensor if biased lean"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P2196": {
+    "causes": ["O2 sensor signal stuck rich (Bank 1 Sensor 1)", "Leaking fuel injector", "High fuel pressure", "Purge valve stuck open", "Faulty O2 sensor biased rich", "Oil consumption fouling sensor"],
+    "fixes": ["Monitor O2 signal (stuck above 0.5V)", "Check fuel pressure", "Test purge valve operation", "Check for leaking injectors", "Replace O2 sensor if biased rich"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P2270": {
+    "causes": ["O2 sensor signal stuck lean (Bank 1 Sensor 2)", "Downstream O2 sensor failure", "Exhaust leak after catalyst", "Catalytic converter issue", "Upstream fuel system problem"],
+    "fixes": ["Check downstream O2 sensor signal", "Repair exhaust leaks downstream", "Verify upstream fuel trim corrections", "Replace downstream O2 sensor", "Check catalyst condition"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P2271": {
+    "causes": ["O2 sensor signal stuck rich (Bank 1 Sensor 2)", "Downstream O2 sensor fault", "Catalyst not storing oxygen properly", "Upstream rich condition", "Oil contamination of O2 sensor"],
+    "fixes": ["Monitor downstream O2 sensor voltage", "Check upstream fuel trims", "Test catalytic converter efficiency", "Replace downstream O2 sensor", "Address any oil burning issues"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P2279": {
+    "causes": ["Intake air system leak", "Cracked intake boot or hose", "Failed intake manifold gasket", "PCV valve stuck open", "Brake booster vacuum leak", "Disconnected vacuum line"],
+    "fixes": ["Smoke test entire intake system", "Inspect all intake hoses and connections", "Check intake manifold gasket", "Test PCV valve operation", "Check brake booster for vacuum leaks"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Intake/Air"
+  },
+  "P2401": {
+    "causes": ["EVAP system leak detection pump stuck on", "Faulty leak detection pump", "Wiring fault to LDP", "EVAP system mechanical fault", "Pump diaphragm failure"],
+    "fixes": ["Test leak detection pump operation", "Check LDP wiring and connector", "Replace leak detection pump", "Check EVAP system for leaks"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 4,
+    "severity": "warning",
+    "system": "Emissions/EVAP"
+  },
+  "P2500": {
+    "causes": ["Generator lamp/L-terminal circuit low", "Faulty alternator", "Wiring short to ground in charge indicator circuit", "Connector fault at alternator", "Instrument cluster fault"],
+    "fixes": ["Check alternator output", "Inspect alternator connector", "Check charge indicator circuit wiring", "Replace alternator if L-terminal fault", "Test instrument cluster"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Electrical"
+  },
+  "P2501": {
+    "causes": ["Generator lamp/L-terminal circuit high", "Wiring short to power in charge circuit", "Faulty alternator voltage regulator", "Open in alternator field circuit", "Connector issue"],
+    "fixes": ["Check alternator output and regulation", "Inspect L-terminal wiring", "Test alternator field circuit", "Replace alternator if regulator fault", "Repair wiring as needed"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 2,
+    "severity": "warning",
+    "system": "Electrical"
+  },
+  "P2610": {
+    "causes": ["ECM/PCM internal engine off timer performance", "ECM internal clock fault", "Battery voltage interruption to ECM", "ECM internal failure", "Recent battery disconnect"],
+    "fixes": ["Check ECM power supply circuit", "Check for voltage interruption to ECM", "Reflash ECM if update available", "Replace ECM if internal clock faulty", "Clear codes and re-evaluate"],
+    "emissions_related": false,
+    "drive_cycles_to_clear": 1,
+    "severity": "info",
+    "system": "Electrical"
+  },
+  "P2A00": {
+    "causes": ["O2 sensor circuit range/performance (Bank 1 Sensor 1)", "Faulty wideband O2/AF sensor", "Exhaust leak before sensor", "Fuel system issue", "Contaminated O2 sensor"],
+    "fixes": ["Test O2/AF sensor response with scan tool", "Check for exhaust leaks", "Verify fuel system operation", "Replace O2/AF sensor", "Check for silicone or coolant contamination"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P2A01": {
+    "causes": ["O2 sensor circuit range/performance (Bank 1 Sensor 2)", "Faulty downstream O2 sensor", "Catalyst issue affecting O2 reading", "Exhaust leak after catalyst", "Upstream fuel trim issue"],
+    "fixes": ["Monitor downstream O2 sensor with scan tool", "Check for exhaust leaks", "Verify upstream fuel trim corrections", "Replace downstream O2 sensor", "Check catalyst efficiency"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Oxygen Sensors"
+  },
+  "P3400": {
+    "causes": ["Cylinder deactivation system fault (Bank 1)", "Faulty cylinder deactivation solenoid", "Oil pressure too low for VVT/deactivation", "Low oil level or wrong viscosity", "Lifter failure in deactivated cylinders", "Wiring fault to deactivation solenoid"],
+    "fixes": ["Check oil level and viscosity", "Test cylinder deactivation solenoids", "Monitor oil pressure with scan tool", "Replace deactivation solenoid if faulty", "Check for lifter tick noise"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Ignition/Fuel"
+  },
+  "P3401": {
+    "causes": ["Cylinder deactivation solenoid Bank 1 circuit fault", "Failed deactivation solenoid", "Wiring open or short to solenoid", "Connector corrosion", "Oil pressure insufficient for deactivation"],
+    "fixes": ["Check oil level and condition", "Test deactivation solenoid resistance", "Check solenoid wiring and connector", "Replace deactivation solenoid", "Verify oil pressure meets specification"],
+    "emissions_related": true,
+    "drive_cycles_to_clear": 3,
+    "severity": "warning",
+    "system": "Ignition/Fuel"
+  }
+}

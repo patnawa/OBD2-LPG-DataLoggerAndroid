@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.0] - 2026-07-04
+### Added
+- **Mode 06 — On-Board Monitor Test Results**: Professional-grade diagnostic feature that reads actual test values, min/max thresholds, and pass/fail status for all OBD2 monitors (Catalyst, O2 Sensors, O2 Heaters, EGR, EVAP, Misfire, Fuel System). Displays monitor name, test name, measured value, limits, and engineering unit. Includes full SAE J1979 UAS (Unit And Scaling) decoder covering 53 scaling IDs. Shown as a dedicated "Mode 06 — Monitor Test Results" section in the DTC scan results with pass/fail icons.
+- **Per-DTC Freeze Frame Snapshots**: Reads freeze frame data for each stored DTC individually (via Mode 02 + DTC-to-frame mapping using PID 02), instead of only the generic frame 00. Each DTC now shows its own engine snapshot with 10 PIDs (RPM, Speed, Coolant, Load, STFT, LTFT, MAP, IAT, Timing Advance, Throttle Position). Falls back gracefully to generic frame if per-DTC mapping is unsupported.
+- **Mode 09 — ECU Calibration ID & CVN**: Reads vehicle ECU calibration IDs (Cal-ID) and Calibration Verification Numbers (CVN) via Mode 09 PIDs 02/04. Critical for emissions inspection verification and detecting ECU reflashing/tuning. Displayed as "ECU Calibration Info" section.
+- **DTC Enrichment Database**: 157 common DTCs enriched with probable causes (3-6 per code), suggested repair steps (2-5 per code), emissions-related flag, drive cycles to clear after repair, severity level, and system category. Each DTC card now shows "Possible Causes", "Suggested Repair", and drive cycle count. Covers P0100-P0799 plus P2xxx/P3xxx codes.
+- **Scan Comparison (New vs Cleared)**: After the second DTC scan, displays a diff summary banner ("2 NEW, 1 CLEARED, 3 persisting"). Shows dedicated sections for newly appeared codes and codes that cleared since last scan. Persists across scans using existing SQLite history database.
+- **GaugeView Professional Overhaul**: Complete rewrite of the analog gauge with tapered needle (wide base, sharp tip), drop shadow, white tip highlight, arc number labels around the gauge (values printed at major tick marks), smooth 300ms needle animation with DecelerateInterpolator easing, peak value indicator (yellow triangle on outer bezel showing session maximum), 3D hub cap (dark ring, colored inner, specular highlight), outer bezel ring, per-gauge color themes (RPM=red, Speed=cyan, Temp=amber, Load=green), configurable warning zone start per gauge, and clean non-overlapping text layout (label/value/unit).
+
+### Changed
+- **DTC Card UI Redesign**: Each DTC code is now displayed as an expandable card with system category tag, [Emissions] badge for emissions-related codes, severity color coding, and enrichment data (causes, fixes, drive cycles). Tap still opens Google search.
+- **Freeze Frame Extended PIDs**: Freeze frame reader now attempts 9 PIDs (added Timing Advance PID 0E, Throttle Position PID 11) in addition to the original 8 core PIDs.
+
+### New Files
+- `Mode06Reader.java` — Mode 06 ELM327 communication, multi-frame parser, diagnostic MID probing
+- `Mode06Result.java` — Mode 06 result model with monitor/test name lookup tables
+- `UasDecoder.java` — SAE J1979 Unit And Scaling decoder (53 UASIDs with unit strings)
+- `DtcEnrichment.java` — Enrichment database loader from assets JSON
+- `Mode09Reader.java` — Cal-ID and CVN parser (Mode 09 PIDs 02/04)
+- `DtcComparison.java` — Scan diff engine comparing current vs previous scan
+- `dtc_enrichment.json` — 157 enriched DTC entries in assets
+- `Mode06ReaderTest.java` — 7 unit tests for Mode 06 parsing
+- `DtcComparisonTest.java` — 5 unit tests for scan comparison logic
+
 ## [3.0.8] - 2026-07-04
 ### Added & Improved
 - **Comprehensive DTC Diagnostic Scanner Suite**:
