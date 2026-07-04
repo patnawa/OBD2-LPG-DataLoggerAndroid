@@ -694,7 +694,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             int newMode = night ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES;
             prefs.edit().putInt("app_theme", newMode).apply();
             androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(newMode);
-            themeSpinner.setSelection(newMode == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO ? 1 : 2);
+            recreate();
         });
 
         if (currentTheme == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO) {
@@ -715,6 +715,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (prefs.getInt("app_theme", -1) != mode) {
                     prefs.edit().putInt("app_theme", mode).apply();
                     androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode);
+                    recreate();
                 }
 
                 boolean isNight;
