@@ -62,6 +62,14 @@ public final class LoggerService extends Service {
     
     private ApiServer apiServer;
 
+    public static final java.util.List<DtcCode> lastStoredDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
+    public static final java.util.List<DtcCode> lastPendingDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public interface DtcClearTrigger {
+        boolean clear();
+    }
+    public static volatile DtcClearTrigger dtcClearTrigger;
+
     public interface LoggerCallback {
         void onRecord(DataRecord record, int count);
         void onStatus(String status, boolean isError);
@@ -183,6 +191,26 @@ public final class LoggerService extends Service {
         if (config.enableApiServer) {
             try {
                 apiServer = new ApiServer(8080);
+                apiServer.setDtcProvider(new ApiServer.DtcProvider() {
+                    @Override
+                    public java.util.List<DtcCode> getStoredDtcs() {
+                        return lastStoredDtcs;
+                    }
+
+                    @Override
+                    public java.util.List<DtcCode> getPendingDtcs() {
+                        return lastPendingDtcs;
+                    }
+
+                    @Override
+                    public boolean triggerClearDtcs() {
+                        DtcClearTrigger trigger = dtcClearTrigger;
+                        if (trigger != null) {
+                            return trigger.clear();
+                        }
+                        return false;
+                    }
+                });
                 apiServer.start();
                 Log.i(TAG, "ApiServer started on port 8080");
             } catch (Exception e) {

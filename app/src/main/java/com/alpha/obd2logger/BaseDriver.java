@@ -26,6 +26,10 @@ public abstract class BaseDriver {
         return results;
     }
 
+    public String sendCommandRaw(String command) {
+        return "";
+    }
+
     public boolean isConnected() {
         return connected;
     }

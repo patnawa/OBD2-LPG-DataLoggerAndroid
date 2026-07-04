@@ -17,6 +17,18 @@ public class ApiServer extends NanoHTTPD {
 
     private volatile DataRecord latestData;
     private volatile boolean isLogging;
+    
+    public interface DtcProvider {
+        java.util.List<DtcCode> getStoredDtcs();
+        java.util.List<DtcCode> getPendingDtcs();
+        boolean triggerClearDtcs();
+    }
+    
+    private volatile DtcProvider dtcProvider;
+
+    public void setDtcProvider(DtcProvider provider) {
+        this.dtcProvider = provider;
+    }
 
     // Fuel Map Constants matching FuelMapView
     private static final int RPM_MIN = 500;
@@ -185,12 +197,16 @@ public class ApiServer extends NanoHTTPD {
                 response = handleMapSummary();
             } else if ("/api/map/export".equals(uri)) {
                 response = handleMapExport();
+            } else if ("/api/dtc".equals(uri)) {
+                response = handleGetDtc();
             } else {
                 response = newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found");
             }
         } else if (Method.DELETE.equals(method)) {
             if ("/api/map".equals(uri)) {
                 response = handleMapClear();
+            } else if ("/api/dtc".equals(uri)) {
+                response = handleDeleteDtc();
             } else {
                 response = newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found");
             }
@@ -482,5 +498,54 @@ public class ApiServer extends NanoHTTPD {
             e.printStackTrace();
             return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\": \"" + e.getMessage() + "\"}");
         }
+    }
+
+    private Response handleGetDtc() {
+        JSONObject obj = new JSONObject();
+        try {
+            JSONArray storedArr = new JSONArray();
+            JSONArray pendingArr = new JSONArray();
+            if (dtcProvider != null) {
+                java.util.List<DtcCode> stored = dtcProvider.getStoredDtcs();
+                if (stored != null) {
+                    for (DtcCode dtc : stored) {
+                        JSONObject dtcObj = new JSONObject();
+                        dtcObj.put("code", dtc.getCode());
+                        dtcObj.put("description", dtc.getDescription());
+                        storedArr.put(dtcObj);
+                    }
+                }
+                java.util.List<DtcCode> pending = dtcProvider.getPendingDtcs();
+                if (pending != null) {
+                    for (DtcCode dtc : pending) {
+                        JSONObject dtcObj = new JSONObject();
+                        dtcObj.put("code", dtc.getCode());
+                        dtcObj.put("description", dtc.getDescription());
+                        pendingArr.put(dtcObj);
+                    }
+                }
+            }
+            obj.put("stored", storedArr);
+            obj.put("pending", pendingArr);
+            obj.put("timestamp", System.currentTimeMillis());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return newFixedLengthResponse(Response.Status.OK, "application/json", obj.toString());
+    }
+
+    private Response handleDeleteDtc() {
+        boolean success = false;
+        if (dtcProvider != null) {
+            success = dtcProvider.triggerClearDtcs();
+        }
+        JSONObject obj = new JSONObject();
+        try {
+            obj.put("success", success);
+            obj.put("message", success ? "Clear DTC command triggered" : "DTC provider unavailable");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return newFixedLengthResponse(Response.Status.OK, "application/json", obj.toString());
     }
 }

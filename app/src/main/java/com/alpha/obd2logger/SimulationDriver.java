@@ -86,6 +86,31 @@ public final class SimulationDriver extends BaseDriver {
         return pidDef.getMinVal() + random.nextDouble() * (pidDef.getMaxVal() - pidDef.getMinVal());
     }
 
+    @Override
+    public String sendCommandRaw(String command) {
+        if (command == null) return "";
+        switch (command) {
+            case "03":
+                // Mode 03 (stored codes): returns P0171 (System too lean Bank 1) and P0300 (Random misfire)
+                return "43 02 01 71 03 00";
+            case "07":
+                // Mode 07 (pending codes): returns P0301 (Cylinder 1 misfire)
+                return "47 01 03 01";
+            case "04":
+                // Mode 04 (clear codes)
+                return "44";
+            case "0101":
+                // Mode 01 PID 01 (readiness status)
+                // MIL on, 2 DTCs, various readiness monitors complete
+                return "41 01 82 07 65 04";
+            case "0902":
+                // Mode 09 PID 02 (VIN): returns "1234567890ABCDEFG" in hex
+                return "49 02 01 31 32 33 34 35 36 37 38 39 30 41 42 43 44 45 46 47";
+            default:
+                return "";
+        }
+    }
+
     private static double clamp(double value, double min, double max) {
         return Math.max(min, Math.min(max, value));
     }

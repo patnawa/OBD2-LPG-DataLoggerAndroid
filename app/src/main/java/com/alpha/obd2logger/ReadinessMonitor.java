@@ -137,10 +137,7 @@ public final class ReadinessMonitor {
         if (driver == null || !driver.isConnected()) {
             return new ReadinessMonitor(false, 0, new ArrayList<>());
         }
-        if (driver instanceof ElmDriver) {
-            String response = ((ElmDriver) driver).sendCommandRaw("0101");
-            return parse(response);
-        }
-        return new ReadinessMonitor(false, 0, new ArrayList<>());
+        String response = driver.sendCommandRaw("0101");
+        return parse(response);
     }
 }

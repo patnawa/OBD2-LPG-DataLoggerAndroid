@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.7] - 2026-07-04
+### Added & Improved
+- **Simulated Diagnostic Commands**: Added simulation support for Modes 03 (stored codes), 07 (pending codes), 04 (clear codes), 0101 (readiness monitors), and 0902 (VIN queries) inside `SimulationDriver`. Decoupled diagnostic execution by declaring a unified raw command interface `sendCommandRaw` in `BaseDriver`.
+- **DTC Web Lookup**: Added an interactive click listener on each fault code listed in the DTC scanner tab. Clicking any code opens Google Search (e.g. `P0171`) in a browser window to help users lookup repair suggestions.
+- **REST API Diagnostics Integration**: Added `GET /api/dtc` and `DELETE /api/dtc` endpoints to the built-in HTTP server on port 8080. AI Agents can now inspect vehicle fault status and clear active fault codes.
+
 ## [3.0.6] - 2026-07-03
 ### Added
 - **Delete Vehicle Folder capability**: Added a trash can button to each vehicle (VIN) folder row in the history list. Clicking it prompts for confirmation, then deletes all log files contained inside that folder, automatically cleans up the directory, and refreshes the folder view.

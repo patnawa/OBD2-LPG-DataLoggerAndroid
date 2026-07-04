@@ -80,11 +80,8 @@ public final class DtcReader {
         if (driver == null || !driver.isConnected()) {
             return new ArrayList<>();
         }
-        if (driver instanceof ElmDriver) {
-            String response = ((ElmDriver) driver).sendCommandRaw("03");
-            return parseDtcResponse(response, "43");
-        }
-        return new ArrayList<>();
+        String response = driver.sendCommandRaw("03");
+        return parseDtcResponse(response, "43");
     }
 
     /**
@@ -94,11 +91,8 @@ public final class DtcReader {
         if (driver == null || !driver.isConnected()) {
             return new ArrayList<>();
         }
-        if (driver instanceof ElmDriver) {
-            String response = ((ElmDriver) driver).sendCommandRaw("07");
-            return parseDtcResponse(response, "47");
-        }
-        return new ArrayList<>();
+        String response = driver.sendCommandRaw("07");
+        return parseDtcResponse(response, "47");
     }
 
     /**
@@ -109,11 +103,8 @@ public final class DtcReader {
         if (driver == null || !driver.isConnected()) {
             return false;
         }
-        if (driver instanceof ElmDriver) {
-            String response = ((ElmDriver) driver).sendCommandRaw("04");
-            return response != null && !response.isEmpty();
-        }
-        return false;
+        String response = driver.sendCommandRaw("04");
+        return response != null && !response.isEmpty();
     }
 
     private static String normalizeHex(String response) {

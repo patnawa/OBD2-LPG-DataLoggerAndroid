@@ -22,12 +22,9 @@ public final class VinReader {
         if (driver == null || !driver.isConnected()) {
             return null;
         }
-        if (!(driver instanceof ElmDriver)) {
-            return null;
-        }
 
         // Send 0902 with headers off — ELM327 handles ISO-TP reassembly
-        String response = ((ElmDriver) driver).sendCommandRaw("0902");
+        String response = driver.sendCommandRaw("0902");
         if (response == null || response.isEmpty()) {
             return null;
         }

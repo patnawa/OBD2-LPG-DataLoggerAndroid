@@ -192,4 +192,45 @@ public class ApiServerTest {
         assertEquals(0, server.getPetrolMap().size());
         assertEquals(0, server.getLpgMap().size());
     }
+
+    @Test
+    public void testDtcEndpoints() throws Exception {
+        ApiServer server = new ApiServer(8080);
+        final boolean[] clearTriggered = {false};
+        
+        server.setDtcProvider(new ApiServer.DtcProvider() {
+            @Override
+            public List<DtcCode> getStoredDtcs() {
+                List<DtcCode> list = new ArrayList<>();
+                list.add(new DtcCode("P0171", "System Too Lean (Bank 1)"));
+                list.add(new DtcCode("P0300", "Random/Multiple Cylinder Misfire"));
+                return list;
+            }
+
+            @Override
+            public List<DtcCode> getPendingDtcs() {
+                List<DtcCode> list = new ArrayList<>();
+                list.add(new DtcCode("P0301", "Cylinder 1 Misfire Detected"));
+                return list;
+            }
+
+            @Override
+            public boolean triggerClearDtcs() {
+                clearTriggered[0] = true;
+                return true;
+            }
+        });
+
+        // Test GET /api/dtc
+        FakeHTTPSession getDtcSession = new FakeHTTPSession(Method.GET, "/api/dtc");
+        Response getDtcResp = server.serve(getDtcSession);
+        assertEquals(Response.Status.OK, getDtcResp.getStatus());
+        assertEquals("application/json", getDtcResp.getMimeType());
+
+        // Test DELETE /api/dtc
+        FakeHTTPSession deleteDtcSession = new FakeHTTPSession(Method.DELETE, "/api/dtc");
+        Response deleteDtcResp = server.serve(deleteDtcSession);
+        assertEquals(Response.Status.OK, deleteDtcResp.getStatus());
+        assertTrue(clearTriggered[0]);
+    }
 }

@@ -118,6 +118,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // Separate executor for DTC/VIN/readiness operations so that stopping the
     // logging executor (shutdownNow) doesn't kill pending diagnostic reads.
     private volatile ExecutorService dtcExecutor;
+    private final List<DtcCode> lastStoredDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<DtcCode> lastPendingDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
     private volatile boolean running;
     private DataWriter currentWriter;
     private volatile BaseDriver currentDriver;
@@ -146,6 +148,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_main);
+
+            LoggerService.dtcClearTrigger = () -> {
+                runOnUiThread(() -> clearDtcs());
+                return true;
+            };
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
                 String lang = LocaleHelper.getLanguage(this);
@@ -1913,6 +1920,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcExecutor.submit(() -> {
             List<DtcCode> stored = DtcReader.readStoredDtcs(currentDriver);
             List<DtcCode> pending = DtcReader.readPendingDtcs(currentDriver);
+            
+            lastStoredDtcs.clear();
+            lastStoredDtcs.addAll(stored);
+            lastPendingDtcs.clear();
+            lastPendingDtcs.addAll(pending);
+            
+            LoggerService.lastStoredDtcs.clear();
+            LoggerService.lastStoredDtcs.addAll(stored);
+            LoggerService.lastPendingDtcs.clear();
+            LoggerService.lastPendingDtcs.addAll(pending);
+            
             runOnUiThread(() -> displayDtcs(stored, pending));
         });
     }
@@ -1949,11 +1967,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         for (DtcCode dtc : codes) {
             TextView codeView = new TextView(this);
-            codeView.setText("  " + dtc.getCode() + " — " + dtc.getDescription());
+            codeView.setText("🔍  " + dtc.getCode() + " — " + dtc.getDescription());
             codeView.setTextColor(getColorCompat(R.color.text));
             codeView.setTextSize(13);
             codeView.setPadding(8, 6, 8, 6);
             codeView.setBackgroundResource(R.color.surface2);
+            codeView.setClickable(true);
+            codeView.setFocusable(true);
+            
+            codeView.setOnClickListener(v -> {
+                String url = "https://www.google.com/search?q=OBD2+code+" + dtc.getCode();
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity(browserIntent);
+                Toast.makeText(this, "Searching " + dtc.getCode() + " on Google...", Toast.LENGTH_SHORT).show();
+            });
+
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.bottomMargin = 4;
@@ -1970,6 +1998,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             boolean success = DtcReader.clearDtcs(currentDriver);
+            if (success) {
+                lastStoredDtcs.clear();
+                lastPendingDtcs.clear();
+                LoggerService.lastStoredDtcs.clear();
+                LoggerService.lastPendingDtcs.clear();
+            }
             runOnUiThread(() -> {
                 if (success) {
                     dtcStatusText.setText("DTCs cleared. MIL should reset after next drive cycle.");
