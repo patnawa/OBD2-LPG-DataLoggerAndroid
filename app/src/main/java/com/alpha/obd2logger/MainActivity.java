@@ -692,9 +692,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             boolean night = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) 
                 == android.content.res.Configuration.UI_MODE_NIGHT_YES;
             int newMode = night ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES;
-            prefs.edit().putInt("app_theme", newMode).apply();
+            // Use commit() for synchronous write so the pref is saved
+            // before the activity recreates itself
+            prefs.edit().putInt("app_theme", newMode).commit();
+            // setDefaultNightMode triggers activity recreation internally
+            // when uiMode config change occurs — do NOT call recreate() separately
             androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(newMode);
-            recreate();
         });
 
         if (currentTheme == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO) {
@@ -713,9 +716,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 else if (position == 2) mode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES;
                 
                 if (prefs.getInt("app_theme", -1) != mode) {
-                    prefs.edit().putInt("app_theme", mode).apply();
+                    prefs.edit().putInt("app_theme", mode).commit();
                     androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode);
-                    recreate();
                 }
 
                 boolean isNight;
