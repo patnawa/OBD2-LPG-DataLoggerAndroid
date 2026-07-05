@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.0] - 2026-07-05
+### Changed
+- **Bottom navigation bar replaced with live status strip** — The old `BottomNavigationView` (5 tab icons) has been replaced with a persistent bottom status bar that shows real-time information on every screen:
+  - **Connection indicator**: colored dot (green=connected, amber=connecting, red=disconnected) + device/transport name
+  - **Live mini-readouts**: RPM | Speed (km/h) | Battery Voltage (V) — always visible even when on DTC, Battery, or Settings tabs
+  - **Voltage color-coding**: green (12.65-14.7V healthy), amber (12.2-12.65V low/resting or 14.7-14.8V high), red (<12.2V critical or >14.8V overcharge)
+  - **DTC badge**: red/amber count badge showing total stored+pending DTCs (tap to jump to DTC tab)
+  - **Tap to navigate**: tap the status strip to jump to Dashboard, tap the DTC badge to jump to DTC scanner
+  - Hides on the home screen for a cleaner menu appearance
+- **Navigation is now home-card-only** — All tab navigation goes through the home screen's feature cards. The bottom bar earns its space by showing live data instead of redundant navigation icons. The Start/Stop logging FAB remains in the top toolbar.
+
+### Removed
+- `bottom_nav_menu.xml` no longer used by the app (kept in repo for reference)
+- All `BottomNavigationView` Java code (setupTabs listener, showTab menu sync, BadgeDrawable)
+
 ## [3.3.1] - 2026-07-05
 ### Fixed
 - **CRITICAL: App crash on startup (InflateException)** — BottomNavigationView had 6 menu items, but Material Design's BottomNavigationView supports a maximum of 5. The 6th item (nav_battery, added in v3.3.0) caused `IllegalArgumentException: Maximum number of items supported by BottomNavigationView is 5` during layout inflation on startup, crashing the app immediately. Fix: removed `nav_logs` from the bottom nav menu (Logs tab remains accessible via the home screen card). Battery tab keeps its bottom nav slot.

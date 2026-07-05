@@ -57,7 +57,12 @@ import java.util.concurrent.Executors;
 public final class MainActivity extends AppCompatActivity implements LoggerService.LoggerCallback {
 
     // --- UI: Tab bar ---
-    private com.google.android.material.bottomnavigation.BottomNavigationView bottomNav;
+    // Status strip (bottom bar — replaces old BottomNavigationView)
+    private View statusStrip;
+    private View statusDot;
+    private TextView statusDeviceText;
+    private TextView stripRpm, stripSpeed, stripVoltage;
+    private TextView stripDtcBadge;
     private View panelHome, panelDashboard, panelGauges, panelDtc, panelLogs, panelSettings;
     private View panelBattery;
     private com.google.android.material.appbar.MaterialToolbar topHeader;
@@ -326,6 +331,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 countText.setText("Records: " + count);
                 setStatus("Background logging active...", R.color.accent);
                 headerStatus.setText("Logging...");
+                if (activeConfig != null) updateStatusStripConnection(2, "Connected " + activeConfig.transportMode.getValue());
             }
 
             if (fuelMapView != null) {
@@ -339,6 +345,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             setStatus("Logging active...", R.color.accent);
             headerStatus.setText("Logging...");
+            if (activeInProcessConfig != null) updateStatusStripConnection(2, "Connected " + activeInProcessConfig.transportMode.getValue());
             
             if (activeInProcessConfig != null) {
                 lpgOnlyCheckbox.setChecked(activeInProcessConfig.lpgOnlyMode);
@@ -409,7 +416,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             });
         }
         
-        bottomNav = findViewById(R.id.tabBar);
+        // Status strip
+        statusStrip = findViewById(R.id.statusStrip);
+        statusDot = findViewById(R.id.statusDot);
+        statusDeviceText = findViewById(R.id.statusDeviceText);
+        stripRpm = findViewById(R.id.stripRpm);
+        stripSpeed = findViewById(R.id.stripSpeed);
+        stripVoltage = findViewById(R.id.stripVoltage);
+        stripDtcBadge = findViewById(R.id.stripDtcBadge);
+        // Status strip: tap to go to dashboard
+        if (statusStrip != null) {
+            statusStrip.setOnClickListener(v -> showTab(0));
+        }
+        // DTC badge: tap to go to DTC tab
+        if (stripDtcBadge != null) {
+            stripDtcBadge.setOnClickListener(v -> showTab(3));
+        }
         topHeader = findViewById(R.id.topHeader);
         panelHome = findViewById(R.id.panelHome);
         panelDashboard = findViewById(R.id.panelDashboard);
@@ -769,26 +791,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void setupTabs() {
-        bottomNav.setOnItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_dashboard) {
-                showTab(0);
-                return true;
-            } else if (id == R.id.nav_gauges) {
-                showTab(1);
-                return true;
-            } else if (id == R.id.nav_map) {
-                showTab(2);
-                return true;
-            } else if (id == R.id.nav_dtc) {
-                showTab(3);
-                return true;
-            } else if (id == R.id.nav_battery) {
-                showTab(7);
-                return true;
-            }
-            return false;
-        });
+        // Navigation is now home-card-only (no bottom nav bar).
+        // The bottom status strip shows live data, not navigation.
     }
 
     private void showTab(int index) {
@@ -817,24 +821,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 btnGoHome.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
             }
 
-            if (index == 6) {
-                if (bottomNav != null) bottomNav.setVisibility(View.GONE);
-            } else {
-                if (bottomNav != null) {
-                    bottomNav.setVisibility(View.VISIBLE);
-                    if (index >= 0 && index <= 4) {
-                        int menuId = R.id.nav_dashboard;
-                        if (index == 1) menuId = R.id.nav_gauges;
-                        else if (index == 2) menuId = R.id.nav_map;
-                        else if (index == 3) menuId = R.id.nav_dtc;
-                        else if (index == 4) menuId = R.id.nav_battery; // Logs tab (4) — no bottom nav item, use battery highlight as fallback
-                        else if (index == 7) menuId = R.id.nav_battery;
-                        
-                        if (bottomNav.getSelectedItemId() != menuId) {
-                            bottomNav.setSelectedItemId(menuId);
-                        }
-                    }
-                }
+            // Status strip: hide on home screen for a cleaner look, show on all other tabs
+            if (statusStrip != null) {
+                statusStrip.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
             }
             
             if (index == 4) {
@@ -1765,6 +1754,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         lastSampleTimeMs = 0;
         setStatus("Connecting via " + config.transportMode.getValue() + "...", R.color.accent);
         headerStatus.setText("Connecting...");
+        updateStatusStripConnection(1, "Connecting " + config.transportMode.getValue() + "...");
         countText.setText("Records: 0");
         TextView[] values = {dashValue1, dashValue2, dashValue3, dashValue4};
         for (int i=0; i<4; i++) {
@@ -1841,6 +1831,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Note: dtcExecutor is intentionally NOT shut down here — stopping logging
         // must not kill in-flight DTC/VIN/readiness reads. It is shut down in onDestroy().
         headerStatus.setText("Disconnected");
+        updateStatusStripConnection(0, "Disconnected");
         updateSessionStatus(false);
     }
 
@@ -1859,6 +1850,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (active != null) {
                     active.setStatus("Connection failed. Check settings and adapter.", R.color.danger);
                     active.headerStatus.setText("Connection failed");
+                    active.updateStatusStripConnection(0, "Connection failed");
                     if (active.fabLog != null) {
                         active.fabLog.setImageResource(android.R.drawable.ic_media_play);
                         active.fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(active.getColorCompat(R.color.primary)));
@@ -1882,6 +1874,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         runOnActiveActivity(() -> {
             MainActivity active = activeInstance;
             if (active != null) active.headerStatus.setText("Connected: " + config.transportMode.getValue());
+            if (active != null) active.updateStatusStripConnection(2, "Connected " + config.transportMode.getValue());
         });
 
         // Try to read VIN
@@ -2078,6 +2071,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         active.fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(active.getColorCompat(R.color.primary)));
                     }
                     active.headerStatus.setText("Disconnected");
+                    active.updateStatusStripConnection(0, "Disconnected");
                 }
             });
         }
@@ -2097,6 +2091,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             renderReadings(record);
             updateLiveMetrics(count, loggingStartTime);
             updateBatteryMonitor(record);
+            updateStatusStrip(record);
 
             if (fuelMapView != null) {
                 sessionPetrolData.clear();
@@ -2183,6 +2178,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             setStatus("Background logging stopped. " + totalRecords + " records saved.", R.color.primary);
             headerStatus.setText("Disconnected");
+            updateStatusStripConnection(0, "Disconnected");
             updateSessionStatus(false);
         });
     }
@@ -2228,6 +2224,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     return; // Don't show for UNKNOWN
             }
             setStatus(deviceName + " — optimized", color);
+            updateStatusStripConnection(2, deviceName);
         });
     }
 
@@ -2289,21 +2286,76 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         });
     }
 
+    /**
+     * Update the bottom status strip with live PID values from the current record.
+     * Called from onRecord() on the UI thread.
+     */
+    private void updateStatusStrip(DataRecord record) {
+        if (stripRpm == null) return; // not initialized yet
+        Double rpm = valueByKey(record, "01_0C");
+        Double speed = valueByKey(record, "01_0D");
+        Double voltage = valueByKey(record, "01_42");
+
+        stripRpm.setText(rpm != null ? String.format(Locale.US, "%.0f", rpm) : "--");
+        stripSpeed.setText(speed != null ? String.format(Locale.US, "%.0f", speed) : "--");
+        if (voltage != null) {
+            stripVoltage.setText(String.format(Locale.US, "%.1f", voltage));
+            // Color-code voltage: red < 12.2, amber 12.2-12.65, green 12.65-14.7, red > 14.8
+            if (voltage < 12.2 || voltage > 14.8) {
+                stripVoltage.setTextColor(getColorCompat(R.color.danger));
+            } else if (voltage < 12.65 || voltage > 14.7) {
+                stripVoltage.setTextColor(getColorCompat(R.color.warning));
+            } else {
+                stripVoltage.setTextColor(getColorCompat(R.color.accent));
+            }
+        } else {
+            stripVoltage.setText("--");
+            stripVoltage.setTextColor(getColorCompat(R.color.text));
+        }
+    }
+
+    /**
+     * Update the status strip connection indicator (dot + device text).
+     * @param state 0=disconnected, 1=connecting, 2=connected
+     * @param deviceName device name or transport mode string
+     */
+    private void updateStatusStripConnection(int state, String deviceName) {
+        if (statusDot == null || statusDeviceText == null) return;
+        int dotRes;
+        int textColor;
+        switch (state) {
+            case 1: // connecting
+                dotRes = R.drawable.bg_status_dot_connecting;
+                textColor = R.color.warning;
+                break;
+            case 2: // connected
+                dotRes = R.drawable.bg_status_dot_on;
+                textColor = R.color.accent;
+                break;
+            default: // disconnected
+                dotRes = R.drawable.bg_status_dot_off;
+                textColor = R.color.muted;
+                break;
+        }
+        statusDot.setBackgroundResource(dotRes);
+        statusDeviceText.setText(deviceName);
+        statusDeviceText.setTextColor(getColorCompat(textColor));
+    }
+
     private void updateDtcBadge(int storedCount, int pendingCount, int permanentCount) {
         int total = storedCount + pendingCount;
-        if (bottomNav != null) {
-            com.google.android.material.badge.BadgeDrawable badge = bottomNav.getOrCreateBadge(R.id.nav_dtc);
+        if (stripDtcBadge != null) {
             if (total > 0) {
-                badge.setVisible(true);
-                badge.setNumber(total);
+                stripDtcBadge.setVisibility(View.VISIBLE);
+                stripDtcBadge.setText(String.valueOf(total));
                 if (storedCount > 0) {
-                    badge.setBackgroundColor(getColorCompat(R.color.danger));
+                    stripDtcBadge.setBackgroundResource(R.drawable.bg_dtc_badge);
+                    stripDtcBadge.getBackground().setTint(getColorCompat(R.color.danger));
                 } else {
-                    badge.setBackgroundColor(getColorCompat(R.color.warning));
+                    stripDtcBadge.getBackground().setTint(getColorCompat(R.color.warning));
                 }
             } else {
-                badge.setVisible(false);
-                badge.clearNumber();
+                stripDtcBadge.setVisibility(View.GONE);
             }
         }
     }

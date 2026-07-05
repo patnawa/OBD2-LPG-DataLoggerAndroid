@@ -100,18 +100,117 @@
         </RelativeLayout>
     </com.google.android.material.appbar.MaterialToolbar>
 
-    <!-- Bottom Tab bar -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/tabBar"
+    <!-- Bottom Status Strip — persistent live status bar -->
+    <LinearLayout
+        android:id="@+id/statusStrip"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
         android:background="@color/surface"
-        app:elevation="8dp"
-        app:labelVisibilityMode="labeled"
-        app:menu="@menu/bottom_nav_menu"
+        android:elevation="8dp"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Connection status indicator -->
+        <View
+            android:id="@+id/statusDot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/bg_status_dot_off"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/statusDeviceText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Disconnected"
+            android:textColor="@color/muted"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <!-- Divider -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="24dp"
+            android:background="@color/border"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp" />
+
+        <!-- Live mini-readouts -->
+        <TextView
+            android:id="@+id/stripRpm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="--"
+            android:textColor="@color/text"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" RPM"
+            android:textColor="@color/muted"
+            android:textSize="10sp"
+            android:layout_marginEnd="12dp" />
+
+        <TextView
+            android:id="@+id/stripSpeed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="--"
+            android:textColor="@color/text"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" km/h"
+            android:textColor="@color/muted"
+            android:textSize="10sp"
+            android:layout_marginEnd="12dp" />
+
+        <TextView
+            android:id="@+id/stripVoltage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="--"
+            android:textColor="@color/text"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" V"
+            android:textColor="@color/muted"
+            android:textSize="10sp" />
+
+        <!-- DTC badge (hidden when 0) -->
+        <TextView
+            android:id="@+id/stripDtcBadge"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:background="@drawable/bg_dtc_badge"
+            android:text="0"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:visibility="gone"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
 
     <!-- Content area -->
     <ScrollView
@@ -121,7 +220,7 @@
         android:clipToPadding="false"
         android:paddingBottom="16dp"
         app:layout_constraintTop_toBottomOf="@id/topHeader"
-        app:layout_constraintBottom_toTopOf="@id/tabBar"
+        app:layout_constraintBottom_toTopOf="@id/statusStrip"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
