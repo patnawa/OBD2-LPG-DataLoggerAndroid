@@ -89,8 +89,10 @@ public class BatteryTestView extends View {
     }
 
     private void init() {
+        float density = getResources().getDisplayMetrics().density;
+
         linePaint.setStyle(Paint.Style.STROKE);
-        linePaint.setStrokeWidth(4f);
+        linePaint.setStrokeWidth(2f * density);
         linePaint.setStrokeJoin(Paint.Join.ROUND);
         linePaint.setStrokeCap(Paint.Cap.ROUND);
         linePaint.setColor(0xFF42A5F5);
@@ -98,20 +100,20 @@ public class BatteryTestView extends View {
         fillPaint.setStyle(Paint.Style.FILL);
 
         gridPaint.setStyle(Paint.Style.STROKE);
-        gridPaint.setStrokeWidth(1f);
+        gridPaint.setStrokeWidth(0.8f * density);
         gridPaint.setColor(0x30FFFFFF);
 
         thresholdPaint.setStyle(Paint.Style.STROKE);
-        thresholdPaint.setStrokeWidth(1.5f);
-        thresholdPaint.setPathEffect(new android.graphics.DashPathEffect(new float[]{8f, 4f}, 0));
+        thresholdPaint.setStrokeWidth(1.0f * density);
+        thresholdPaint.setPathEffect(new android.graphics.DashPathEffect(new float[]{6f * density, 3f * density}, 0));
 
-        labelPaint.setTextSize(28f);
+        labelPaint.setTextSize(9.5f * density);
         labelPaint.setFakeBoldText(true);
 
-        textPaint.setTextSize(26f);
+        textPaint.setTextSize(10f * density);
         textPaint.setColor(0xCCFFFFFF);
 
-        minMaxPaint.setTextSize(24f);
+        minMaxPaint.setTextSize(9.5f * density);
         minMaxPaint.setFakeBoldText(true);
 
         bgPaint.setColor(0xFF1A1A2E);
@@ -168,10 +170,12 @@ public class BatteryTestView extends View {
 
         float w = getWidth();
         float h = getHeight();
-        float padLeft = 60f;
-        float padRight = 16f;
-        float padTop = 40f;
-        float padBottom = 40f;
+        float density = getResources().getDisplayMetrics().density;
+
+        float padLeft = 45f * density;
+        float padRight = 16f * density;
+        float padTop = 32f * density;
+        float padBottom = 24f * density;
         float plotW = w - padLeft - padRight;
         float plotH = h - padTop - padBottom;
 
@@ -184,7 +188,7 @@ public class BatteryTestView extends View {
             float y = padTop + (1 - (v - V_MIN) / (V_MAX - V_MIN)) * plotH;
             canvas.drawLine(padLeft, y, w - padRight, y, gridPaint);
             textPaint.setTextAlign(Paint.Align.RIGHT);
-            canvas.drawText(String.format("%.0fV", v), padLeft - 8, y + 8, textPaint);
+            canvas.drawText(String.format(java.util.Locale.US, "%.0fV", v), padLeft - 6 * density, y + 4 * density, textPaint);
         }
 
         // Threshold lines
@@ -198,7 +202,7 @@ public class BatteryTestView extends View {
             // Label at right edge
             labelPaint.setColor(THRESHOLD_COLORS[i]);
             labelPaint.setTextAlign(Paint.Align.RIGHT);
-            canvas.drawText(THRESHOLD_LABELS[i], w - padRight - 4, y - 4, labelPaint);
+            canvas.drawText(THRESHOLD_LABELS[i], w - padRight - 4 * density, y - 3 * density, labelPaint);
         }
 
         // Voltage waveform
@@ -238,14 +242,14 @@ public class BatteryTestView extends View {
             float currV = samples.get(samples.size() - 1);
             float currY = padTop + (1 - (currV - V_MIN) / (V_MAX - V_MIN)) * plotH;
             linePaint.setColor(0xFFFFFFFF);
-            canvas.drawCircle(lastX, currY, 6f, linePaint);
+            canvas.drawCircle(lastX, currY, 4f * density, linePaint);
             linePaint.setColor(0xFF42A5F5);
-            canvas.drawCircle(lastX, currY, 4f, linePaint);
+            canvas.drawCircle(lastX, currY, 2.5f * density, linePaint);
 
             // Current value text
             textPaint.setTextAlign(Paint.Align.LEFT);
             textPaint.setFakeBoldText(true);
-            canvas.drawText(String.format("%.2f V", currV), lastX + 10, currY - 6, textPaint);
+            canvas.drawText(String.format(java.util.Locale.US, "%.2f V", currV), lastX + 6 * density, currY - 4 * density, textPaint);
             textPaint.setFakeBoldText(false);
         } else {
             // "Waiting for data" text
@@ -255,15 +259,15 @@ public class BatteryTestView extends View {
 
         // Min/Max/Avg stats (top-left)
         if (samples.size() > 0) {
-            float statY = padTop - 16;
+            float statY = padTop - 10 * density;
             textPaint.setTextAlign(Paint.Align.LEFT);
             textPaint.setFakeBoldText(true);
             textPaint.setColor(0xFFEF5350);
-            canvas.drawText(String.format("Min: %.2fV", getMinV()), padLeft, statY, textPaint);
+            canvas.drawText(String.format(java.util.Locale.US, "Min: %.2fV", getMinV()), padLeft, statY, textPaint);
             textPaint.setColor(0xFF66BB6A);
-            canvas.drawText(String.format("Max: %.2fV", getMaxV()), padLeft + 200, statY, textPaint);
+            canvas.drawText(String.format(java.util.Locale.US, "Max: %.2fV", getMaxV()), padLeft + 100 * density, statY, textPaint);
             textPaint.setColor(0xFF42A5F5);
-            canvas.drawText(String.format("Avg: %.2fV", getAvgV()), padLeft + 400, statY, textPaint);
+            canvas.drawText(String.format(java.util.Locale.US, "Avg: %.2fV", getAvgV()), padLeft + 200 * density, statY, textPaint);
             textPaint.setFakeBoldText(false);
         }
     }
@@ -271,7 +275,8 @@ public class BatteryTestView extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int desiredWidth = MeasureSpec.getSize(widthMeasureSpec);
-        int desiredHeight = 320; // default 320dp tall
+        float density = getResources().getDisplayMetrics().density;
+        int desiredHeight = (int) (220 * density);
         setMeasuredDimension(desiredWidth, desiredHeight);
     }
 }

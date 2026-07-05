@@ -2092,26 +2092,28 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnBatteryResting"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginEnd="4dp"
                         android:text="@string/battery_test_resting"
-                        app:backgroundTint="@color/primary"
-                        android:textColor="@color/background"
-                        app:cornerRadius="4dp"
+                        android:textColor="@color/primary"
+                        app:strokeColor="@color/primary"
+                        app:cornerRadius="8dp"
                         android:textSize="12sp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnBatteryAlternator"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="4dp"
                         android:text="@string/battery_test_alternator"
-                        app:backgroundTint="@color/primary"
-                        android:textColor="@color/background"
-                        app:cornerRadius="4dp"
+                        android:textColor="@color/primary"
+                        app:strokeColor="@color/primary"
+                        app:cornerRadius="8dp"
                         android:textSize="12sp" />
                 </LinearLayout>
 
@@ -2124,62 +2126,56 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnBatteryLoad"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginEnd="4dp"
                         android:text="@string/battery_test_load"
-                        app:backgroundTint="@color/primary"
-                        android:textColor="@color/background"
-                        app:cornerRadius="4dp"
+                        android:textColor="@color/primary"
+                        app:strokeColor="@color/primary"
+                        app:cornerRadius="8dp"
                         android:textSize="12sp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnBatteryCrank"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="4dp"
                         android:text="@string/battery_test_crank"
-                        app:backgroundTint="@color/primary"
-                        android:textColor="@color/background"
-                        app:cornerRadius="4dp"
+                        android:textColor="@color/primary"
+                        app:strokeColor="@color/primary"
+                        app:cornerRadius="8dp"
                         android:textSize="12sp" />
                 </LinearLayout>
 
                 <!-- Test buttons row 3 -->
-                <LinearLayout
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBatteryRipple"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="12dp">
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/battery_test_ripple"
+                    android:textColor="@color/primary"
+                    app:strokeColor="@color/primary"
+                    app:cornerRadius="8dp"
+                    android:textSize="12sp" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnBatteryRipple"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="4dp"
-                        android:text="@string/battery_test_ripple"
-                        android:textColor="@color/primary"
-                        app:strokeColor="@color/primary"
-                        app:cornerRadius="4dp"
-                        android:textSize="12sp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnBatteryFull"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="4dp"
-                        android:text="@string/battery_test_full"
-                        app:backgroundTint="@color/accent"
-                        android:textColor="@color/background"
-                        app:cornerRadius="4dp"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
+                <!-- Test buttons row 4 -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBatteryFull"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:text="@string/battery_test_full"
+                    app:backgroundTint="@color/accent"
+                    android:textColor="@color/background"
+                    app:cornerRadius="8dp"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
 
                 <!-- Results container -->
                 <com.google.android.material.card.MaterialCardView

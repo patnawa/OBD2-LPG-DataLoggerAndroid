@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.9] - 2026-07-05
+### Fixed
+- **Battery Tester UX & Layout Redesign**:
+  - **Localized Chemistry Matching**: Fixed a critical bug where localized battery chemistry names (e.g. Thai names) selected in the spinner could not be parsed by English substring matching, causing the tester to fallback incorrectly to Flooded thresholds. The selector now matches using the localized string resource array to map directly to the correct `Chemistry` enum index.
+  - **Localized Display Names**: Replaced references to English-only `chem.displayName` with `chem.getDisplayName(this)` across the battery monitor and test routines to properly display selected types in all 15 target languages.
+  - **High-Density Graph Scaling**: Updated the custom `BatteryTestView` to scale all grid lines, outline border widths, text paints, dot metrics, statistics coordinates, and paddings by the target device screen density.
+  - **Responsive Graph Height**: Scaled the custom view height on measure from a tiny hardcoded 320 raw pixels to a proportional 220dp height, making the timeline graph highly readable on modern high-resolution displays.
+  - **Clean Action Button Layout**: Reorganized the 6 battery actions into a unified and responsive grid. Individual tests are now clean outlined MaterialButtons, with the "Run Full Diagnostic" option styled as a premium solid accent button spanning the full width at the bottom.
+  - **Alternator Chemistry Awareness**: Added missing chemistry parameter delegation in `testBatteryAlternator()` to ensure regulated alternator charging system tests are matched against chemistry-correct limits (e.g., specific profiles for AGM, Gel, and LiFePO4).
+
 ## [3.4.8] - 2026-07-05
 ### Fixed
 - **Home Screen Internationalization**: Replaced hardcoded English text strings in the newly redesigned Home layout (`activity_main.xml`) with resource references (`@string/...`). Reused pre-existing translation keys where possible to enable immediate, automatic translation into 15 supported languages (e.g. Thai, Spanish, German, Arabic) without adding translation debt.

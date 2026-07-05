@@ -467,8 +467,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         btnBatteryFull = findViewById(R.id.btnBatteryFull);
         batteryTypeSpinner = findViewById(R.id.batteryTypeSpinner);
         batteryAgeInput = findViewById(R.id.batteryAgeInput);
-        // Populate battery type dropdown
-        String[] batteryTypes = {"Flooded (Standard)", "AGM (Absorbent Glass Mat)", "EFB (Enhanced Flooded)", "Gel Cell", "Calcium (Ca/Ca)", "LiFePO4 (Lithium)"};
+        // Populate battery type dropdown from localized resources
+        String[] batteryTypes = getResources().getStringArray(R.array.battery_chemistry_types);
         java.util.List<String> typeList = new java.util.ArrayList<>(java.util.Arrays.asList(batteryTypes));
         batteryTypeSpinner.setAdapter(new android.widget.ArrayAdapter<>(
                 this, android.R.layout.simple_spinner_dropdown_item, typeList));
@@ -2526,13 +2526,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         BatteryTester.Chemistry chem = getSelectedChemistry();
         if (batteryVoltageText != null) {
             double soc = BatteryTester.voltageToSoC(v, chem);
-            batteryVoltageText.setText(String.format(Locale.US, "%.2f V  |  SoC: %.0f%%  [%s]", v, soc, chem.displayName));
+            batteryVoltageText.setText(String.format(Locale.US, "%.2f V  |  SoC: %.0f%%  [%s]", v, soc, chem.getDisplayName(this)));
         }
         // Update SoC/SoH summary cards (quick estimate)
         if (socValueText != null) {
             double soc = BatteryTester.voltageToSoC(v, chem);
             socValueText.setText(String.format(Locale.US, "%.0f%%", soc));
-            socVoltageText.setText(String.format(Locale.US, "%.2f V (%s)", v, chem.displayName));
+            socVoltageText.setText(String.format(Locale.US, "%.2f V (%s)", v, chem.getDisplayName(this)));
         }
     }
 
@@ -2540,6 +2540,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private BatteryTester.Chemistry getSelectedChemistry() {
         if (batteryTypeSpinner != null) {
             String label = batteryTypeSpinner.getText().toString();
+            String[] localizedTypes = getResources().getStringArray(R.array.battery_chemistry_types);
+            for (int i = 0; i < localizedTypes.length; i++) {
+                if (localizedTypes[i].equals(label)) {
+                    if (i >= 0 && i < BatteryTester.Chemistry.values().length) {
+                        return BatteryTester.Chemistry.values()[i];
+                    }
+                }
+            }
             return BatteryTester.Chemistry.fromSpinner(label);
         }
         return BatteryTester.Chemistry.FLOODED;
@@ -2552,7 +2560,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return;
         }
         BatteryTester.Chemistry chem = getSelectedChemistry();
-        batteryStatusText.setText("Reading resting voltage (ensure engine is OFF)...\nSelected: " + chem.displayName);
+        batteryStatusText.setText("Reading resting voltage (ensure engine is OFF)...\nSelected: " + chem.getDisplayName(this));
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             double v = readBatteryVoltage();
@@ -2574,6 +2582,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             batteryStatusText.setText("Not connected. Start logging first.");
             return;
         }
+        BatteryTester.Chemistry chem = getSelectedChemistry();
         batteryStatusText.setText("Reading alternator voltage (ensure engine is RUNNING at idle)...");
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
@@ -2590,7 +2599,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             // Also try high-RPM reading (ask user to rev)
             runOnUiThread(() -> {
                 if (v > 0) {
-                    BatteryTester.BatteryTestResult r = BatteryTester.testAlternatorVoltage(v);
+                    BatteryTester.BatteryTestResult r = BatteryTester.testAlternatorVoltage(v, chem);
                     displayBatteryResult(r);
                 } else {
                     batteryStatusText.setText("Failed to read voltage.");
@@ -2715,7 +2724,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         } else {
             ageMonths = -1;
         }
-        batteryStatusText.setText("Running full battery diagnostic...\nType: " + chem.displayName);
+        batteryStatusText.setText("Running full battery diagnostic...\nType: " + chem.getDisplayName(this));
         batteryScoreCard.setVisibility(View.GONE);
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
