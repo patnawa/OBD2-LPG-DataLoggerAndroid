@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="app_name">GasTuner Pro</string>
     <string name="start">เริ่ม</string>
     <string name="stop">หยุด</string>
     <string name="idle_status">พร้อมทำงาน กรุณาเลือกวิธีเชื่อมต่อแล้วกดเริ่ม</string>
@@ -87,8 +87,11 @@
     <string name="select_folder">เลือก</string>
 
     <!-- Home Menu -->
-    <string name="home_title">ระบบบันทึกข้อมูล OBD2 LPG</string>
+    <string name="home_title">GasTuner Pro</string>
     <string name="home_subtitle">กรุณาเลือกฟังก์ชันการทำงานที่ต้องการ:</string>
+    <string name="home_greeting">ยินดีต้อนรับ</string>
+    <string name="home_welcome_desc">ระบบวิเคราะห์ข้อมูลและช่วยจูนแก๊สรถยนต์ OBD2</string>
+    <string name="home_welcome_status">ระบบพร้อมทำงาน • กรุณาเลือกฟังก์ชันด้านล่างเพื่อเริ่มต้น</string>
     <string name="home_card_dashboard_title">หน้าปัดข้อมูล</string>
     <string name="home_card_dashboard_desc">แสดงค่าพารามิเตอร์ของเครื่องยนต์และโหมดเชื้อเพลิงแบบสด</string>
     <string name="home_card_gauges_title">เกจวัดสมรรถนะ</string>

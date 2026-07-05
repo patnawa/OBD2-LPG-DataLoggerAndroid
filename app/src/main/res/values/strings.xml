@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="app_name">GasTuner Pro</string>
     <string name="start">Start</string>
     <string name="stop">Stop</string>
     <string name="idle_status">Ready. Select transport mode and start logging.</string>
@@ -90,8 +90,11 @@
     <string name="select_folder">Select</string>
 
     <!-- Home Menu -->
-    <string name="home_title">OBD2 LPG Logger</string>
+    <string name="home_title">GasTuner Pro</string>
     <string name="home_subtitle">Select a function to get started:</string>
+    <string name="home_greeting">WELCOME BACK</string>
+    <string name="home_welcome_desc">Professional OBD2 &amp; LPG/CNG Tuning System</string>
+    <string name="home_welcome_status">System ready • Choose a function below to begin</string>
     <string name="home_card_dashboard_title">Dashboard</string>
     <string name="home_card_dashboard_desc">Real-time parameters, status, fuel mode</string>
     <string name="home_card_gauges_title">Performance Gauges</string>

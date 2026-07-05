@@ -138,23 +138,64 @@
                 android:padding="16dp"
                 android:visibility="visible">
 
-                <!-- Welcome/Title Header -->
-                <TextView
+                <!-- Premium Welcome Header Card -->
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/home_title"
-                    android:textColor="@color/primary"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="4dp"/>
+                    android:layout_marginBottom="24dp"
+                    app:cardCornerRadius="2dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/border"
+                    app:cardBackgroundColor="@color/surface2">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/home_subtitle"
-                    android:textColor="@color/muted"
-                    android:textSize="14sp"
-                    android:layout_marginBottom="24dp"/>
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/home_greeting"
+                            android:textColor="@color/muted"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.1" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/home_title"
+                            android:textColor="@color/primary"
+                            android:textSize="26sp"
+                            android:textStyle="bold"
+                            android:layout_marginTop="4dp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/home_welcome_desc"
+                            android:textColor="@color/text"
+                            android:textSize="14sp"
+                            android:layout_marginTop="6dp" />
+
+                        <View
+                            android:layout_width="32dp"
+                            android:layout_height="2dp"
+                            android:background="@color/primary"
+                            android:layout_marginTop="16dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/home_welcome_status"
+                            android:textColor="@color/accent"
+                            android:textSize="12sp"
+                            android:textStyle="italic" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
                 <!-- Row 1: Dashboard & Gauges -->
                 <LinearLayout
