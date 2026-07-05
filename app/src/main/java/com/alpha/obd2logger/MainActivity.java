@@ -746,12 +746,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         
         for (int i=0; i<4; i++) {
             final int idx = i;
-            if (gaugeCards[i] != null) gaugeCards[i].setOnLongClickListener(v -> { showPidSelectionDialog("gauge_" + idx, prefGaugePids, idx, this::setupGauges); return true; });
-            if (dashCards[i] != null) dashCards[i].setOnLongClickListener(v -> { showPidSelectionDialog("dash_" + idx, prefDashPids, idx, this::setupDashboard); return true; });
+            if (gaugeCards[i] != null) {
+                gaugeCards[i].setOnClickListener(v -> showPidSelectionDialog("gauge_" + idx, prefGaugePids, idx, this::setupGauges));
+                gaugeCards[i].setOnLongClickListener(v -> { showPidSelectionDialog("gauge_" + idx, prefGaugePids, idx, this::setupGauges); return true; });
+            }
+            if (dashCards[i] != null) {
+                dashCards[i].setOnClickListener(v -> showPidSelectionDialog("dash_" + idx, prefDashPids, idx, this::setupDashboard));
+                dashCards[i].setOnLongClickListener(v -> { showPidSelectionDialog("dash_" + idx, prefDashPids, idx, this::setupDashboard); return true; });
+            }
         }
         for (int i=0; i<5; i++) {
             final int idx = i;
-            if (graphCards[i] != null) graphCards[i].setOnLongClickListener(v -> { showPidSelectionDialog("graph_" + idx, prefGraphPids, idx, this::setupGraphs); return true; });
+            if (graphCards[i] != null) {
+                graphCards[i].setOnClickListener(v -> showPidSelectionDialog("graph_" + idx, prefGraphPids, idx, this::setupGraphs));
+                graphCards[i].setOnLongClickListener(v -> { showPidSelectionDialog("graph_" + idx, prefGraphPids, idx, this::setupGraphs); return true; });
+            }
         }
     }
 
@@ -819,7 +828,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void setupDashboard() {
         TextView[] titles = {dashTitle1, dashTitle2, dashTitle3, dashTitle4};
         TextView[] values = {dashValue1, dashValue2, dashValue3, dashValue4};
-        View[] dashCards = {findViewById(R.id.dashCard1), findViewById(R.id.dashCard2), findViewById(R.id.dashCard3), findViewById(R.id.dashCard4)};
         for (int i=0; i<4; i++) {
             if (titles[i] == null || values[i] == null) continue;
             String pidKey = prefDashPids[i];
@@ -828,13 +836,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 titles[i].setTextColor(getColorCompat(R.color.muted));
                 values[i].setText("+");
                 values[i].setTextColor(getColorCompat(R.color.muted));
-                if (dashCards[i] != null) {
-                    dashCards[i].setOnClickListener(v -> {
-                        int idx = -1;
-                        for (int k=0; k<4; k++) { if (dashCards[k] == v) idx = k; }
-                        if (idx != -1) showPidSelectionDialog("dash_" + idx, prefDashPids, idx, this::setupDashboard);
-                    });
-                }
             } else {
                 PIDDefinition pid = PIDDefinition.findByKey(pidKey);
                 if (pid != null) {
@@ -842,10 +843,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     titles[i].setTextColor(getColorCompat(R.color.text));
                     values[i].setText("—");
                     values[i].setTextColor(getColorCompat(R.color.text));
-                }
-                if (dashCards[i] != null) {
-                    dashCards[i].setOnClickListener(null);
-                    dashCards[i].setClickable(false);
                 }
             }
         }
@@ -1000,7 +997,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void setupGauges() {
         GaugeView[] gauges = {gauge1, gauge2, gauge3, gauge4};
-        View[] gaugeCards = {findViewById(R.id.gaugeCard1), findViewById(R.id.gaugeCard2), findViewById(R.id.gaugeCard3), findViewById(R.id.gaugeCard4)};
         // Per-gauge color themes: {arc, needle, warning}
         // Gauge 0=RPM(red), 1=Speed(cyan), 2=Temp(amber), 3=Load(green)
         int[][] gaugeThemes = {
@@ -1017,13 +1013,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 gauges[i].setLabel("แตะเพื่อเพิ่ม (Tap to Add)");
                 gauges[i].setUnit("+");
                 gauges[i].setValue(0f);
-                if (gaugeCards[i] != null) {
-                    gaugeCards[i].setOnClickListener(v -> {
-                        int idx = -1;
-                        for (int k=0; k<4; k++) { if (gaugeCards[k] == v) idx = k; }
-                        if (idx != -1) showPidSelectionDialog("gauge_" + idx, prefGaugePids, idx, this::setupGauges);
-                    });
-                }
             } else {
                 PIDDefinition pid = PIDDefinition.findByKey(pidKey);
                 if (pid != null) {
@@ -1035,17 +1024,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     // Set warning at 80% of max for RPM, 90% for others
                     gauges[i].setWarningStart(i == 0 ? 0.75f : 0.85f);
                 }
-                if (gaugeCards[i] != null) {
-                    gaugeCards[i].setOnClickListener(null);
-                    gaugeCards[i].setClickable(false);
-                }
             }
         }
     }
 
     private void setupGraphs() {
         GraphView[] graphs = {graph1, graph2, graph3, graph4, graph5};
-        View[] graphCards = {findViewById(R.id.graphCard1), findViewById(R.id.graphCard2), findViewById(R.id.graphCard3), findViewById(R.id.graphCard4), findViewById(R.id.graphCard5)};
         int[] colors = {0xFF38BDF8, 0xFF22C55E, 0xFFF59E0B, 0xFFEF4444, 0xFFA78BFA};
         for (int i=0; i<5; i++) {
             if (graphs[i] == null) continue;
@@ -1053,23 +1037,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if ("none".equalsIgnoreCase(pidKey)) {
                 graphs[i].setLabel("แตะเพื่อเพิ่ม (Tap to Add)", "+");
                 graphs[i].setRange(0f, 100f);
-                if (graphCards[i] != null) {
-                    graphCards[i].setOnClickListener(v -> {
-                        int idx = -1;
-                        for (int k=0; k<5; k++) { if (graphCards[k] == v) idx = k; }
-                        if (idx != -1) showPidSelectionDialog("graph_" + idx, prefGraphPids, idx, this::setupGraphs);
-                    });
-                }
             } else {
                 PIDDefinition pid = PIDDefinition.findByKey(pidKey);
                 if (pid != null) {
                     graphs[i].setLabel(pid.getName(), pid.getUnit());
                     graphs[i].setRange((float)pid.getMinVal(), (float)pid.getMaxVal());
                     graphs[i].setLineColor(colors[i]);
-                }
-                if (graphCards[i] != null) {
-                    graphCards[i].setOnClickListener(null);
-                    graphCards[i].setClickable(false);
                 }
             }
         }

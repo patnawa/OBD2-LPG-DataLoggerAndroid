@@ -195,4 +195,10 @@
     <string name="battery_ripple_sampling">Sampling voltage for ripple test (2 seconds)...</string>
     <string name="battery_ripple_insufficient">Insufficient samples for ripple test.</string>
     <string name="battery_full_running">Running full battery diagnostic...\nType: %1$s</string>
+    <string name="home_vehicle_vin">VEHICLE VIN</string>
+    <string name="home_link_adapter">LINK ADAPTER</string>
+    <string name="home_engine_rpm">ENGINE RPM</string>
+    <string name="home_speed">SPEED</string>
+    <string name="home_coolant">COOLANT</string>
+    <string name="home_voltage">VOLTAGE</string>
 </resources>

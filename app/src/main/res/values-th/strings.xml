@@ -190,4 +190,10 @@
     <string name="battery_ripple_sampling">กำลังสุ่มตัวอย่างแรงดันสำหรับการทดสอบริปเปิล (2 วินาที)...</string>
     <string name="battery_ripple_insufficient">ตัวอย่างข้อมูลไม่เพียงพอสำหรับการทดสอบริปเปิล</string>
     <string name="battery_full_running">กำลังดำเนินการตรวจวินิจฉัยแบตเตอรี่แบบครอบคลุม...\nประเภทแบตเตอรี่: %1$s</string>
+    <string name="home_vehicle_vin">เลขตัวถังรถ (VIN)</string>
+    <string name="home_link_adapter">อะแดปเตอร์เชื่อมต่อ</string>
+    <string name="home_engine_rpm">รอบเครื่องยนต์</string>
+    <string name="home_speed">ความเร็วรถ</string>
+    <string name="home_coolant">อุณหภูมิน้ำหล่อเย็น</string>
+    <string name="home_voltage">แรงดันไฟแบตเตอรี่</string>
 </resources>

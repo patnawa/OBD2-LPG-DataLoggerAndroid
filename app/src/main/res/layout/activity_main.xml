@@ -436,7 +436,7 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="VEHICLE VIN"
+                                        android:text="@string/home_vehicle_vin"
                                         android:textColor="@color/muted"
                                         android:textSize="9sp"
                                         android:textStyle="bold" />
@@ -463,7 +463,7 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="LINK ADAPTER"
+                                        android:text="@string/home_link_adapter"
                                         android:textColor="@color/muted"
                                         android:textSize="9sp"
                                         android:textStyle="bold" />
@@ -528,7 +528,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="ENGINE RPM"
+                                    android:text="@string/home_engine_rpm"
                                     android:textColor="@color/muted"
                                     android:textSize="9sp"
                                     android:textStyle="bold" />
@@ -560,7 +560,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="SPEED"
+                                    android:text="@string/home_speed"
                                     android:textColor="@color/muted"
                                     android:textSize="9sp"
                                     android:textStyle="bold" />
@@ -592,7 +592,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="COOLANT"
+                                    android:text="@string/home_coolant"
                                     android:textColor="@color/muted"
                                     android:textSize="9sp"
                                     android:textStyle="bold" />
@@ -624,7 +624,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="VOLTAGE"
+                                    android:text="@string/home_voltage"
                                     android:textColor="@color/muted"
                                     android:textSize="9sp"
                                     android:textStyle="bold" />
