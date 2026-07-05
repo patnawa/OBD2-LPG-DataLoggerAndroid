@@ -55,7 +55,7 @@ public final class DtcReader {
                 // Consecutive ISO-TP frame — strip the 1-byte PCI header (21, 22, etc.)
                 // if present. Without this, the PCI byte is parsed as byteA of a
                 // spurious DTC code, polluting the list.
-                if (hex.length() >= 2 && hex.substring(0, 2).matches("[0-2][0-9A-F]")) {
+                if (hex.length() >= 2 && hex.substring(0, 2).matches("2[0-9A-F]")) {
                     pos = 2;
                 }
             }

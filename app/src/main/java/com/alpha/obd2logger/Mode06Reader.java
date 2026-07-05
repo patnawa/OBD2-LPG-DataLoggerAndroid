@@ -170,7 +170,7 @@ public final class Mode06Reader {
         // Total hex chars needed: 8 bytes = 16 hex chars minimum
 
         int pos = 0;
-        while (pos + 16 <= data.length()) {
+        while (pos + 18 <= data.length()) {
             try {
                 int mid = Integer.parseInt(data.substring(pos, pos + 2), 16);
                 pos += 2;

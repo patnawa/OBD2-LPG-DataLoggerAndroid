@@ -106,37 +106,32 @@ public final class ReadinessMonitor {
         boolean diesel = (byteB & 0x08) != 0;
 
         List<MonitorStatus> monitors = new ArrayList<>();
-        // Group 1 (bits in B for availability, C for completeness) per SAE J1979.
-        // Bit 0 is Reserved and skipped.
-        // Bits 1-3: complete when the bit is ZERO in byteC.
-        monitors.add(new MonitorStatus("Misfire",          (byteB & 0x02) != 0, (byteC & 0x02) == 0));
-        monitors.add(new MonitorStatus("Fuel System",      (byteB & 0x04) != 0, (byteC & 0x04) == 0));
-        monitors.add(new MonitorStatus("Components",       (byteB & 0x08) != 0, (byteC & 0x08) == 0));
+        // Continuous Monitors: availability in byte B (bits 0-2), completeness in byte B (bits 4-6)
+        // Complete when the completeness bit is ZERO.
+        monitors.add(new MonitorStatus("Misfire",          (byteB & 0x01) != 0, (byteB & 0x10) == 0));
+        monitors.add(new MonitorStatus("Fuel System",      (byteB & 0x02) != 0, (byteB & 0x20) == 0));
+        monitors.add(new MonitorStatus("Components",       (byteB & 0x04) != 0, (byteB & 0x40) == 0));
 
         if (!diesel) {
             // Gasoline / Spark Ignition Monitors
-            monitors.add(new MonitorStatus("Catalyst",         (byteB & 0x10) != 0, (byteC & 0x10) != 0));
-            monitors.add(new MonitorStatus("Heated Catalyst",  (byteB & 0x20) != 0, (byteC & 0x20) != 0));
-            monitors.add(new MonitorStatus("EVAP",             (byteB & 0x40) != 0, (byteC & 0x40) != 0));
-            monitors.add(new MonitorStatus("Secondary Air",    (byteB & 0x80) != 0, (byteC & 0x80) != 0));
-
-            // Group 2 (byte D) Gasoline
-            monitors.add(new MonitorStatus("EGR/VVT System",   true, (byteD & 0x20) != 0));
-            monitors.add(new MonitorStatus("O2 Sensor",        true, (byteD & 0x10) != 0));
-            monitors.add(new MonitorStatus("O2 Sensor Heater", true, (byteD & 0x08) != 0));
+            // Availability in byte C, completeness in byte D
+            monitors.add(new MonitorStatus("Catalyst",         (byteC & 0x01) != 0, (byteD & 0x01) == 0));
+            monitors.add(new MonitorStatus("Heated Catalyst",  (byteC & 0x02) != 0, (byteD & 0x02) == 0));
+            monitors.add(new MonitorStatus("EVAP",             (byteC & 0x04) != 0, (byteD & 0x04) == 0));
+            monitors.add(new MonitorStatus("Secondary Air",    (byteC & 0x08) != 0, (byteD & 0x08) == 0));
+            monitors.add(new MonitorStatus("EGR/VVT System",   (byteC & 0x80) != 0, (byteD & 0x80) == 0));
+            monitors.add(new MonitorStatus("O2 Sensor",        (byteC & 0x20) != 0, (byteD & 0x20) == 0));
+            monitors.add(new MonitorStatus("O2 Sensor Heater", (byteC & 0x40) != 0, (byteD & 0x40) == 0));
         } else {
             // Diesel / Compression Ignition Monitors
-            monitors.add(new MonitorStatus("NMHC Catalyst",    (byteB & 0x10) != 0, (byteC & 0x10) != 0));
-            monitors.add(new MonitorStatus("NOx Catalyst",     (byteB & 0x20) != 0, (byteC & 0x20) != 0));
-            monitors.add(new MonitorStatus("Boost Pressure",   (byteB & 0x40) != 0, (byteC & 0x40) != 0));
-            monitors.add(new MonitorStatus("exhaust Gas Sensor", (byteB & 0x80) != 0, (byteC & 0x80) != 0));
-
-            // Group 2 (byte D) Diesel
-            monitors.add(new MonitorStatus("EGR/VVT System",   true, (byteD & 0x20) != 0));
-            monitors.add(new MonitorStatus("PM Filter Active", true, (byteD & 0x08) != 0));
-            monitors.add(new MonitorStatus("DPF/Particulate",  true, (byteD & 0x40) != 0));
-            monitors.add(new MonitorStatus("NOx/SCR Monitor",  true, (byteD & 0x80) != 0));
-            monitors.add(new MonitorStatus("exhaust Gas Temp",  true, (byteD & 0x10) != 0));
+            // Availability in byte C, completeness in byte D
+            monitors.add(new MonitorStatus("NMHC Catalyst",    (byteC & 0x01) != 0, (byteD & 0x01) == 0));
+            monitors.add(new MonitorStatus("NOx Catalyst",     (byteC & 0x02) != 0, (byteD & 0x02) == 0));
+            monitors.add(new MonitorStatus("Boost Pressure",   (byteC & 0x08) != 0, (byteD & 0x08) == 0));
+            monitors.add(new MonitorStatus("exhaust Gas Sensor", (byteC & 0x20) != 0, (byteD & 0x20) == 0));
+            monitors.add(new MonitorStatus("EGR/VVT System",   (byteC & 0x80) != 0, (byteD & 0x80) == 0));
+            monitors.add(new MonitorStatus("PM Filter Active", (byteC & 0x40) != 0, (byteD & 0x40) == 0));
+            monitors.add(new MonitorStatus("exhaust Gas Temp",  (byteC & 0x10) != 0, (byteD & 0x10) == 0));
         }
 
         return new ReadinessMonitor(mil, dtcCount, diesel, monitors);
