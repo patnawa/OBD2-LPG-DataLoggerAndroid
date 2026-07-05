@@ -144,6 +144,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private static int sessionRecordCount = 0;
     private static final java.util.Map<String, Double> pidMinValues = new java.util.HashMap<>();
     private static final java.util.Map<String, Double> pidMaxValues = new java.util.HashMap<>();
+    private static final java.util.Map<String, Double> pidSumValues = new java.util.HashMap<>();
+    private static final java.util.Map<String, Integer> pidCountValues = new java.util.HashMap<>();
     private static final java.util.Map<String, FuelMapView.TrimData> sessionPetrolData = new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.Map<String, FuelMapView.TrimData> sessionLpgData = new java.util.concurrent.ConcurrentHashMap<>();
     private final List<BluetoothDevice> bluetoothDevices = new ArrayList<>();
@@ -3005,7 +3007,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             String pidKey = sample.getPidKey();
             Double val = sample.getValue();
 
-            // Track Min/Max values
+            // Track Min/Max/Avg values
             if (val != null) {
                 Double currentMin = pidMinValues.get(pidKey);
                 if (currentMin == null || val < currentMin) {
@@ -3015,6 +3017,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (currentMax == null || val > currentMax) {
                     pidMaxValues.put(pidKey, val);
                 }
+                Double currentSum = pidSumValues.get(pidKey);
+                pidSumValues.put(pidKey, (currentSum != null ? currentSum : 0.0) + val);
+                Integer currentCount = pidCountValues.get(pidKey);
+                pidCountValues.put(pidKey, (currentCount != null ? currentCount : 0) + 1);
             }
 
             TextView valueView = rowCache.get(pidName);
@@ -3080,13 +3086,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (isGauge) {
                 Double minVal = pidMinValues.get(pidKey);
                 Double maxVal = pidMaxValues.get(pidKey);
+                Double sumVal = pidSumValues.get(pidKey);
+                Integer countVal = pidCountValues.get(pidKey);
+                Double avgVal = (sumVal != null && countVal != null && countVal > 0) ? sumVal / countVal : null;
                 String minStr = formatValue(minVal, sample.getUnit());
+                String avgStr = formatValue(avgVal, sample.getUnit());
                 String maxStr = formatValue(maxVal, sample.getUnit());
                 int minColor = getColorCompat(R.color.primary);
+                int avgColor = getColorCompat(R.color.accent);
                 int maxColor = getColorCompat(R.color.danger);
                 String minColorHex = String.format(Locale.US, "#%06X", (0xFFFFFF & minColor));
+                String avgColorHex = String.format(Locale.US, "#%06X", (0xFFFFFF & avgColor));
                 String maxColorHex = String.format(Locale.US, "#%06X", (0xFFFFFF & maxColor));
-                String htmlText = "<b>MIN:</b> <font color='" + minColorHex + "'>" + minStr + "</font>  •  <b>MAX:</b> <font color='" + maxColorHex + "'>" + maxStr + "</font>";
+                String htmlText = "<b>MIN:</b> <font color='" + minColorHex + "'>" + minStr + "</font>  •  <b>AVG:</b> <font color='" + avgColorHex + "'>" + avgStr + "</font>  •  <b>MAX:</b> <font color='" + maxColorHex + "'>" + maxStr + "</font>";
                 statusView.setText(androidx.core.text.HtmlCompat.fromHtml(htmlText, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY));
                 statusView.setTextColor(getColorCompat(R.color.muted));
             } else {
@@ -3149,6 +3161,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         gaugeStatusCache.clear();
         pidMinValues.clear();
         pidMaxValues.clear();
+        pidSumValues.clear();
+        pidCountValues.clear();
         if (tuningStatusText != null) {
             tuningStatusText.setText(getString(R.string.waiting_for_data));
             tuningStatusText.setTextColor(getColorCompat(R.color.warning));

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.3] - 2026-07-05
+### Added
+- **Gauge AVG (Average) Stat Tracking**: The Gauges tab now displays a running Average alongside MIN and MAX for every sensor PID. The stat line format is now `MIN: value • AVG: value • MAX: value` with three distinct theme colors (primary blue for MIN, accent green for AVG, danger red for MAX). Average is computed as cumulative mean across all valid readings in the session.
+
 ## [3.2.2] - 2026-07-05
 ### Changed
 - **Replaced Active Session Folder Card with Live Session Metrics**: Removed the unstable "Active log session folder" card from the Live Stream tab that was prone to freezing device OS due to document intent queries. Replaced it with a professional, real-time metadata dashboard displaying logging status (pulsing badge), session duration (running timer), total recorded samples, and current logging frequency in Hz.
