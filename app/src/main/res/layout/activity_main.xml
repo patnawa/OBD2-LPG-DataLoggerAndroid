@@ -96,16 +96,30 @@
                     android:layout_marginStart="8dp"
                     android:layout_marginEnd="8dp" />
 
+                <!-- Kept for background compatibility but hidden to save space -->
                 <TextView
                     android:id="@+id/headerVin"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="VIN: ---"
-                    android:textColor="@color/muted"
-                    android:textSize="11sp"
-                    android:singleLine="true"
-                    android:ellipsize="end"
-                    android:maxWidth="200dp" />
+                    android:visibility="gone" />
+
+                <!-- Modern Fuel Mode Indicator Badge -->
+                <TextView
+                    android:id="@+id/headerFuelMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PETROL"
+                    android:textColor="#38BDF8"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:background="@drawable/bg_dtc_badge_pill"
+                    android:backgroundTint="#2038BDF8"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp" />
             </LinearLayout>
 
 

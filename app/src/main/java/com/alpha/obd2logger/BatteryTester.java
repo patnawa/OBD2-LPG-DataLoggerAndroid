@@ -113,11 +113,12 @@ public final class BatteryTester {
         /** Parse a spinner selection into Chemistry. */
         public static Chemistry fromSpinner(String label) {
             if (label == null) return FLOODED;
-            if (label.contains("AGM")) return AGM;
-            if (label.contains("EFB")) return EFB;
-            if (label.contains("Gel")) return GEL;
-            if (label.contains("Calcium")) return CALCIUM;
-            if (label.contains("LiFePO4") || label.contains("Lithium")) return LIFePO4;
+            String upper = label.toUpperCase(java.util.Locale.US);
+            if (upper.contains("AGM")) return AGM;
+            if (upper.contains("EFB")) return EFB;
+            if (upper.contains("GEL") || upper.contains("เจล")) return GEL;
+            if (upper.contains("CALCIUM") || upper.contains("แคลเซียม")) return CALCIUM;
+            if (upper.contains("LIFEPO4") || upper.contains("LITHIUM") || upper.contains("ลิเธียม")) return LIFePO4;
             return FLOODED;
         }
     }

@@ -138,14 +138,14 @@
 
     <string-array name="battery_chemistry_types">
         <item>แบบน้ำ (มาตรฐาน)</item>
-        <item>AGM (แผ่นใยแก้ดูดซับ)</item>
-        <item>EFB (แบบน้ําปรับปรุ้ง)</item>
+        <item>AGM (แผ่นใยแก้วดูดซับ)</item>
+        <item>EFB (ชนิดน้ำเพิ่มประสิทธิภาพ)</item>
         <item>เจล</item>
         <item>แคลเซียม (Ca/Ca)</item>
-        <item>LiFePO4 (ลิเธียมเหล็กฟอสเฟต)</item>
+        <item>LiFePO4 (ลิเธียมฟอสเฟต)</item>
     </string-array>
     
-    <string name="battery_chemistry_flooded">แบบน้ํา</string>
+    <string name="battery_chemistry_flooded">แบบน้ำ</string>
     <string name="battery_chemistry_agm">AGM</string>
     <string name="battery_chemistry_efb">EFB</string>
     <string name="battery_chemistry_gel">เจล</string>

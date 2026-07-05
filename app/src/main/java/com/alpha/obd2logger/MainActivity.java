@@ -69,7 +69,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private androidx.activity.OnBackPressedCallback onBackPressedCallback;
     private boolean isTabChanging = false;
     // --- UI: Header ---
-    private TextView headerStatus, headerVin;
+    private TextView headerStatus, headerVin, headerFuelMode;
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
     private View headerStatusDot;
     private android.widget.ImageButton btnSettings;
@@ -393,6 +393,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Header
         headerStatus = findViewById(R.id.headerStatus);
         headerVin = findViewById(R.id.headerVin);
+        headerFuelMode = findViewById(R.id.headerFuelMode);
         headerStatusDot = findViewById(R.id.headerStatusDot);
         btnSettings = findViewById(R.id.btnSettings);
         btnThemeToggle = findViewById(R.id.btnThemeToggle);
@@ -491,8 +492,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         java.util.List<String> typeList = new java.util.ArrayList<>(java.util.Arrays.asList(batteryTypes));
         batteryTypeSpinner.setAdapter(new android.widget.ArrayAdapter<>(
                 this, android.R.layout.simple_spinner_dropdown_item, typeList));
-        batteryTypeSpinner.setText(batteryTypes[0], false);
+        int savedChemIndex = getSharedPreferences("OBD2Prefs", MODE_PRIVATE).getInt("selected_battery_chemistry_index", 0);
+        if (savedChemIndex >= 0 && savedChemIndex < batteryTypes.length) {
+            batteryTypeSpinner.setText(batteryTypes[savedChemIndex], false);
+        } else {
+            batteryTypeSpinner.setText(batteryTypes[0], false);
+        }
         batteryTypeSpinner.setOnItemClickListener((parent, view, position, id) -> {
+            getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putInt("selected_battery_chemistry_index", position).apply();
             if (lastBatteryVoltage > 0) {
                 updateBatteryMonitor(lastBatteryVoltage);
             }
@@ -696,6 +703,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         int primaryColor = mode == FuelMode.LPG ? 0xFFF59E0B : 0xFF38BDF8; // Orange vs Blue
         int accentColor = mode == FuelMode.LPG ? 0xFFD97706 : 0xFF0284C7;
         
+        if (headerFuelMode != null) {
+            if (mode == FuelMode.LPG) {
+                headerFuelMode.setText("LPG/CNG");
+                headerFuelMode.setTextColor(0xFFF59E0B);
+                headerFuelMode.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0x20F59E0B));
+            } else {
+                headerFuelMode.setText("PETROL");
+                headerFuelMode.setTextColor(0xFF38BDF8);
+                headerFuelMode.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0x2038BDF8));
+            }
+        }
+
         if (fabLog != null) {
             setFabState(running);
         }
@@ -4282,6 +4301,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         if (currentTabIndex == 4) {
             loadHistoryFiles();
+        }
+        
+        // Fix AutoCompleteTextView auto-filtering bug on restore
+        if (batteryTypeSpinner != null) {
+            String[] batteryTypes = getResources().getStringArray(R.array.battery_chemistry_types);
+            java.util.List<String> typeList = new java.util.ArrayList<>(java.util.Arrays.asList(batteryTypes));
+            batteryTypeSpinner.setAdapter(new android.widget.ArrayAdapter<>(
+                    this, android.R.layout.simple_spinner_dropdown_item, typeList));
+            int savedChemIndex = getSharedPreferences("OBD2Prefs", MODE_PRIVATE).getInt("selected_battery_chemistry_index", 0);
+            if (savedChemIndex >= 0 && savedChemIndex < batteryTypes.length) {
+                batteryTypeSpinner.setText(batteryTypes[savedChemIndex], false);
+            } else {
+                batteryTypeSpinner.setText(batteryTypes[0], false);
+            }
         }
     }
 
