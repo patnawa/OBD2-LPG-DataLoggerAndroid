@@ -2946,10 +2946,29 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (currentDriver == null || !currentDriver.isConnected()) return -1;
         try {
             Double v = currentDriver.queryPid(PIDDefinition.findByKey("01_42"));
-            return v != null ? v : -1;
+            if (v != null && v > 0) {
+                return v;
+            }
         } catch (Exception e) {
-            return -1;
+            // ignore and fallback
         }
+        
+        // Fallback: Query direct ELM327 analog voltage using command "AT RV"
+        try {
+            String raw = currentDriver.sendCommandRaw("AT RV");
+            if (raw != null && !raw.isEmpty()) {
+                String clean = raw.replaceAll("[^0-9.]", "");
+                if (!clean.isEmpty()) {
+                    double val = Double.parseDouble(clean);
+                    if (val > 0 && val < 30) {
+                        return val;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return -1;
     }
 
     /**
