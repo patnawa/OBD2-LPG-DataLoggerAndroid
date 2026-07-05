@@ -2576,14 +2576,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         });
     }
 
-    /** Test 3: Alternator voltage at idle (engine running). */
+    /** Test 3 & 9: Alternator voltage at idle & Charging system regulation efficiency at high RPM. */
     private void testBatteryAlternator() {
         if (currentDriver == null || !currentDriver.isConnected()) {
             batteryStatusText.setText("Not connected. Start logging first.");
             return;
         }
         BatteryTester.Chemistry chem = getSelectedChemistry();
-        batteryStatusText.setText("Reading alternator voltage (ensure engine is RUNNING at idle)...");
+        batteryStatusText.setText("Step 1: Reading alternator voltage at idle (keep engine at idle)...");
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             // Sample a few times to get a stable reading
@@ -2594,13 +2594,50 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (v > 0) { sum += v; count++; }
                 try { Thread.sleep(200); } catch (InterruptedException ignored) { break; }
             }
-            double v = count > 0 ? sum / count : -1;
-            runningVoltage = v;
+            double idleV = count > 0 ? sum / count : -1;
+            runningVoltage = idleV;
             // Also try high-RPM reading (ask user to rev)
             runOnUiThread(() -> {
-                if (v > 0) {
-                    BatteryTester.BatteryTestResult r = BatteryTester.testAlternatorVoltage(v, chem);
-                    displayBatteryResult(r);
+                if (idleV > 0) {
+                    batteryStatusText.setText("Step 2: Rev engine and hold at 2500-3000 RPM.\nTap OK when ready.");
+                    new android.app.AlertDialog.Builder(this)
+                            .setTitle("High RPM Charging Test")
+                            .setMessage("Please rev the engine and hold it steady at 2500 - 3000 RPM.\n\nPress OK while holding the RPM to measure the alternator regulation under load.")
+                            .setPositiveButton("OK", (dialog, which) -> {
+                                batteryStatusText.setText("Reading high-RPM voltage...");
+                                dtcExecutor.submit(() -> {
+                                    double highSum = 0;
+                                    int highCount = 0;
+                                    for (int i = 0; i < 5; i++) {
+                                        double v = readBatteryVoltage();
+                                        if (v > 0) { highSum += v; highCount++; }
+                                        try { Thread.sleep(200); } catch (InterruptedException ignored) { break; }
+                                    }
+                                    double highV = highCount > 0 ? highSum / highCount : -1;
+                                    highRpmVoltage = highV;
+
+                                    runOnUiThread(() -> {
+                                        if (highV > 0) {
+                                            LinearLayout container = findViewById(R.id.batteryResultsContainer);
+                                            if (container != null) {
+                                                container.removeAllViews();
+                                                container.addView(batteryStatusText);
+                                            }
+                                            batteryStatusText.setText("");
+
+                                            BatteryTester.BatteryTestResult rIdle = BatteryTester.testAlternatorVoltage(idleV, chem);
+                                            BatteryTester.BatteryTestResult rEff = BatteryTester.testChargingEfficiency(idleV, highV);
+
+                                            addBatteryResultRow(container, rIdle);
+                                            addBatteryResultRow(container, rEff);
+                                        } else {
+                                            batteryStatusText.setText("Failed to read high-RPM voltage.");
+                                        }
+                                    });
+                                });
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
                 } else {
                     batteryStatusText.setText("Failed to read voltage.");
                 }
@@ -2608,7 +2645,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         });
     }
 
-    /** Test 4: Voltage drop under electrical load. */
+    /** Test 4 & 5: Voltage drop under electrical load & Voltage recovery after load removal. */
     private void testBatteryLoadDrop() {
         if (currentDriver == null || !currentDriver.isConnected()) {
             batteryStatusText.setText("Not connected. Start logging first.");
@@ -2631,8 +2668,57 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 fullLoadVoltage = fullLoad;
                                 runOnUiThread(() -> {
                                     if (noLoad > 0 && fullLoad > 0) {
-                                        BatteryTester.BatteryTestResult r = BatteryTester.testVoltageDrop(noLoad, fullLoad);
-                                        displayBatteryResult(r);
+                                        // Now show Step 3: Turn OFF accessories to test recovery
+                                        batteryStatusText.setText("Step 3: Turn OFF all accessories.\nTap OK when ready.");
+                                        new android.app.AlertDialog.Builder(this)
+                                                .setTitle("Voltage Recovery Test")
+                                                .setMessage("Turn OFF all electrical loads (headlights, blower, AC, defroster).\n\nPress OK when loads are OFF to begin the 5-second recovery monitoring.")
+                                                .setPositiveButton("OK", (dialog, which) -> {
+                                                    batteryStatusText.setText("Sampling recovery voltage...");
+                                                    dtcExecutor.submit(() -> {
+                                                        // 1. Immediately read post-load voltage (right after turning accessories off)
+                                                        double postLoad = readBatteryVoltage();
+                                                        postLoadVoltage = postLoad;
+
+                                                        // 2. Wait 5 seconds for recovery with a live countdown on screen
+                                                        for (int i = 5; i > 0; i--) {
+                                                            final int secondsLeft = i;
+                                                            runOnUiThread(() -> batteryStatusText.setText("Recovery monitoring: " + secondsLeft + "s remaining..."));
+                                                            try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+                                                        }
+
+                                                        // 3. Read recovered voltage
+                                                        double recovered = readBatteryVoltage();
+                                                        recoveredVoltage = recovered;
+
+                                                        // 4. Calculate delta
+                                                        if (postLoad > 0 && recovered > 0) {
+                                                            recoveryDelta = noLoad - recovered;
+                                                        }
+
+                                                        runOnUiThread(() -> {
+                                                            if (postLoad > 0 && recovered > 0) {
+                                                                // Display BOTH results in the results container
+                                                                LinearLayout container = findViewById(R.id.batteryResultsContainer);
+                                                                if (container != null) {
+                                                                    container.removeAllViews();
+                                                                    container.addView(batteryStatusText);
+                                                                }
+                                                                batteryStatusText.setText("");
+
+                                                                BatteryTester.BatteryTestResult rDrop = BatteryTester.testVoltageDrop(noLoad, fullLoad);
+                                                                BatteryTester.BatteryTestResult rRec = BatteryTester.testVoltageRecovery(noLoad, postLoad, recovered, 5.0);
+
+                                                                addBatteryResultRow(container, rDrop);
+                                                                addBatteryResultRow(container, rRec);
+                                                            } else {
+                                                                batteryStatusText.setText("Failed to read recovery voltage.");
+                                                            }
+                                                        });
+                                                    });
+                                                })
+                                                .setNegativeButton("Cancel", null)
+                                                .show();
                                     } else {
                                         batteryStatusText.setText("Failed to read voltage.");
                                     }
@@ -2699,6 +2785,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             runOnUiThread(() -> {
                 if (samples.size() >= 5) {
+                    rippleSamples.clear();
+                    rippleSamples.addAll(samples);
                     BatteryTester.BatteryTestResult r = BatteryTester.testRipple(samples);
                     displayBatteryResult(r);
                 } else {
@@ -2739,7 +2827,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             BatteryTester.BatteryReport report = BatteryTester.buildFullReport(
                     restVF, runVF, crankMinVoltage,
                     noLoadVoltage, fullLoadVoltage,
-                    postLoadVoltage, recoveredVoltage, -1,
+                    postLoadVoltage, recoveredVoltage, 5.0,
                     highRpmVoltage,
                     rippleSamples.isEmpty() ? null : new java.util.ArrayList<>(rippleSamples),
                     -1, -1, -1,  // drain values — need long-term monitoring

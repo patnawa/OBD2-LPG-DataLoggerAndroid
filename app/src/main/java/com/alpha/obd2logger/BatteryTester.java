@@ -717,11 +717,25 @@ public final class BatteryTester {
      */
     public static BatteryTestResult testStateOfHealth(double restingV, double crankMinV,
                                                       double recoveryDelta, double altV) {
+        return testStateOfHealth(restingV, crankMinV, recoveryDelta, altV, Chemistry.FLOODED);
+    }
+
+    /**
+     * Chemistry-aware State of Health (SOH) estimation.
+     *
+     * @param restingV     Engine-off voltage (≥ 2h rest)
+     * @param crankMinV    Minimum cranking voltage (or -1 if unknown)
+     * @param recoveryDelta Voltage difference (pre-load - post-recovery), V
+     * @param altV         Alternator regulated voltage (or -1)
+     * @param chem         Battery chemistry type
+     */
+    public static BatteryTestResult testStateOfHealth(double restingV, double crankMinV,
+                                                      double recoveryDelta, double altV, Chemistry chem) {
         double soh = 100;
         List<String> factors = new ArrayList<>();
 
-        // Factor 1: Resting voltage capacity
-        double soc = voltageToSoC(restingV);
+        // Factor 1: Resting voltage capacity (chemistry-specific SoC)
+        double soc = voltageToSoC(restingV, chem);
         if (soc < 25) {
             soh -= 30; factors.add("deep discharge");
         } else if (soc < 50) {
@@ -758,7 +772,9 @@ public final class BatteryTester {
 
         // Factor 4: Charge acceptance — if alternator is healthy but battery
         // stays low, the battery can't accept charge (sulfation/desulfation)
-        if (altV > 0 && altV >= Thresholds.ALT_MIN && restingV > 0 && restingV < 12.30) {
+        double altMin = chem.altMinV;
+        double lowRestThreshold = chem.restLowV() - 0.15; // e.g. 12.05V for Flooded (12.20 - 0.15)
+        if (altV > 0 && altV >= altMin && restingV > 0 && restingV < lowRestThreshold) {
             soh -= 20;
             factors.add("poor charge acceptance (sulfation)");
         }
@@ -1003,7 +1019,7 @@ public final class BatteryTester {
         // Test 5: Voltage Recovery
         if (postLoadV > 0 && recoveredV > 0) {
             double rs = recoverySec > 0 ? recoverySec : 0;
-            results.add(testVoltageRecovery(postLoadV, postLoadV, recoveredV, rs));
+            results.add(testVoltageRecovery(noLoadV, postLoadV, recoveredV, rs));
         }
 
         // Test 6: Cranking Voltage
@@ -1033,7 +1049,7 @@ public final class BatteryTester {
             double crank = crankMinV > 0 ? crankMinV : -1;
             double rDelta = recoveryDelta >= 0 ? recoveryDelta : -1;
             double alt = runningV > 0 ? runningV : -1;
-            BatteryTestResult sohResult = testStateOfHealth(restingV, crank, rDelta, alt);
+            BatteryTestResult sohResult = testStateOfHealth(restingV, crank, rDelta, alt, chem);
             results.add(sohResult);
             // Extract SOH value from the result for the life estimation
             try {

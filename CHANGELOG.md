@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.10] - 2026-07-05
+### Fixed
+- **Battery Analyzer Logic & Validation**:
+  - **Voltage Recovery Bug Fix**: Resolved a critical argument mismatch in `BatteryTester.buildFullReport()` where `postLoadV` was passed twice to `testVoltageRecovery()`, causing the recovery delta to calculate incorrectly and always return a passing score of 100%. Now passes `noLoadV` as the baseline.
+  - **Chemistry-Aware State of Health (SOH)**: Overloaded `testStateOfHealth()` to accept the `Chemistry` parameter and mapped it to the chemistry-specific SoC lookup curve instead of defaulting to Flooded. This fixes highly inaccurate SOH values for AGM, Gel, and LiFePO4 chemistry profiles.
+  - **Ripple Test Diagnostic Report integration**: Fixed a bug in `testBatteryRipple()` where sample data was never stored in the class-level `rippleSamples` list, causing the full diagnostic report to always skip the diode/ripple test.
+  - **Interactive Multi-Step Load Drop & Recovery wizard**: Extended `testBatteryLoadDrop()` to guide users step-by-step through measuring no-load, full-load, and 5-second post-load recovery voltages (with a real-time countdown) so that recovery parameters are populated in real-world use.
+  - **Interactive Alternator & High-RPM Regulation wizard**: Extended `testBatteryAlternator()` to prompt users to rev the engine to 2500–3000 RPM, measuring alternator regulation stability at idle vs. high RPM (Charging System Efficiency).
+  - **Verification Unit Tests**: Added a complete suite of unit tests in `BatteryTesterTest.java` validating chemistry-specific SoC curves, charging efficiency bounds, recovery indices, and full report scoring.
+
 ## [3.4.9] - 2026-07-05
 ### Fixed
 - **Battery Tester UX & Layout Redesign**:
