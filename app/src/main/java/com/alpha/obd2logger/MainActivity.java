@@ -765,28 +765,213 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void showPidSelectionDialog(String prefKey, String[] array, int index, Runnable onUpdated) {
-        java.util.List<PIDDefinition> allPids = PIDCatalogue.getAll();
-        String[] items = new String[allPids.size() + 1];
-        items[0] = "— None / Hide (ไม่มี / ซ่อน) —";
-        for (int i=0; i<allPids.size(); i++) {
-            items[i+1] = allPids.get(i).getName() + " (" + allPids.get(i).getUnit() + ")";
-        }
+        com.google.android.material.bottomsheet.BottomSheetDialog dialog = 
+                new com.google.android.material.bottomsheet.BottomSheetDialog(this);
         
-        new android.app.AlertDialog.Builder(this)
-            .setTitle("Select PID to Display")
-            .setItems(items, (dialog, which) -> {
-                String selectedKey;
-                if (which == 0) {
-                    selectedKey = "none";
+        // Root Layout
+        android.widget.LinearLayout root = new android.widget.LinearLayout(this);
+        root.setOrientation(android.widget.LinearLayout.VERTICAL);
+        root.setBackgroundColor(getColorCompat(R.color.surface));
+        int padding = (int) (16 * getResources().getDisplayMetrics().density);
+        root.setPadding(padding, padding, padding, padding);
+        
+        // Header Text
+        android.widget.TextView titleText = new android.widget.TextView(this);
+        titleText.setText("เลือก OBD2 Parameter");
+        titleText.setTextColor(getColorCompat(R.color.text));
+        titleText.setTextSize(18);
+        titleText.setTypeface(null, android.graphics.Typeface.BOLD);
+        titleText.setPadding(0, 0, 0, (int)(4 * getResources().getDisplayMetrics().density));
+        root.addView(titleText);
+
+        android.widget.TextView subTitleText = new android.widget.TextView(this);
+        subTitleText.setText("แตะเพื่อแสดงผลในสล็อตที่ " + (index + 1) + " หรือเลือกซ่อนตัวเลือก");
+        subTitleText.setTextColor(getColorCompat(R.color.muted));
+        subTitleText.setTextSize(12);
+        subTitleText.setPadding(0, 0, 0, (int)(12 * getResources().getDisplayMetrics().density));
+        root.addView(subTitleText);
+
+        // Search EditText
+        android.widget.EditText searchBar = new android.widget.EditText(this);
+        searchBar.setHint("ค้นหา Parameter... (Search)");
+        searchBar.setHintTextColor(getColorCompat(R.color.muted));
+        searchBar.setTextColor(getColorCompat(R.color.text));
+        
+        android.graphics.drawable.GradientDrawable searchGd = new android.graphics.drawable.GradientDrawable();
+        searchGd.setCornerRadius(8 * getResources().getDisplayMetrics().density);
+        searchGd.setColor(getColorCompat(R.color.surface3));
+        searchBar.setBackground(searchGd);
+        
+        searchBar.setTextSize(14);
+        searchBar.setPadding(padding, padding / 2, padding, padding / 2);
+        searchBar.setSingleLine(true);
+        android.widget.LinearLayout.LayoutParams searchParams = new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+        searchParams.setMargins(0, 0, 0, (int)(12 * getResources().getDisplayMetrics().density));
+        searchBar.setLayoutParams(searchParams);
+        root.addView(searchBar);
+
+        // List Container
+        android.widget.ListView listView = new android.widget.ListView(this);
+        listView.setDivider(null);
+        listView.setDividerHeight(0);
+        listView.setSelector(android.R.color.transparent);
+        android.widget.LinearLayout.LayoutParams listParams = new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT, (int) (350 * getResources().getDisplayMetrics().density));
+        listView.setLayoutParams(listParams);
+        root.addView(listView);
+
+        // Populate items
+        java.util.List<PIDDefinition> allPids = PIDCatalogue.getAll();
+        java.util.List<Object> items = new java.util.ArrayList<>();
+        items.add("none");
+        items.addAll(allPids);
+
+        // Custom Adapter with filter
+        class PidAdapter extends android.widget.BaseAdapter {
+            private java.util.List<Object> filteredItems = new java.util.ArrayList<>(items);
+            
+            public void filter(String text) {
+                filteredItems.clear();
+                if (text.isEmpty()) {
+                    filteredItems.addAll(items);
                 } else {
-                    selectedKey = allPids.get(which - 1).key();
+                    String query = text.toLowerCase(java.util.Locale.getDefault());
+                    filteredItems.add("none");
+                    for (PIDDefinition p : allPids) {
+                        if (p.getName().toLowerCase(java.util.Locale.getDefault()).contains(query) ||
+                            p.key().toLowerCase(java.util.Locale.getDefault()).contains(query)) {
+                            filteredItems.add(p);
+                        }
+                    }
                 }
-                array[index] = selectedKey;
-                getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putString(prefKey, selectedKey).apply();
-                onUpdated.run();
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
+                notifyDataSetChanged();
+            }
+
+            @Override
+            public int getCount() { return filteredItems.size(); }
+            @Override
+            public Object getItem(int pos) { return filteredItems.get(pos); }
+            @Override
+            public long getItemId(int pos) { return pos; }
+
+            @Override
+            public View getView(int pos, View convertView, android.view.ViewGroup parent) {
+                View view = convertView;
+                if (view == null) {
+                    android.widget.LinearLayout row = new android.widget.LinearLayout(MainActivity.this);
+                    row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+                    row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+                    int itemPadding = (int) (10 * getResources().getDisplayMetrics().density);
+                    row.setPadding(itemPadding, itemPadding, itemPadding, itemPadding);
+                    
+                    android.util.TypedValue outValue = new android.util.TypedValue();
+                    getTheme().resolveAttribute(android.R.attr.selectableItemBackground, outValue, true);
+                    row.setBackgroundResource(outValue.resourceId);
+                    
+                    android.widget.TextView badge = new android.widget.TextView(MainActivity.this);
+                    badge.setId(View.generateViewId());
+                    badge.setTextSize(10);
+                    badge.setTypeface(null, android.graphics.Typeface.BOLD);
+                    badge.setGravity(android.view.Gravity.CENTER);
+                    badge.setTextColor(0xFFFFFFFF);
+                    android.widget.LinearLayout.LayoutParams badgeParams = new android.widget.LinearLayout.LayoutParams(
+                            (int)(36 * getResources().getDisplayMetrics().density), 
+                            (int)(36 * getResources().getDisplayMetrics().density));
+                    badgeParams.setMargins(0, 0, (int)(12 * getResources().getDisplayMetrics().density), 0);
+                    badge.setLayoutParams(badgeParams);
+                    row.addView(badge);
+
+                    android.widget.LinearLayout texts = new android.widget.LinearLayout(MainActivity.this);
+                    texts.setOrientation(android.widget.LinearLayout.VERTICAL);
+                    texts.setLayoutParams(new android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+                    
+                    android.widget.TextView mainText = new android.widget.TextView(MainActivity.this);
+                    mainText.setId(View.generateViewId());
+                    mainText.setTextColor(getColorCompat(R.color.text));
+                    mainText.setTextSize(14);
+                    mainText.setTypeface(null, android.graphics.Typeface.BOLD);
+                    texts.addView(mainText);
+
+                    android.widget.TextView subText = new android.widget.TextView(MainActivity.this);
+                    subText.setId(View.generateViewId());
+                    subText.setTextColor(getColorCompat(R.color.muted));
+                    subText.setTextSize(11);
+                    texts.addView(subText);
+
+                    row.addView(texts);
+                    view = row;
+                }
+
+                Object item = filteredItems.get(pos);
+                android.widget.TextView badge = (android.widget.TextView) ((android.view.ViewGroup)view).getChildAt(0);
+                android.view.ViewGroup textContainer = (android.view.ViewGroup) ((android.view.ViewGroup)view).getChildAt(1);
+                android.widget.TextView mainText = (android.widget.TextView) textContainer.getChildAt(0);
+                android.widget.TextView subText = (android.widget.TextView) textContainer.getChildAt(1);
+
+                float density = getResources().getDisplayMetrics().density;
+                android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
+                gd.setCornerRadius(18 * density); // circular shape
+
+                if (item instanceof String && "none".equals(item)) {
+                    mainText.setText("ซ่อนฟิลด์นี้ (Hide / Disable)");
+                    subText.setText("ไม่ต้องการแสดงข้อมูลในสล็อตนี้");
+                    badge.setText("OFF");
+                    gd.setColor(0xFFEF4444);
+                } else {
+                    PIDDefinition p = (PIDDefinition) item;
+                    mainText.setText(p.getName());
+                    subText.setText("PID: " + p.key() + "  •  Unit: " + (p.getUnit().isEmpty() ? "None" : p.getUnit()));
+                    
+                    String name = p.getName().toUpperCase();
+                    String badgeStr = name.length() > 3 ? name.substring(0, 3) : name;
+                    badge.setText(badgeStr);
+                    
+                    if (p.key().contains("0C") || p.key().contains("0D")) {
+                        gd.setColor(0xFF38BDF8); // Blue
+                    } else if (p.key().contains("05") || p.key().contains("0F")) {
+                        gd.setColor(0xFFF59E0B); // Amber
+                    } else if (p.key().contains("06") || p.key().contains("07")) {
+                        gd.setColor(0xFF22C55E); // Green
+                    } else {
+                        gd.setColor(0xFF8B5CF6); // Purple
+                    }
+                }
+                badge.setBackground(gd);
+                return view;
+            }
+        }
+
+        PidAdapter adapter = new PidAdapter();
+        listView.setAdapter(adapter);
+
+        searchBar.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                adapter.filter(s.toString());
+            }
+            @Override
+            public void afterTextChanged(android.text.Editable s) {}
+        });
+
+        listView.setOnItemClickListener((parent, view, pos, id) -> {
+            Object item = adapter.filteredItems.get(pos);
+            String selectedKey;
+            if (item instanceof String && "none".equals(item)) {
+                selectedKey = "none";
+            } else {
+                selectedKey = ((PIDDefinition) item).key();
+            }
+            array[index] = selectedKey;
+            getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putString(prefKey, selectedKey).apply();
+            onUpdated.run();
+            dialog.dismiss();
+        });
+
+        dialog.setContentView(root);
+        dialog.show();
     }
     
     private void exportCorrectionCsv() {
