@@ -1143,15 +1143,11 @@
                         android:layout_height="200dp" />
                 </com.google.android.material.card.MaterialCardView>
 
-                <TextView
-                    android:id="@+id/allPidsText"
+                <LinearLayout
+                    android:id="@+id/gaugeReadingsContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp"
-                    android:background="@drawable/panel"
-                    android:text="All PIDs will appear here when logging."
-                    android:textColor="@color/muted"
-                    android:textSize="12sp" />
+                    android:orientation="vertical" />
             </LinearLayout>
 
             <!-- ===== DTC TAB ===== -->

@@ -87,7 +87,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     // --- UI: Gauges tab ---
     private GraphView graph1, graph2, graph3, graph4, graph5;
-    private TextView allPidsText;
+    private LinearLayout gaugeReadingsContainer;
 
     // --- UI: DTC tab ---
     private Button btnReadDtc, btnClearDtc, btnReadVin, btnReadiness;
@@ -379,7 +379,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         graph3 = findViewById(R.id.graph3);
         graph4 = findViewById(R.id.graph4);
         graph5 = findViewById(R.id.graph5);
-        allPidsText = findViewById(R.id.allPidsText);
+        gaugeReadingsContainer = findViewById(R.id.gaugeReadingsContainer);
 
         // DTC tab
         btnReadDtc = findViewById(R.id.btnReadDtc);
@@ -2794,23 +2794,30 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private final java.util.Map<String, TextView> readingRowCache = new java.util.HashMap<>();
     private final java.util.Map<String, TextView> readingStatusCache = new java.util.HashMap<>();
+    private final java.util.Map<String, TextView> gaugeRowCache = new java.util.HashMap<>();
+    private final java.util.Map<String, TextView> gaugeStatusCache = new java.util.HashMap<>();
 
     private void renderReadings(DataRecord record) {
-        if (readingsContainer.getChildCount() != (record.getSamples().size() + 1) / 2) {
-            readingsContainer.removeAllViews();
-            readingRowCache.clear();
-            readingStatusCache.clear();
+        updateGridContainer(readingsContainer, readingRowCache, readingStatusCache, record);
+        updateGridContainer(gaugeReadingsContainer, gaugeRowCache, gaugeStatusCache, record);
+    }
+
+    private void updateGridContainer(LinearLayout container, java.util.Map<String, TextView> rowCache, java.util.Map<String, TextView> statusCache, DataRecord record) {
+        if (container == null) return;
+        if (container.getChildCount() != (record.getSamples().size() + 1) / 2) {
+            container.removeAllViews();
+            rowCache.clear();
+            statusCache.clear();
         }
 
         LinearLayout currentRow = null;
         int index = 0;
         int margin = (int) (4 * getResources().getDisplayMetrics().density);
 
-        StringBuilder allPids = new StringBuilder();
         for (SensorSample sample : record.getSamples()) {
             String pidName = sample.getName();
-            TextView valueView = readingRowCache.get(pidName);
-            TextView statusView = readingStatusCache.get(pidName);
+            TextView valueView = rowCache.get(pidName);
+            TextView statusView = statusCache.get(pidName);
 
             if (valueView == null) {
                 if (index % 2 == 0) {
@@ -2821,7 +2828,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                     rowLp.bottomMargin = 8;
                     currentRow.setLayoutParams(rowLp);
-                    readingsContainer.addView(currentRow);
+                    container.addView(currentRow);
                 }
 
                 LinearLayout card = new LinearLayout(this);
@@ -2862,8 +2869,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     currentRow.addView(card);
                 }
 
-                readingRowCache.put(pidName, valueView);
-                readingStatusCache.put(pidName, statusView);
+                rowCache.put(pidName, valueView);
+                statusCache.put(pidName, statusView);
             }
 
             valueView.setText(formatValue(sample.getValue(), sample.getUnit()));
@@ -2872,17 +2879,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             statusView.setText(sample.getStatus().toUpperCase(Locale.US));
             statusView.setTextColor(getColorCompat(sample.getStatus().equals("ok") ? R.color.accent : R.color.danger));
 
-            allPids.append(pidName).append(": ")
-                    .append(formatValue(sample.getValue(), sample.getUnit()))
-                    .append("\n");
-
             index++;
         }
-        allPidsText.setText(allPids.toString());
     }
 
     private void clearReadings() {
-        readingsContainer.removeAllViews();
+        if (readingsContainer != null) readingsContainer.removeAllViews();
+        if (gaugeReadingsContainer != null) gaugeReadingsContainer.removeAllViews();
+        readingRowCache.clear();
+        readingStatusCache.clear();
+        gaugeRowCache.clear();
+        gaugeStatusCache.clear();
         if (tuningStatusText != null) {
             tuningStatusText.setText(getString(R.string.waiting_for_data));
             tuningStatusText.setTextColor(getColorCompat(R.color.warning));
