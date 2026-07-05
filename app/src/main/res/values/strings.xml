@@ -19,9 +19,9 @@
     <string name="tab_settings">Settings</string>
 
     <!-- Map UI -->
-    <string name="smart_tuning_analysis">Smart Tuning Analysis</string>
+    <string name="smart_tuning_analysis">Smart OBD2 Tuning Analyzer</string>
     <string name="waiting_for_data">Waiting for Fuel Trim data...</string>
-    <string name="live_fuel_map">Live Fuel Trim Map</string>
+    <string name="live_fuel_map">Live Fuel Trim Deviation Matrix</string>
     <string name="map_axes">Y = T.inj ms (2.0-18.0), X = RPM (500-6500)</string>
     <string name="how_to_read_map_title">How to read the Map</string>
     <string name="how_to_read_map_desc" formatted="false">Shows Total Fuel Trim (STFT + LTFT)\n🟢 Green (±5%) = Perfect\n🟡 Orange/Yellow (-5% to -10%) = Slightly Rich\n🔴 Red (Under -10%) = Very Rich\n🌐 Light Blue (+5% to +10%) = Slightly Lean\n🔵 Dark Blue (Over +10%) = Very Lean\n\nMathematical logic for each mode:\n\n1️⃣ PETROL\nFormula: Trim = STFT + LTFT (from ECU while on petrol)\nActs as the vehicle\'s engine calibration baseline.\n\n2️⃣ LPG/CNG\nFormula: Trim = STFT + LTFT (from ECU while on gas)\nShows the current fuel delivery behavior under gas operation.\n\n3️⃣ DEVIATION\nFormula: Deviation = LPG Trim - Petrol Trim\nCalculates how far the gas calibration drifts from petrol (+ is lean, - is rich).\n\n4️⃣ TUNE ASSIST\nFormula: Correction = LPG Trim - Petrol Trim\nThe exact percentage to add (+) or subtract (-) in your gas ECU multiplier map to bring the deviation back to 0% (matching petrol).\n\n* Note: You must collect both Petrol and LPG data in the same cells first for the comparison to work!</string>

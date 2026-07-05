@@ -1023,8 +1023,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="2dp">
+                    app:cardBackgroundColor="@color/surface"
+                    app:cardCornerRadius="12dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/border">
                     
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -1032,46 +1034,199 @@
                         android:orientation="vertical"
                         android:padding="16dp">
                         
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/smart_tuning_analysis"
-                            android:textColor="@color/primary"
-                            android:textStyle="bold"
-                            android:textSize="14sp"/>
-                            
-                        <TextView
-                            android:id="@+id/tuningStatusText"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/waiting_for_data"
-                            android:textColor="@color/warning"
-                            android:textSize="16sp"
-                            android:layout_marginTop="8dp"/>
-                            
+                        <!-- Title & Loop status in Header -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:layout_marginTop="12dp">
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="12dp">
                             
                             <TextView
-                                android:id="@+id/mapEctText"
                                 android:layout_width="0dp"
                                 android:layout_weight="1"
                                 android:layout_height="wrap_content"
-                                android:text="ECT: -- °C"
-                                android:textColor="@color/muted"
-                                android:textSize="14sp"/>
-
+                                android:text="@string/smart_tuning_analysis"
+                                android:textColor="@color/primary"
+                                android:textStyle="bold"
+                                android:textSize="12sp"
+                                android:textAllCaps="true"
+                                android:letterSpacing="0.06"/>
+                                
                             <TextView
                                 android:id="@+id/mapLoopStatusText"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Status: --"
+                                android:text="Loop: --"
                                 android:textColor="@color/muted"
-                                android:textSize="14sp"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:background="@color/surface3"
+                                android:paddingHorizontal="8dp"
+                                android:paddingVertical="3dp"/>
+                        </LinearLayout>
+
+                        <!-- Hidden legacy text view to prevent any NullPointer or code breakage -->
+                        <TextView
+                            android:id="@+id/tuningStatusText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone"/>
+
+                        <!-- Row 1: STFT & LTFT badges + Coolant -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="12dp">
+
+                            <!-- STFT Badge -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:background="@color/surface2"
+                                android:padding="8dp"
+                                android:gravity="center"
+                                android:layout_marginEnd="6dp">
+                                
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="STFT"
+                                    android:textColor="@color/muted"
+                                    android:textSize="9sp"
+                                    android:textStyle="bold"/>
+                                    
+                                <TextView
+                                    android:id="@+id/txtTuningStft"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="--%"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold"
+                                    android:layout_marginTop="2dp"/>
+                            </LinearLayout>
+
+                            <!-- LTFT Badge -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:background="@color/surface2"
+                                android:padding="8dp"
+                                android:gravity="center"
+                                android:layout_marginEnd="6dp">
+                                
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="LTFT"
+                                    android:textColor="@color/muted"
+                                    android:textSize="9sp"
+                                    android:textStyle="bold"/>
+                                    
+                                <TextView
+                                    android:id="@+id/txtTuningLtft"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="--%"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold"
+                                    android:layout_marginTop="2dp"/>
+                            </LinearLayout>
+
+                            <!-- Coolant (ECT) Badge -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:background="@color/surface2"
+                                android:padding="8dp"
+                                android:gravity="center">
+                                
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="COOLANT"
+                                    android:textColor="@color/muted"
+                                    android:textSize="9sp"
+                                    android:textStyle="bold"/>
+                                    
+                                <TextView
+                                    android:id="@+id/mapEctText"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="-- °C"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold"
+                                    android:layout_marginTop="2dp"/>
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/border"
+                            android:layout_marginBottom="12dp"/>
+
+                        <!-- Row 2: Status & Advice -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="6dp">
+                            
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="ANALYSIS: "
+                                android:textColor="@color/muted"
+                                android:textSize="11sp"
                                 android:textStyle="bold"/>
+                                
+                            <TextView
+                                android:id="@+id/txtTuningStatus"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="WAITING FOR OBD2 SIGNAL"
+                                android:textColor="@color/warning"
+                                android:textSize="12sp"
+                                android:textStyle="bold"/>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:background="@color/surface2"
+                            android:padding="12dp">
+                            
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="ADVICE / RECOMMENDATION"
+                                android:textColor="@color/primary"
+                                android:textSize="9sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="4dp"/>
+                                
+                            <TextView
+                                android:id="@+id/txtTuningAdvice"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Please drive the vehicle on both Petrol and LPG modes to capture STFT/LTFT matrix data."
+                                android:textColor="@color/text"
+                                android:textSize="12sp"/>
                         </LinearLayout>
                             
                     </LinearLayout>

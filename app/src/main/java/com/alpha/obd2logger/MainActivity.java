@@ -90,6 +90,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private GaugeView gauge1, gauge2, gauge3, gauge4;
     private TextView tuningStatusText;
     private TextView mapEctText, mapLoopStatusText;
+    private TextView txtTuningStft, txtTuningLtft, txtTuningStatus, txtTuningAdvice;
     private TextView dashTuningStatus, dashEctText;
     private com.google.android.material.progressindicator.LinearProgressIndicator dashWarmupProgress;
 
@@ -606,6 +607,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         tuningStatusText = findViewById(R.id.tuningStatusText);
         mapEctText = findViewById(R.id.mapEctText);
         mapLoopStatusText = findViewById(R.id.mapLoopStatusText);
+        txtTuningStft = findViewById(R.id.txtTuningStft);
+        txtTuningLtft = findViewById(R.id.txtTuningLtft);
+        txtTuningStatus = findViewById(R.id.txtTuningStatus);
+        txtTuningAdvice = findViewById(R.id.txtTuningAdvice);
 
         // Gauges tab
         graph1 = findViewById(R.id.graph1);
@@ -2905,6 +2910,23 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         result.getStatus(),
                         result.getRecommendation()));
             }
+
+            // Update new professional tuning views
+            if (txtTuningStft != null) {
+                txtTuningStft.setText(String.format(Locale.US, "%.1f%%", result.getStft()));
+            }
+            if (txtTuningLtft != null) {
+                txtTuningLtft.setText(String.format(Locale.US, "%.1f%%", result.getLtft()));
+            }
+            if (txtTuningStatus != null) {
+                txtTuningStatus.setText(result.getStatus());
+                int color = result.getStatus().equals(getString(R.string.analyzer_ok)) ? R.color.accent :
+                        (result.getStatus().equals(getString(R.string.analyzer_lean)) ? R.color.primary : R.color.danger);
+                txtTuningStatus.setTextColor(getColorCompat(color));
+            }
+            if (txtTuningAdvice != null) {
+                txtTuningAdvice.setText(result.getRecommendation());
+            }
         }
     }
 
@@ -4301,6 +4323,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             tuningStatusText.setText(getString(R.string.waiting_for_data));
             tuningStatusText.setTextColor(getColorCompat(R.color.warning));
         }
+        if (txtTuningStatus != null) {
+            txtTuningStatus.setText(getString(R.string.waiting_for_data));
+            txtTuningStatus.setTextColor(getColorCompat(R.color.warning));
+        }
+        if (txtTuningStft != null) txtTuningStft.setText("--%");
+        if (txtTuningLtft != null) txtTuningLtft.setText("--%");
+        if (txtTuningAdvice != null) txtTuningAdvice.setText("Please drive the vehicle on both Petrol and LPG modes to capture STFT/LTFT matrix data.");
     }
 
     private void resetGraphs() {
