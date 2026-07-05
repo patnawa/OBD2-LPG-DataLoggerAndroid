@@ -87,4 +87,51 @@
     <string name="log_destination_label">Carpeta de destino de registros</string>
     <string name="default_log_folder">Downloads/TunerMapPro (Predeterminado)</string>
     <string name="select_folder">Seleccionar</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">Batería y Sistema de Carga</string>
+    <string name="battery_subtitle">Diagnóstico profesional de batería 12V vía OBD2 PID 0x42</string>
+    <string name="battery_live_graph">Monitor de Voltaje en Tiempo Real</string>
+    <string name="battery_waiting">Conecte al vehículo para iniciar el monitoreo</string>
+    <string name="battery_connect_first">Conecte al vehículo, luego realice una prueba.</string>
+    <string name="battery_soc_label">Estado de Carga</string>
+    <string name="battery_soh_label">Estado de Salud</string>
+    <string name="battery_overall_score">Puntuación General de la Batería</string>
+    <string name="battery_type_hint">Tipo de batería</string>
+    <string name="battery_age_hint">Edad (meses)</string>
+    <string name="battery_test_resting">Voltaje en Reposo</string>
+    <string name="battery_test_alternator">Prueba de Alternador</string>
+    <string name="battery_test_load">Prueba de Caída de Voltaje</string>
+    <string name="battery_test_crank">Prueba de Arranque</string>
+    <string name="battery_test_ripple">Prueba de Rizado/Diodo</string>
+    <string name="battery_test_full">Diagnóstico Completo</string>
+    <string name="home_card_battery_title">Probador de Batería</string>
+    <string name="home_card_battery_desc">Salud de batería, alternador y prueba de caída de voltaje</string>
+    <string name="tab_battery">Batería</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>Inundada (Estándar)</item>
+        <item>AGM (Manta de Vidrio Absorbente)</item>
+        <item>EFB (Inundada Mejorado)</item>
+        <item>Celda de Gel</item>
+        <item>Calcio (Ca/Ca)</item>
+        <item>LiFePO4 (Fosfato de Hierro y Litio)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">Inundada</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">Gel</string>
+    <string name="battery_chemistry_calcium">Calcio</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"Umbrales de Carga:
+• 14.4–14.7V: Carga normal (motor en marcha)
+• 12.6–12.8V: Batería llena (motor apagado)
+• 12.4V: 75%% de carga
+• 12.2V o menos: Batería débil, cargar inmediatamente"</string>
+
 </resources>

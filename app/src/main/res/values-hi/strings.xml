@@ -87,4 +87,51 @@
     <string name="log_destination_label">लॉग सहेजने का फ़ोल्डर</string>
     <string name="default_log_folder">Downloads/TunerMapPro (डिफ़ॉल्ट)</string>
     <string name="select_folder">चुनें</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">बैटरी और चार्जिंग सिस्टम</string>
+    <string name="battery_subtitle">OBD2 PID 0x42 के माध्यम से पेशेवर 12V बैटरी निदान</string>
+    <string name="battery_live_graph">लाइव वोल्टेज मॉनिटर</string>
+    <string name="battery_waiting">मॉनिटरिंग शुरू करने के लिए वाहन से कनेक्ट करें</string>
+    <string name="battery_connect_first">पहले वाहन से कनेक्ट करें, फिर परीक्षण चलाएं।</string>
+    <string name="battery_soc_label">चार्ज की स्थिति</string>
+    <string name="battery_soh_label">स्वास्थ्य की स्थिति</string>
+    <string name="battery_overall_score">बैटरी समग्र स्कोर</string>
+    <string name="battery_type_hint">बैटरी प्रकार</string>
+    <string name="battery_age_hint">आयु (महीने)</string>
+    <string name="battery_test_resting">रेस्टिंग वोल्टेज</string>
+    <string name="battery_test_alternator">अल्टरनेटर परीक्षण</string>
+    <string name="battery_test_load">वोल्टेज ड्रॉप परीक्षण</string>
+    <string name="battery_test_crank">क्रैंकिंग परीक्षण</string>
+    <string name="battery_test_ripple">रिपल/डायोड परीक्षण</string>
+    <string name="battery_test_full">पूर्ण निदान</string>
+    <string name="home_card_battery_title">बैटरी टेस्टर</string>
+    <string name="home_card_battery_desc">बैटरी स्वास्थ्य, अल्टरनेटर और वोल्टेज ड्रॉप परीक्षण</string>
+    <string name="tab_battery">बैटरी</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>बाढ़ (मानक)</item>
+        <item>AGM (सोखने वाला कांच गलीचा)</item>
+        <item>EFB (वर्धित बाढ़)</item>
+        <item>जेल सेल</item>
+        <item>कैल्शियम (Ca/Ca)</item>
+        <item>LiFePO4 (लिथियम आयरन फॉस्फेट)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">बाढ़</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">जेल</string>
+    <string name="battery_chemistry_calcium">कैल्शियम</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"चार्ज सीमाएं:
+• 14.4–14.7V: सामान्य चार्जिंग (इंजन चल रहा है)
+• 12.6–12.8V: बैटरी भरी हुई (इंजन बंद)
+• 12.4V: 75%% चार्ज
+• 12.2V या कम: कमजोर बैटरी, तुरंत चार्ज करें"</string>
+
 </resources>

@@ -87,4 +87,51 @@
     <string name="log_destination_label">Cartella di destinazione dei log</string>
     <string name="default_log_folder">Downloads/TunerMapPro (Predefinita)</string>
     <string name="select_folder">Seleziona</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">Batteria e Sistema di Carica</string>
+    <string name="battery_subtitle">Diagnosi professionale batteria 12V via OBD2 PID 0x42</string>
+    <string name="battery_live_graph">Monitor Tensione in Tempo Reale</string>
+    <string name="battery_waiting">Connetti al veicolo per iniziare il monitoraggio</string>
+    <string name="battery_connect_first">Connetti al veicolo, poi esegui un test.</string>
+    <string name="battery_soc_label">Stato di Carica</string>
+    <string name="battery_soh_label">Stato di Salute</string>
+    <string name="battery_overall_score">Punteggio Complessivo Batteria</string>
+    <string name="battery_type_hint">Tipo di batteria</string>
+    <string name="battery_age_hint">Età (mesi)</string>
+    <string name="battery_test_resting">Tensione a Riposo</string>
+    <string name="battery_test_alternator">Test Alternatore</string>
+    <string name="battery_test_load">Test Caduta di Tensione</string>
+    <string name="battery_test_crank">Test Avviamento</string>
+    <string name="battery_test_ripple">Test Oscillazione/Diodo</string>
+    <string name="battery_test_full">Diagnosi Completa</string>
+    <string name="home_card_battery_title">Tester Batteria</string>
+    <string name="home_card_battery_desc">Salute batteria, alternatore e test caduta di tensione</string>
+    <string name="tab_battery">Batteria</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>Allagato (Standard)</item>
+        <item>AGM (Tappetino in Vetro Assorbente)</item>
+        <item>EFB (Allagato Migliorato)</item>
+        <item>Cella Gel</item>
+        <item>Calcio (Ca/Ca)</item>
+        <item>LiFePO4 (Fosfato di Ferro e Litio)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">Allagato</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">Gel</string>
+    <string name="battery_chemistry_calcium">Calcio</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"Soglie di Carica:
+• 14.4–14.7V: Carica normale (motore in funzione)
+• 12.6–12.8V: Batteria piena (motore spento)
+• 12.4V: 75%% di carica
+• 12.2V o meno: Batteria debole, ricarica immediatamente"</string>
+
 </resources>

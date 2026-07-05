@@ -87,4 +87,51 @@
     <string name="log_destination_label">ログの保存先フォルダ</string>
     <string name="default_log_folder">Downloads/TunerMapPro (デフォルト)</string>
     <string name="select_folder">選択</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">バッテリー＆充電システム</string>
+    <string name="battery_subtitle">OBD2 PID 0x42によるプロフェッショナル12Vバッテリー診断</string>
+    <string name="battery_live_graph">リアルタイム電圧モニター</string>
+    <string name="battery_waiting">車両に接続して監視を開始してください</string>
+    <string name="battery_connect_first">車両に接続してからテストを実行してください。</string>
+    <string name="battery_soc_label">充電状態</string>
+    <string name="battery_soh_label">健康状態</string>
+    <string name="battery_overall_score">バッテリー総合スコア</string>
+    <string name="battery_type_hint">バッテリータイプ</string>
+    <string name="battery_age_hint">経過年数（ヶ月）</string>
+    <string name="battery_test_resting">休止電圧</string>
+    <string name="battery_test_alternator">オルタネーターテスト</string>
+    <string name="battery_test_load">電圧降下テスト</string>
+    <string name="battery_test_crank">始動テスト</string>
+    <string name="battery_test_ripple">リップル/ダイオードテスト</string>
+    <string name="battery_test_full">総合診断</string>
+    <string name="home_card_battery_title">バッテリーテスター</string>
+    <string name="home_card_battery_desc">バッテリー健全性、オルタネーター、電圧降下テスト</string>
+    <string name="tab_battery">バッテリー</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>浸水式（標準）</item>
+        <item>AGM（吸収ガラスマット）</item>
+        <item>EFB（強化浸水式）</item>
+        <item>ゲルセル</item>
+        <item>カルシウム（Ca/Ca）</item>
+        <item>LiFePO4（リン酸鉄リチウム）</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">浸水式</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">ゲル</string>
+    <string name="battery_chemistry_calcium">カルシウム</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"充電閾値:
+• 14.4–14.7V: 正常充電（エンジン作動中）
+• 12.6–12.8V: バッテリー満タン（エンジン停止）
+• 12.4V: 75%%充電
+• 12.2V以下: バッテリーが弱い、すぐに充電してください"</string>
+
 </resources>

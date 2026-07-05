@@ -87,4 +87,51 @@
     <string name="log_destination_label">日志保存文件夹</string>
     <string name="default_log_folder">Downloads/TunerMapPro (默认)</string>
     <string name="select_folder">选择</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">电池与充电系统</string>
+    <string name="battery_subtitle">通过OBD2 PID 0x42进行专业12V电池诊断</string>
+    <string name="battery_live_graph">实时电压监测</string>
+    <string name="battery_waiting">连接车辆以开始监测</string>
+    <string name="battery_connect_first">连接车辆后运行测试。</string>
+    <string name="battery_soc_label">充电状态</string>
+    <string name="battery_soh_label">健康状态</string>
+    <string name="battery_overall_score">电池综合评分</string>
+    <string name="battery_type_hint">电池类型</string>
+    <string name="battery_age_hint">使用月数</string>
+    <string name="battery_test_resting">静置电压</string>
+    <string name="battery_test_alternator">发电机测试</string>
+    <string name="battery_test_load">电压降测试</string>
+    <string name="battery_test_crank">启动测试</string>
+    <string name="battery_test_ripple">纹波/二极管测试</string>
+    <string name="battery_test_full">全面诊断</string>
+    <string name="home_card_battery_title">电池测试仪</string>
+    <string name="home_card_battery_desc">电池健康、发电机和电压降测试</string>
+    <string name="tab_battery">电池</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>富液式（标准）</item>
+        <item>AGM（吸收玻璃纤维垫）</item>
+        <item>EFB（增强富液式）</item>
+        <item>凝胶电池</item>
+        <item>钙合金 (Ca/Ca)</item>
+        <item>LiFePO4 (磷酸铁锂)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">富液式</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">凝胶</string>
+    <string name="battery_chemistry_calcium">钙合金</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"充电阈值:
+• 14.4–14.7V: 正常充电（发动机运转）
+• 12.6–12.8V: 电池充满（发动机关闭）
+• 12.4V: 75%%充电
+• 12.2V或以下: 电池电量低，立即充电"</string>
+
 </resources>

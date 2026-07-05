@@ -87,4 +87,51 @@
     <string name="log_destination_label">Папка назначения логов</string>
     <string name="default_log_folder">Downloads/TunerMapPro (По умолчанию)</string>
     <string name="select_folder">Выбрать</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">Аккумулятор и система зарядки</string>
+    <string name="battery_subtitle">Профессиональная диагностика АКБ 12В через OBD2 PID 0x42</string>
+    <string name="battery_live_graph">Монитор напряжения в реальном времени</string>
+    <string name="battery_waiting">Подключите автомобиль для начала мониторинга</string>
+    <string name="battery_connect_first">Подключите автомобиль, затем выполните тест.</string>
+    <string name="battery_soc_label">Состояние заряда</string>
+    <string name="battery_soh_label">Состояние здоровья</string>
+    <string name="battery_overall_score">Общий балл аккумулятора</string>
+    <string name="battery_type_hint">Тип АКБ</string>
+    <string name="battery_age_hint">Возраст (мес.)</string>
+    <string name="battery_test_resting">Напряжение покоя</string>
+    <string name="battery_test_alternator">Тест генератора</string>
+    <string name="battery_test_load">Тест падения напряжения</string>
+    <string name="battery_test_crank">Тест запуска</string>
+    <string name="battery_test_ripple">Тест пульсации/диода</string>
+    <string name="battery_test_full">Полная диагностика</string>
+    <string name="home_card_battery_title">Тестер АКБ</string>
+    <string name="home_card_battery_desc">Состояние АКБ, генератор и тест падения напряжения</string>
+    <string name="tab_battery">АКБ</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>Жидкостный (Стандарт)</item>
+        <item>AGM (Абсорбирующий Стекломат)</item>
+        <item>EFB (Улучшенный Жидкостный)</item>
+        <item>Гелевый Элемент</item>
+        <item>Кальциевый (Ca/Ca)</item>
+        <item>LiFePO4 (Литий-железо-фосфат)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">Жидкостный</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">Гелевый</string>
+    <string name="battery_chemistry_calcium">Кальциевый</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"Пороги зарядки:
+• 14.4–14.7V: Нормальная зарядка (двигатель работает)
+• 12.6–12.8V: Батарея заряжена (двигатель выключен)
+• 12.4V: 75%% заряда
+• 12.2V или меньше: Слабая батарея, немедленно зарядить"</string>
+
 </resources>

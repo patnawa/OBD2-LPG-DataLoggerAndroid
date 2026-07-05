@@ -132,4 +132,31 @@
     <string name="home_card_battery_desc">Battery health, alternator &amp; voltage drop test</string>
     <string name="tab_battery">Battery</string>
 
+    <!-- Battery Chemistry Types -->
+    <string-array name="battery_chemistry_types">
+        <item>Flooded (Standard)</item>
+        <item>AGM (Absorbent Glass Mat)</item>
+        <item>EFB (Enhanced Flooded Battery)</item>
+        <item>Gel Cell</item>
+        <item>Calcium (Ca/Ca)</item>
+        <item>LiFePO4 (Lithium Iron Phosphate)</item>
+    </string-array>
+    
+    <!-- Individual Chemistry Names -->
+    <string name="battery_chemistry_flooded">Flooded (Standard)</string>
+    <string name="battery_chemistry_agm">AGM (Absorbent Glass Mat)</string>
+    <string name="battery_chemistry_efb">EFB (Enhanced Flooded Battery)</string>
+    <string name="battery_chemistry_gel">Gel Cell</string>
+    <string name="battery_chemistry_calcium">Calcium (Ca/Ca)</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4 (Lithium Iron Phosphate)</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"Charge Thresholds:
+• 14.4–14.7V: Normal charging (engine running)
+• 12.6–12.8V: Battery full (engine off)
+• 12.4V: 75%% charged
+• 12.2V or less: Weak battery, charge immediately"</string>
+
 </resources>

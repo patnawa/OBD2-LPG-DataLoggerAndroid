@@ -87,4 +87,51 @@
     <string name="log_destination_label">로그 저장 대상 폴더</string>
     <string name="default_log_folder">Downloads/TunerMapPro (기본)</string>
     <string name="select_folder">선택</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">배터리 및 충전 시스템</string>
+    <string name="battery_subtitle">OBD2 PID 0x42를 통한 전문 12V 배터리 진단</string>
+    <string name="battery_live_graph">실시간 전압 모니터</string>
+    <string name="battery_waiting">차량에 연결하여 모니터링을 시작하세요</string>
+    <string name="battery_connect_first">차량에 연결한 후 테스트를 실행하세요.</string>
+    <string name="battery_soc_label">충전 상태</string>
+    <string name="battery_soh_label">건강 상태</string>
+    <string name="battery_overall_score">배터리 종합 점수</string>
+    <string name="battery_type_hint">배터리 유형</string>
+    <string name="battery_age_hint">경과 월수</string>
+    <string name="battery_test_resting">휴지 전압</string>
+    <string name="battery_test_alternator">얼터네이터 테스트</string>
+    <string name="battery_test_load">전압 강하 테스트</string>
+    <string name="battery_test_crank">시동 테스트</string>
+    <string name="battery_test_ripple">리플/다이오드 테스트</string>
+    <string name="battery_test_full">종합 진단</string>
+    <string name="home_card_battery_title">배터리 테스터</string>
+    <string name="home_card_battery_desc">배터리 건강, 얼터네이터 및 전압 강하 테스트</string>
+    <string name="tab_battery">배터리</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>침수식 (표준)</item>
+        <item>AGM (흡수 유리 매트)</item>
+        <item>EFB (개선 침수식)</item>
+        <item>젤 셀</item>
+        <item>칼슘 (Ca/Ca)</item>
+        <item>LiFePO4 (리튬 인산철)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">침수식</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">젤</string>
+    <string name="battery_chemistry_calcium">칼슘</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"충전 임계값:
+• 14.4–14.7V: 일반 충전 (엔진 작동 중)
+• 12.6–12.8V: 배터리 완충 (엔진 정지)
+• 12.4V: 75%% 충전
+• 12.2V 이하: 배터리 약함, 즉시 충전"</string>
+
 </resources>

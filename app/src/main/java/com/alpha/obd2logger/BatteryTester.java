@@ -38,7 +38,92 @@ public final class BatteryTester {
     private BatteryTester() {}
 
     // ─────────────────────────────────────────────────────────────
-    //  Threshold constants (SAE / battery-industry standard, 12 V)
+    //  Battery Chemistry Types
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Supported battery chemistries. Each has its own resting-voltage SoC table,
+     * charging profile, and expected service life.
+     */
+    public enum Chemistry {
+        FLOODED  ("Flooded (Standard)",  12.65, 13.8, 14.7, 42, R.string.battery_chemistry_flooded),
+        AGM      ("AGM (Absorbent Glass Mat)", 12.80, 14.0, 14.8, 54, R.string.battery_chemistry_agm),
+        EFB      ("EFB (Enhanced Flooded)", 12.70, 13.8, 14.7, 48, R.string.battery_chemistry_efb),
+        GEL      ("Gel Cell",            12.75, 13.8, 14.4, 48, R.string.battery_chemistry_gel),
+        CALCIUM  ("Calcium (Ca/Ca)",     12.75, 13.9, 14.8, 42, R.string.battery_chemistry_calcium),
+        LIFePO4  ("LiFePO4 (Lithium)",   13.30, 14.0, 14.6, 120, R.string.battery_chemistry_lifepo4);
+
+        /** English display name (fallback for non-Android contexts). */
+        public final String displayName;
+        /** Open-circuit voltage representing 100% SoC. */
+        public final double fullRestV;
+        /** Minimum acceptable alternator regulated voltage. */
+        public final double altMinV;
+        /** Maximum acceptable alternator regulated voltage. */
+        public final double altMaxV;
+        /** Expected service life to 80% SOH (months, non-tropical). */
+        public final int baseLifeMonths;
+        /** String resource ID for localized display name. */
+        public final int stringResId;
+
+        Chemistry(String displayName, double fullRestV, double altMinV,
+                  double altMaxV, int baseLifeMonths, int stringResId) {
+            this.displayName = displayName;
+            this.fullRestV = fullRestV;
+            this.altMinV = altMinV;
+            this.altMaxV = altMaxV;
+            this.baseLifeMonths = baseLifeMonths;
+            this.stringResId = stringResId;
+        }
+
+        /**
+         * Get localized display name using Android string resources.
+         * Falls back to English displayName if Context is not available.
+         */
+        public String getDisplayName(android.content.Context context) {
+            if (context != null) {
+                try {
+                    return context.getString(stringResId);
+                } catch (Exception e) {
+                    // Fall through to default
+                }
+            }
+            return displayName;
+        }
+
+        /** Optimal charging voltage for this chemistry. */
+        public double altOptimalV() {
+            // LiFePO4: 14.2, others: midpoint of range
+            if (this == LIFePO4) return 14.2;
+            return (altMinV + altMaxV) / 2.0;
+        }
+
+        /** Minimum resting voltage for healthy status (50% SoC approx). */
+        public double restLowV() {
+            if (this == LIFePO4) return 13.0;
+            return fullRestV - 0.45;  // ~75% SoC
+        }
+
+        /** Deep discharge threshold. */
+        public double restDeepV() {
+            if (this == LIFePO4) return 12.5;
+            return fullRestV - 0.75;  // ~0-10% SoC
+        }
+
+        /** Parse a spinner selection into Chemistry. */
+        public static Chemistry fromSpinner(String label) {
+            if (label == null) return FLOODED;
+            if (label.contains("AGM")) return AGM;
+            if (label.contains("EFB")) return EFB;
+            if (label.contains("Gel")) return GEL;
+            if (label.contains("Calcium")) return CALCIUM;
+            if (label.contains("LiFePO4") || label.contains("Lithium")) return LIFePO4;
+            return FLOODED;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Threshold constants (backward-compatible defaults = FLOODED)
     // ─────────────────────────────────────────────────────────────
     public static final class Thresholds {
         /** Minimum acceptable regulated alternator voltage at idle (warm). */
@@ -138,57 +223,114 @@ public final class BatteryTester {
     //  Test 1: State of Charge (resting / open-circuit voltage)
     // ─────────────────────────────────────────────────────────────
 
-    /**
-     * Estimate State-of-Charge from resting voltage.
-     * Use when the engine has been OFF for ≥ 2 hours (ideally overnight).
-     *
-     * SoC lookup table (flooded lead-acid, 25 °C):
-     *   12.65 V → 100%
-     *   12.45 V →  75%
-     *   12.25 V →  50%
-     *   12.05 V →  25%
-     *   11.90 V →   0% (deeply discharged)
-     *
-     * @param restingV  Voltage reading with engine off (V)
-     */
+    /** Backward-compatible: defaults to FLOODED chemistry. */
     public static BatteryTestResult testStateOfCharge(double restingV) {
-        double soc = voltageToSoC(restingV);
+        return testStateOfCharge(restingV, Chemistry.FLOODED);
+    }
+
+    /**
+     * Estimate State-of-Charge from resting voltage using chemistry-specific
+     * voltage-SoC tables. Use when engine has been OFF for ≥ 2 hours.
+     *
+     * Each chemistry has a different resting voltage at 100% SoC:
+     *   Flooded: 12.65 V, AGM: 12.80 V, LiFePO4: 13.30 V, etc.
+     *
+     * @param restingV   Voltage reading with engine off (V)
+     * @param chem       Battery chemistry type
+     */
+    public static BatteryTestResult testStateOfCharge(double restingV, Chemistry chem) {
+        double soc = voltageToSoC(restingV, chem);
         Severity sev;
         String remark;
         int score;
 
-        if (restingV >= Thresholds.REST_FULL) {
+        double fullV = chem.fullRestV;
+        double lowV = chem.restLowV();
+        double deepV = chem.restDeepV();
+
+        if (restingV >= fullV) {
             sev = Severity.PASS; remark = "Fully charged"; score = 100;
-        } else if (restingV >= 12.45) {
-            sev = Severity.PASS; remark = "Good charge level"; score = (int)(90 + (restingV - 12.45) / (Thresholds.REST_FULL - 12.45) * 10);
-        } else if (restingV >= 12.20) {
-            sev = Severity.WARN; remark = "Moderate discharge — recharge soon"; score = (int)(60 + (restingV - 12.20) / 0.25 * 30);
-        } else if (restingV >= Thresholds.REST_DEEP) {
-            sev = Severity.FAIL; remark = "Low charge — battery may not start engine"; score = (int)(30 + (restingV - Thresholds.REST_DEEP) / 0.30 * 30);
+        } else if (restingV >= fullV - 0.20) {
+            sev = Severity.PASS; remark = "Good charge level";
+            score = (int)(90 + (restingV - (fullV - 0.20)) / 0.20 * 10);
+        } else if (restingV >= lowV) {
+            sev = Severity.WARN; remark = "Moderate discharge — recharge soon";
+            score = (int)(60 + (restingV - lowV) / ((fullV - 0.20) - lowV) * 30);
+        } else if (restingV >= deepV) {
+            sev = Severity.FAIL; remark = "Low charge — battery may not start engine";
+            score = (int)(30 + (restingV - deepV) / (lowV - deepV) * 30);
         } else {
-            sev = Severity.FAIL; remark = "Deeply discharged — sulfation risk, charge immediately"; score = 10;
+            sev = Severity.FAIL;
+            remark = chem == Chemistry.LIFePO4
+                    ? "Deeply discharged — check BMS protection, charge immediately"
+                    : "Deeply discharged — sulfation risk, charge immediately";
+            score = 10;
         }
 
         return new BatteryTestResult(
-                "State of Charge",
+                "State of Charge (" + chem.displayName + ")",
                 String.format(java.util.Locale.US, "%.2f V  (%.0f%%)", restingV, soc),
                 sev, remark, score);
     }
 
-    /** Convert open-circuit voltage to SoC% using linear interpolation. */
+    /** Backward-compatible: defaults to FLOODED chemistry. */
     public static double voltageToSoC(double v) {
-        // Piecewise-linear SoC table (flooded, 25°C)
-        if (v >= 12.65) return 100.0;
-        if (v <= 11.90) return 0.0;
-        double[][] table = {
-            {11.90,   0},
-            {12.05,  10},
-            {12.20,  25},
-            {12.35,  45},
-            {12.45,  60},
-            {12.55,  80},
-            {12.65, 100}
-        };
+        return voltageToSoC(v, Chemistry.FLOODED);
+    }
+
+    /**
+     * Convert open-circuit voltage to SoC% using chemistry-specific tables.
+     * LiFePO4 has a very flat discharge curve (13.3→13.1 V is ~100%→20%),
+     * so the SoC curve is completely different from lead-acid.
+     */
+    public static double voltageToSoC(double v, Chemistry chem) {
+        switch (chem) {
+            case AGM:
+                // AGM: 12.80V full, steeper curve at bottom
+                if (v >= 12.80) return 100.0;
+                if (v <= 12.05) return 0.0;
+                return interpTable(v, new double[][]{
+                        {12.05, 0}, {12.15, 10}, {12.30, 25}, {12.45, 50}, {12.55, 70}, {12.65, 85}, {12.80, 100}});
+            case EFB:
+                // EFB: similar to flooded but slightly higher rest
+                if (v >= 12.70) return 100.0;
+                if (v <= 11.95) return 0.0;
+                return interpTable(v, new double[][]{
+                        {11.95, 0}, {12.10, 10}, {12.25, 25}, {12.40, 45}, {12.50, 60}, {12.60, 80}, {12.70, 100}});
+            case GEL:
+                // Gel: similar to AGM
+                if (v >= 12.75) return 100.0;
+                if (v <= 12.00) return 0.0;
+                return interpTable(v, new double[][]{
+                        {12.00, 0}, {12.12, 10}, {12.25, 25}, {12.40, 45}, {12.50, 60}, {12.62, 80}, {12.75, 100}});
+            case CALCIUM:
+                // Calcium: higher rest voltage
+                if (v >= 12.75) return 100.0;
+                if (v <= 12.00) return 0.0;
+                return interpTable(v, new double[][]{
+                        {12.00, 0}, {12.12, 10}, {12.28, 25}, {12.40, 45}, {12.52, 60}, {12.62, 80}, {12.75, 100}});
+            case LIFePO4:
+                // LiFePO4: very flat curve ~13.3-13.1V = 90-20%
+                if (v >= 13.60) return 100.0;
+                if (v >= 13.30) return 95.0;
+                if (v >= 13.20) return 80.0;
+                if (v >= 13.10) return 30.0;
+                if (v >= 13.00) return 15.0;
+                if (v >= 12.80) return 5.0;
+                if (v <= 12.50) return 0.0;
+                return interpTable(v, new double[][]{
+                        {12.50, 0}, {12.80, 5}, {13.00, 15}, {13.10, 30}, {13.20, 80}, {13.30, 95}, {13.60, 100}});
+            default: // FLOODED
+                if (v >= 12.65) return 100.0;
+                if (v <= 11.90) return 0.0;
+                return interpTable(v, new double[][]{
+                        {11.90, 0}, {12.05, 10}, {12.20, 25}, {12.35, 45}, {12.45, 60}, {12.55, 80}, {12.65, 100}});
+        }
+    }
+
+    private static double interpTable(double v, double[][] table) {
+        if (v <= table[0][0]) return table[0][1];
+        if (v >= table[table.length - 1][0]) return table[table.length - 1][1];
         for (int i = 0; i < table.length - 1; i++) {
             if (v >= table[i][0] && v <= table[i + 1][0]) {
                 double ratio = (v - table[i][0]) / (table[i + 1][0] - table[i][0]);
@@ -212,22 +354,38 @@ public final class BatteryTester {
      * @param crankMinV   Minimum voltage during cranking (0 if unknown)
      */
     public static BatteryTestResult testBatteryHealth(double restingV, double crankMinV) {
+        return testBatteryHealth(restingV, crankMinV, Chemistry.FLOODED);
+    }
+
+    /**
+     * Chemistry-aware battery health classification.
+     * Uses chemistry-specific SoC tables and voltage thresholds.
+     *
+     * @param restingV    Open-circuit voltage (engine off, ≥ 2 h)
+     * @param crankMinV   Minimum voltage during cranking (0 if unknown)
+     * @param chem        Battery chemistry type
+     */
+    public static BatteryTestResult testBatteryHealth(double restingV, double crankMinV, Chemistry chem) {
         String grade;
         Severity sev;
         String remark;
         int score;
 
-        double soc = voltageToSoC(restingV);
+        double soc = voltageToSoC(restingV, chem);
+        // Chemistry-adjusted thresholds (proportional to fullRestV)
+        double excellentV = chem.fullRestV - 0.15;  // e.g. 12.50 for flooded, 12.65 for AGM
+        double goodV = chem.fullRestV - 0.30;       // e.g. 12.35 for flooded, 12.50 for AGM
+        double fairV = chem.restLowV();             // ~75% SoC point
 
         // If we have a cranking voltage, factor it in
         if (crankMinV > 0) {
-            if (restingV >= 12.50 && crankMinV >= Thresholds.CRANK_GOOD) {
+            if (restingV >= excellentV && crankMinV >= Thresholds.CRANK_GOOD) {
                 grade = "Excellent"; sev = Severity.PASS; score = 95;
                 remark = "Battery capacity and CCA are excellent";
-            } else if (restingV >= 12.35 && crankMinV >= Thresholds.CRANK_MIN) {
+            } else if (restingV >= goodV && crankMinV >= Thresholds.CRANK_MIN) {
                 grade = "Good"; sev = Severity.PASS; score = 75;
                 remark = "Battery serviceable, slight capacity loss";
-            } else if (restingV >= 12.20 && crankMinV >= 9.00) {
+            } else if (restingV >= fairV && crankMinV >= 9.00) {
                 grade = "Fair"; sev = Severity.WARN; score = 50;
                 remark = "Battery aging — monitor, replace within 6 months";
             } else if (crankMinV > 0 && crankMinV < 9.00) {
@@ -257,29 +415,45 @@ public final class BatteryTester {
 
     /**
      * Test alternator regulated output voltage at idle (engine running, warm,
-     * no major electrical loads).
+     * no major electrical loads). Uses FLOODED thresholds.
      *
      * @param runningV  PID 0x42 voltage with engine running at idle
      */
     public static BatteryTestResult testAlternatorVoltage(double runningV) {
+        return testAlternatorVoltage(runningV, Chemistry.FLOODED);
+    }
+
+    /**
+     * Test alternator regulated output voltage using chemistry-specific thresholds.
+     *
+     * @param runningV  PID 0x42 voltage with engine running at idle
+     * @param chem      Battery chemistry type (determines acceptable voltage range)
+     */
+    public static BatteryTestResult testAlternatorVoltage(double runningV, Chemistry chem) {
         Severity sev;
         String remark;
         int score;
 
-        if (runningV >= Thresholds.ALT_MIN && runningV <= Thresholds.ALT_MAX) {
+        double altMin = chem.altMinV;
+        double altMax = chem.altMaxV;
+        double altOptimal = chem.altOptimalV();
+        double altUnder = altMin - 0.3;   // 0.3V below min = fail
+        double altOver = altMax + 0.1;    // 0.1V above max = fail
+
+        if (runningV >= altMin && runningV <= altMax) {
             sev = Severity.PASS;
-            double dist = Math.abs(runningV - Thresholds.ALT_OPTIMAL);
+            double dist = Math.abs(runningV - altOptimal);
             score = (int)(100 - dist * 30);  // closer to optimal = higher score
-            remark = "Alternator output within specification";
-        } else if (runningV >= Thresholds.ALT_UNDER && runningV < Thresholds.ALT_MIN) {
+            remark = "Alternator output within specification (" + chem.displayName + ")";
+        } else if (runningV >= altUnder && runningV < altMin) {
             sev = Severity.WARN;
             score = 55;
             remark = "Slightly undercharging — battery may not reach full charge";
-        } else if (runningV > Thresholds.ALT_MAX && runningV <= Thresholds.ALT_OVER) {
+        } else if (runningV > altMax && runningV <= altOver) {
             sev = Severity.WARN;
             score = 50;
             remark = "Slightly overcharging — check voltage regulator, battery may overheat";
-        } else if (runningV < Thresholds.ALT_UNDER) {
+        } else if (runningV < altUnder) {
             sev = Severity.FAIL;
             score = 20;
             remark = "Undercharging — alternator or regulator likely faulty";
@@ -644,26 +818,30 @@ public final class BatteryTester {
      * @param isAgm            True for AGM/Gel, false for flooded
      * @param tropicalClimate  True if operated in hot climate (>35°C avg summer)
      */
+    /** Test 11: Battery Life Estimation */
     public static BatteryTestResult testBatteryLife(double soh, int ageMonths,
                                                      boolean isAgm, boolean tropicalClimate) {
+        return testBatteryLife(soh, ageMonths, isAgm ? Chemistry.AGM : Chemistry.FLOODED, tropicalClimate);
+    }
+
+    /** Test 11: Battery Life Estimation — full chemistry support. */
+    public static BatteryTestResult testBatteryLife(double soh, int ageMonths,
+                                                     Chemistry chem, boolean tropicalClimate) {
         // Expected service life to reach 80% SOH (months)
-        double baseLife = isAgm ? 54.0 : 42.0;
+        double baseLife = chem.baseLifeMonths;
         if (tropicalClimate) baseLife *= 0.70;
 
         double remainingMonths;
 
         if (ageMonths > 0) {
-            // Known age — compute degradation rate from actual data
-            double degradationRate = (100.0 - soh) / ageMonths; // %/month
+            double degradationRate = (100.0 - soh) / ageMonths;
             if (degradationRate <= 0) {
                 remainingMonths = baseLife - ageMonths;
             } else {
-                // Linear extrapolation to 40% SOH (replacement threshold)
                 remainingMonths = (soh - 40.0) / degradationRate;
             }
             remainingMonths = Math.max(0, remainingMonths);
         } else {
-            // Unknown age — estimate from SOH assuming average degradation
             double avgRate = 100.0 / baseLife;
             double estimatedAge = (100.0 - soh) / avgRate;
             remainingMonths = baseLife - estimatedAge;
@@ -691,7 +869,7 @@ public final class BatteryTester {
             remark = "Replace immediately — end of life";
         }
 
-        String batteryType = isAgm ? "AGM/Gel" : "Flooded";
+        String batteryType = chem.displayName;
         String climateNote = tropicalClimate ? " (tropical climate)" : "";
 
         return new BatteryTestResult(
@@ -746,6 +924,27 @@ public final class BatteryTester {
     //  Full Report Builder
     // ─────────────────────────────────────────────────────────────
 
+    /** Backward-compat version — defaults to FLOODED chemistry. */
+    public static BatteryReport buildFullReport(
+            double restingV, double runningV, double crankMinV,
+            double noLoadV, double fullLoadV,
+            double postLoadV, double recoveredV, double recoverySec,
+            double highRpmV,
+            List<Double> rippleSamples,
+            double drainStartV, double drainEndV, double drainHours,
+            double recoveryDelta, int batteryAgeMonths,
+            boolean isAgm, boolean tropicalClimate) {
+        return buildFullReport(
+                restingV, runningV, crankMinV,
+                noLoadV, fullLoadV,
+                postLoadV, recoveredV, recoverySec,
+                highRpmV, rippleSamples,
+                drainStartV, drainEndV, drainHours,
+                recoveryDelta, batteryAgeMonths,
+                isAgm ? Chemistry.AGM : Chemistry.FLOODED,
+                tropicalClimate);
+    }
+
     /**
      * Build a full battery + charging system report from all available data.
      * Any test whose input is missing (null / negative) is skipped.
@@ -765,7 +964,7 @@ public final class BatteryTester {
      * @param drainHours   Hours between drain readings (or -1)
      * @param recoveryDelta Voltage recovery delta for SOH (or -1)
      * @param batteryAgeMonths Battery age in months (or -1)
-     * @param isAgm        True for AGM/Gel battery type
+     * @param chem         Battery chemistry type
      * @param tropicalClimate True for hot climate operation
      */
     public static BatteryReport buildFullReport(
@@ -776,24 +975,24 @@ public final class BatteryTester {
             List<Double> rippleSamples,
             double drainStartV, double drainEndV, double drainHours,
             double recoveryDelta, int batteryAgeMonths,
-            boolean isAgm, boolean tropicalClimate) {
+            Chemistry chem, boolean tropicalClimate) {
 
         List<BatteryTestResult> results = new ArrayList<>();
 
-        // Test 1: State of Charge
+        // Test 1: State of Charge (chemistry-aware)
         if (restingV > 0) {
-            results.add(testStateOfCharge(restingV));
+            results.add(testStateOfCharge(restingV, chem));
         }
 
-        // Test 2: Battery Health
+        // Test 2: Battery Health (chemistry-aware)
         if (restingV > 0) {
             double crank = crankMinV > 0 ? crankMinV : 0;
-            results.add(testBatteryHealth(restingV, crank));
+            results.add(testBatteryHealth(restingV, crank, chem));
         }
 
-        // Test 3: Alternator Voltage
+        // Test 3: Alternator Voltage (chemistry-aware thresholds)
         if (runningV > 0) {
-            results.add(testAlternatorVoltage(runningV));
+            results.add(testAlternatorVoltage(runningV, chem));
         }
 
         // Test 4: Voltage Drop
@@ -846,7 +1045,7 @@ public final class BatteryTester {
         // Test 11: Battery Life Estimate
         if (computedSoh > 0) {
             int ageMonths = batteryAgeMonths > 0 ? batteryAgeMonths : -1;
-            results.add(testBatteryLife(computedSoh, ageMonths, isAgm, tropicalClimate));
+            results.add(testBatteryLife(computedSoh, ageMonths, chem, tropicalClimate));
         }
 
         // Compute weighted overall score

@@ -1,8 +1,19 @@
 # OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.4.5** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.4.7** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
+
+---
+
+## What's New in 3.4.6
+
+**Multi-Chemistry Battery Support** — Battery Tester now supports 6 battery chemistries with chemistry-specific voltage tables and thresholds:
+- Flooded (Standard), AGM (Absorbent Glass Mat), EFB (Enhanced Flooded)
+- Gel Cell, Calcium (Ca/Ca), LiFePO4 (Lithium)
+- Each chemistry has accurate SoC lookup tables (e.g., LiFePO4: 13.30V = 100%, 12.50V = 0%)
+- Alternator thresholds adjust per chemistry (AGM: 14.0-14.8V, LiFePO4: 14.0-14.6V, Flooded: 13.8-14.7V)
+- Life expectancy calculations account for chemistry type and tropical climate
 
 ---
 

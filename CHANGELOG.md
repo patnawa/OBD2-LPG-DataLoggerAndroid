@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.7] - 2026-07-05
+### Changed
+- **Redesigned Home Screen Layout**: Replaced the outdated, cramped side-by-side card grid with a premium, responsive single-column Control Center. Features horizontal MaterialCardViews with theme icons, clean descriptions, and navigation indicators to prevent text wrapping on narrow devices.
+- **Active Vehicle Status Dashboard**: Added a new flat status card featuring real-time fields for chassis VIN, battery voltage, detected OBD2 adapter, and active protocol (replaces old static greetings).
+- **Cleaned Resource Duplications**: Resolved Gradle build merge failure by removing duplicate translation resource definitions (e.g., `battery_test_resting`) across all strings files (15 translation files).
+
+## [3.4.6] - 2026-07-05
+
+### Added
+- **Multi-chemistry battery support** — Battery Tester now supports 6 battery chemistries with chemistry-specific voltage tables and thresholds:
+  - **Flooded (Standard)** — 12.65V = 100% SoC
+  - **AGM (Absorbent Glass Mat)** — 12.80V = 100% SoC, 54-month base life
+  - **EFB (Enhanced Flooded)** — 12.70V = 100% SoC, 48-month base life
+  - **Gel Cell** — 12.75V = 100% SoC, 48-month base life
+  - **Calcium (Ca/Ca)** — 12.75V = 100% SoC
+  - **LiFePO4 (Lithium)** — 13.30V = 100% SoC, 120-month base life
+- **Chemistry enum** in `BatteryTester.Java` with properties for `fullRestV`, `altMinV`, `altMaxV`, `baseLifeMonths`
+- **Chemistry-specific alternator thresholds** — AGM batteries accept 14.0-14.8V, LiFePO4 accepts 14.0-14.6V, Flooded accepts 13.8-14.7V
+- **Chemistry-aware methods** — `voltageToSoC()`, `testStateOfCharge()`, `testBatteryHealth()`, `testAlternatorVoltage()`, `buildFullReport()` all accept `Chemistry` parameter
+- **Spinner integration** — Battery Tester panel now has a dropdown to select battery type; selection flows through to all calculations and reports
+
+### Changed
+- **Battery type dropdown** — Expanded from 3 options (Flooded/AGM/Calcium) to 6 full chemistries
+- **SoC calculations** — Each chemistry uses accurate voltage-to-SoC lookup tables (e.g., LiFePO4 has a flat discharge curve with 90% range between 13.1-13.3V)
+- **Health classification thresholds** — Adjusted proportionally to each chemistry's `fullRestV`
+- **Life expectancy** — `testBatteryLife()` now uses chemistry-specific `baseLifeMonths` and applies tropical climate derating
+- **Live display** — `updateBatteryMonitor()` shows chemistry name in status text (e.g., "12.65 V | SoC: 95% [AGM]")
+- **Full diagnostic report** — Displays "Battery type: AGM" or other selected chemistry in summary
+
+### Technical Details
+- Added `BatteryTester.Chemistry` enum with `fromSpinner(String)` parser
+- Added overloaded methods for backward compatibility — old 2-arg signatures delegate to new Chemistry-aware versions
+- `buildFullReport()` signature changed from `boolean isAgm` to `Chemistry chem` — all callers updated
+
 ## [3.4.5] - 2026-07-05
 ### Changed
 - **Professional status chip in top toolbar** — Connection status + VIN now wrapped in a rounded pill (bg_status_chip.xml) with a colored connection dot (green/amber/red), status text, divider, and VIN. Syncs with the bottom status strip.

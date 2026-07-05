@@ -33,13 +33,39 @@
                 android:contentDescription="Go Home"
                 android:visibility="gone" />
 
+            <!-- Start/Stop logging button (declared first for RelativeLayout constraint reference) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/fabLog"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_toStartOf="@id/btnThemeToggle"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="6dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="START"
+                android:textColor="@color/background"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"
+                app:backgroundTint="@color/primary"
+                app:cornerRadius="16dp"
+                app:elevation="1dp"
+                app:icon="@android:drawable/ic_media_play"
+                app:iconSize="14dp"
+                app:iconTint="@color/background"
+                app:iconPadding="4dp" />
+
             <!-- Connection status chip -->
             <LinearLayout
                 android:id="@+id/statusLayout"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="32dp"
                 android:layout_centerVertical="true"
                 android:layout_toEndOf="@id/btnGoHome"
+                android:layout_toStartOf="@id/fabLog"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:background="@drawable/bg_status_chip"
@@ -77,33 +103,12 @@
                     android:text="VIN: ---"
                     android:textColor="@color/muted"
                     android:textSize="11sp"
-                    android:singleLine="true" />
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:maxWidth="120dp" />
             </LinearLayout>
 
-            <!-- Start/Stop logging button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/fabLog"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_toStartOf="@id/btnThemeToggle"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="6dp"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:text="START"
-                android:textColor="@color/background"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.05"
-                app:backgroundTint="@color/primary"
-                app:cornerRadius="16dp"
-                app:elevation="1dp"
-                app:icon="@android:drawable/ic_media_play"
-                app:iconSize="14dp"
-                app:iconTint="@color/background"
-                app:iconPadding="4dp" />
+
 
             <ImageButton
                 android:id="@+id/btnThemeToggle"
@@ -260,7 +265,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <!-- ===== HOME MENU PANEL ===== -->
             <LinearLayout
                 android:id="@+id/panelHome"
                 android:layout_width="match_parent"
@@ -272,604 +276,578 @@
                 <FrameLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bg_hero_gradient">
-
-                    <!-- Decorative subtle circles -->
-                    <View
-                        android:layout_width="120dp"
-                        android:layout_height="120dp"
-                        android:layout_gravity="top|end"
-                        android:layout_marginTop="-40dp"
-                        android:layout_marginEnd="-30dp"
-                        android:alpha="0.08"
-                        android:background="#FFFFFF" />
+                    android:background="@drawable/bg_hero_gradient"
+                    android:paddingTop="24dp"
+                    android:paddingBottom="24dp"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:paddingStart="20dp"
-                        android:paddingEnd="20dp"
-                        android:paddingTop="20dp"
-                        android:paddingBottom="24dp">
+                        android:orientation="vertical">
 
-                        <!-- App badge -->
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:layout_marginBottom="12dp">
-
-                            <View
-                                android:layout_width="6dp"
-                                android:layout_height="6dp"
-                                android:background="#60A5FA"
-                                android:layout_marginEnd="8dp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/home_greeting"
-                                android:textColor="#93C5FD"
-                                android:textSize="11sp"
-                                android:textStyle="bold"
-                                android:letterSpacing="0.15" />
-                        </LinearLayout>
-
-                        <!-- Title row -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical">
-
-                            <ImageView
-                                android:layout_width="40dp"
-                                android:layout_height="40dp"
-                                android:src="@drawable/ic_dashboard"
-                                app:tint="#FFFFFF"
-                                android:layout_marginEnd="14dp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/home_title"
-                                android:textColor="#FFFFFF"
-                                android:textSize="24sp"
-                                android:textStyle="bold"
-                                android:letterSpacing="-0.02" />
-                        </LinearLayout>
-
-                        <!-- Subtitle -->
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="OBD2 · LPG Tuning Suite"
-                            android:textColor="#BFDBFE"
-                            android:textSize="12sp"
-                            android:layout_marginTop="6dp"
-                            android:layout_marginStart="54dp" />
-                    </LinearLayout>
+                            android:text="TUNERMAP PRO"
+                            android:textColor="#FFFFFF"
+                            android:textSize="26sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="-0.02" />
 
-                    <!-- Bottom rounded fade to background -->
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="12dp"
-                        android:layout_gravity="bottom"
-                        android:background="@color/background" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="PROFESSIONAL OBD2 &amp; LPG TUNING"
+                            android:textColor="#BFDBFE"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.1"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
                 </FrameLayout>
 
-                <!-- ===== Sections Container ===== -->
+                <!-- Section Container -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingBottom="16dp">
+                    android:padding="16dp">
 
-                    <!-- Section: Main Features -->
+                    <!-- ===== SYSTEM STATUS SUMMARY ===== -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="24dp"
+                        app:cardBackgroundColor="@color/surface2"
+                        app:cardCornerRadius="4dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="VEHICLE INTERFACE STATUS"
+                                android:textColor="@color/muted"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:letterSpacing="0.08"
+                                android:layout_marginBottom="12dp" />
+
+                            <GridLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:columnCount="2"
+                                android:rowCount="2"
+                                android:useDefaultMargins="false">
+
+                                <!-- Row 1 Col 1: VIN -->
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_columnWeight="1"
+                                    android:orientation="vertical"
+                                    android:layout_marginBottom="12dp"
+                                    android:layout_marginEnd="8dp">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="VIN"
+                                        android:textColor="@color/muted"
+                                        android:textSize="9sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/txtHomeVin"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="---"
+                                        android:textColor="@color/text"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold"
+                                        android:layout_marginTop="2dp" />
+                                </LinearLayout>
+
+                                <!-- Row 1 Col 2: Voltage -->
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_columnWeight="1"
+                                    android:orientation="vertical"
+                                    android:layout_marginBottom="12dp">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="VOLTAGE"
+                                        android:textColor="@color/muted"
+                                        android:textSize="9sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/txtHomeVoltage"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="---"
+                                        android:textColor="@color/text"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold"
+                                        android:layout_marginTop="2dp" />
+                                </LinearLayout>
+
+                                <!-- Row 2 Col 1: Adapter -->
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_columnWeight="1"
+                                    android:orientation="vertical"
+                                    android:layout_marginEnd="8dp">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="OBD2 ADAPTER"
+                                        android:textColor="@color/muted"
+                                        android:textSize="9sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/txtHomeAdapter"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="---"
+                                        android:textColor="@color/text"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold"
+                                        android:layout_marginTop="2dp" />
+                                </LinearLayout>
+
+                                <!-- Row 2 Col 2: Protocol -->
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_columnWeight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="PROTOCOL"
+                                        android:textColor="@color/muted"
+                                        android:textSize="9sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/txtHomeProtocol"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="---"
+                                        android:textColor="@color/text"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold"
+                                        android:layout_marginTop="2dp" />
+                                </LinearLayout>
+
+                            </GridLayout>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- ===== SECTION 1: TUNING & DATA ===== -->
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="MAIN FEATURES"
-                        android:textColor="@color/muted"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.08"
-                        android:layout_marginTop="8dp"
-                        android:layout_marginBottom="12dp" />
-
-                    <!-- Row 1: Dashboard & Gauges -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="10dp">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:id="@+id/cardHomeDashboard"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="6dp"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:foreground="?attr/selectableItemBackground"
-                            app:cardBackgroundColor="@color/surface"
-                            app:cardCornerRadius="14dp"
-                            app:cardElevation="1dp">
-
-                            <RelativeLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:padding="16dp">
-
-                                <FrameLayout
-                                    android:id="@+id/iconFrameDash"
-                                    android:layout_width="44dp"
-                                    android:layout_height="44dp"
-                                    android:layout_alignParentStart="true"
-                                    android:layout_centerVertical="true"
-                                    android:background="@drawable/bg_icon_dashboard">
-
-                                    <ImageView
-                                        android:layout_width="22dp"
-                                        android:layout_height="22dp"
-                                        android:layout_gravity="center"
-                                        android:src="@drawable/ic_dashboard"
-                                        app:tint="#FFFFFF" />
-                                </FrameLayout>
-
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:layout_toEndOf="@id/iconFrameDash"
-                                    android:layout_toStartOf="@id/chevronDash"
-                                    android:layout_centerVertical="true"
-                                    android:orientation="vertical"
-                                    android:layout_marginStart="12dp">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_dashboard_title"
-                                        android:textColor="@color/text"
-                                        android:textSize="14sp"
-                                        android:textStyle="bold" />
-
-                                    <TextView
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_dashboard_desc"
-                                        android:textColor="@color/muted"
-                                        android:textSize="11sp"
-                                        android:maxLines="2"
-                                        android:ellipsize="end"
-                                        android:layout_marginTop="2dp" />
-                                </LinearLayout>
-
-                                <TextView
-                                    android:id="@+id/chevronDash"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_alignParentEnd="true"
-                                    android:layout_centerVertical="true"
-                                    android:text="›"
-                                    android:textColor="@color/muted"
-                                    android:textSize="22sp"
-                                    android:textStyle="bold"
-                                    android:alpha="0.5" />
-                            </RelativeLayout>
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:id="@+id/cardHomeGauges"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginStart="6dp"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:foreground="?attr/selectableItemBackground"
-                            app:cardBackgroundColor="@color/surface"
-                            app:cardCornerRadius="14dp"
-                            app:cardElevation="1dp">
-
-                            <RelativeLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:padding="16dp">
-
-                                <FrameLayout
-                                    android:id="@+id/iconFrameGauge"
-                                    android:layout_width="44dp"
-                                    android:layout_height="44dp"
-                                    android:layout_alignParentStart="true"
-                                    android:layout_centerVertical="true"
-                                    android:background="@drawable/bg_icon_gauges">
-
-                                    <ImageView
-                                        android:layout_width="22dp"
-                                        android:layout_height="22dp"
-                                        android:layout_gravity="center"
-                                        android:src="@drawable/ic_speed"
-                                        app:tint="#FFFFFF" />
-                                </FrameLayout>
-
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:layout_toEndOf="@id/iconFrameGauge"
-                                    android:layout_toStartOf="@id/chevronGauge"
-                                    android:layout_centerVertical="true"
-                                    android:orientation="vertical"
-                                    android:layout_marginStart="12dp">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_gauges_title"
-                                        android:textColor="@color/text"
-                                        android:textSize="14sp"
-                                        android:textStyle="bold" />
-
-                                    <TextView
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_gauges_desc"
-                                        android:textColor="@color/muted"
-                                        android:textSize="11sp"
-                                        android:maxLines="2"
-                                        android:ellipsize="end"
-                                        android:layout_marginTop="2dp" />
-                                </LinearLayout>
-
-                                <TextView
-                                    android:id="@+id/chevronGauge"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_alignParentEnd="true"
-                                    android:layout_centerVertical="true"
-                                    android:text="›"
-                                    android:textColor="@color/muted"
-                                    android:textSize="22sp"
-                                    android:textStyle="bold"
-                                    android:alpha="0.5" />
-                            </RelativeLayout>
-                        </com.google.android.material.card.MaterialCardView>
-                    </LinearLayout>
-
-                    <!-- Row 2: Tuning Map & DTC -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="20dp">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:id="@+id/cardHomeMap"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="6dp"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:foreground="?attr/selectableItemBackground"
-                            app:cardBackgroundColor="@color/surface"
-                            app:cardCornerRadius="14dp"
-                            app:cardElevation="1dp">
-
-                            <RelativeLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:padding="16dp">
-
-                                <FrameLayout
-                                    android:id="@+id/iconFrameMap"
-                                    android:layout_width="44dp"
-                                    android:layout_height="44dp"
-                                    android:layout_alignParentStart="true"
-                                    android:layout_centerVertical="true"
-                                    android:background="@drawable/bg_icon_map">
-
-                                    <ImageView
-                                        android:layout_width="22dp"
-                                        android:layout_height="22dp"
-                                        android:layout_gravity="center"
-                                        android:src="@drawable/ic_map"
-                                        app:tint="#FFFFFF" />
-                                </FrameLayout>
-
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:layout_toEndOf="@id/iconFrameMap"
-                                    android:layout_toStartOf="@id/chevronMap"
-                                    android:layout_centerVertical="true"
-                                    android:orientation="vertical"
-                                    android:layout_marginStart="12dp">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_map_title"
-                                        android:textColor="@color/text"
-                                        android:textSize="14sp"
-                                        android:textStyle="bold" />
-
-                                    <TextView
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_map_desc"
-                                        android:textColor="@color/muted"
-                                        android:textSize="11sp"
-                                        android:maxLines="2"
-                                        android:ellipsize="end"
-                                        android:layout_marginTop="2dp" />
-                                </LinearLayout>
-
-                                <TextView
-                                    android:id="@+id/chevronMap"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_alignParentEnd="true"
-                                    android:layout_centerVertical="true"
-                                    android:text="›"
-                                    android:textColor="@color/muted"
-                                    android:textSize="22sp"
-                                    android:textStyle="bold"
-                                    android:alpha="0.5" />
-                            </RelativeLayout>
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:id="@+id/cardHomeDtc"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginStart="6dp"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:foreground="?attr/selectableItemBackground"
-                            app:cardBackgroundColor="@color/surface"
-                            app:cardCornerRadius="14dp"
-                            app:cardElevation="1dp">
-
-                            <RelativeLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:padding="16dp">
-
-                                <FrameLayout
-                                    android:id="@+id/iconFrameDtc"
-                                    android:layout_width="44dp"
-                                    android:layout_height="44dp"
-                                    android:layout_alignParentStart="true"
-                                    android:layout_centerVertical="true"
-                                    android:background="@drawable/bg_icon_dtc">
-
-                                    <ImageView
-                                        android:layout_width="22dp"
-                                        android:layout_height="22dp"
-                                        android:layout_gravity="center"
-                                        android:src="@drawable/ic_build"
-                                        app:tint="#FFFFFF" />
-                                </FrameLayout>
-
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:layout_toEndOf="@id/iconFrameDtc"
-                                    android:layout_toStartOf="@id/chevronDtc"
-                                    android:layout_centerVertical="true"
-                                    android:orientation="vertical"
-                                    android:layout_marginStart="12dp">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_dtc_title"
-                                        android:textColor="@color/text"
-                                        android:textSize="14sp"
-                                        android:textStyle="bold" />
-
-                                    <TextView
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_dtc_desc"
-                                        android:textColor="@color/muted"
-                                        android:textSize="11sp"
-                                        android:maxLines="2"
-                                        android:ellipsize="end"
-                                        android:layout_marginTop="2dp" />
-                                </LinearLayout>
-
-                                <TextView
-                                    android:id="@+id/chevronDtc"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_alignParentEnd="true"
-                                    android:layout_centerVertical="true"
-                                    android:text="›"
-                                    android:textColor="@color/muted"
-                                    android:textSize="22sp"
-                                    android:textStyle="bold"
-                                    android:alpha="0.5" />
-                            </RelativeLayout>
-                        </com.google.android.material.card.MaterialCardView>
-                    </LinearLayout>
-
-                    <!-- Section: Tools -->
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="TOOLS"
+                        android:text="TUNING &amp; REAL-TIME DATA"
                         android:textColor="@color/muted"
                         android:textSize="11sp"
                         android:textStyle="bold"
                         android:letterSpacing="0.08"
                         android:layout_marginBottom="12dp" />
 
-                    <!-- Row 3: Battery & Logs -->
-                    <LinearLayout
+                    <!-- Live Dashboard Card -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeDashboard"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal">
+                        android:layout_marginBottom="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="4dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
 
-                        <com.google.android.material.card.MaterialCardView
-                            android:id="@+id/cardHomeBattery"
-                            android:layout_width="0dp"
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="6dp"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:foreground="?attr/selectableItemBackground"
-                            app:cardBackgroundColor="@color/surface"
-                            app:cardCornerRadius="14dp"
-                            app:cardElevation="1dp">
+                            android:orientation="horizontal"
+                            android:padding="14dp"
+                            android:gravity="center_vertical">
 
-                            <RelativeLayout
-                                android:layout_width="match_parent"
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_dashboard"
+                                app:tint="@color/primary"
+                                android:layout_marginEnd="14dp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:padding="16dp">
-
-                                <FrameLayout
-                                    android:id="@+id/iconFrameBatt"
-                                    android:layout_width="44dp"
-                                    android:layout_height="44dp"
-                                    android:layout_alignParentStart="true"
-                                    android:layout_centerVertical="true"
-                                    android:background="@drawable/bg_icon_battery">
-
-                                    <ImageView
-                                        android:layout_width="22dp"
-                                        android:layout_height="22dp"
-                                        android:layout_gravity="center"
-                                        android:src="@drawable/ic_battery"
-                                        app:tint="#FFFFFF" />
-                                </FrameLayout>
-
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:layout_toEndOf="@id/iconFrameBatt"
-                                    android:layout_toStartOf="@id/chevronBatt"
-                                    android:layout_centerVertical="true"
-                                    android:orientation="vertical"
-                                    android:layout_marginStart="12dp">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_battery_title"
-                                        android:textColor="@color/text"
-                                        android:textSize="14sp"
-                                        android:textStyle="bold" />
-
-                                    <TextView
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_battery_desc"
-                                        android:textColor="@color/muted"
-                                        android:textSize="11sp"
-                                        android:maxLines="2"
-                                        android:ellipsize="end"
-                                        android:layout_marginTop="2dp" />
-                                </LinearLayout>
+                                android:layout_weight="1"
+                                android:orientation="vertical">
 
                                 <TextView
-                                    android:id="@+id/chevronBatt"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:layout_alignParentEnd="true"
-                                    android:layout_centerVertical="true"
-                                    android:text="›"
-                                    android:textColor="@color/muted"
-                                    android:textSize="22sp"
-                                    android:textStyle="bold"
-                                    android:alpha="0.5" />
-                            </RelativeLayout>
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:id="@+id/cardHomeLogs"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginStart="6dp"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:foreground="?attr/selectableItemBackground"
-                            app:cardBackgroundColor="@color/surface"
-                            app:cardCornerRadius="14dp"
-                            app:cardElevation="1dp">
-
-                            <RelativeLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:padding="16dp">
-
-                                <FrameLayout
-                                    android:id="@+id/iconFrameLogs"
-                                    android:layout_width="44dp"
-                                    android:layout_height="44dp"
-                                    android:layout_alignParentStart="true"
-                                    android:layout_centerVertical="true"
-                                    android:background="@drawable/bg_icon_logs">
-
-                                    <ImageView
-                                        android:layout_width="22dp"
-                                        android:layout_height="22dp"
-                                        android:layout_gravity="center"
-                                        android:src="@drawable/ic_list"
-                                        app:tint="#FFFFFF" />
-                                </FrameLayout>
-
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:layout_toEndOf="@id/iconFrameLogs"
-                                    android:layout_toStartOf="@id/chevronLogs"
-                                    android:layout_centerVertical="true"
-                                    android:orientation="vertical"
-                                    android:layout_marginStart="12dp">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_logs_title"
-                                        android:textColor="@color/text"
-                                        android:textSize="14sp"
-                                        android:textStyle="bold" />
-
-                                    <TextView
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/home_card_logs_desc"
-                                        android:textColor="@color/muted"
-                                        android:textSize="11sp"
-                                        android:maxLines="2"
-                                        android:ellipsize="end"
-                                        android:layout_marginTop="2dp" />
-                                </LinearLayout>
+                                    android:text="Live Dashboard"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
 
                                 <TextView
-                                    android:id="@+id/chevronLogs"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:layout_alignParentEnd="true"
-                                    android:layout_centerVertical="true"
-                                    android:text="›"
+                                    android:text="View basic sensor status updates"
                                     android:textColor="@color/muted"
-                                    android:textSize="22sp"
-                                    android:textStyle="bold"
-                                    android:alpha="0.5" />
-                            </RelativeLayout>
-                        </com.google.android.material.card.MaterialCardView>
-                    </LinearLayout>
+                                    android:textSize="11sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="›"
+                                android:textColor="@color/muted"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                android:alpha="0.5" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Gauges Card -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeGauges"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="4dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="14dp"
+                            android:gravity="center_vertical">
+
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_speed"
+                                app:tint="@color/primary"
+                                android:layout_marginEnd="14dp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Sensor Gauges"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Customizable circular dial gauge readouts"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="›"
+                                android:textColor="@color/muted"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                android:alpha="0.5" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Trim Map Card -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeMap"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="24dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="4dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="14dp"
+                            android:gravity="center_vertical">
+
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_map"
+                                app:tint="@color/primary"
+                                android:layout_marginEnd="14dp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Trim Map Pro"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Analyze gas fuel trim deviation maps"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="›"
+                                android:textColor="@color/muted"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                android:alpha="0.5" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+
+                    <!-- ===== SECTION 2: TOOLS & UTILITIES ===== -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="VEHICLE UTILITIES &amp; LOGS"
+                        android:textColor="@color/muted"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.08"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- DTC Card -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeDtc"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="4dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="14dp"
+                            android:gravity="center_vertical">
+
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_build"
+                                app:tint="@color/primary"
+                                android:layout_marginEnd="14dp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Trouble Codes (DTC)"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Scan and clear vehicle fault codes"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="›"
+                                android:textColor="@color/muted"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                android:alpha="0.5" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Battery Card -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeBattery"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="4dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="14dp"
+                            android:gravity="center_vertical">
+
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_battery"
+                                app:tint="@color/primary"
+                                android:layout_marginEnd="14dp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Battery Monitor"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Track module voltage and charging status"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="›"
+                                android:textColor="@color/muted"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                android:alpha="0.5" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- History Logs Card -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeLogs"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="24dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="4dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="14dp"
+                            android:gravity="center_vertical">
+
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_list"
+                                app:tint="@color/primary"
+                                android:layout_marginEnd="14dp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Log Sessions"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Browse past recorded CSV and JSONL log files"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="›"
+                                android:textColor="@color/muted"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                android:alpha="0.5" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
 
                     <!-- Version pill -->
                     <TextView
@@ -877,7 +855,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
-                        android:layout_marginTop="20dp"
+                        android:layout_marginTop="8dp"
                         android:layout_marginBottom="8dp"
                         android:background="@drawable/bg_status_chip"
                         android:paddingStart="14dp"
@@ -885,8 +863,10 @@
                         android:paddingTop="4dp"
                         android:paddingBottom="4dp"
                         android:textColor="@color/muted"
-                        android:textSize="10sp"
-                        android:alpha="0.6" />
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.05" />
+
                 </LinearLayout>
             </LinearLayout>
 

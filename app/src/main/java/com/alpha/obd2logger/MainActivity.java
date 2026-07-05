@@ -70,6 +70,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private boolean isTabChanging = false;
     // --- UI: Header ---
     private TextView headerStatus, headerVin;
+    private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol;
     private View headerStatusDot;
     private android.widget.ImageButton btnSettings;
     private android.widget.ImageButton btnThemeToggle;
@@ -434,6 +435,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         topHeader = findViewById(R.id.topHeader);
         panelHome = findViewById(R.id.panelHome);
+        txtHomeVin = findViewById(R.id.txtHomeVin);
+        txtHomeVoltage = findViewById(R.id.txtHomeVoltage);
+        txtHomeAdapter = findViewById(R.id.txtHomeAdapter);
+        txtHomeProtocol = findViewById(R.id.txtHomeProtocol);
         panelDashboard = findViewById(R.id.panelDashboard);
         panelGauges = findViewById(R.id.panelGauges);
         View panelFuelMap = findViewById(R.id.panelFuelMap);
@@ -463,7 +468,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         batteryTypeSpinner = findViewById(R.id.batteryTypeSpinner);
         batteryAgeInput = findViewById(R.id.batteryAgeInput);
         // Populate battery type dropdown
-        String[] batteryTypes = {"Flooded (Standard)", "AGM/Gel", "Calcium"};
+        String[] batteryTypes = {"Flooded (Standard)", "AGM (Absorbent Glass Mat)", "EFB (Enhanced Flooded)", "Gel Cell", "Calcium (Ca/Ca)", "LiFePO4 (Lithium)"};
         java.util.List<String> typeList = new java.util.ArrayList<>(java.util.Arrays.asList(batteryTypes));
         batteryTypeSpinner.setAdapter(new android.widget.ArrayAdapter<>(
                 this, android.R.layout.simple_spinner_dropdown_item, typeList));
@@ -1893,7 +1898,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             config.vin = vin;
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
-                if (active != null) active.headerVin.setText("VIN: " + vin);
+                if (active != null) {
+                    active.headerVin.setText("VIN: " + vin);
+                    if (active.txtHomeVin != null) active.txtHomeVin.setText(vin);
+                }
             });
         }
 
@@ -2193,7 +2201,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     @Override
     public void onVinRead(String vin) {
-        runOnUiThread(() -> headerVin.setText("VIN: " + vin));
+        runOnUiThread(() -> {
+            headerVin.setText("VIN: " + vin);
+            if (txtHomeVin != null) txtHomeVin.setText(vin);
+        });
     }
 
     @Override
@@ -2307,6 +2318,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         stripRpm.setText(rpm != null ? String.format(Locale.US, "%.0f", rpm) : "--");
         stripSpeed.setText(speed != null ? String.format(Locale.US, "%.0f", speed) : "--");
         if (voltage != null) {
+            String voltStr = String.format(Locale.US, "%.1f V", voltage);
+            if (txtHomeVoltage != null) txtHomeVoltage.setText(voltStr);
             stripVoltage.setText(String.format(Locale.US, "%.1f", voltage));
             // Color-code voltage: red < 12.2, amber 12.2-12.65, green 12.65-14.7, red > 14.8
             if (voltage < 12.2 || voltage > 14.8) {
@@ -2317,6 +2330,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 stripVoltage.setTextColor(getColorCompat(R.color.accent));
             }
         } else {
+            if (txtHomeVoltage != null) txtHomeVoltage.setText("---");
             stripVoltage.setText("--");
             stripVoltage.setTextColor(getColorCompat(R.color.text));
         }
@@ -2353,6 +2367,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (headerStatus != null) {
             headerStatus.setText(state == 2 ? "Connected" : (state == 1 ? "Connecting" : "Offline"));
             headerStatus.setTextColor(getColorCompat(textColor));
+        }
+
+        // Update home screen status
+        if (txtHomeAdapter != null) {
+            txtHomeAdapter.setText(state != 0 && deviceName != null ? deviceName : "---");
+        }
+        if (txtHomeProtocol != null) {
+            if (state == 2) {
+                LoggerConfig cfg = activeInProcessConfig != null ? activeInProcessConfig : readConfigFromUi();
+                txtHomeProtocol.setText(cfg.obdProtocol.name());
+            } else if (state == 0) {
+                txtHomeProtocol.setText("---");
+                if (txtHomeVin != null) txtHomeVin.setText("---");
+                if (txtHomeVoltage != null) txtHomeVoltage.setText("---");
+            }
         }
     }
 
@@ -2493,16 +2522,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (batteryTestView != null) {
             batteryTestView.addSample(v.floatValue());
         }
+        // Get selected chemistry for accurate SoC
+        BatteryTester.Chemistry chem = getSelectedChemistry();
         if (batteryVoltageText != null) {
-            double soc = BatteryTester.voltageToSoC(v);
-            batteryVoltageText.setText(String.format(Locale.US, "%.2f V  |  SoC: %.0f%%", v, soc));
+            double soc = BatteryTester.voltageToSoC(v, chem);
+            batteryVoltageText.setText(String.format(Locale.US, "%.2f V  |  SoC: %.0f%%  [%s]", v, soc, chem.displayName));
         }
         // Update SoC/SoH summary cards (quick estimate)
         if (socValueText != null) {
-            double soc = BatteryTester.voltageToSoC(v);
+            double soc = BatteryTester.voltageToSoC(v, chem);
             socValueText.setText(String.format(Locale.US, "%.0f%%", soc));
-            socVoltageText.setText(String.format(Locale.US, "%.2f V", v));
+            socVoltageText.setText(String.format(Locale.US, "%.2f V (%s)", v, chem.displayName));
         }
+    }
+
+    /** Read the currently selected battery chemistry from the spinner. */
+    private BatteryTester.Chemistry getSelectedChemistry() {
+        if (batteryTypeSpinner != null) {
+            String label = batteryTypeSpinner.getText().toString();
+            return BatteryTester.Chemistry.fromSpinner(label);
+        }
+        return BatteryTester.Chemistry.FLOODED;
     }
 
     /** Test 1: Resting voltage (engine off). */
@@ -2511,14 +2551,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             batteryStatusText.setText("Not connected. Start logging first.");
             return;
         }
-        batteryStatusText.setText("Reading resting voltage (ensure engine is OFF)...");
+        BatteryTester.Chemistry chem = getSelectedChemistry();
+        batteryStatusText.setText("Reading resting voltage (ensure engine is OFF)...\nSelected: " + chem.displayName);
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             double v = readBatteryVoltage();
             restingVoltage = v;
             runOnUiThread(() -> {
                 if (v > 0) {
-                    BatteryTester.BatteryTestResult r = BatteryTester.testStateOfCharge(v);
+                    BatteryTester.BatteryTestResult r = BatteryTester.testStateOfCharge(v, chem);
                     displayBatteryResult(r);
                 } else {
                     batteryStatusText.setText("Failed to read voltage.");
@@ -2664,7 +2705,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             batteryStatusText.setText("Not connected. Start logging first.");
             return;
         }
-        final boolean isAgm = batteryTypeSpinner != null && batteryTypeSpinner.getText().toString().contains("AGM");
+        BatteryTester.Chemistry chem = getSelectedChemistry();
         final int ageMonths;
         if (batteryAgeInput != null) {
             String ageStr = batteryAgeInput.getText().toString().trim();
@@ -2674,7 +2715,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         } else {
             ageMonths = -1;
         }
-        batteryStatusText.setText("Running full battery diagnostic...");
+        batteryStatusText.setText("Running full battery diagnostic...\nType: " + chem.displayName);
         batteryScoreCard.setVisibility(View.GONE);
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
@@ -2694,7 +2735,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     rippleSamples.isEmpty() ? null : new java.util.ArrayList<>(rippleSamples),
                     -1, -1, -1,  // drain values — need long-term monitoring
                     rDelta, ageMonths,
-                    isAgm, true  // tropical climate default for Thailand
+                    chem, true  // tropical climate default for Thailand
             );
 
             runOnUiThread(() -> {

@@ -87,4 +87,51 @@
     <string name="log_destination_label">Speicherort für Protokolle</string>
     <string name="default_log_folder">Downloads/TunerMapPro (Standard)</string>
     <string name="select_folder">Auswählen</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">Batterie und Ladesystem</string>
+    <string name="battery_subtitle">Professionelle 12V-Batteriediagnose über OBD2 PID 0x42</string>
+    <string name="battery_live_graph">Live-Spannungsmonitor</string>
+    <string name="battery_waiting">Mit Fahrzeug verbinden, um Überwachung zu starten</string>
+    <string name="battery_connect_first">Mit Fahrzeug verbinden, dann einen Test durchführen.</string>
+    <string name="battery_soc_label">Ladezustand</string>
+    <string name="battery_soh_label">Gesundheitszustand</string>
+    <string name="battery_overall_score">Gesamtbewertung Batterie</string>
+    <string name="battery_type_hint">Batterietyp</string>
+    <string name="battery_age_hint">Alter (Monate)</string>
+    <string name="battery_test_resting">Ruhespannung</string>
+    <string name="battery_test_alternator">Lichtmaschinen-Test</string>
+    <string name="battery_test_load">Spannungsabfall-Test</string>
+    <string name="battery_test_crank">Anlass-Test</string>
+    <string name="battery_test_ripple">Welligkeit/Dioden-Test</string>
+    <string name="battery_test_full">Vollständige Diagnose</string>
+    <string name="home_card_battery_title">Batterie-Tester</string>
+    <string name="home_card_battery_desc">Batteriezustand, Lichtmaschine und Spannungsabfall-Test</string>
+    <string name="tab_battery">Batterie</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>Überschwemmt (Standard)</item>
+        <item>AGM (Absorbierendes Glasvlies)</item>
+        <item>EFB (Verbesserte überschwenmte)</item>
+        <item>GEL-Zelle</item>
+        <item>Kalzium (Ca/Ca)</item>
+        <item>LiFePO4 (Lithium-Eisenphosphat)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">Überschwemmt</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">GEL</string>
+    <string name="battery_chemistry_calcium">Kalzium</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"Ladeschwellen:
+• 14.4–14.7V: Normales Laden (Motor läuft)
+• 12.6–12.8V: Akku voll (Motor aus)
+• 12.4V: 75%% Ladung
+• 12.2V oder weniger: Schwacher Akku, sofort laden"</string>
+
 </resources>

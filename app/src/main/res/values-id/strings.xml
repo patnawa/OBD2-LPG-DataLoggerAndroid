@@ -87,4 +87,51 @@
     <string name="log_destination_label">Folder Tujuan Log</string>
     <string name="default_log_folder">Downloads/TunerMapPro (Bawaan)</string>
     <string name="select_folder">Pilih</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">Baterai dan Sistem Pengisian</string>
+    <string name="battery_subtitle">Diagnostik baterai 12V profesional via OBD2 PID 0x42</string>
+    <string name="battery_live_graph">Monitor Tegangan Real-time</string>
+    <string name="battery_waiting">Hubungkan ke kendaraan untuk memulai pemantauan</string>
+    <string name="battery_connect_first">Hubungkan ke kendaraan, lalu jalankan pengujian.</string>
+    <string name="battery_soc_label">Status Pengisian</string>
+    <string name="battery_soh_label">Status Kesehatan</string>
+    <string name="battery_overall_score">Skor Keseluruhan Baterai</string>
+    <string name="battery_type_hint">Jenis baterai</string>
+    <string name="battery_age_hint">Umur (bulan)</string>
+    <string name="battery_test_resting">Tegangan Istirahat</string>
+    <string name="battery_test_alternator">Uji Alternator</string>
+    <string name="battery_test_load">Uji Penurunan Tegangan</string>
+    <string name="battery_test_crank">Uji Starter</string>
+    <string name="battery_test_ripple">Uji Ripple/Dioda</string>
+    <string name="battery_test_full">Diagnostik Lengkap</string>
+    <string name="home_card_battery_title">Penguji Baterai</string>
+    <string name="home_card_battery_desc">Kesehatan baterai, alternator dan uji penurunan tegangan</string>
+    <string name="tab_battery">Baterai</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>Tergenang (Standar)</item>
+        <item>AGM (Tikar Kaca Penyerap)</item>
+        <item>EFB (Tergenang Ditingkatkan)</item>
+        <item>Sel Gel</item>
+        <item>Kalsium (Ca/Ca)</item>
+        <item>LiFePO4 (Lithium Iron Phosphate)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">Tergenang</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">Gel</string>
+    <string name="battery_chemistry_calcium">Kalsium</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"Ambang Pengisian:
+• 14.4–14.7V: Pengisian normal (mesin menyala)
+• 12.6–12.8V: Baterai penuh (mesin mati)
+• 12.4V: 75%% terisi
+• 12.2V atau kurang: Baterai lemah, segera isi"</string>
+
 </resources>

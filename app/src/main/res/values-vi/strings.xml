@@ -87,4 +87,51 @@
     <string name="log_destination_label">Thư mục lưu trữ nhật ký</string>
     <string name="default_log_folder">Downloads/TunerMapPro (Mặc định)</string>
     <string name="select_folder">Chọn</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">Pin và Hệ thống Sạc</string>
+    <string name="battery_subtitle">Chẩn đoán pin 12V chuyên nghiệp qua OBD2 PID 0x42</string>
+    <string name="battery_live_graph">Giám sát điện áp thời gian thực</string>
+    <string name="battery_waiting">Kết nối với xe để bắt đầu giám sát</string>
+    <string name="battery_connect_first">Kết nối với xe, rồi chạy thử nghiệm.</string>
+    <string name="battery_soc_label">Trạng thái sạc</string>
+    <string name="battery_soh_label">Trạng thái sức khỏe</string>
+    <string name="battery_overall_score">Điểm tổng pin</string>
+    <string name="battery_type_hint">Loại pin</string>
+    <string name="battery_age_hint">Tuổi (tháng)</string>
+    <string name="battery_test_resting">Điện áp nghỉ</string>
+    <string name="battery_test_alternator">Thử máy phát</string>
+    <string name="battery_test_load">Thử sụt áp</string>
+    <string name="battery_test_crank">Thử khởi động</string>
+    <string name="battery_test_ripple">Thử gợn sóng/Điot</string>
+    <string name="battery_test_full">Chẩn đoán đầy đủ</string>
+    <string name="home_card_battery_title">Kiểm tra Pin</string>
+    <string name="home_card_battery_desc">Sức khỏe pin, máy phát và thử sụt áp</string>
+    <string name="tab_battery">Pin</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>Ngập nước (Tiêu chuẩn)</item>
+        <item>AGM (Thảm Thủy Tinh Hấp Thụ)</item>
+        <item>EFB (Ngập nước Cải tiến)</item>
+        <item>Cell Gel</item>
+        <item>Canxi (Ca/Ca)</item>
+        <item>LiFePO4 (Sắt Phosphate Liti)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">Ngập nước</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">Gel</string>
+    <string name="battery_chemistry_calcium">Canxi</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"Ngưỡng Sạc:
+• 14.4–14.7V: Sạc bình thường (động cơ đang chạy)
+• 12.6–12.8V: Ắc quy đầy (động cơ tắt)
+• 12.4V: 75%% sạc
+• 12.2V trở xuống: Ắc quy yếu, sạc ngay lập tức"</string>
+
 </resources>

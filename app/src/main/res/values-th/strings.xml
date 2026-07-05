@@ -120,13 +120,38 @@
     <string name="battery_type_hint">ประเภทแบตเตอรี่</string>
     <string name="battery_age_hint">อายุ (เดือน)</string>
     <string name="battery_test_resting">วัดแรงดันพัก</string>
-    <string name="battery_test_alternator">ทดสอบหม้อแปลง/อัลเทอร์เนเตอร์</string>
+    <string name="battery_test_alternator">ทดสอบไดชาร์จ (อัลเทอร์เนเตอร์)</string>
     <string name="battery_test_load">ทดสอบแรงดันตก</string>
     <string name="battery_test_crank">ทดสอบแรงดันขณะสตาร์ท</string>
-    <string name="battery_test_ripple">ทดสอบไดโอด/ริปเปิล</string>
-    <string name="battery_test_full">ตรวจสอบรอบครัว</string>
+    <string name="battery_test_ripple">ทดสอบริปเปิล/ไดโอด</string>
+    <string name="battery_test_full">ตรวจวินิจฉัยครบวงจร</string>
     <string name="home_card_battery_title">ทดสอบแบตเตอรี่</string>
     <string name="home_card_battery_desc">ตรวจสุขภาพแบตเตอรี่ อัลเทอร์เนเตอร์ และแรงดันตก</string>
     <string name="tab_battery">แบตเตอรี่</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>แบบน้ำ (มาตรฐาน)</item>
+        <item>AGM (แผ่นใยแก้ดูดซับ)</item>
+        <item>EFB (แบบน้ําปรับปรุ้ง)</item>
+        <item>เจล</item>
+        <item>แคลเซียม (Ca/Ca)</item>
+        <item>LiFePO4 (ลิเธียมเหล็กฟอสเฟต)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">แบบน้ํา</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">เจล</string>
+    <string name="battery_chemistry_calcium">แคลเซียม</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"เกณฑ์การชาร์จ:
+• 14.4–14.7V: ชาร์จปกติ (เครื่องยนต์ทำงาน)
+• 12.6–12.8V: แบตเต็ม (หยุดเครื่องยนต์)
+• 12.4V: ประจุ 75%%
+• 12.2V หรือต่ำกว่า: แบตอ่อน ต้องชาร์จทันที"</string>
 
 </resources>
