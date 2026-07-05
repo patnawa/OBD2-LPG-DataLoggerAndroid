@@ -2891,22 +2891,33 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
 
-        if (currentDownloadFolder == null) {
-            currentDownloadFolder = new File(Environment.getExternalStoragePublicDirectory(
-                    Environment.DIRECTORY_DOWNLOADS), "OBD2LPGLogger");
-        }
-        if (!currentDownloadFolder.exists() && !currentDownloadFolder.mkdirs()) {
-            Toast.makeText(this, "Cannot create Downloads/OBD2LPGLogger folder.", Toast.LENGTH_LONG).show();
-            return;
-        }
+        // Try opening the default Downloads/OBD2LPGLogger folder directly in the file manager
         try {
-            Uri folderUri = FileProvider.getUriForFile(this, getFileProviderAuthority(), currentDownloadFolder);
-            Intent folderIntent = new Intent(Intent.ACTION_VIEW);
-            folderIntent.setDataAndType(folderUri, "vnd.android.document/directory");
-            folderIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(folderIntent);
+            Uri defaultUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:Download%2FOBD2LPGLogger");
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(defaultUri, "vnd.android.document/directory");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(intent);
         } catch (Exception e) {
-            openLatestLogFile();
+            // Fallback 1: Try primary:Download directory
+            try {
+                Uri downloadUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:Download");
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setDataAndType(downloadUri, "vnd.android.document/directory");
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivity(intent);
+            } catch (Exception ex) {
+                // Fallback 2: Try standard ACTION_GET_CONTENT
+                try {
+                    Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.setDataAndType(Uri.parse("content://com.android.externalstorage.documents/document/primary:Download%2FOBD2LPGLogger"), "*/*");
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    startActivity(Intent.createChooser(intent, "Open Logs Folder"));
+                } catch (Exception exc) {
+                    // Fallback 3: Open the latest single file
+                    openLatestLogFile();
+                }
+            }
         }
     }
 
