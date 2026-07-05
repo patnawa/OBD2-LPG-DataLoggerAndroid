@@ -58,6 +58,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private com.google.android.material.bottomnavigation.BottomNavigationView bottomNav;
     private View panelHome, panelDashboard, panelGauges, panelDtc, panelLogs, panelSettings;
     private com.google.android.material.appbar.MaterialToolbar topHeader;
+    private androidx.activity.OnBackPressedCallback onBackPressedCallback;
     // --- UI: Header ---
     private TextView headerStatus, headerVin;
     private android.widget.ImageButton btnSettings;
@@ -210,18 +211,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             bluetoothHintText.setEnabled(false);
             
             setupHomeMenu();
-            getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+            onBackPressedCallback = new androidx.activity.OnBackPressedCallback(false) {
                 @Override
                 public void handleOnBackPressed() {
-                    if (currentTabIndex != 6) {
-                        showTab(6);
-                    } else {
-                        setEnabled(false);
-                        getOnBackPressedDispatcher().onBackPressed();
-                        setEnabled(true);
-                    }
+                    showTab(6);
                 }
-            });
+            };
+            getOnBackPressedDispatcher().addCallback(this, onBackPressedCallback);
 
             if (savedInstanceState != null) {
                 currentTabIndex = savedInstanceState.getInt("current_tab", 6);
@@ -616,6 +612,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         panelLogs.setVisibility(index == 4 ? View.VISIBLE : View.GONE);
         panelSettings.setVisibility(index == 5 ? View.VISIBLE : View.GONE);
         
+        if (onBackPressedCallback != null) {
+            onBackPressedCallback.setEnabled(index != 6);
+        }
+
         if (index == 6) {
             if (bottomNav != null) bottomNav.setVisibility(View.GONE);
             if (topHeader != null) topHeader.setNavigationIcon(null);
