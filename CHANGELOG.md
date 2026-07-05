@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.14] - 2026-07-05
+### Added
+- **Professional Tuner Home Screen Redesign**: Replaced the flat list on the landing page (`panelHome`) with a high-end tuning dashboard layout, including a vehicle status card, action controls, and an organized 2x2 grid representing functional modules (Gauges, Dashboard, Fuel Trim Map, DTC Scanner, Power Monitor).
+- **Real-Time Home Telemetry Widget**: Integrated a horizontal status bar displaying real-time values for RPM, vehicle speed, coolant temperature, and battery voltage.
+### Fixed
+- **Battery Wizard Localization**: Resolved a localization issue where step instructions, dialogue warnings, and progress countdowns for all battery monitor tests (Voltage Drop, Cranking, Alternator, Ripple) were hardcoded in English. Configured all steps to fetch localized string resources dynamically (English & Thai support).
+
 ## [3.4.13] - 2026-07-05
 ### Fixed
 - **Top Menu VIN Visibility**: Modified the top menu status container (`statusLayout`) width to `wrap_content` and increased the `headerVin` maximum width to `200dp` to prevent VIN truncation.

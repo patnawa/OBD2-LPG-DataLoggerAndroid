@@ -161,4 +161,33 @@
 • 12.4V: ประจุ 75%%
 • 12.2V หรือต่ำกว่า: แบตอ่อน ต้องชาร์จทันที"</string>
 
+    <!-- Battery Wizard Steps -->
+    <string name="battery_not_connected">ไม่ได้เชื่อมต่อ กรุณาเริ่มบันทึกข้อมูลก่อน</string>
+    <string name="battery_failed_read_voltage">ไม่สามารถอ่านค่าแรงดันได้</string>
+    <string name="battery_resting_reading">กำลังอ่านค่าแรงดันขณะดับเครื่อง (ตรวจสอบให้แน่ใจว่าดับเครื่องยนต์อยู่)...\nประเภทที่เลือก: %1$s</string>
+    <string name="battery_alt_step1">ขั้นตอนที่ 1: กำลังอ่านค่าแรงดันอัลเทอร์เนเตอร์ขณะเดินเบา (กรุณาให้เครื่องยนต์เดินเบา)...</string>
+    <string name="battery_alt_step2">ขั้นตอนที่ 2: เร่งเครื่องยนต์ค้างไว้ที่ 2500-3000 RPM\nกดตกลงเมื่อพร้อม</string>
+    <string name="battery_alt_high_rpm_title">การทดสอบระบบชาร์จที่รอบสูง</string>
+    <string name="battery_alt_high_rpm_msg">กรุณาเร่งเครื่องยนต์ค้างไว้คงที่ที่ 2500 - 3000 RPM\n\nกดปุ่มตกลงขณะที่เร่งเครื่องค้างไว้เพื่อวัดการควบคุมแรงดันของไดชาร์จภายใต้ภาระงาน</string>
+    <string name="battery_alt_reading_high">กำลังอ่านค่าแรงดันที่รอบสูง...</string>
+    <string name="battery_alt_failed_high">ไม่สามารถอ่านค่าแรงดันที่รอบสูงได้</string>
+    <string name="battery_load_step1">ขั้นตอนที่ 1: กำลังอ่านค่าแรงดันขณะไม่มีภาระงาน (เครื่องยนต์ทำงาน, ปิดอุปกรณ์ไฟฟ้าทั้งหมด)...</string>
+    <string name="battery_load_step2">ขั้นตอนที่ 2: เปิดไฟหน้า, พัดลมลมแรงสุด, แอร์, แผงไล่ฝ้ากระจกหลัง\nกดตกลงเมื่อพร้อม</string>
+    <string name="battery_load_drop_title">การทดสอบแรงดันตก (Voltage Drop)</string>
+    <string name="battery_load_drop_msg">เปิดอุปกรณ์ไฟฟ้าที่มีภาระงานทั้งหมด:\n• ไฟหน้า (ไฟสูง)\n• พัดลมโบลเวอร์ (แรงสุด)\n• แอร์ (A/C)\n• ไล่ฝ้ากระจกหลัง\n\nให้เครื่องยนต์เดินเบาอยู่\n\nกดปุ่มตกลงเมื่อเปิดอุปกรณ์ทั้งหมดแล้ว</string>
+    <string name="battery_load_reading_full">กำลังอ่านค่าแรงดันขณะมีภาระงาน...</string>
+    <string name="battery_load_step3">ขั้นตอนที่ 3: ปิดอุปกรณ์ไฟฟ้าทั้งหมด\nกดตกลงเมื่อพร้อม</string>
+    <string name="battery_recovery_title">การทดสอบการฟื้นตัวของแรงดัน</string>
+    <string name="battery_recovery_msg">ปิดอุปกรณ์ไฟฟ้าทั้งหมด (ไฟหน้า, พัดลม, แอร์, ไล่ฝ้า)\n\nกดปุ่มตกลงเมื่อปิดอุปกรณ์ทั้งหมดแล้ว เพื่อเริ่มตรวจวัดการฟื้นตัวของแรงดันเป็นเวลา 5 วินาที</string>
+    <string name="battery_recovery_sampling">กำลังบันทึกตัวอย่างการฟื้นตัวของแรงดัน...</string>
+    <string name="battery_recovery_monitoring">กำลังตรวจวัดการฟื้นตัว: เหลือเวลาอีก %1$d วินาที...</string>
+    <string name="battery_recovery_failed">ไม่สามารถอ่านค่าแรงดันฟื้นตัวได้</string>
+    <string name="battery_crank_title">การทดสอบแรงดันขณะสตาร์ท</string>
+    <string name="battery_crank_msg">การทดสอบนี้จะบันทึกแรงดันแบตเตอรี่ที่ต่ำที่สุดระหว่างที่สตาร์ทเครื่องยนต์\n\n1. ดับเครื่องยนต์\n2. กดปุ่มเริ่มทดสอบด้านล่าง\n3. สตาร์ทเครื่องยนต์ทันที\n\nระบบจะเก็บตัวอย่างข้อมูลอย่างรวดเร็วเป็นเวลา 5 วินาที</string>
+    <string name="battery_crank_start">เริ่มทดสอบ</string>
+    <string name="battery_crank_sampling">กำลังสุ่มตัวอย่างแรงดันขณะสตาร์ท — สตาร์ทเครื่องยนต์เดี๋ยวนี้!</string>
+    <string name="battery_crank_failed">ไม่สามารถอ่านค่าแรงดันขณะสตาร์ทได้</string>
+    <string name="battery_ripple_sampling">กำลังสุ่มตัวอย่างแรงดันสำหรับการทดสอบริปเปิล (2 วินาที)...</string>
+    <string name="battery_ripple_insufficient">ตัวอย่างข้อมูลไม่เพียงพอสำหรับการทดสอบริปเปิล</string>
+    <string name="battery_full_running">กำลังดำเนินการตรวจวินิจฉัยแบตเตอรี่แบบครอบคลุม...\nประเภทแบตเตอรี่: %1$s</string>
 </resources>

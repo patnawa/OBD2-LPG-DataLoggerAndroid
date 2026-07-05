@@ -70,7 +70,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private boolean isTabChanging = false;
     // --- UI: Header ---
     private TextView headerStatus, headerVin;
-    private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol;
+    private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
     private View headerStatusDot;
     private android.widget.ImageButton btnSettings;
     private android.widget.ImageButton btnThemeToggle;
@@ -439,6 +439,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtHomeVoltage = findViewById(R.id.txtHomeVoltage);
         txtHomeAdapter = findViewById(R.id.txtHomeAdapter);
         txtHomeProtocol = findViewById(R.id.txtHomeProtocol);
+        txtHomeRpm = findViewById(R.id.txtHomeRpm);
+        txtHomeSpeed = findViewById(R.id.txtHomeSpeed);
+        txtHomeCoolant = findViewById(R.id.txtHomeCoolant);
+
+        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnHomeConnect);
+        if (btnHomeConnect != null) {
+            btnHomeConnect.setOnClickListener(v -> {
+                if (running) {
+                    stopLogging();
+                    setFabState(false);
+                } else {
+                    if (!ensureLogFolderSelected()) {
+                        return;
+                    }
+                    startLogging();
+                    setFabState(true);
+                }
+            });
+        }
         panelDashboard = findViewById(R.id.panelDashboard);
         panelGauges = findViewById(R.id.panelGauges);
         View panelFuelMap = findViewById(R.id.panelFuelMap);
@@ -807,14 +826,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
      */
     private void setFabState(boolean isLogging) {
         if (fabLog == null) return;
+        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnHomeConnect);
         if (isLogging) {
             fabLog.setText("STOP");
             fabLog.setIconResource(android.R.drawable.ic_media_pause);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
+            if (btnHomeConnect != null) {
+                btnHomeConnect.setText("DISCONNECT ECU");
+                btnHomeConnect.setIconResource(android.R.drawable.ic_media_pause);
+                btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
+            }
         } else {
             fabLog.setText("START");
             fabLog.setIconResource(android.R.drawable.ic_media_play);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
+            if (btnHomeConnect != null) {
+                btnHomeConnect.setText("CONNECT & TUNE");
+                btnHomeConnect.setIconResource(android.R.drawable.ic_media_play);
+                btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
+            }
         }
     }
 
@@ -2322,6 +2352,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         Double rpm = valueByKey(record, "01_0C");
         Double speed = valueByKey(record, "01_0D");
         Double voltage = valueByKey(record, "01_42");
+        Double coolant = valueByKey(record, "01_05");
 
         stripRpm.setText(rpm != null ? String.format(Locale.US, "%.0f", rpm) : "--");
         stripSpeed.setText(speed != null ? String.format(Locale.US, "%.0f", speed) : "--");
@@ -2341,6 +2372,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (txtHomeVoltage != null) txtHomeVoltage.setText("---");
             stripVoltage.setText("--");
             stripVoltage.setTextColor(getColorCompat(R.color.text));
+        }
+
+        // Live home page telemetry updates
+        if (txtHomeRpm != null) {
+            txtHomeRpm.setText(rpm != null ? String.format(Locale.US, "%.0f RPM", rpm) : "---");
+        }
+        if (txtHomeSpeed != null) {
+            txtHomeSpeed.setText(speed != null ? String.format(Locale.US, "%.0f km/h", speed) : "---");
+        }
+        if (txtHomeCoolant != null) {
+            txtHomeCoolant.setText(coolant != null ? String.format(Locale.US, "%.0f °C", coolant) : "---");
         }
     }
 
@@ -2381,6 +2423,31 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (txtHomeAdapter != null) {
             txtHomeAdapter.setText(state != 0 && deviceName != null ? deviceName : "---");
         }
+        
+        TextView txtHomeConnectionState = findViewById(R.id.txtHomeConnectionState);
+        if (txtHomeConnectionState != null) {
+            txtHomeConnectionState.setText(state == 2 ? "CONNECTED" : (state == 1 ? "CONNECTING" : "DISCONNECTED"));
+            txtHomeConnectionState.setTextColor(getColorCompat(textColor));
+        }
+        
+        View homeStatusDot = findViewById(R.id.homeStatusDot);
+        if (homeStatusDot != null) {
+            homeStatusDot.setBackgroundResource(state == 2 ? R.drawable.bg_status_dot_on : (state == 1 ? R.drawable.bg_status_dot_connecting : R.drawable.bg_status_dot_off));
+        }
+        
+        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnHomeConnect);
+        if (btnHomeConnect != null) {
+            if (state == 2) {
+                btnHomeConnect.setText("DISCONNECT ECU");
+                btnHomeConnect.setIconResource(android.R.drawable.ic_media_pause);
+                btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
+            } else {
+                btnHomeConnect.setText("CONNECT & TUNE");
+                btnHomeConnect.setIconResource(android.R.drawable.ic_media_play);
+                btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
+            }
+        }
+
         if (txtHomeProtocol != null) {
             if (state == 2) {
                 LoggerConfig cfg = activeInProcessConfig != null ? activeInProcessConfig : readConfigFromUi();
@@ -2389,6 +2456,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 txtHomeProtocol.setText("---");
                 if (txtHomeVin != null) txtHomeVin.setText("---");
                 if (txtHomeVoltage != null) txtHomeVoltage.setText("---");
+                
+                // Reset live telemetry stats on home page when disconnected
+                if (txtHomeRpm != null) txtHomeRpm.setText("---");
+                if (txtHomeSpeed != null) txtHomeSpeed.setText("---");
+                if (txtHomeCoolant != null) txtHomeCoolant.setText("---");
             }
         }
     }
@@ -2569,14 +2641,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     /** Test 1: Resting voltage (engine off). */
     private void testBatteryResting() {
         if (currentDriver == null || !currentDriver.isConnected()) {
-            batteryStatusText.setText("Not connected. Start logging first.");
+            batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
         BatteryTester.Chemistry chem = getSelectedChemistry();
         if (currentDriver instanceof SimulationDriver) {
             ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RESTING);
         }
-        batteryStatusText.setText("Reading resting voltage (ensure engine is OFF)...\nSelected: " + chem.getDisplayName(this));
+        batteryStatusText.setText(getString(R.string.battery_resting_reading, chem.getDisplayName(this)));
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             double v = readBatteryVoltage();
@@ -2586,7 +2658,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     BatteryTester.BatteryTestResult r = BatteryTester.testStateOfCharge(v, chem);
                     displayBatteryResult(r);
                 } else {
-                    batteryStatusText.setText("Failed to read voltage.");
+                    batteryStatusText.setText(getString(R.string.battery_failed_read_voltage));
                 }
             });
         });
@@ -2595,14 +2667,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     /** Test 3 & 9: Alternator voltage at idle & Charging system regulation efficiency at high RPM. */
     private void testBatteryAlternator() {
         if (currentDriver == null || !currentDriver.isConnected()) {
-            batteryStatusText.setText("Not connected. Start logging first.");
+            batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
         BatteryTester.Chemistry chem = getSelectedChemistry();
         if (currentDriver instanceof SimulationDriver) {
             ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING);
         }
-        batteryStatusText.setText("Step 1: Reading alternator voltage at idle (keep engine at idle)...");
+        batteryStatusText.setText(getString(R.string.battery_alt_step1));
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             // Sample a few times to get a stable reading
@@ -2618,15 +2690,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             // Also try high-RPM reading (ask user to rev)
             runOnUiThread(() -> {
                 if (idleV > 0) {
-                    batteryStatusText.setText("Step 2: Rev engine and hold at 2500-3000 RPM.\nTap OK when ready.");
+                    batteryStatusText.setText(getString(R.string.battery_alt_step2));
                     new android.app.AlertDialog.Builder(this)
-                            .setTitle("High RPM Charging Test")
-                            .setMessage("Please rev the engine and hold it steady at 2500 - 3000 RPM.\n\nPress OK while holding the RPM to measure the alternator regulation under load.")
-                            .setPositiveButton("OK", (dialog, which) -> {
+                            .setTitle(getString(R.string.battery_alt_high_rpm_title))
+                            .setMessage(getString(R.string.battery_alt_high_rpm_msg))
+                            .setPositiveButton(android.R.string.ok, (dialog, which) -> {
                                 if (currentDriver instanceof SimulationDriver) {
                                     ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING_HIGH);
                                 }
-                                batteryStatusText.setText("Reading high-RPM voltage...");
+                                batteryStatusText.setText(getString(R.string.battery_alt_reading_high));
                                 dtcExecutor.submit(() -> {
                                     double highSum = 0;
                                     int highCount = 0;
@@ -2653,15 +2725,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                             addBatteryResultRow(container, rIdle);
                                             addBatteryResultRow(container, rEff);
                                         } else {
-                                            batteryStatusText.setText("Failed to read high-RPM voltage.");
+                                            batteryStatusText.setText(getString(R.string.battery_alt_failed_high));
                                         }
                                     });
                                 });
                             })
-                            .setNegativeButton("Cancel", null)
+                            .setNegativeButton(android.R.string.cancel, null)
                             .show();
                 } else {
-                    batteryStatusText.setText("Failed to read voltage.");
+                    batteryStatusText.setText(getString(R.string.battery_failed_read_voltage));
                 }
             });
         });
@@ -2670,39 +2742,39 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     /** Test 4 & 5: Voltage drop under electrical load & Voltage recovery after load removal. */
     private void testBatteryLoadDrop() {
         if (currentDriver == null || !currentDriver.isConnected()) {
-            batteryStatusText.setText("Not connected. Start logging first.");
+            batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
         if (currentDriver instanceof SimulationDriver) {
             ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING);
         }
-        batteryStatusText.setText("Step 1: Reading no-load voltage (engine running, accessories OFF)...");
+        batteryStatusText.setText(getString(R.string.battery_load_step1));
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             double noLoad = readBatteryVoltage();
             noLoadVoltage = noLoad;
             runOnUiThread(() -> {
-                batteryStatusText.setText("Step 2: Turn ON headlights, blower, AC, rear defroster.\nTap OK when ready.");
+                batteryStatusText.setText(getString(R.string.battery_load_step2));
                 new android.app.AlertDialog.Builder(this)
-                        .setTitle("Voltage Drop Test")
-                        .setMessage("Turn ON all electrical loads:\n• Headlights (high beam)\n• Blower motor (max)\n• AC\n• Rear defroster\n\nKeep engine at idle.\n\nPress OK when loads are ON.")
-                        .setPositiveButton("OK", (d, w) -> {
+                        .setTitle(getString(R.string.battery_load_drop_title))
+                        .setMessage(getString(R.string.battery_load_drop_msg))
+                        .setPositiveButton(android.R.string.ok, (d, w) -> {
                             if (currentDriver instanceof SimulationDriver) {
                                 ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.LOADED);
                             }
-                            batteryStatusText.setText("Reading full-load voltage...");
+                            batteryStatusText.setText(getString(R.string.battery_load_reading_full));
                             dtcExecutor.submit(() -> {
                                 double fullLoad = readBatteryVoltage();
                                 fullLoadVoltage = fullLoad;
                                 runOnUiThread(() -> {
                                     if (noLoad > 0 && fullLoad > 0) {
                                         // Now show Step 3: Turn OFF accessories to test recovery
-                                        batteryStatusText.setText("Step 3: Turn OFF all accessories.\nTap OK when ready.");
+                                        batteryStatusText.setText(getString(R.string.battery_load_step3));
                                         new android.app.AlertDialog.Builder(this)
-                                                .setTitle("Voltage Recovery Test")
-                                                .setMessage("Turn OFF all electrical loads (headlights, blower, AC, defroster).\n\nPress OK when loads are OFF to begin the 5-second recovery monitoring.")
-                                                .setPositiveButton("OK", (dialog, which) -> {
-                                                    batteryStatusText.setText("Sampling recovery voltage...");
+                                                .setTitle(getString(R.string.battery_recovery_title))
+                                                .setMessage(getString(R.string.battery_recovery_msg))
+                                                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                                                    batteryStatusText.setText(getString(R.string.battery_recovery_sampling));
                                                     dtcExecutor.submit(() -> {
                                                         // 1. Immediately read post-load voltage (right after turning accessories off)
                                                         double postLoad = readBatteryVoltage();
@@ -2715,7 +2787,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                                         // 2. Wait 5 seconds for recovery with a live countdown on screen
                                                         for (int i = 5; i > 0; i--) {
                                                             final int secondsLeft = i;
-                                                            runOnUiThread(() -> batteryStatusText.setText("Recovery monitoring: " + secondsLeft + "s remaining..."));
+                                                            runOnUiThread(() -> batteryStatusText.setText(getString(R.string.battery_recovery_monitoring, secondsLeft)));
                                                             try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
                                                         }
 
@@ -2744,20 +2816,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                                                 addBatteryResultRow(container, rDrop);
                                                                 addBatteryResultRow(container, rRec);
                                                             } else {
-                                                                batteryStatusText.setText("Failed to read recovery voltage.");
+                                                                batteryStatusText.setText(getString(R.string.battery_recovery_failed));
                                                             }
                                                         });
                                                     });
                                                 })
-                                                .setNegativeButton("Cancel", null)
+                                                .setNegativeButton(android.R.string.cancel, null)
                                                 .show();
                                     } else {
-                                        batteryStatusText.setText("Failed to read voltage.");
+                                        batteryStatusText.setText(getString(R.string.battery_failed_read_voltage));
                                     }
                                 });
                             });
                         })
-                        .setNegativeButton("Cancel", null)
+                        .setNegativeButton(android.R.string.cancel, null)
                         .show();
             });
         });
@@ -2766,17 +2838,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     /** Test 6: Cranking voltage — minimum voltage during engine crank. */
     private void testBatteryCranking() {
         if (currentDriver == null || !currentDriver.isConnected()) {
-            batteryStatusText.setText("Not connected. Start logging first.");
+            batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
         new android.app.AlertDialog.Builder(this)
-                .setTitle("Cranking Voltage Test")
-                .setMessage("This test records the minimum battery voltage during engine crank.\n\n1. Turn engine OFF\n2. Press Start below\n3. Immediately crank the engine\n\nThe test will sample rapidly for 5 seconds.")
-                .setPositiveButton("Start", (d, w) -> {
+                .setTitle(getString(R.string.battery_crank_title))
+                .setMessage(getString(R.string.battery_crank_msg))
+                .setPositiveButton(getString(R.string.battery_crank_start), (d, w) -> {
                     if (currentDriver instanceof SimulationDriver) {
                         ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.CRANKING);
                     }
-                    batteryStatusText.setText("Sampling crank voltage — crank the engine NOW!");
+                    batteryStatusText.setText(getString(R.string.battery_crank_sampling));
                     crankMinVoltage = 999;
                     dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
                     dtcExecutor.submit(() -> {
@@ -2794,25 +2866,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 BatteryTester.BatteryTestResult r = BatteryTester.testCrankingVoltage(crankMinVoltage, rest);
                                 displayBatteryResult(r);
                             } else {
-                                batteryStatusText.setText("Failed to read crank voltage.");
+                                batteryStatusText.setText(getString(R.string.battery_crank_failed));
                             }
                         });
                     });
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
 
     /** Test 7: Ripple / diode health — fast sampling of voltage. */
     private void testBatteryRipple() {
         if (currentDriver == null || !currentDriver.isConnected()) {
-            batteryStatusText.setText("Not connected. Start logging first.");
+            batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
         if (currentDriver instanceof SimulationDriver) {
             ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING);
         }
-        batteryStatusText.setText("Sampling voltage for ripple test (2 seconds)...");
+        batteryStatusText.setText(getString(R.string.battery_ripple_sampling));
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             java.util.List<Double> samples = new java.util.ArrayList<>();
@@ -2828,7 +2900,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     BatteryTester.BatteryTestResult r = BatteryTester.testRipple(samples);
                     displayBatteryResult(r);
                 } else {
-                    batteryStatusText.setText("Insufficient samples for ripple test.");
+                    batteryStatusText.setText(getString(R.string.battery_ripple_insufficient));
                 }
             });
         });
@@ -2837,7 +2909,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     /** Full diagnostic — runs all available tests and shows a comprehensive report. */
     private void runFullBatteryDiagnostic() {
         if (currentDriver == null || !currentDriver.isConnected()) {
-            batteryStatusText.setText("Not connected. Start logging first.");
+            batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
         BatteryTester.Chemistry chem = getSelectedChemistry();
@@ -2850,7 +2922,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         } else {
             ageMonths = -1;
         }
-        batteryStatusText.setText("Running full battery diagnostic...\nType: " + chem.getDisplayName(this));
+        batteryStatusText.setText(getString(R.string.battery_full_running, chem.getDisplayName(this)));
         batteryScoreCard.setVisibility(View.GONE);
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
@@ -3304,24 +3376,85 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         Toast.makeText(this, "PDF Report generated: " + pdfFile.getName(), Toast.LENGTH_LONG).show();
     }
 
+    private int dpToPx(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density);
+    }
+
     private void addDtcSection(String title, List<DtcCode> codes, int colorRes, String iconPrefix) {
+        // Create container card for this DTC type section
+        com.google.android.material.card.MaterialCardView sectionCard = new com.google.android.material.card.MaterialCardView(this);
+        sectionCard.setCardBackgroundColor(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.surface)));
+        sectionCard.setRadius(dpToPx(6));
+        sectionCard.setStrokeWidth(dpToPx(1));
+        sectionCard.setStrokeColor(getColorCompat(R.color.border));
+        
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.bottomMargin = dpToPx(16);
+        sectionCard.setLayoutParams(cardParams);
+
+        // Content layout inside the section card
+        LinearLayout sectionContent = new LinearLayout(this);
+        sectionContent.setOrientation(LinearLayout.VERTICAL);
+        sectionContent.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12));
+
+        // Header view inside the section card
+        LinearLayout headerLayout = new LinearLayout(this);
+        headerLayout.setOrientation(LinearLayout.HORIZONTAL);
+        headerLayout.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        headerLayout.setPadding(0, 0, 0, dpToPx(8));
+        
+        // Left accent strip (colored bar representing severity/type)
+        View accentBar = new View(this);
+        accentBar.setBackgroundColor(getColorCompat(colorRes));
+        LinearLayout.LayoutParams accentParams = new LinearLayout.LayoutParams(dpToPx(4), dpToPx(18));
+        accentParams.rightMargin = dpToPx(8);
+        accentBar.setLayoutParams(accentParams);
+        headerLayout.addView(accentBar);
+
+        // Header title
         TextView titleView = new TextView(this);
-        titleView.setText(title + " (" + codes.size() + ")");
+        titleView.setText(title);
         titleView.setTextColor(getColorCompat(colorRes));
         titleView.setTextSize(14);
-        titleView.setPadding(0, 12, 0, 6);
         titleView.setTypeface(null, android.graphics.Typeface.BOLD);
-        dtcListContainer.addView(titleView);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
+        titleView.setLayoutParams(titleParams);
+        headerLayout.addView(titleView);
 
+        // Count badge
+        TextView badgeView = new TextView(this);
+        badgeView.setText(String.valueOf(codes.size()));
+        badgeView.setTextColor(getColorCompat(R.color.surface)); // white text on colored badge
+        badgeView.setTextSize(11);
+        badgeView.setTypeface(null, android.graphics.Typeface.BOLD);
+        badgeView.setPadding(dpToPx(8), dpToPx(2), dpToPx(8), dpToPx(2));
+        badgeView.setBackgroundResource(R.drawable.bg_dtc_badge_pill);
+        badgeView.getBackground().setTint(getColorCompat(colorRes));
+        headerLayout.addView(badgeView);
+
+        sectionContent.addView(headerLayout);
+
+        // Add a divider under header
+        View divider = new View(this);
+        divider.setBackgroundColor(getColorCompat(R.color.border));
+        LinearLayout.LayoutParams divParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(1));
+        divParams.bottomMargin = dpToPx(10);
+        divider.setLayoutParams(divParams);
+        sectionContent.addView(divider);
+
+        // Add the DTC codes inside the container
         for (DtcCode dtc : codes) {
             // Build expandable DTC card with enrichment data
             LinearLayout cardLayout = new LinearLayout(this);
             cardLayout.setOrientation(LinearLayout.VERTICAL);
-            cardLayout.setPadding(10, 8, 10, 8);
+            cardLayout.setPadding(dpToPx(10), dpToPx(8), dpToPx(10), dpToPx(8));
             cardLayout.setBackgroundResource(R.drawable.bg_dtc_card);
             LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            cardLp.bottomMargin = 4;
+            cardLp.bottomMargin = dpToPx(6); // separation between DTC cards
             cardLayout.setLayoutParams(cardLp);
 
             // Severity Color Coding
@@ -3363,7 +3496,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     causesView.setText(causesSb.toString());
                     causesView.setTextColor(getColorCompat(R.color.text));
                     causesView.setTextSize(11);
-                    causesView.setPadding(0, 4, 0, 2);
+                    causesView.setPadding(0, dpToPx(4), 0, dpToPx(2));
                     cardLayout.addView(causesView);
                 }
 
@@ -3378,7 +3511,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     fixesView.setText(fixesSb.toString());
                     fixesView.setTextColor(getColorCompat(R.color.accent));
                     fixesView.setTextSize(11);
-                    fixesView.setPadding(0, 2, 0, 4);
+                    fixesView.setPadding(0, dpToPx(2), 0, dpToPx(4));
                     cardLayout.addView(fixesView);
                 }
 
@@ -3388,7 +3521,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     dcView.setText("    Drive cycles to clear: " + enrich.getDriveCyclesToClear());
                     dcView.setTextColor(getColorCompat(R.color.muted));
                     dcView.setTextSize(10);
-                    dcView.setPadding(0, 2, 0, 0);
+                    dcView.setPadding(0, dpToPx(2), 0, 0);
                     cardLayout.addView(dcView);
                 }
             }
@@ -3415,8 +3548,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 Toast.makeText(this, "Searching " + dtc.getCode() + " details on Google...", Toast.LENGTH_SHORT).show();
             });
 
-            dtcListContainer.addView(cardLayout);
+            sectionContent.addView(cardLayout);
         }
+
+        sectionCard.addView(sectionContent);
+        dtcListContainer.addView(sectionCard);
     }
 
     private void showScanHistoryDialog() {

@@ -166,4 +166,33 @@
 • 12.4V: 75%% charged
 • 12.2V or less: Weak battery, charge immediately"</string>
 
+    <!-- Battery Wizard Steps -->
+    <string name="battery_not_connected">Not connected. Start logging first.</string>
+    <string name="battery_failed_read_voltage">Failed to read voltage.</string>
+    <string name="battery_resting_reading">Reading resting voltage (ensure engine is OFF)...\nSelected: %1$s</string>
+    <string name="battery_alt_step1">Step 1: Reading alternator voltage at idle (keep engine at idle)...</string>
+    <string name="battery_alt_step2">Step 2: Rev engine and hold at 2500-3000 RPM.\nTap OK when ready.</string>
+    <string name="battery_alt_high_rpm_title">High RPM Charging Test</string>
+    <string name="battery_alt_high_rpm_msg">Please rev the engine and hold it steady at 2500 - 3000 RPM.\n\nPress OK while holding the RPM to measure the alternator regulation under load.</string>
+    <string name="battery_alt_reading_high">Reading high-RPM voltage...</string>
+    <string name="battery_alt_failed_high">Failed to read high-RPM voltage.</string>
+    <string name="battery_load_step1">Step 1: Reading no-load voltage (engine running, accessories OFF)...</string>
+    <string name="battery_load_step2">Step 2: Turn ON headlights, blower, AC, rear defroster.\nTap OK when ready.</string>
+    <string name="battery_load_drop_title">Voltage Drop Test</string>
+    <string name="battery_load_drop_msg">Turn ON all electrical loads:\n• Headlights (high beam)\n• Blower motor (max)\n• AC\n• Rear defroster\n\nKeep engine at idle.\n\nPress OK when loads are ON.</string>
+    <string name="battery_load_reading_full">Reading full-load voltage...</string>
+    <string name="battery_load_step3">Step 3: Turn OFF all accessories.\nTap OK when ready.</string>
+    <string name="battery_recovery_title">Voltage Recovery Test</string>
+    <string name="battery_recovery_msg">Turn OFF all electrical loads (headlights, blower, AC, defroster).\n\nPress OK when loads are OFF to begin the 5-second recovery monitoring.</string>
+    <string name="battery_recovery_sampling">Sampling recovery voltage...</string>
+    <string name="battery_recovery_monitoring">Recovery monitoring: %1$ds remaining...</string>
+    <string name="battery_recovery_failed">Failed to read recovery voltage.</string>
+    <string name="battery_crank_title">Cranking Voltage Test</string>
+    <string name="battery_crank_msg">This test records the minimum battery voltage during engine crank.\n\n1. Turn engine OFF\n2. Press Start below\n3. Immediately crank the engine\n\nThe test will sample rapidly for 5 seconds.</string>
+    <string name="battery_crank_start">Start</string>
+    <string name="battery_crank_sampling">Sampling crank voltage — crank the engine NOW!</string>
+    <string name="battery_crank_failed">Failed to read crank voltage.</string>
+    <string name="battery_ripple_sampling">Sampling voltage for ripple test (2 seconds)...</string>
+    <string name="battery_ripple_insufficient">Insufficient samples for ripple test.</string>
+    <string name="battery_full_running">Running full battery diagnostic...\nType: %1$s</string>
 </resources>
