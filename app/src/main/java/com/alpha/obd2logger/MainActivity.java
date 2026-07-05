@@ -2135,6 +2135,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 active.updateFuelTrim(record);
                                 active.updateTuningData(record);
                                 active.renderReadings(record);
+                                active.updateStatusStrip(record);
+                                active.updateBatteryMonitor(record);
                                 active.updateLiveMetrics(finalCompleted, active.loggingStartTime);
                             }
                         });
