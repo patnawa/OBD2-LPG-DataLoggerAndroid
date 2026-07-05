@@ -201,4 +201,18 @@
     <string name="home_speed">SPEED</string>
     <string name="home_coolant">COOLANT</string>
     <string name="home_voltage">VOLTAGE</string>
+    <string name="home_sec_tuning_diag">Tuning &amp; Diagnostics Modules</string>
+    <string name="home_mod_gauges_title">Engine Gauges Cluster</string>
+    <string name="home_mod_gauges_desc">Real-time dial clusters, alarms &amp; peak values</string>
+    <string name="home_mod_dash_title">Dashboard</string>
+    <string name="home_mod_dash_desc">Tuning grid table readouts</string>
+    <string name="home_mod_map_title">Trim Mapping</string>
+    <string name="home_mod_map_desc">Fuel trim deviation grids</string>
+    <string name="home_mod_dtc_title">DTC Scanner</string>
+    <string name="home_mod_dtc_desc">Scan fault error codes</string>
+    <string name="home_mod_battery_title">Power Monitor</string>
+    <string name="home_mod_battery_desc">Battery &amp; ripple analyzer</string>
+    <string name="home_sec_archive">Data Archive</string>
+    <string name="home_mod_records_title">Tuning Records</string>
+    <string name="home_mod_records_desc">Manage recorded CSV/JSONL logs</string>
 </resources>

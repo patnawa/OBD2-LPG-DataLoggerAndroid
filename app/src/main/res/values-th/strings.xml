@@ -196,4 +196,18 @@
     <string name="home_speed">ความเร็วรถ</string>
     <string name="home_coolant">อุณหภูมิน้ำหล่อเย็น</string>
     <string name="home_voltage">แรงดันไฟแบตเตอรี่</string>
+    <string name="home_sec_tuning_diag">โมดูลการจูนและการตรวจวินิจฉัย</string>
+    <string name="home_mod_gauges_title">เกจวัดค่าเครื่องยนต์</string>
+    <string name="home_mod_gauges_desc">เกจวัดแบบเข็มแสดงผลสด, การแจ้งเตือน &amp; ค่าสูงสุด</string>
+    <string name="home_mod_dash_title">ตารางแดชบอร์ด</string>
+    <string name="home_mod_dash_desc">ค่าตัวเลขการจูนในรูปแบบตารางกริด</string>
+    <string name="home_mod_map_title">แผนที่จูนแก๊ส (Trim Map)</string>
+    <string name="home_mod_map_desc">ตารางวิเคราะห์การเบี่ยงเบนของค่า Trim เชื้อเพลิง</string>
+    <string name="home_mod_dtc_title">เครื่องสแกนโค้ด (DTC)</string>
+    <string name="home_mod_dtc_desc">สแกนหาและลบโค้ดข้อผิดพลาดของเครื่องยนต์</string>
+    <string name="home_mod_battery_title">ระบบตรวจวัดแรงดันไฟ</string>
+    <string name="home_mod_battery_desc">วิเคราะห์แบตเตอรี่และกระแสริปเปิลของไดชาร์จ</string>
+    <string name="home_sec_archive">คลังข้อมูลย้อนหลัง</string>
+    <string name="home_mod_records_title">ประวัติการบันทึกข้อมูล</string>
+    <string name="home_mod_records_desc">จัดการและเปิดดูไฟล์บันทึก CSV/JSONL</string>
 </resources>
