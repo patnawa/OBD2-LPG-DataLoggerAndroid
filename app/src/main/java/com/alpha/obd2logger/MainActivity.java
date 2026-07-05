@@ -59,6 +59,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private View panelHome, panelDashboard, panelGauges, panelDtc, panelLogs, panelSettings;
     private com.google.android.material.appbar.MaterialToolbar topHeader;
     private androidx.activity.OnBackPressedCallback onBackPressedCallback;
+    private boolean isTabChanging = false;
     // --- UI: Header ---
     private TextView headerStatus, headerVin;
     private android.widget.ImageButton btnSettings;
@@ -603,46 +604,52 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void showTab(int index) {
-        currentTabIndex = index;
-        if (panelHome != null) {
-            panelHome.setVisibility(index == 6 ? View.VISIBLE : View.GONE);
-        }
-        panelDashboard.setVisibility(index == 0 ? View.VISIBLE : View.GONE);
-        panelGauges.setVisibility(index == 1 ? View.VISIBLE : View.GONE);
-        findViewById(R.id.panelFuelMap).setVisibility(index == 2 ? View.VISIBLE : View.GONE);
-        panelDtc.setVisibility(index == 3 ? View.VISIBLE : View.GONE);
-        panelLogs.setVisibility(index == 4 ? View.VISIBLE : View.GONE);
-        panelSettings.setVisibility(index == 5 ? View.VISIBLE : View.GONE);
-        
-        if (onBackPressedCallback != null) {
-            onBackPressedCallback.setEnabled(index != 6);
-        }
+        if (isTabChanging) return;
+        isTabChanging = true;
+        try {
+            currentTabIndex = index;
+            if (panelHome != null) {
+                panelHome.setVisibility(index == 6 ? View.VISIBLE : View.GONE);
+            }
+            panelDashboard.setVisibility(index == 0 ? View.VISIBLE : View.GONE);
+            panelGauges.setVisibility(index == 1 ? View.VISIBLE : View.GONE);
+            findViewById(R.id.panelFuelMap).setVisibility(index == 2 ? View.VISIBLE : View.GONE);
+            panelDtc.setVisibility(index == 3 ? View.VISIBLE : View.GONE);
+            panelLogs.setVisibility(index == 4 ? View.VISIBLE : View.GONE);
+            panelSettings.setVisibility(index == 5 ? View.VISIBLE : View.GONE);
+            
+            if (onBackPressedCallback != null) {
+                onBackPressedCallback.setEnabled(index != 6);
+            }
 
-        if (btnGoHome != null) {
-            btnGoHome.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
-        }
+            if (btnGoHome != null) {
+                btnGoHome.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
+            }
 
-        if (index == 6) {
-            if (bottomNav != null) bottomNav.setVisibility(View.GONE);
-        } else {
-            if (bottomNav != null) {
-                bottomNav.setVisibility(View.VISIBLE);
-                if (index >= 0 && index <= 4) {
-                    int menuId = R.id.nav_dashboard;
-                    if (index == 1) menuId = R.id.nav_gauges;
-                    else if (index == 2) menuId = R.id.nav_map;
-                    else if (index == 3) menuId = R.id.nav_dtc;
-                    else if (index == 4) menuId = R.id.nav_logs;
-                    
-                    if (bottomNav.getSelectedItemId() != menuId) {
-                        bottomNav.setSelectedItemId(menuId);
+            if (index == 6) {
+                if (bottomNav != null) bottomNav.setVisibility(View.GONE);
+            } else {
+                if (bottomNav != null) {
+                    bottomNav.setVisibility(View.VISIBLE);
+                    if (index >= 0 && index <= 4) {
+                        int menuId = R.id.nav_dashboard;
+                        if (index == 1) menuId = R.id.nav_gauges;
+                        else if (index == 2) menuId = R.id.nav_map;
+                        else if (index == 3) menuId = R.id.nav_dtc;
+                        else if (index == 4) menuId = R.id.nav_logs;
+                        
+                        if (bottomNav.getSelectedItemId() != menuId) {
+                            bottomNav.setSelectedItemId(menuId);
+                        }
                     }
                 }
             }
-        }
-        
-        if (index == 4) {
-            loadHistoryFiles();
+            
+            if (index == 4) {
+                loadHistoryFiles();
+            }
+        } finally {
+            isTabChanging = false;
         }
     }
 
