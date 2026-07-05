@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.8] - 2026-07-05
+### Fixed
+- **Home Screen Internationalization**: Replaced hardcoded English text strings in the newly redesigned Home layout (`activity_main.xml`) with resource references (`@string/...`). Reused pre-existing translation keys where possible to enable immediate, automatic translation into 15 supported languages (e.g. Thai, Spanish, German, Arabic) without adding translation debt.
+- **New Translation Keys Added**: Defined new keys for interface status titles and labels in `strings.xml` (default English) and `strings.xml` (Thai translation).
+
 ## [3.4.7] - 2026-07-05
 ### Changed
 - **Redesigned Home Screen Layout**: Replaced the outdated, cramped side-by-side card grid with a premium, responsive single-column Control Center. Features horizontal MaterialCardViews with theme icons, clean descriptions, and navigation indicators to prevent text wrapping on narrow devices.

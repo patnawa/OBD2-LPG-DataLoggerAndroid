@@ -92,6 +92,13 @@
     <string name="home_greeting">ยินดีต้อนรับ</string>
     <string name="home_welcome_desc">ระบบวิเคราะห์เครื่องยนต์และทำแผนที่จ่ายเชื้อเพลิง OBD2</string>
     <string name="home_welcome_status">ระบบพร้อมทำงาน • กรุณาเลือกฟังก์ชันด้านล่างเพื่อเริ่มต้น</string>
+    <string name="home_status_title">สถานะการเชื่อมต่อรถยนต์</string>
+    <string name="home_status_vin">เลขตัวถัง VIN</string>
+    <string name="home_status_voltage">แรงดันไฟ</string>
+    <string name="home_status_adapter">อะแดปเตอร์ OBD2</string>
+    <string name="home_status_protocol">โปรโตคอล</string>
+    <string name="home_section_tuning">การปรับจูนและดูข้อมูลสด</string>
+    <string name="home_section_utilities">วิเคราะห์ระบบและประวัติบันทึก</string>
     <string name="home_card_dashboard_title">หน้าปัดข้อมูล</string>
     <string name="home_card_dashboard_desc">แสดงค่าพารามิเตอร์ของเครื่องยนต์และโหมดเชื้อเพลิงแบบสด</string>
     <string name="home_card_gauges_title">เกจวัดสมรรถนะ</string>

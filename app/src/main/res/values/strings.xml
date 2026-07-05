@@ -95,6 +95,13 @@
     <string name="home_greeting">WELCOME BACK</string>
     <string name="home_welcome_desc">Professional OBD2 Diagnostics &amp; Fuel Mapping System</string>
     <string name="home_welcome_status">System ready • Choose a function below to begin</string>
+    <string name="home_status_title">VEHICLE INTERFACE STATUS</string>
+    <string name="home_status_vin">VIN</string>
+    <string name="home_status_voltage">VOLTAGE</string>
+    <string name="home_status_adapter">OBD2 ADAPTER</string>
+    <string name="home_status_protocol">PROTOCOL</string>
+    <string name="home_section_tuning">TUNING &amp; REAL-TIME DATA</string>
+    <string name="home_section_utilities">VEHICLE UTILITIES &amp; LOGS</string>
     <string name="home_card_dashboard_title">Dashboard</string>
     <string name="home_card_dashboard_desc">Real-time parameters, status, fuel mode</string>
     <string name="home_card_gauges_title">Performance Gauges</string>

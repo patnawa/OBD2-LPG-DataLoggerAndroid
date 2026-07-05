@@ -290,7 +290,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="TUNERMAP PRO"
+                            android:text="@string/home_title"
                             android:textColor="#FFFFFF"
                             android:textSize="26sp"
                             android:textStyle="bold"
@@ -299,7 +299,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="PROFESSIONAL OBD2 &amp; LPG TUNING"
+                            android:text="@string/home_welcome_desc"
                             android:textColor="#BFDBFE"
                             android:textSize="11sp"
                             android:textStyle="bold"
@@ -334,7 +334,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="VEHICLE INTERFACE STATUS"
+                                android:text="@string/home_status_title"
                                 android:textColor="@color/muted"
                                 android:textSize="11sp"
                                 android:textStyle="bold"
@@ -360,7 +360,7 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="VIN"
+                                        android:text="@string/home_status_vin"
                                         android:textColor="@color/muted"
                                         android:textSize="9sp"
                                         android:textStyle="bold" />
@@ -387,7 +387,7 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="VOLTAGE"
+                                        android:text="@string/home_status_voltage"
                                         android:textColor="@color/muted"
                                         android:textSize="9sp"
                                         android:textStyle="bold" />
@@ -414,7 +414,7 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="OBD2 ADAPTER"
+                                        android:text="@string/home_status_adapter"
                                         android:textColor="@color/muted"
                                         android:textSize="9sp"
                                         android:textStyle="bold" />
@@ -440,7 +440,7 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="PROTOCOL"
+                                        android:text="@string/home_status_protocol"
                                         android:textColor="@color/muted"
                                         android:textSize="9sp"
                                         android:textStyle="bold" />
@@ -464,7 +464,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="TUNING &amp; REAL-TIME DATA"
+                        android:text="@string/home_section_tuning"
                         android:textColor="@color/muted"
                         android:textSize="11sp"
                         android:textStyle="bold"
@@ -508,7 +508,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Live Dashboard"
+                                    android:text="@string/home_card_dashboard_title"
                                     android:textColor="@color/text"
                                     android:textSize="14sp"
                                     android:textStyle="bold" />
@@ -516,7 +516,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="View basic sensor status updates"
+                                    android:text="@string/home_card_dashboard_desc"
                                     android:textColor="@color/muted"
                                     android:textSize="11sp" />
                             </LinearLayout>
@@ -569,7 +569,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Sensor Gauges"
+                                    android:text="@string/home_card_gauges_title"
                                     android:textColor="@color/text"
                                     android:textSize="14sp"
                                     android:textStyle="bold" />
@@ -577,7 +577,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Customizable circular dial gauge readouts"
+                                    android:text="@string/home_card_gauges_desc"
                                     android:textColor="@color/muted"
                                     android:textSize="11sp" />
                             </LinearLayout>
@@ -630,7 +630,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Trim Map Pro"
+                                    android:text="@string/home_card_map_title"
                                     android:textColor="@color/text"
                                     android:textSize="14sp"
                                     android:textStyle="bold" />
@@ -638,7 +638,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Analyze gas fuel trim deviation maps"
+                                    android:text="@string/home_card_map_desc"
                                     android:textColor="@color/muted"
                                     android:textSize="11sp" />
                             </LinearLayout>
@@ -659,7 +659,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="VEHICLE UTILITIES &amp; LOGS"
+                        android:text="@string/home_section_utilities"
                         android:textColor="@color/muted"
                         android:textSize="11sp"
                         android:textStyle="bold"
@@ -703,7 +703,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Trouble Codes (DTC)"
+                                    android:text="@string/home_card_dtc_title"
                                     android:textColor="@color/text"
                                     android:textSize="14sp"
                                     android:textStyle="bold" />
@@ -711,7 +711,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Scan and clear vehicle fault codes"
+                                    android:text="@string/home_card_dtc_desc"
                                     android:textColor="@color/muted"
                                     android:textSize="11sp" />
                             </LinearLayout>
@@ -764,7 +764,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Battery Monitor"
+                                    android:text="@string/home_card_battery_title"
                                     android:textColor="@color/text"
                                     android:textSize="14sp"
                                     android:textStyle="bold" />
@@ -772,7 +772,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Track module voltage and charging status"
+                                    android:text="@string/home_card_battery_desc"
                                     android:textColor="@color/muted"
                                     android:textSize="11sp" />
                             </LinearLayout>
@@ -825,7 +825,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Log Sessions"
+                                    android:text="@string/home_card_logs_title"
                                     android:textColor="@color/text"
                                     android:textSize="14sp"
                                     android:textStyle="bold" />
@@ -833,7 +833,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Browse past recorded CSV and JSONL log files"
+                                    android:text="@string/home_card_logs_desc"
                                     android:textColor="@color/muted"
                                     android:textSize="11sp" />
                             </LinearLayout>
