@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.2] - 2026-07-05
+### Changed
+- **Replaced Active Session Folder Card with Live Session Metrics**: Removed the unstable "Active log session folder" card from the Live Stream tab that was prone to freezing device OS due to document intent queries. Replaced it with a professional, real-time metadata dashboard displaying logging status (pulsing badge), session duration (running timer), total recorded samples, and current logging frequency in Hz.
+
 ## [3.2.1] - 2026-07-05
 ### Added
 - **Gauges Screen Colorized Limits**: Formatted the session MIN and MAX labels under the Gauges list with dynamic, high-contrast HTML colors. The values are now bolded and highlighted using theme-matching primary blue/cyan for MIN, and danger red for MAX.

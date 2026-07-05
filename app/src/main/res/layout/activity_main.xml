@@ -1574,12 +1574,10 @@
                         android:layout_marginBottom="16dp" />
 
                     <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/cardLogStatus"
+                        android:id="@+id/cardLogMetrics"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
-                        android:clickable="true"
-                        android:focusable="true"
                         app:cardBackgroundColor="@color/surface2"
                         app:cardCornerRadius="2dp"
                         app:strokeWidth="1dp"
@@ -1588,65 +1586,154 @@
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:padding="16dp"
-                            android:gravity="center_vertical">
+                            android:orientation="vertical"
+                            android:padding="16dp">
 
-                            <!-- Status Folder Icon -->
-                            <ImageView
-                                android:id="@+id/logIcon"
-                                android:layout_width="32dp"
-                                android:layout_height="32dp"
-                                android:src="@drawable/ic_list"
-                                app:tint="@color/primary"
-                                android:layout_marginEnd="16dp"/>
-
-                            <LinearLayout
-                                android:layout_width="0dp"
+                            <!-- Header Row: Title and Status Badge -->
+                            <RelativeLayout
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:orientation="vertical">
+                                android:layout_marginBottom="12dp">
 
-                                <!-- Active Session Label / Status -->
                                 <TextView
-                                    android:id="@+id/logStatusLabel"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Log Path (Tap to open)"
-                                    android:textColor="@color/text"
-                                    android:textSize="13sp"
-                                    android:textStyle="bold" />
-
-                                <!-- Clean CSV File Name -->
-                                <TextView
-                                    android:id="@+id/logCsvName"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/log_path"
+                                    android:text="LIVE SESSION METRICS"
                                     android:textColor="@color/muted"
                                     android:textSize="11sp"
-                                    android:layout_marginTop="2dp" />
+                                    android:textStyle="bold"
+                                    android:letterSpacing="0.08"
+                                    android:layout_alignParentStart="true"
+                                    android:layout_centerVertical="true" />
 
-                                <!-- Clean JSONL File Name -->
-                                <TextView
-                                    android:id="@+id/logJsonlName"
+                                <LinearLayout
+                                    android:id="@+id/sessionStatusBadge"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="JSONL: --"
-                                    android:textColor="@color/muted"
-                                    android:textSize="11sp"
-                                    android:layout_marginTop="2dp"
-                                    android:visibility="gone" />
+                                    android:orientation="horizontal"
+                                    android:gravity="center_vertical"
+                                    android:background="@drawable/bg_dtc_card"
+                                    android:paddingHorizontal="8dp"
+                                    android:paddingVertical="4dp"
+                                    android:layout_alignParentEnd="true"
+                                    android:layout_centerVertical="true">
+
+                                    <com.google.android.material.card.MaterialCardView
+                                        android:id="@+id/sessionStatusDotCard"
+                                        android:layout_width="8dp"
+                                        android:layout_height="8dp"
+                                        app:cardCornerRadius="4dp"
+                                        app:cardElevation="0dp"
+                                        app:cardBackgroundColor="@color/muted"
+                                        android:layout_marginEnd="6dp" />
+
+                                    <TextView
+                                        android:id="@+id/sessionStatusText"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="STANDBY"
+                                        android:textColor="@color/muted"
+                                        android:textSize="10sp"
+                                        android:textStyle="bold"
+                                        android:letterSpacing="0.05" />
+                                </LinearLayout>
+                            </RelativeLayout>
+
+                            <!-- Divider -->
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="@color/border"
+                                android:layout_marginBottom="12dp" />
+
+                            <!-- Metrics Row -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:weightSum="3">
+
+                                <!-- Duration Column -->
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="DURATION"
+                                        android:textColor="@color/muted"
+                                        android:textSize="9sp"
+                                        android:textStyle="bold"
+                                        android:letterSpacing="0.05" />
+
+                                    <TextView
+                                        android:id="@+id/txtSessionDuration"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="00:00:00"
+                                        android:textColor="@color/text"
+                                        android:textSize="15sp"
+                                        android:textStyle="bold"
+                                        android:layout_marginTop="4dp" />
+                                </LinearLayout>
+
+                                <!-- Records Column -->
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="RECORDS"
+                                        android:textColor="@color/muted"
+                                        android:textSize="9sp"
+                                        android:textStyle="bold"
+                                        android:letterSpacing="0.05" />
+
+                                    <TextView
+                                        android:id="@+id/txtSessionRecords"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="0"
+                                        android:textColor="@color/text"
+                                        android:textSize="15sp"
+                                        android:textStyle="bold"
+                                        android:layout_marginTop="4dp" />
+                                </LinearLayout>
+
+                                <!-- Rate Column -->
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="UPDATE RATE"
+                                        android:textColor="@color/muted"
+                                        android:textSize="9sp"
+                                        android:textStyle="bold"
+                                        android:letterSpacing="0.05" />
+
+                                    <TextView
+                                        android:id="@+id/txtSessionRate"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="0.0 Hz"
+                                        android:textColor="@color/text"
+                                        android:textSize="15sp"
+                                        android:textStyle="bold"
+                                        android:layout_marginTop="4dp" />
+                                </LinearLayout>
                             </LinearLayout>
-
-                            <!-- Folder Open Action Indicator -->
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:src="@android:drawable/ic_menu_directions"
-                                app:tint="@color/muted"
-                                android:alpha="0.7"/>
-
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 

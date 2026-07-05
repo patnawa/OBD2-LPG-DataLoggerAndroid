@@ -95,9 +95,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private LinearLayout dtcListContainer, readinessContainer;
 
     // --- UI: Logs tab ---
-    private com.google.android.material.card.MaterialCardView cardLogStatus;
-    private TextView logStatusLabel, logCsvName, logJsonlName;
-    private ImageView logIcon;
+    private TextView txtSessionDuration, txtSessionRecords, txtSessionRate, sessionStatusText;
+    private com.google.android.material.card.MaterialCardView sessionStatusDotCard;
+    private android.view.animation.Animation pulseAnimation;
+    private long loggingStartTime = 0;
     private LinearLayout readingsContainer;
 
     private com.google.android.material.floatingactionbutton.FloatingActionButton fabLog;
@@ -510,13 +511,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         readinessContainer = findViewById(R.id.readinessContainer);
 
         // Logs tab
-        cardLogStatus = findViewById(R.id.cardLogStatus);
-        logStatusLabel = findViewById(R.id.logStatusLabel);
-        logCsvName = findViewById(R.id.logCsvName);
-        logJsonlName = findViewById(R.id.logJsonlName);
-        logIcon = findViewById(R.id.logIcon);
+        txtSessionDuration = findViewById(R.id.txtSessionDuration);
+        txtSessionRecords = findViewById(R.id.txtSessionRecords);
+        txtSessionRate = findViewById(R.id.txtSessionRate);
+        sessionStatusText = findViewById(R.id.sessionStatusText);
+        sessionStatusDotCard = findViewById(R.id.sessionStatusDotCard);
         readingsContainer = findViewById(R.id.readingsContainer);
-        cardLogStatus.setOnClickListener(v -> openLogFolder());
         
         fuelMapView = findViewById(R.id.fuelMapView);
         
@@ -1687,6 +1687,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             requestBatteryOptimizationExemption();
         }
         running = true;
+        loggingStartTime = SystemClock.elapsedRealtime();
+        updateSessionStatus(true);
         clearReadings();
         resetGraphs();
         lastSampleTimeMs = 0;
@@ -1768,6 +1770,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Note: dtcExecutor is intentionally NOT shut down here — stopping logging
         // must not kill in-flight DTC/VIN/readiness reads. It is shut down in onDestroy().
         headerStatus.setText("Disconnected");
+        updateSessionStatus(false);
     }
 
     private void runLogger(LoggerConfig config) {
@@ -1890,16 +1893,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
                 if (active != null) {
-                    active.logStatusLabel.setText("Active Logging Session");
-                    active.logStatusLabel.setTextColor(active.getColorCompat(R.color.accent));
-                    active.logIcon.setColorFilter(active.getColorCompat(R.color.accent));
-                    String csvPath = dataWriter.getCsvLocation();
-                    String jsonlPath = dataWriter.getJsonlLocation();
-                    String csvName = csvPath != null ? new File(csvPath).getName() : "--";
-                    String jsonlName = jsonlPath != null ? new File(jsonlPath).getName() : "--";
-                    active.logCsvName.setText("CSV: " + csvName);
-                    active.logJsonlName.setText("JSONL: " + jsonlName);
-                    active.logJsonlName.setVisibility(View.VISIBLE);
+                    active.updateSessionStatus(true);
                 }
             });
 
@@ -1954,6 +1948,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         active.updateFuelTrim(record);
                         active.updateTuningData(record);
                         active.renderReadings(record);
+                        active.updateLiveMetrics(finalCompleted, active.loggingStartTime);
                     }
                 });
 
@@ -2029,6 +2024,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             updateFuelTrim(record);
             updateTuningData(record);
             renderReadings(record);
+            updateLiveMetrics(count, loggingStartTime);
 
             if (fuelMapView != null) {
                 sessionPetrolData.clear();
@@ -2115,6 +2111,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             setStatus("Background logging stopped. " + totalRecords + " records saved.", R.color.primary);
             headerStatus.setText("Disconnected");
+            updateSessionStatus(false);
         });
     }
 
@@ -3101,9 +3098,51 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
     }
 
+    private void updateSessionStatus(boolean active) {
+        if (sessionStatusText != null) {
+            sessionStatusText.setText(active ? "RECORDING" : "STANDBY");
+            sessionStatusText.setTextColor(getColorCompat(active ? R.color.accent : R.color.muted));
+        }
+        if (sessionStatusDotCard != null) {
+            sessionStatusDotCard.setCardBackgroundColor(android.content.res.ColorStateList.valueOf(
+                    getColorCompat(active ? R.color.accent : R.color.muted)));
+            if (active) {
+                if (pulseAnimation == null) {
+                    pulseAnimation = new android.view.animation.AlphaAnimation(0.3f, 1.0f);
+                    pulseAnimation.setDuration(800);
+                    pulseAnimation.setRepeatMode(android.view.animation.Animation.REVERSE);
+                    pulseAnimation.setRepeatCount(android.view.animation.Animation.INFINITE);
+                }
+                sessionStatusDotCard.startAnimation(pulseAnimation);
+            } else {
+                sessionStatusDotCard.clearAnimation();
+            }
+        }
+    }
+
+    private void updateLiveMetrics(int count, long startTimeMs) {
+        if (txtSessionRecords != null) {
+            txtSessionRecords.setText(String.valueOf(count));
+        }
+        long elapsedMs = SystemClock.elapsedRealtime() - startTimeMs;
+        if (txtSessionDuration != null) {
+            long secs = elapsedMs / 1000;
+            long mins = secs / 60;
+            long hrs = mins / 60;
+            txtSessionDuration.setText(String.format(Locale.US, "%02d:%02d:%02d", hrs, mins % 60, secs % 60));
+        }
+        if (txtSessionRate != null) {
+            double hz = elapsedMs > 0 ? (count * 1000.0 / elapsedMs) : 0.0;
+            txtSessionRate.setText(String.format(Locale.US, "%.1f Hz", hz));
+        }
+    }
+
     private void clearReadings() {
         if (readingsContainer != null) readingsContainer.removeAllViews();
         if (gaugeReadingsContainer != null) gaugeReadingsContainer.removeAllViews();
+        if (txtSessionDuration != null) txtSessionDuration.setText("00:00:00");
+        if (txtSessionRecords != null) txtSessionRecords.setText("0");
+        if (txtSessionRate != null) txtSessionRate.setText("0.0 Hz");
         readingRowCache.clear();
         readingStatusCache.clear();
         gaugeRowCache.clear();
