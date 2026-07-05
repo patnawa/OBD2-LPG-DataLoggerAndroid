@@ -35,3 +35,10 @@ Every time you make a notable change, fix a bug, or add a feature, you MUST appe
 - **USB Buffer Management:** Always clear both TX and RX buffers via `usbSerialPort.purgeHwBuffers(true, true)` before sending any write command to prevent corrupted responses.
 - **Wakelocks & Screen On:** Use `FLAG_KEEP_SCREEN_ON` on the Window for keeping screen active (no special permissions needed). Use `PARTIAL_WAKE_LOCK` only in background `LoggerService` to keep CPU awake.
 - **Thread Interruption:** In loops that must be interruptible (like logger polling loops), use `Thread.sleep()` and handle `InterruptedException` instead of `SystemClock.sleep()` (which silently consumes interrupts).
+
+## 6. UI, Localization, & Battery Voltage Rules
+- **No Hardcoded Strings**: All labels, description cards, and section titles on the Home screen and other screens must be bound to `@string` resources to support localization (Thai/English). Always update both `values/strings.xml` and `values-th/strings.xml`.
+- **Telemetry Configuration Single-Tap**: Do not clear card click listeners inside layout setups (like `setupDashboard()`, `setupGauges()`, or `setupGraphs()`). Global click handling is managed in `setupDynamicPids()` (single-tap to configure).
+- **Battery Voltage Reading**: When reading battery voltage, always use the fallback-ready mechanism. Try querying OBD2 PID `01_42` first. If it returns null or fails, fall back to executing the ELM327 command `AT RV` raw to support older cars lacking PID `01_42`.
+- **Smart Tuning Panel Layout**: Update the separate TextView widgets (`txtTuningStft`, `txtTuningLtft`, `txtTuningStatus`, `txtTuningAdvice`) when updating fuel trim analyzer states, rather than writing a single flat formatted block of text to `tuningStatusText`.
+
