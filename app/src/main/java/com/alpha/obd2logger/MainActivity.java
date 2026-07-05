@@ -106,6 +106,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // --- UI: Battery tab ---
     private BatteryTestView batteryTestView;
     private TextView batteryVoltageText, batteryStatusText, socValueText, socVoltageText;
+    private TextView batteryVoltageValueText, batteryVoltageStatusBadge;
     private TextView sohValueText, sohGradeText, batteryGradeText, batterySummaryText, batteryLifeText;
     private com.google.android.material.card.MaterialCardView batteryScoreCard;
     private com.google.android.material.button.MaterialButton btnBatteryResting, btnBatteryAlternator;
@@ -471,6 +472,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Battery tab
         batteryTestView = findViewById(R.id.batteryTestView);
         batteryVoltageText = findViewById(R.id.batteryVoltageText);
+        batteryVoltageValueText = findViewById(R.id.batteryVoltageValueText);
+        batteryVoltageStatusBadge = findViewById(R.id.batteryVoltageStatusBadge);
         batteryStatusText = findViewById(R.id.batteryStatusText);
         socValueText = findViewById(R.id.socValueText);
         socVoltageText = findViewById(R.id.socVoltageText);
@@ -2961,15 +2964,62 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         // Get selected chemistry for accurate SoC
         BatteryTester.Chemistry chem = getSelectedChemistry();
-        if (batteryVoltageText != null) {
-            double soc = BatteryTester.voltageToSoC(v, chem);
-            batteryVoltageText.setText(String.format(Locale.US, "%.2f V  |  SoC: %.0f%%  [%s]", v, soc, chem.getDisplayName(this)));
+        double soc = BatteryTester.voltageToSoC(v, chem);
+
+        if (batteryVoltageValueText != null) {
+            batteryVoltageValueText.setText(String.format(Locale.US, "%.2f V", v));
         }
+
+        if (batteryVoltageStatusBadge != null) {
+            String desc = getBatteryStatusDescription(v);
+            int color = getBatteryStatusColor(v);
+            batteryVoltageStatusBadge.setText(desc);
+            
+            android.graphics.drawable.GradientDrawable statusGd = new android.graphics.drawable.GradientDrawable();
+            statusGd.setCornerRadius(4 * getResources().getDisplayMetrics().density);
+            statusGd.setColor(0x20000000 | (0x00FFFFFF & color));
+            batteryVoltageStatusBadge.setBackground(statusGd);
+            batteryVoltageStatusBadge.setTextColor(color);
+        }
+
+        if (batteryVoltageText != null) {
+            batteryVoltageText.setText(String.format(Locale.US, "SoC: %.0f%%  •  Chemistry: %s", soc, chem.getDisplayName(this)));
+        }
+
         // Update SoC/SoH summary cards (quick estimate)
         if (socValueText != null) {
-            double soc = BatteryTester.voltageToSoC(v, chem);
             socValueText.setText(String.format(Locale.US, "%.0f%%", soc));
             socVoltageText.setText(String.format(Locale.US, "%.2f V (%s)", v, chem.getDisplayName(this)));
+        }
+    }
+
+    private String getBatteryStatusDescription(double v) {
+        if (v >= 13.2 && v <= 14.8) {
+            return "กำลังชาร์จ (Charging / Alternator Normal)";
+        } else if (v > 14.8) {
+            return "กำลังชาร์จสูงเกินไป (Overcharging Alert)";
+        } else if (v >= 12.9 && v < 13.2) {
+            return "แรงดันสแตนด์บาย (Float Charging / Standby)";
+        } else if (v >= 12.2 && v < 12.9) {
+            return "ดับเครื่องปกติ (Resting / Normal)";
+        } else if (v >= 11.5 && v < 12.2) {
+            return "แรงดันต่ำ / ใช้โหลดหนัก (Low Battery / Under Load)";
+        } else {
+            return "วิกฤต / คายประจุลึก (Critically Low / Deep Discharge)";
+        }
+    }
+
+    private int getBatteryStatusColor(double v) {
+        if (v >= 13.2 && v <= 14.8) {
+            return 0xFF22C55E; // Green
+        } else if (v > 14.8) {
+            return 0xFFEF4444; // Red
+        } else if (v >= 12.9 && v < 13.2) {
+            return 0xFF38BDF8; // Blue
+        } else if (v >= 12.2 && v < 12.9) {
+            return 0xFFF59E0B; // Amber
+        } else {
+            return 0xFFEF4444; // Red
         }
     }
 
