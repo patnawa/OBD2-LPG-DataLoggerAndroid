@@ -73,7 +73,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
     private View headerStatusDot;
     private android.widget.ImageButton btnSettings;
-    private android.widget.ImageButton btnThemeToggle;
     private android.widget.ImageButton btnGoHome;
 
     // --- UI: Settings ---
@@ -396,7 +395,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         headerFuelMode = findViewById(R.id.headerFuelMode);
         headerStatusDot = findViewById(R.id.headerStatusDot);
         btnSettings = findViewById(R.id.btnSettings);
-        btnThemeToggle = findViewById(R.id.btnThemeToggle);
         btnGoHome = findViewById(R.id.btnGoHome);
         historyListViewPetrol = findViewById(R.id.historyListViewPetrol);
         historyListViewLpg = findViewById(R.id.historyListViewLpg);
@@ -1030,21 +1028,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         final android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
         int currentTheme = prefs.getInt("app_theme", androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
 
-        // Initial icon setup for btnThemeToggle
-        boolean isCurrentNight = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) 
-            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-        btnThemeToggle.setImageResource(isCurrentNight ? R.drawable.ic_sun : R.drawable.ic_moon);
 
-        btnThemeToggle.setOnClickListener(v -> {
-            boolean night = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) 
-                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-            int newMode = night ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES;
-            // Use commit() for synchronous write so the pref is saved
-            // before the activity recreates itself
-            prefs.edit().putInt("app_theme", newMode).commit();
-            androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(newMode);
-            recreate(); // Explicitly recreate the activity to apply theme change immediately
-        });
 
         if (currentTheme == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO) {
             themeSpinner.setSelection(1);
@@ -1068,14 +1052,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         recreate(); // Force recreate so it applies immediately and reliably
                     }
 
-                    boolean isNight;
-                    if (mode == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) {
-                        isNight = (android.content.res.Resources.getSystem().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
-                            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-                    } else {
-                        isNight = (mode == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES);
-                    }
-                    btnThemeToggle.setImageResource(isNight ? R.drawable.ic_sun : R.drawable.ic_moon);
+
                 }
 
                 @Override
