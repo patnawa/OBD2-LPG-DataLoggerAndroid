@@ -72,6 +72,26 @@ public class FuelMapView extends View {
         return bestIdx;
     }
 
+    public Map<String, TrimData> getPetrolData() {
+        return petrolData;
+    }
+
+    public Map<String, TrimData> getLpgData() {
+        return lpgData;
+    }
+
+    public void setPetrolData(Map<String, TrimData> data) {
+        this.petrolData.clear();
+        if (data != null) this.petrolData.putAll(data);
+        postInvalidate();
+    }
+
+    public void setLpgData(Map<String, TrimData> data) {
+        this.lpgData.clear();
+        if (data != null) this.lpgData.putAll(data);
+        postInvalidate();
+    }
+
     public FuelMapView(Context context) {
         super(context);
         init();
@@ -307,9 +327,9 @@ public class FuelMapView extends View {
         return 0xFF3B82F6;                 // Blue (Very Lean)
     }
 
-    private static class TrimData {
-        private double sum = 0;
-        private int hitCount = 0;
+    public static class TrimData {
+        public double sum = 0;
+        public int hitCount = 0;
         public static final int MAX_HITS = 20;
 
         public void addStableValue(double val) {

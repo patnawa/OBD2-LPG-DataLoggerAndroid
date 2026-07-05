@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.1] - 2026-07-05
+### Added
+- **Gauges Screen Colorized Limits**: Formatted the session MIN and MAX labels under the Gauges list with dynamic, high-contrast HTML colors. The values are now bolded and highlighted using theme-matching primary blue/cyan for MIN, and danger red for MAX.
+- **Home Screen Program Version**: Added a centered version indicator TextView at the bottom of the new Home Hub panel, displaying the current running version dynamically alongside the settings panel.
+
 ## [3.2.0] - 2026-07-05
 ### Added
 - **Home Hub Screen**: A card-based Home menu as the primary entry point of the app on startup. Displays 6 grid cards with modern primary color icons, headers, and descriptions for Dashboard, Gauges, Tuning Map, DTC Scan, Logs & History, and Settings.

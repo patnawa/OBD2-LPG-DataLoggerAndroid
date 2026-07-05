@@ -502,6 +502,16 @@
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
+
+                <TextView
+                    android:id="@+id/homeVersionText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="8dp"
+                    android:gravity="center"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <!-- ===== FUEL MAP TAB ===== -->
@@ -1798,315 +1808,846 @@
                     android:layout_height="wrap_content"
                     android:text="Connection Settings"
                     android:textColor="@color/primary"
-                    android:textSize="18sp"
+                    android:textSize="20sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="24dp" />
+                    android:layout_marginBottom="16dp" />
 
-                <!-- Settings inside a card for neatness -->
+                <!-- CARD 1: GENERAL PREFERENCES -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="General Preferences"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:layout_marginBottom="6dp"
+                    android:layout_marginStart="4dp" />
+
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/surface2"
+                    app:cardBackgroundColor="@color/surface"
                     app:cardCornerRadius="12dp"
-                    app:contentPadding="16dp">
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/border"
+                    android:layout_marginBottom="20dp"
+                    app:cardElevation="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical">
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/prompt_language"
-                            android:textColor="@color/muted"
-                            android:textSize="12sp" />
-
-                        <Spinner
-                            android:id="@+id/languageSpinner"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="4dp"
-                            android:layout_marginBottom="16dp"
-                            android:background="@drawable/input_panel"
-                            android:entries="@array/language_modes" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="App Theme"
-                            android:textColor="@color/muted"
-                            android:textSize="12sp" />
-
-                        <Spinner
-                            android:id="@+id/themeSpinner"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="4dp"
-                            android:layout_marginBottom="16dp"
-                            android:background="@drawable/input_panel"
-                            android:entries="@array/theme_modes" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Transport mode"
-                            android:textColor="@color/muted"
-                            android:textSize="12sp" />
-
-                        <Spinner
-                            android:id="@+id/transportSpinner"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="4dp"
-                            android:layout_marginBottom="16dp"
-                            android:background="@drawable/input_panel"
-                            android:entries="@array/transport_modes" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Fuel mode"
-                            android:textColor="@color/muted"
-                            android:textSize="12sp" />
-
-                        <Spinner
-                            android:id="@+id/fuelSpinner"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="4dp"
-                            android:layout_marginBottom="16dp"
-                            android:background="@drawable/input_panel"
-                            android:entries="@array/fuel_modes" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="OBD2 protocol"
-                            android:textColor="@color/muted"
-                            android:textSize="12sp" />
-
-                        <Spinner
-                            android:id="@+id/obdProtocolSpinner"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="4dp"
-                            android:layout_marginBottom="16dp"
-                            android:background="@drawable/input_panel"
-                            android:entries="@array/obd_protocols" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="WiFi IP"
-                            android:textColor="@color/muted"
-                            android:textSize="12sp" />
-
-                        <EditText
-                            android:id="@+id/wifiIpInput"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="4dp"
-                            android:layout_marginBottom="16dp"
-                            android:background="@drawable/input_panel"
-                            android:hint="192.168.0.10"
-                            android:inputType="text"
-                            android:paddingStart="12dp"
-                            android:paddingEnd="12dp"
-                            android:singleLine="true"
-                            android:text="192.168.0.10"
-                            android:textColor="@color/text" />
-
+                        <!-- Row: Language -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:layout_marginBottom="16dp">
+                            android:gravity="center_vertical">
 
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:orientation="vertical">
+                                android:orientation="vertical"
+                                android:layout_marginEnd="16dp">
 
                                 <TextView
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:text="WiFi port"
+                                    android:text="@string/prompt_language"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Select interface language / เลือกภาษา"
                                     android:textColor="@color/muted"
-                                    android:textSize="12sp" />
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <Spinner
+                                android:id="@+id/languageSpinner"
+                                android:layout_width="160dp"
+                                android:layout_height="40dp"
+                                android:background="@drawable/input_panel"
+                                android:entries="@array/language_modes" />
+                        </LinearLayout>
+
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/border"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Row: Theme -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginEnd="16dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="App Theme"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Choose dark, light, or system default"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <Spinner
+                                android:id="@+id/themeSpinner"
+                                android:layout_width="160dp"
+                                android:layout_height="40dp"
+                                android:background="@drawable/input_panel"
+                                android:entries="@array/theme_modes" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- CARD 2: OBD2 CONNECTION & FUEL -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="OBD2 &amp; Fuel Connection"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:layout_marginBottom="6dp"
+                    android:layout_marginStart="4dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/surface"
+                    app:cardCornerRadius="12dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/border"
+                    android:layout_marginBottom="20dp"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <!-- Row: Transport Mode -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginEnd="16dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Transport Mode"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Select connection interface"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <Spinner
+                                android:id="@+id/transportSpinner"
+                                android:layout_width="160dp"
+                                android:layout_height="40dp"
+                                android:background="@drawable/input_panel"
+                                android:entries="@array/transport_modes" />
+                        </LinearLayout>
+
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/border"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Row: OBD2 Protocol -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginEnd="16dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="OBD2 Protocol"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="ELM327 protocol settings"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <Spinner
+                                android:id="@+id/obdProtocolSpinner"
+                                android:layout_width="160dp"
+                                android:layout_height="40dp"
+                                android:background="@drawable/input_panel"
+                                android:entries="@array/obd_protocols" />
+                        </LinearLayout>
+
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/border"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Row: Fuel Mode -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginEnd="16dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Fuel Mode"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Select fuel type for mapping"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <Spinner
+                                android:id="@+id/fuelSpinner"
+                                android:layout_width="160dp"
+                                android:layout_height="40dp"
+                                android:background="@drawable/input_panel"
+                                android:entries="@array/fuel_modes" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- CARD 3: INTERFACE OPTIONS -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Interface Configuration"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:layout_marginBottom="6dp"
+                    android:layout_marginStart="4dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/surface"
+                    app:cardCornerRadius="12dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/border"
+                    android:layout_marginBottom="20dp"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <!-- Row: WiFi IP -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginEnd="16dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="WiFi IP Address"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="IP of the OBD2 WiFi adapter"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <EditText
+                                android:id="@+id/wifiIpInput"
+                                android:layout_width="160dp"
+                                android:layout_height="40dp"
+                                android:background="@drawable/input_panel"
+                                android:gravity="center_vertical"
+                                android:hint="192.168.0.10"
+                                android:inputType="text"
+                                android:paddingStart="12dp"
+                                android:paddingEnd="12dp"
+                                android:singleLine="true"
+                                android:text="192.168.0.10"
+                                android:textColor="@color/text"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/border"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Row: WiFi Port & Baud -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginEnd="16dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="WiFi Port / Serial Baud"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Connection port and baud speed"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="160dp"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal">
 
                                 <EditText
                                     android:id="@+id/wifiPortInput"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="48dp"
-                                    android:layout_marginTop="4dp"
+                                    android:layout_width="0dp"
+                                    android:layout_weight="1"
+                                    android:layout_height="40dp"
                                     android:background="@drawable/input_panel"
+                                    android:gravity="center"
                                     android:inputType="number"
-                                    android:paddingStart="12dp"
-                                    android:paddingEnd="12dp"
+                                    android:paddingStart="4dp"
+                                    android:paddingEnd="4dp"
                                     android:singleLine="true"
                                     android:text="35000"
-                                    android:textColor="@color/text" />
-                            </LinearLayout>
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="10dp"
-                                android:layout_weight="1"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:text="Baud"
-                                    android:textColor="@color/muted"
-                                    android:textSize="12sp" />
+                                    android:textColor="@color/text"
+                                    android:textSize="13sp" />
 
                                 <EditText
                                     android:id="@+id/baudInput"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="48dp"
-                                    android:layout_marginTop="4dp"
+                                    android:layout_width="0dp"
+                                    android:layout_weight="1.2"
+                                    android:layout_height="40dp"
+                                    android:layout_marginStart="6dp"
                                     android:background="@drawable/input_panel"
+                                    android:gravity="center"
                                     android:inputType="number"
-                                    android:paddingStart="12dp"
-                                    android:paddingEnd="12dp"
+                                    android:paddingStart="4dp"
+                                    android:paddingEnd="4dp"
                                     android:singleLine="true"
                                     android:text="115200"
-                                    android:textColor="@color/text" />
+                                    android:textColor="@color/text"
+                                    android:textSize="13sp" />
                             </LinearLayout>
                         </LinearLayout>
 
-                        <TextView
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/border"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Row: Bluetooth Device -->
+                        <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Bluetooth OBD2 device"
-                            android:textColor="@color/muted"
-                            android:textSize="12sp" />
+                            android:orientation="vertical">
 
-                        <Spinner
-                            android:id="@+id/bluetoothDeviceSpinner"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="4dp"
-                            android:background="@drawable/input_panel"
-                            android:entries="@array/empty_list"
-                            android:spinnerMode="dropdown" />
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical">
 
-                        <TextView
-                            android:id="@+id/bluetoothHintText"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:layout_marginBottom="16dp"
-                            android:text="Pair the ELM327/OBD2 adapter in Android Bluetooth settings first."
-                            android:textColor="@color/muted"
-                            android:textSize="12sp" />
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical"
+                                    android:layout_marginEnd="16dp">
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Interval sec"
-                            android:textColor="@color/muted"
-                            android:textSize="12sp" />
+                                    <TextView
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text="Bluetooth Device"
+                                        android:textColor="@color/text"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold" />
 
-                        <EditText
-                            android:id="@+id/intervalInput"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="4dp"
-                            android:layout_marginBottom="24dp"
-                            android:background="@drawable/input_panel"
-                            android:inputType="numberDecimal"
-                            android:paddingStart="12dp"
-                            android:paddingEnd="12dp"
-                            android:singleLine="true"
-                            android:text="0.5"
-                            android:textColor="@color/text" />
+                                    <TextView
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text="Select paired Bluetooth adapter"
+                                        android:textColor="@color/muted"
+                                        android:textSize="11sp"
+                                        android:layout_marginTop="2dp" />
+                                </LinearLayout>
 
-                        <CheckBox
-                            android:id="@+id/lpgOnlyCheckbox"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:checked="true"
-                            android:text="LPG/CNG critical PIDs only"
-                            android:textColor="@color/text" />
+                                <Spinner
+                                    android:id="@+id/bluetoothDeviceSpinner"
+                                    android:layout_width="160dp"
+                                    android:layout_height="40dp"
+                                    android:background="@drawable/input_panel"
+                                    android:entries="@array/empty_list"
+                                    android:spinnerMode="dropdown" />
+                            </LinearLayout>
 
-                        <CheckBox
-                            android:id="@+id/backgroundLoggingCheckbox"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:checked="false"
-                            android:text="@string/background_logging"
-                            android:textColor="@color/text" />
+                            <TextView
+                                android:id="@+id/bluetoothHintText"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="Pair the ELM327/OBD2 adapter in Android Bluetooth settings first."
+                                android:textColor="@color/muted"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-                        <CheckBox
-                            android:id="@+id/keepScreenOnCheckbox"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:checked="true"
-                            android:text="@string/keep_screen_on"
-                            android:textColor="@color/text" />
+                <!-- CARD 4: LOGGER & AGENT OPTIONS -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Advanced &amp; Logger Settings"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:layout_marginBottom="6dp"
+                    android:layout_marginStart="4dp" />
 
-                        <com.google.android.material.checkbox.MaterialCheckBox
-                            android:id="@+id/apiServerCheckbox"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
-                            android:text="Enable AI Agent API Server (Port 8080)"
-                            android:textColor="@color/text" />
-                            
-                        <TextView
-                            android:id="@+id/apiServerIpText"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="URL: http://192.168.x.x:8080/api/data"
-                            android:textColor="@color/primary"
-                            android:textSize="12sp"
-                            android:paddingStart="32dp"
-                            android:layout_marginBottom="8dp"
-                            android:visibility="gone" />
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/surface"
+                    app:cardCornerRadius="12dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/border"
+                    android:layout_marginBottom="20dp"
+                    app:cardElevation="0dp">
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/log_destination_label"
-                            android:textColor="@color/muted"
-                            android:textSize="12sp"
-                            android:layout_marginTop="16dp" />
-                            
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <!-- Row: Sample Interval -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:layout_marginTop="4dp">
-                            
-                            <TextView
-                                android:id="@+id/customLogFolderText"
+                            android:gravity="center_vertical">
+
+                            <LinearLayout
                                 android:layout_width="0dp"
+                                android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:layout_height="48dp"
-                                android:gravity="center_vertical"
+                                android:orientation="vertical"
+                                android:layout_marginEnd="16dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Sample Interval (sec)"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Time delay between query cycles"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <EditText
+                                android:id="@+id/intervalInput"
+                                android:layout_width="160dp"
+                                android:layout_height="40dp"
+                                android:background="@drawable/input_panel"
+                                android:gravity="center"
+                                android:inputType="numberDecimal"
                                 android:paddingStart="12dp"
                                 android:paddingEnd="12dp"
-                                android:background="@drawable/input_panel"
-                                android:text="@string/default_log_folder"
-                                android:textColor="@color/text"
                                 android:singleLine="true"
-                                android:ellipsize="middle" />
-                                
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btnSelectLogFolder"
+                                android:text="0.5"
+                                android:textColor="@color/text"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/border"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Row: LPG-Only Checkbox -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginEnd="16dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="LPG/CNG Critical PIDs Only"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Query only tuning-critical sensors"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <com.google.android.material.checkbox.MaterialCheckBox
+                                android:id="@+id/lpgOnlyCheckbox"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginStart="8dp"
-                                android:text="@string/select_folder" />
+                                android:checked="true" />
                         </LinearLayout>
-                        
+
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/border"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Row: Background Logging -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginEnd="16dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/background_logging"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Run background logging service"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <com.google.android.material.checkbox.MaterialCheckBox
+                                android:id="@+id/backgroundLoggingCheckbox"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="false" />
+                        </LinearLayout>
+
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/border"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Row: Keep Screen On -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginEnd="16dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/keep_screen_on"
+                                    android:textColor="@color/text"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Prevent screen sleep during logging"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <com.google.android.material.checkbox.MaterialCheckBox
+                                android:id="@+id/keepScreenOnCheckbox"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="true" />
+                        </LinearLayout>
+
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/border"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Row: Enable AI Agent API Server -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical">
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical"
+                                    android:layout_marginEnd="16dp">
+
+                                    <TextView
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text="AI Agent API Server"
+                                        android:textColor="@color/text"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text="Exposes telemetry data over HTTP (Port 8080)"
+                                        android:textColor="@color/muted"
+                                        android:textSize="11sp"
+                                        android:layout_marginTop="2dp" />
+                                </LinearLayout>
+
+                                <com.google.android.material.checkbox.MaterialCheckBox
+                                    android:id="@+id/apiServerCheckbox"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/apiServerIpText"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="URL: http://192.168.x.x:8080/api/data"
+                                android:textColor="@color/primary"
+                                android:textSize="12sp"
+                                android:paddingStart="8dp"
+                                android:layout_marginTop="8dp"
+                                android:visibility="gone" />
+                        </LinearLayout>
+
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/border"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Row: Log Destination -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/log_destination_label"
+                                android:textColor="@color/text"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Directory for saving CSV and JSONL log files"
+                                android:textColor="@color/muted"
+                                android:textSize="11sp"
+                                android:layout_marginTop="2dp" />
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:layout_marginTop="8dp">
+
+                                <TextView
+                                    android:id="@+id/customLogFolderText"
+                                    android:layout_width="0dp"
+                                    android:layout_weight="1"
+                                    android:layout_height="40dp"
+                                    android:gravity="center_vertical"
+                                    android:paddingStart="12dp"
+                                    android:paddingEnd="12dp"
+                                    android:background="@drawable/input_panel"
+                                    android:text="@string/default_log_folder"
+                                    android:textColor="@color/text"
+                                    android:textSize="12sp"
+                                    android:singleLine="true"
+                                    android:ellipsize="middle" />
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/btnSelectLogFolder"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="40dp"
+                                    android:layout_marginStart="8dp"
+                                    android:text="@string/select_folder"
+                                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                    app:strokeColor="@color/primary"
+                                    android:textColor="@color/primary"
+                                    android:insetTop="0dp"
+                                    android:insetBottom="0dp"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
                         <TextView
                             android:id="@+id/appVersionText"
                             android:layout_width="match_parent"
@@ -2115,7 +2656,6 @@
                             android:gravity="center"
                             android:textColor="@color/muted"
                             android:textSize="12sp" />
-
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>

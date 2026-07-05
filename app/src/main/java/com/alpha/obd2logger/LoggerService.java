@@ -53,11 +53,31 @@ public final class LoggerService extends Service {
         pendingConfig = config;
     }
 
+    private static volatile LoggerService instance;
+
+    public static LoggerService getInstance() {
+        return instance;
+    }
+
+    public static boolean isLoggingActive() {
+        LoggerService s = instance;
+        return s != null && s.running;
+    }
+
+    public LoggerConfig getConfig() {
+        return activeConfig;
+    }
+
+    public int getRecordCount() {
+        return recordCount;
+    }
+
     private ExecutorService executor;
     private ExecutorService dtcExecutor;
     private PowerManager.WakeLock wakeLock;
     private BaseDriver driver;
     private volatile boolean running = false;
+    private LoggerConfig activeConfig;
     private DataWriter writer;
     private int recordCount = 0;
     
@@ -96,6 +116,7 @@ public final class LoggerService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
         createNotificationChannel();
     }
 
@@ -541,6 +562,9 @@ public final class LoggerService extends Service {
     public void onDestroy() {
         stopLogging();
         releaseWakeLock();
+        if (instance == this) {
+            instance = null;
+        }
         super.onDestroy();
     }
 }

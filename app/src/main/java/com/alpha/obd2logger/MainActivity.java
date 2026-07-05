@@ -124,7 +124,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private java.util.List<HistoryLogFile> currentLogFiles = new ArrayList<>();
 
     // --- State ---
-    private volatile ExecutorService executor;
+    private static MainActivity activeInstance;
+    private static volatile ExecutorService executor;
     // Separate executor for DTC/VIN/readiness operations so that stopping the
     // logging executor (shutdownNow) doesn't kill pending diagnostic reads.
     private volatile ExecutorService dtcExecutor;
@@ -133,11 +134,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private final List<DtcCode> lastPermanentDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
     private volatile FreezeFrameData lastFreezeFrame = null;
     private DtcHistoryDb dtcHistoryDb;
-    private volatile boolean running;
-    private DataWriter currentWriter;
-    private volatile BaseDriver currentDriver;
+    private static volatile boolean running;
+    private static DataWriter currentWriter;
+    private static volatile BaseDriver currentDriver;
+    private static volatile LoggerConfig activeInProcessConfig;
     private File currentDownloadFolder;
-    private Uri currentCsvUri, currentJsonlUri;
+    private static Uri currentCsvUri, currentJsonlUri;
+    private static int sessionRecordCount = 0;
+    private static final java.util.Map<String, Double> pidMinValues = new java.util.HashMap<>();
+    private static final java.util.Map<String, Double> pidMaxValues = new java.util.HashMap<>();
+    private static final java.util.Map<String, FuelMapView.TrimData> sessionPetrolData = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<String, FuelMapView.TrimData> sessionLpgData = new java.util.concurrent.ConcurrentHashMap<>();
     private final List<BluetoothDevice> bluetoothDevices = new ArrayList<>();
     private long lastSampleTimeMs = 0;
     private int currentTabIndex = 0;
@@ -154,6 +161,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        activeInstance = this;
         try {
             DtcDatabase.init(this);
             DtcEnrichment.init(this);
@@ -230,6 +238,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             } else {
                 showTab(6);
             }
+            syncLoggerState();
         } catch (Throwable t) {
             try {
                 File logFile = new File(getExternalFilesDir(null), "crash_log.txt");
@@ -242,6 +251,106 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 android.widget.Toast.makeText(this, "CRASH: " + errorMsg, android.widget.Toast.LENGTH_LONG).show();
             } catch (Exception e) {}
             throw t;
+        }
+    }
+
+    private static void runOnActiveActivity(Runnable action) {
+        MainActivity active = activeInstance;
+        if (active != null) {
+            active.runOnUiThread(action);
+        }
+    }
+
+    private void syncLoggerState() {
+        if (LoggerService.isLoggingActive()) {
+            running = true;
+            LoggerService.setCallback(this);
+            
+            if (fabLog != null) {
+                fabLog.setImageResource(android.R.drawable.ic_media_pause);
+                fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
+            }
+            
+            LoggerService service = LoggerService.getInstance();
+            if (service != null) {
+                LoggerConfig activeConfig = service.getConfig();
+                if (activeConfig != null) {
+                    lpgOnlyCheckbox.setChecked(activeConfig.lpgOnlyMode);
+                    backgroundLoggingCheckbox.setChecked(true);
+                    apiServerCheckbox.setChecked(activeConfig.enableApiServer);
+                    if (fuelSpinner != null) {
+                        fuelSpinner.setSelection(activeConfig.fuelMode == FuelMode.LPG ? 0 : 1);
+                    }
+                    if (transportSpinner != null) {
+                        transportSpinner.setSelection(transportSpinnerToPosition(activeConfig.transportMode));
+                    }
+                    if (fuelMapView != null) {
+                        fuelMapView.setMapMode(activeConfig.fuelMode == FuelMode.LPG
+                                ? FuelMapView.MapMode.LPG : FuelMapView.MapMode.PETROL);
+                        com.google.android.material.button.MaterialButtonToggleGroup mapModeToggle = findViewById(R.id.mapModeToggle);
+                        if (mapModeToggle != null) {
+                            mapModeToggle.check(activeConfig.fuelMode == FuelMode.LPG ? R.id.btnMapLpg : R.id.btnMapPetrol);
+                        }
+                    }
+                }
+                
+                int count = service.getRecordCount();
+                countText.setText("Records: " + count);
+                setStatus("Background logging active...", R.color.accent);
+                headerStatus.setText("Logging...");
+            }
+
+            if (fuelMapView != null) {
+                fuelMapView.setPetrolData(sessionPetrolData);
+                fuelMapView.setLpgData(sessionLpgData);
+            }
+        } else if (running) {
+            if (fabLog != null) {
+                fabLog.setImageResource(android.R.drawable.ic_media_pause);
+                fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
+            }
+            setStatus("Logging active...", R.color.accent);
+            headerStatus.setText("Logging...");
+            
+            if (activeInProcessConfig != null) {
+                lpgOnlyCheckbox.setChecked(activeInProcessConfig.lpgOnlyMode);
+                backgroundLoggingCheckbox.setChecked(false);
+                apiServerCheckbox.setChecked(activeInProcessConfig.enableApiServer);
+                if (fuelSpinner != null) {
+                    fuelSpinner.setSelection(activeInProcessConfig.fuelMode == FuelMode.LPG ? 0 : 1);
+                }
+                if (transportSpinner != null) {
+                    transportSpinner.setSelection(transportSpinnerToPosition(activeInProcessConfig.transportMode));
+                }
+                if (fuelMapView != null) {
+                    fuelMapView.setMapMode(activeInProcessConfig.fuelMode == FuelMode.LPG
+                            ? FuelMapView.MapMode.LPG : FuelMapView.MapMode.PETROL);
+                    com.google.android.material.button.MaterialButtonToggleGroup mapModeToggle = findViewById(R.id.mapModeToggle);
+                    if (mapModeToggle != null) {
+                        mapModeToggle.check(activeInProcessConfig.fuelMode == FuelMode.LPG ? R.id.btnMapLpg : R.id.btnMapPetrol);
+                    }
+                }
+            }
+            
+            countText.setText("Records: " + sessionRecordCount);
+
+            if (fuelMapView != null) {
+                fuelMapView.setPetrolData(sessionPetrolData);
+                fuelMapView.setLpgData(sessionLpgData);
+            }
+        }
+    }
+
+    private int transportSpinnerToPosition(TransportMode mode) {
+        if (mode == null) return 0;
+        switch (mode) {
+            case WIFI: return 1;
+            case SERIAL: return 2;
+            case BLE: return 3;
+            case USB: return 4;
+            case AUTO: return 5;
+            case SIM:
+            default: return 0;
         }
     }
 
@@ -312,12 +421,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         
         btnSelectLogFolder = findViewById(R.id.btnSelectLogFolder);
         TextView appVersionText = findViewById(R.id.appVersionText);
-        if (appVersionText != null) {
-            try {
-                String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-                appVersionText.setText("Version " + versionName);
-            } catch (Exception e) {
-                appVersionText.setText("Version 2.0.0");
+        TextView homeVersionText = findViewById(R.id.homeVersionText);
+        try {
+            String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            String versionString = "Version " + versionName;
+            if (appVersionText != null) {
+                appVersionText.setText(versionString);
+            }
+            if (homeVersionText != null) {
+                homeVersionText.setText(versionString);
+            }
+        } catch (Exception e) {
+            if (appVersionText != null) {
+                appVersionText.setText("Version 3.2.1");
+            }
+            if (homeVersionText != null) {
+                homeVersionText.setText("Version 3.2.1");
             }
         }
 
@@ -950,7 +1069,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 loadDefaultHistory(logFiles);
             }
         } else {
-            historyFolderText.setText("Default Folder (Downloads/OBD2LPGLogger)");
+            historyFolderText.setText("Default Folder (Downloads/TunerMapPro)");
             loadDefaultHistory(logFiles);
         }
 
@@ -1428,9 +1547,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 android.provider.MediaStore.Downloads.DATE_MODIFIED,
                 android.provider.MediaStore.Downloads.RELATIVE_PATH
             };
-            String selection = android.provider.MediaStore.Downloads.RELATIVE_PATH + " LIKE ? AND " +
+            String selection = "(" + android.provider.MediaStore.Downloads.RELATIVE_PATH + " LIKE ? OR " +
+                               android.provider.MediaStore.Downloads.RELATIVE_PATH + " LIKE ?) AND " +
                                android.provider.MediaStore.Downloads.DISPLAY_NAME + " LIKE ?";
-            String[] selectionArgs = new String[] { "%OBD2LPGLogger%", "%.csv" };
+            String[] selectionArgs = new String[] { "%TunerMapPro%", "%OBD2LPGLogger%", "%.csv" };
 
             try (android.database.Cursor cursor = getContentResolver().query(collection, projection, selection, selectionArgs, null)) {
                 if (cursor != null) {
@@ -1448,7 +1568,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         
                         String vin = "General";
                         if (relPath != null) {
-                            String cleanPath = relPath.replace("Download/OBD2LPGLogger/", "")
+                            String cleanPath = relPath.replace("Download/TunerMapPro/", "")
+                                                      .replace("Downloads/TunerMapPro/", "")
+                                                      .replace("Download/TunerMapPro", "")
+                                                      .replace("Downloads/TunerMapPro", "")
+                                                      .replace("Download/OBD2LPGLogger/", "")
                                                       .replace("Downloads/OBD2LPGLogger/", "")
                                                       .replace("Download/OBD2LPGLogger", "")
                                                       .replace("Downloads/OBD2LPGLogger", "");
@@ -1582,6 +1706,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // permanently empty. clearData(fuelMode) preserves the comparison fuel.
         if (fuelMapView != null) {
             fuelMapView.clearData(config.fuelMode);
+            if (config.fuelMode == FuelMode.LPG) {
+                sessionLpgData.clear();
+            } else {
+                sessionPetrolData.clear();
+            }
             fuelMapView.setMapMode(config.fuelMode == FuelMode.LPG
                     ? FuelMapView.MapMode.LPG : FuelMapView.MapMode.PETROL);
             // Also sync the toggle button in the Map tab
@@ -1599,6 +1728,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void startInProcessLogging(LoggerConfig config) {
+        activeInProcessConfig = config;
         executor = Executors.newSingleThreadExecutor();
         executor.submit(() -> runLogger(config));
     }
@@ -1650,29 +1780,44 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         if (!driver.isConnected() && !driver.connect()) {
             running = false;
-            runOnUiThread(() -> {
-                setStatus("Connection failed. Check settings and adapter.", R.color.danger);
-                headerStatus.setText("Connection failed");
-                if (fabLog != null) {
-                    fabLog.setImageResource(android.R.drawable.ic_media_play);
-                    fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
+            runOnActiveActivity(() -> {
+                MainActivity active = activeInstance;
+                if (active != null) {
+                    active.setStatus("Connection failed. Check settings and adapter.", R.color.danger);
+                    active.headerStatus.setText("Connection failed");
+                    if (active.fabLog != null) {
+                        active.fabLog.setImageResource(android.R.drawable.ic_media_play);
+                        active.fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(active.getColorCompat(R.color.primary)));
+                    }
                 }
             });
             return;
         }
 
         if (config.transportMode == TransportMode.AUTO && driver instanceof SimulationDriver) {
-            runOnUiThread(() -> setStatus("Auto probe failed — running simulation.", R.color.warning));
+            runOnActiveActivity(() -> {
+                MainActivity active = activeInstance;
+                if (active != null) active.setStatus("Auto probe failed — running simulation.", R.color.warning);
+            });
         } else {
-            runOnUiThread(() -> setStatus("Connected. Logging started.", R.color.accent));
+            runOnActiveActivity(() -> {
+                MainActivity active = activeInstance;
+                if (active != null) active.setStatus("Connected. Logging started.", R.color.accent);
+            });
         }
-        runOnUiThread(() -> headerStatus.setText("Connected: " + config.transportMode.getValue()));
+        runOnActiveActivity(() -> {
+            MainActivity active = activeInstance;
+            if (active != null) active.headerStatus.setText("Connected: " + config.transportMode.getValue());
+        });
 
         // Try to read VIN
         String vin = VinReader.readVin(driver);
         if (vin != null) {
             config.vin = vin;
-            runOnUiThread(() -> headerVin.setText("VIN: " + vin));
+            runOnActiveActivity(() -> {
+                MainActivity active = activeInstance;
+                if (active != null) active.headerVin.setText("VIN: " + vin);
+            });
         }
 
         DataWriter writer = null;
@@ -1696,7 +1841,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 detectedFromLive = true;
                 Log.i("OBD2Logger", "Cached PIDs loaded for VIN " + config.vin + ": " + pids.size() + " PIDs");
             } else {
-                runOnUiThread(() -> setStatus("Detecting supported PIDs...", R.color.accent));
+                runOnActiveActivity(() -> {
+                    MainActivity active = activeInstance;
+                    if (active != null) active.setStatus("Detecting supported PIDs...", R.color.accent);
+                });
                 supportedHex = PidAvailabilityChecker.querySupportedPids(driver);
                 if (supportedHex != null && !supportedHex.isEmpty()) {
                     pids = PidAvailabilityChecker.filterCatalogue(supportedHex, allPids);
@@ -1717,11 +1865,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             final int detectedCount = pids.size();
             final int totalCount = allPids.size();
             final boolean fromLiveFinal = detectedFromLive;
-            runOnUiThread(() -> {
-                String msg = fromLiveFinal
-                        ? detectedCount + "/" + totalCount + " PIDs detected (live query)"
-                        : detectedCount + "/" + totalCount + " PIDs (VIN profile fallback)";
-                setStatus(msg, R.color.accent);
+            runOnActiveActivity(() -> {
+                MainActivity active = activeInstance;
+                if (active != null) {
+                    String msg = fromLiveFinal
+                            ? detectedCount + "/" + totalCount + " PIDs detected (live query)"
+                            : detectedCount + "/" + totalCount + " PIDs (VIN profile fallback)";
+                    active.setStatus(msg, R.color.accent);
+                }
             });
         }
 
@@ -1736,17 +1887,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             currentDownloadFolder = dataWriter.getDownloadFolderFile();
             currentCsvUri = dataWriter.getCsvUri();
             currentJsonlUri = dataWriter.getJsonlUri();
-            runOnUiThread(() -> {
-                logStatusLabel.setText("Active Logging Session");
-                logStatusLabel.setTextColor(getColorCompat(R.color.accent));
-                logIcon.setColorFilter(getColorCompat(R.color.accent));
-                String csvPath = dataWriter.getCsvLocation();
-                String jsonlPath = dataWriter.getJsonlLocation();
-                String csvName = csvPath != null ? new File(csvPath).getName() : "--";
-                String jsonlName = jsonlPath != null ? new File(jsonlPath).getName() : "--";
-                logCsvName.setText("CSV: " + csvName);
-                logJsonlName.setText("JSONL: " + jsonlName);
-                logJsonlName.setVisibility(View.VISIBLE);
+            runOnActiveActivity(() -> {
+                MainActivity active = activeInstance;
+                if (active != null) {
+                    active.logStatusLabel.setText("Active Logging Session");
+                    active.logStatusLabel.setTextColor(active.getColorCompat(R.color.accent));
+                    active.logIcon.setColorFilter(active.getColorCompat(R.color.accent));
+                    String csvPath = dataWriter.getCsvLocation();
+                    String jsonlPath = dataWriter.getJsonlLocation();
+                    String csvName = csvPath != null ? new File(csvPath).getName() : "--";
+                    String jsonlName = jsonlPath != null ? new File(jsonlPath).getName() : "--";
+                    active.logCsvName.setText("CSV: " + csvName);
+                    active.logJsonlName.setText("JSONL: " + jsonlName);
+                    active.logJsonlName.setVisibility(View.VISIBLE);
+                }
             });
 
             while (running) {
@@ -1789,15 +1943,28 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 writer.writeRecord(record);
                 completed++;
                 final int finalCompleted = completed;
-                runOnUiThread(() -> {
-                    countText.setText("Records: " + finalCompleted);
-                    updateDashboard(record);
-                    updateGraphs(record);
-                    updateFuelMap(record);
-                    updateFuelTrim(record);
-                    updateTuningData(record);
-                    renderReadings(record);
+                sessionRecordCount = finalCompleted;
+                runOnActiveActivity(() -> {
+                    MainActivity active = activeInstance;
+                    if (active != null) {
+                        active.countText.setText("Records: " + finalCompleted);
+                        active.updateDashboard(record);
+                        active.updateGraphs(record);
+                        active.updateFuelMap(record);
+                        active.updateFuelTrim(record);
+                        active.updateTuningData(record);
+                        active.renderReadings(record);
+                    }
                 });
+
+                // Copy fuel map data to static maps
+                MainActivity active = activeInstance;
+                if (active != null && active.fuelMapView != null) {
+                    sessionPetrolData.clear();
+                    sessionPetrolData.putAll(active.fuelMapView.getPetrolData());
+                    sessionLpgData.clear();
+                    sessionLpgData.putAll(active.fuelMapView.getLpgData());
+                }
 
                 try {
                     Thread.sleep(config.sampleIntervalMs);
@@ -1809,10 +1976,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
 
             final int finalCompleted2 = completed;
-            runOnUiThread(() -> setStatus("Stopped at " + finalCompleted2 + " records.", R.color.primary));
+            runOnActiveActivity(() -> {
+                MainActivity active = activeInstance;
+                if (active != null) active.setStatus("Stopped at " + finalCompleted2 + " records.", R.color.primary);
+            });
         } catch (Exception e) {
             if (!(e instanceof InterruptedException)) {
-                runOnUiThread(() -> setStatus("Logger error: " + e.getMessage(), R.color.danger));
+                runOnActiveActivity(() -> {
+                    MainActivity active = activeInstance;
+                    if (active != null) active.setStatus("Logger error: " + e.getMessage(), R.color.danger);
+                });
             }
         } finally {
             try {
@@ -1831,12 +2004,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 ex.shutdown();
             }
             executor = null;
-            runOnUiThread(() -> {
-                if (fabLog != null) {
-                    fabLog.setImageResource(android.R.drawable.ic_media_play);
-                    fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
+            runOnActiveActivity(() -> {
+                MainActivity active = activeInstance;
+                if (active != null) {
+                    if (active.fabLog != null) {
+                        active.fabLog.setImageResource(android.R.drawable.ic_media_play);
+                        active.fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(active.getColorCompat(R.color.primary)));
+                    }
+                    active.headerStatus.setText("Disconnected");
                 }
-                headerStatus.setText("Disconnected");
             });
         }
     }
@@ -1853,6 +2029,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             updateFuelTrim(record);
             updateTuningData(record);
             renderReadings(record);
+
+            if (fuelMapView != null) {
+                sessionPetrolData.clear();
+                sessionPetrolData.putAll(fuelMapView.getPetrolData());
+                sessionLpgData.clear();
+                sessionLpgData.putAll(fuelMapView.getLpgData());
+            }
         });
     }
 
@@ -2796,8 +2979,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     // --- Rendering ---
 
-    private final java.util.Map<String, Double> pidMinValues = new java.util.HashMap<>();
-    private final java.util.Map<String, Double> pidMaxValues = new java.util.HashMap<>();
+
 
     private final java.util.Map<String, TextView> readingRowCache = new java.util.HashMap<>();
     private final java.util.Map<String, TextView> readingStatusCache = new java.util.HashMap<>();
@@ -2903,7 +3085,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 Double maxVal = pidMaxValues.get(pidKey);
                 String minStr = formatValue(minVal, sample.getUnit());
                 String maxStr = formatValue(maxVal, sample.getUnit());
-                statusView.setText("MIN: " + minStr + "  •  MAX: " + maxStr);
+                int minColor = getColorCompat(R.color.primary);
+                int maxColor = getColorCompat(R.color.danger);
+                String minColorHex = String.format(Locale.US, "#%06X", (0xFFFFFF & minColor));
+                String maxColorHex = String.format(Locale.US, "#%06X", (0xFFFFFF & maxColor));
+                String htmlText = "<b>MIN:</b> <font color='" + minColorHex + "'>" + minStr + "</font>  •  <b>MAX:</b> <font color='" + maxColorHex + "'>" + maxStr + "</font>";
+                statusView.setText(androidx.core.text.HtmlCompat.fromHtml(htmlText, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY));
                 statusView.setTextColor(getColorCompat(R.color.muted));
             } else {
                 statusView.setText(sample.getStatus().toUpperCase(Locale.US));
@@ -2971,9 +3158,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
 
-        // Try opening the default Downloads/OBD2LPGLogger folder directly in the file manager
+        // Try opening the default Downloads/TunerMapPro folder directly in the file manager
         try {
-            Uri defaultUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:Download%2FOBD2LPGLogger");
+            Uri defaultUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:Download%2FTunerMapPro");
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(defaultUri, "vnd.android.document/directory");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -2990,7 +3177,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 // Fallback 2: Try standard ACTION_GET_CONTENT
                 try {
                     Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                    intent.setDataAndType(Uri.parse("content://com.android.externalstorage.documents/document/primary:Download%2FOBD2LPGLogger"), "*/*");
+                    intent.setDataAndType(Uri.parse("content://com.android.externalstorage.documents/document/primary:Download%2FTunerMapPro"), "*/*");
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
                     startActivity(Intent.createChooser(intent, "Open Logs Folder"));
                 } catch (Exception exc) {
@@ -3262,6 +3449,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         if (isFinishing()) {
             stopLogging();
+        }
+        if (activeInstance == this) {
+            activeInstance = null;
         }
         super.onDestroy();
     }

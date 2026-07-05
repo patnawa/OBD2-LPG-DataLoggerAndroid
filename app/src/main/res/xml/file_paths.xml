@@ -2,7 +2,7 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <external-path
         name="downloads_obd2_logger"
-        path="Download/OBD2LPGLogger/" />
+        path="Download/TunerMapPro/" />
     <external-path
         name="downloads_root"
         path="Download/" />
