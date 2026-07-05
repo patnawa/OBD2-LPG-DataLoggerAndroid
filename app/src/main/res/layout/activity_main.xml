@@ -792,12 +792,14 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="12dp">
+                        app:cardCornerRadius="2dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
                         
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge1"
                             android:layout_width="match_parent"
-                            android:layout_height="280dp"
+                            android:layout_height="320dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -811,12 +813,14 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="12dp">
+                        app:cardCornerRadius="2dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
 
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge2"
                             android:layout_width="match_parent"
-                            android:layout_height="280dp"
+                            android:layout_height="320dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
@@ -838,12 +842,14 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="12dp">
+                        app:cardCornerRadius="2dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
 
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge3"
                             android:layout_width="match_parent"
-                            android:layout_height="260dp"
+                            android:layout_height="320dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -857,12 +863,14 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="12dp">
+                        app:cardCornerRadius="2dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
 
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge4"
                             android:layout_width="match_parent"
-                            android:layout_height="260dp"
+                            android:layout_height="320dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
@@ -884,7 +892,9 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="12dp">
+                        app:cardCornerRadius="2dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
                         
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -920,7 +930,9 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="12dp">
+                        app:cardCornerRadius="2dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -964,7 +976,9 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="12dp">
+                        app:cardCornerRadius="2dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -1000,7 +1014,9 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="12dp">
+                        app:cardCornerRadius="2dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/border">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -1032,7 +1048,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
                     app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
+                    app:cardCornerRadius="2dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/border">
 
                     <TextView
                         android:id="@+id/countText"
