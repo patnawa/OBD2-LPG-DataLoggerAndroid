@@ -111,4 +111,25 @@
     <string name="dialog_select_folder_msg">Please choose a directory where the app will save and load OBD2 logs.</string>
     <string name="dialog_select_folder_btn">Choose Folder</string>
     <string name="gauge_peaks_header">Session Peak Telemetry (Min • Max)</string>
+    <!-- Battery Tester -->
+    <string name="battery_title">Battery &amp; Charging System</string>
+    <string name="battery_subtitle">Professional 12V battery diagnostics via OBD2 PID 0x42</string>
+    <string name="battery_live_graph">Live Voltage Monitor</string>
+    <string name="battery_waiting">Connect to vehicle to start monitoring</string>
+    <string name="battery_connect_first">Connect to vehicle, then run a test.</string>
+    <string name="battery_soc_label">State of Charge</string>
+    <string name="battery_soh_label">State of Health</string>
+    <string name="battery_overall_score">Overall Battery Score</string>
+    <string name="battery_type_hint">Battery type</string>
+    <string name="battery_age_hint">Age (months)</string>
+    <string name="battery_test_resting">Resting Voltage</string>
+    <string name="battery_test_alternator">Alternator Test</string>
+    <string name="battery_test_load">Voltage Drop Test</string>
+    <string name="battery_test_crank">Cranking Test</string>
+    <string name="battery_test_ripple">Ripple/Diode Test</string>
+    <string name="battery_test_full">Full Diagnostic</string>
+    <string name="home_card_battery_title">Battery Tester</string>
+    <string name="home_card_battery_desc">Battery health, alternator &amp; voltage drop test</string>
+    <string name="tab_battery">Battery</string>
+
 </resources>

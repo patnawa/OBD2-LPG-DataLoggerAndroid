@@ -90,7 +90,10 @@ public final class PIDCatalogue {
         list.add(new PIDDefinition("Fuel Level", "01", "2F", "%", "A*100/255", 0, 100, false, 1, false));
         list.add(new PIDDefinition("Fuel Type", "01", "51", "", "A", 0, 255, false, 1, false));
         list.add(new PIDDefinition("Ethanol Fuel", "01", "52", "%", "A*100/255", 0, 100, false, 1, false));
-        list.add(new PIDDefinition("Control Module Voltage", "01", "42", "V", "(A*256+B)/1000", 0, 65.535, false, 2, true));
+        // lpgCritical=true: battery/alternator voltage is essential for LPG tuning —
+        // a failing alternator or weak battery causes lean misfire that masquerades as
+        // a fuel trim problem. Must be polled in LPG-only mode.
+        list.add(new PIDDefinition("Control Module Voltage", "01", "42", "V", "(A*256+B)/1000", 0, 65.535, true, 2, true));
 
         // --- Time & distance ---
         list.add(new PIDDefinition("Run Time Since Start", "01", "1F", "s", "(A*256+B)", 0, 65535, false, 2, false));

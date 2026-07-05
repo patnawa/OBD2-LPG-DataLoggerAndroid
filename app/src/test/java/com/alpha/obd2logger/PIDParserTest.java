@@ -17,7 +17,7 @@ public class PIDParserTest {
     @Test
     public void catalogueContainsCriticalLpgPids() {
         assertNotNull(PIDCatalogue.getLpgCritical());
-        assertEquals(20, PIDCatalogue.getLpgCritical().size());
+        assertEquals(21, PIDCatalogue.getLpgCritical().size());
     }
 
     @Test

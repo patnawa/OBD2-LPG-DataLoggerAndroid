@@ -108,4 +108,25 @@
     <string name="dialog_select_folder_msg">กรุณาเลือกโฟลเดอร์สำหรับจัดเก็บและเรียกดูไฟล์บันทึกข้อมูล OBD2</string>
     <string name="dialog_select_folder_btn">เลือกโฟลเดอร์</string>
     <string name="gauge_peaks_header">ค่าสูงสุด-ต่ำสุดในรอบการบันทึก (Min • Max)</string>
+    <!-- Battery Tester -->
+    <string name="battery_title">แบตเตอรี่ &amp; ระบบชาร์จ</string>
+    <string name="battery_subtitle">ตรวจวิเคราะห์แบตเตอรี่ 12V มืออาชีพผ่าน OBD2 PID 0x42</string>
+    <string name="battery_live_graph">กราฟแรงดันเรียลไทม์</string>
+    <string name="battery_waiting">เชื่อมต่อกับรถยนต์เพื่อเริ่มตรวจวัด</string>
+    <string name="battery_connect_first">เชื่อมต่อกับรถยนต์ก่อน แล้วกดปุ่มทดสอบ</string>
+    <string name="battery_soc_label">ระดับประจุ (SoC)</string>
+    <string name="battery_soh_label">สุขภาพแบตเตอรี่ (SoH)</string>
+    <string name="battery_overall_score">คะแนนรวม</string>
+    <string name="battery_type_hint">ประเภทแบตเตอรี่</string>
+    <string name="battery_age_hint">อายุ (เดือน)</string>
+    <string name="battery_test_resting">วัดแรงดันพัก</string>
+    <string name="battery_test_alternator">ทดสอบหม้อแปลง/อัลเทอร์เนเตอร์</string>
+    <string name="battery_test_load">ทดสอบแรงดันตก</string>
+    <string name="battery_test_crank">ทดสอบแรงดันขณะสตาร์ท</string>
+    <string name="battery_test_ripple">ทดสอบไดโอด/ริปเปิล</string>
+    <string name="battery_test_full">ตรวจสอบรอบครัว</string>
+    <string name="home_card_battery_title">ทดสอบแบตเตอรี่</string>
+    <string name="home_card_battery_desc">ตรวจสุขภาพแบตเตอรี่ อัลเทอร์เนเตอร์ และแรงดันตก</string>
+    <string name="tab_battery">แบตเตอรี่</string>
+
 </resources>

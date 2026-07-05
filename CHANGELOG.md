@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.0] - 2026-07-05
+### Added
+- **Battery & Charging System Tester**: Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Voltage). A new dedicated "Battery" tab in the bottom navigation with 11 automated tests:
+  - **State of Charge (SoC)**: Open-circuit voltage → SoC% lookup table (flooded lead-acid, 25°C)
+  - **State of Health (SOH)**: Multi-factor degradation estimate combining resting voltage, cranking voltage, recovery delta, and charge acceptance (sulfation detection)
+  - **Battery Life Estimate**: Remaining months extrapolated from SOH, battery type (Flooded/AGM), age, and tropical climate factor
+  - **Alternator Voltage**: Regulated output check at idle (13.8-14.7V spec, optimal 14.2V)
+  - **Voltage Drop Test**: No-load vs full-load (headlights + blower + AC + defroster) comparison with step-by-step dialog
+  - **Voltage Recovery Test**: Measures how fast voltage returns after load dump (internal resistance indicator)
+  - **Cranking Voltage Test**: Minimum battery voltage during engine crank — fast 80ms sampling for 5 seconds
+  - **Ripple / Diode Health**: AC ripple detection via 20-sample burst at 100ms intervals (bad diode detection)
+  - **Parasitic Drain Estimate**: Voltage decay rate when engine off (SoC loss per hour)
+  - **Charging System Efficiency**: Voltage stability across RPM range (idle vs high RPM)
+  - **Live Voltage Monitor**: Real-time scrolling BatteryTestView custom View with color-coded threshold bands (crank 9.6V, resting 12.2/12.65V, alternator 13.8/14.2/14.7V), min/max/avg stats, and gradient fill
+  - **Full Diagnostic Report**: One-tap comprehensive report with weighted overall score (A+ to F grade), summary, and individual test result rows with pass/fail/warn severity colors
+  - **Battery type selector**: Flooded (Standard), AGM/Gel, Calcium dropdown
+  - **SoC/SOH summary cards**: Quick-glance large-number display at top of Battery tab
+  - Bilingual strings (English + Thai) for all battery test labels
+  - Bottom navigation now has 6 items (Dashboard, Gauges, Map, DTC, Battery, Logs)
+
+- **Professional Home Screen Redesign**: Complete overhaul of the Home Hub panel:
+  - **Gradient Hero Header**: Full-width blue gradient banner with app name, welcome text, and status pill with green dot indicator
+  - **Color-coded gradient icon circles**: Each feature card has a unique colored gradient circle (Blue=Dashboard, Cyan=Gauges, Amber=Tuning Map, Red=DTC, Green=Battery, Purple=Logs, Slate=Settings)
+  - **Icon overlay technique**: White Material icons overlaid on gradient circles for a polished 3D look
+  - **Card elevation & rounding**: 20dp corner radius, 2dp elevation, 0.5dp subtle border
+  - **Settings as full-width list item**: Horizontal layout with icon circle, title+description, and chevron arrow
+  - **Ripple feedback**: selectableItemBackground on all cards for touch feedback
+
+### New Files
+- `BatteryTester.java` — Core analysis engine (11 tests, SOH, Battery Life, full report builder, SAE J1979 thresholds)
+- `BatteryTestView.java` — Custom View for real-time voltage timeline graph with threshold bands
+- `ic_battery.xml` — Material battery vector icon
+- `bg_icon_*.xml` (7 files) — Gradient circle drawables for home screen feature icons
+- `bg_hero_gradient.xml` — Blue gradient banner background for home hero header
+
+### Changed
+- Version bumped to 3.3.0 (code 32)
+- Bottom navigation menu: added Battery tab (6 items total)
+- `showTab()`: added panelBattery visibility at index 7
+- `onRecord()`: now calls `updateBatteryMonitor()` to feed live voltage graph
+- `setupTabs()`: added nav_battery item handler
+- `setupHomeMenu()`: added cardHomeBattery click handler
+- Battery voltage PID 0x42 simulation already present in SimulationDriver
+
 ## [3.2.3] - 2026-07-05
 ### Added
 - **Gauge AVG (Average) Stat Tracking**: The Gauges tab now displays a running Average alongside MIN and MAX for every sensor PID. The stat line format is now `MIN: value • AVG: value • MAX: value` with three distinct theme colors (primary blue for MIN, accent green for AVG, danger red for MAX). Average is computed as cumulative mean across all valid readings in the session.

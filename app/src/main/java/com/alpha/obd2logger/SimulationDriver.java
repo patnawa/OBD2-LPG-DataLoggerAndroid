@@ -61,6 +61,12 @@ public final class SimulationDriver extends BaseDriver {
         if ("34".equals(pid)) {
             return 0.98 + random.nextDouble() * 0.04;
         }
+        // --- Control Module Voltage (PID 0x42) ---
+        // Simulate alternator charging voltage: ~13.8-14.4V when engine running.
+        // A healthy alternator produces 13.8-14.4V; a weak battery/alternator drops below 12.6V.
+        if ("42".equals(pid)) {
+            return 13.8 + random.nextDouble() * 0.6; // 13.8-14.4V
+        }
         // --- Oxygen sensor simulation (PIDs 0x14-0x1B) ---
         // Narrowband O2 sensors swing between ~0.1V (lean) and ~0.9V (rich).
         // Upstream sensors (B1S1, B2S1) oscillate actively; downstream (S2-S4) stay steadier.
@@ -100,6 +106,7 @@ public final class SimulationDriver extends BaseDriver {
                 case "07": return "42 07 8F";    // LTFT B1: +11.7%
                 case "0B": return "42 0B 32";    // MAP: 50 kPa
                 case "0F": return "42 0F 46";    // IAT: 30 C
+                case "42": return "42 42 37 14"; // Battery: (0x37=55, 0x14=20) → (55*256+20)/1000 = 14.10V
                 default: return "42 " + pid + " 00";
             }
         }

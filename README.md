@@ -1,6 +1,6 @@
 # OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.2.3** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.3.0** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
@@ -58,6 +58,22 @@ This calculates the net fuel trim difference between running on gas and the petr
 - **VIN reader**: Read 17-character VIN via Mode 09 PID 02 (multi-frame ISO-TP)
 - **ECU Calibration**: Read Cal-ID and CVN via Mode 09 for emissions compliance
 - **Readiness monitors**: Check emission inspection readiness — Misfire, Fuel System, Components, Catalyst, Heated Catalyst, EVAP, Secondary Air, EGR, Particulate Filter, NOx/SOR, O2 Sensor, O2 Heater
+
+### Battery & Charging System Tester (NEW in v3.3.0)
+Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Voltage). 11 automated tests with pass/fail/warn severity, overall health grade (A+ to F), and Battery Life estimation:
+- **State of Charge (SoC)**: Open-circuit voltage → SoC% lookup (flooded lead-acid, 25°C)
+- **State of Health (SOH)**: Multi-factor degradation estimate (resting voltage + cranking voltage + recovery + charge acceptance)
+- **Battery Life Estimate**: Remaining months based on SOH, battery type (Flooded/AGM), age, and tropical climate factor
+- **Alternator Voltage**: Regulated output check at idle (13.8-14.7V spec)
+- **Voltage Drop Test**: No-load vs full-load (headlights + blower + AC + defroster) comparison
+- **Voltage Recovery**: How fast voltage returns after load dump (internal resistance indicator)
+- **Cranking Voltage**: Minimum battery voltage during engine crank (fast 80ms sampling for 5 seconds)
+- **Ripple / Diode Health**: AC ripple detection via 20-sample burst (bad diode detection)
+- **Parasitic Drain Estimate**: Voltage decay rate when engine off
+- **Charging Efficiency**: Voltage stability across RPM range (idle vs high RPM)
+- **Live Voltage Monitor**: Real-time scrolling graph with threshold bands (crank/rest/alternator/overcharge zones)
+- **Battery type selector**: Flooded (Standard), AGM/Gel, Calcium
+- **Full Diagnostic**: One-tap comprehensive report with weighted overall score
 
 ### Adapter Support
 - **vLinker FS USB** (MIC3322): USB CDC, firmware-specific optimizations (ATAT1, ATST32, ATAL, 6-PID chunks, 250ms interval)

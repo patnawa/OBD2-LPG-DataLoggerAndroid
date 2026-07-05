@@ -17,6 +17,10 @@
         android:icon="@drawable/ic_build"
         android:title="@string/tab_dtc" />
     <item
+        android:id="@+id/nav_battery"
+        android:icon="@drawable/ic_battery"
+        android:title="@string/tab_battery" />
+    <item
         android:id="@+id/nav_logs"
         android:icon="@drawable/ic_list"
         android:title="@string/tab_logs" />

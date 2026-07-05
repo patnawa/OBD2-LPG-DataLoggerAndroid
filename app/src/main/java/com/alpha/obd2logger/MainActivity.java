@@ -25,6 +25,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -58,6 +59,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // --- UI: Tab bar ---
     private com.google.android.material.bottomnavigation.BottomNavigationView bottomNav;
     private View panelHome, panelDashboard, panelGauges, panelDtc, panelLogs, panelSettings;
+    private View panelBattery;
     private com.google.android.material.appbar.MaterialToolbar topHeader;
     private androidx.activity.OnBackPressedCallback onBackPressedCallback;
     private boolean isTabChanging = false;
@@ -93,6 +95,29 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private Button btnReadDtc, btnClearDtc, btnReadVin, btnReadiness;
     private TextView dtcStatusText;
     private LinearLayout dtcListContainer, readinessContainer;
+
+    // --- UI: Battery tab ---
+    private BatteryTestView batteryTestView;
+    private TextView batteryVoltageText, batteryStatusText, socValueText, socVoltageText;
+    private TextView sohValueText, sohGradeText, batteryGradeText, batterySummaryText, batteryLifeText;
+    private com.google.android.material.card.MaterialCardView batteryScoreCard;
+    private com.google.android.material.button.MaterialButton btnBatteryResting, btnBatteryAlternator;
+    private com.google.android.material.button.MaterialButton btnBatteryLoad, btnBatteryCrank;
+    private com.google.android.material.button.MaterialButton btnBatteryRipple, btnBatteryFull;
+    private AutoCompleteTextView batteryTypeSpinner;
+    private com.google.android.material.textfield.TextInputEditText batteryAgeInput;
+    private volatile double lastBatteryVoltage = -1;
+    private volatile double restingVoltage = -1;
+    private volatile double runningVoltage = -1;
+    private volatile double crankMinVoltage = -1;
+    private volatile double noLoadVoltage = -1;
+    private volatile double fullLoadVoltage = -1;
+    private volatile double highRpmVoltage = -1;
+    private final java.util.List<Double> rippleSamples = new java.util.ArrayList<>();
+    private volatile double preLoadVoltage = -1;
+    private volatile double postLoadVoltage = -1;
+    private volatile double recoveredVoltage = -1;
+    private volatile double recoveryDelta = -1;
 
     // --- UI: Logs tab ---
     private TextView txtSessionDuration, txtSessionRecords, txtSessionRate, sessionStatusText;
@@ -393,6 +418,34 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         panelDtc = findViewById(R.id.panelDtc);
         panelLogs = findViewById(R.id.panelLogs);
         panelSettings = findViewById(R.id.panelSettings);
+        panelBattery = findViewById(R.id.panelBattery);
+
+        // Battery tab
+        batteryTestView = findViewById(R.id.batteryTestView);
+        batteryVoltageText = findViewById(R.id.batteryVoltageText);
+        batteryStatusText = findViewById(R.id.batteryStatusText);
+        socValueText = findViewById(R.id.socValueText);
+        socVoltageText = findViewById(R.id.socVoltageText);
+        sohValueText = findViewById(R.id.sohValueText);
+        sohGradeText = findViewById(R.id.sohGradeText);
+        batteryGradeText = findViewById(R.id.batteryGradeText);
+        batterySummaryText = findViewById(R.id.batterySummaryText);
+        batteryLifeText = findViewById(R.id.batteryLifeText);
+        batteryScoreCard = findViewById(R.id.batteryScoreCard);
+        btnBatteryResting = findViewById(R.id.btnBatteryResting);
+        btnBatteryAlternator = findViewById(R.id.btnBatteryAlternator);
+        btnBatteryLoad = findViewById(R.id.btnBatteryLoad);
+        btnBatteryCrank = findViewById(R.id.btnBatteryCrank);
+        btnBatteryRipple = findViewById(R.id.btnBatteryRipple);
+        btnBatteryFull = findViewById(R.id.btnBatteryFull);
+        batteryTypeSpinner = findViewById(R.id.batteryTypeSpinner);
+        batteryAgeInput = findViewById(R.id.batteryAgeInput);
+        // Populate battery type dropdown
+        String[] batteryTypes = {"Flooded (Standard)", "AGM/Gel", "Calcium"};
+        java.util.List<String> typeList = new java.util.ArrayList<>(java.util.Arrays.asList(batteryTypes));
+        batteryTypeSpinner.setAdapter(new android.widget.ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_dropdown_item, typeList));
+        batteryTypeSpinner.setText(batteryTypes[0], false);
 
         // Settings
         languageSpinner = findViewById(R.id.languageSpinner);
@@ -733,6 +786,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             } else if (id == R.id.nav_logs) {
                 showTab(4);
                 return true;
+            } else if (id == R.id.nav_battery) {
+                showTab(7);
+                return true;
             }
             return false;
         });
@@ -752,6 +808,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             panelDtc.setVisibility(index == 3 ? View.VISIBLE : View.GONE);
             panelLogs.setVisibility(index == 4 ? View.VISIBLE : View.GONE);
             panelSettings.setVisibility(index == 5 ? View.VISIBLE : View.GONE);
+            if (panelBattery != null) {
+                panelBattery.setVisibility(index == 7 ? View.VISIBLE : View.GONE);
+            }
             
             if (onBackPressedCallback != null) {
                 onBackPressedCallback.setEnabled(index != 6);
@@ -772,6 +831,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         else if (index == 2) menuId = R.id.nav_map;
                         else if (index == 3) menuId = R.id.nav_dtc;
                         else if (index == 4) menuId = R.id.nav_logs;
+                        else if (index == 7) menuId = R.id.nav_battery;
                         
                         if (bottomNav.getSelectedItemId() != menuId) {
                             bottomNav.setSelectedItemId(menuId);
@@ -821,6 +881,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         View cardSettings = findViewById(R.id.cardHomeSettings);
         if (cardSettings != null) {
             cardSettings.setOnClickListener(v -> showTab(5));
+        }
+        View cardBattery = findViewById(R.id.cardHomeBattery);
+        if (cardBattery != null) {
+            cardBattery.setOnClickListener(v -> showTab(7));
         }
     }
 
@@ -990,6 +1054,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         btnClearDtc.setOnClickListener(v -> clearDtcs());
         btnReadVin.setOnClickListener(v -> readVin());
         btnReadiness.setOnClickListener(v -> checkReadiness());
+
+        // Battery tester buttons
+        if (btnBatteryResting != null) btnBatteryResting.setOnClickListener(v -> testBatteryResting());
+        if (btnBatteryAlternator != null) btnBatteryAlternator.setOnClickListener(v -> testBatteryAlternator());
+        if (btnBatteryLoad != null) btnBatteryLoad.setOnClickListener(v -> testBatteryLoadDrop());
+        if (btnBatteryCrank != null) btnBatteryCrank.setOnClickListener(v -> testBatteryCranking());
+        if (btnBatteryRipple != null) btnBatteryRipple.setOnClickListener(v -> testBatteryRipple());
+        if (btnBatteryFull != null) btnBatteryFull.setOnClickListener(v -> runFullBatteryDiagnostic());
 
         // Logs tab sub-navigation toggle listener
         com.google.android.material.button.MaterialButtonToggleGroup logsTabToggle = findViewById(R.id.logsTabToggle);
@@ -2027,6 +2099,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             updateTuningData(record);
             renderReadings(record);
             updateLiveMetrics(count, loggingStartTime);
+            updateBatteryMonitor(record);
 
             if (fuelMapView != null) {
                 sessionPetrolData.clear();
@@ -2329,6 +2402,326 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void updateTuningData(DataRecord record) {
         // Obsolete as we use dynamic dashboard cards now
+    }
+
+    // --- Battery Tester ---
+
+    /**
+     * Read PID 0x42 voltage from the driver. Returns -1 on failure.
+     */
+    private double readBatteryVoltage() {
+        if (currentDriver == null || !currentDriver.isConnected()) return -1;
+        try {
+            Double v = currentDriver.queryPid(PIDDefinition.findByKey("01_42"));
+            return v != null ? v : -1;
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /**
+     * Quick single voltage reading — updates the graph + SoC/SoH display.
+     * Called from onRecord to keep the live graph fed.
+     */
+    private void updateBatteryMonitor(DataRecord record) {
+        Double v = valueByKey(record, "01_42");
+        if (v == null || v <= 0) return;
+        lastBatteryVoltage = v;
+        if (batteryTestView != null) {
+            batteryTestView.addSample(v.floatValue());
+        }
+        if (batteryVoltageText != null) {
+            double soc = BatteryTester.voltageToSoC(v);
+            batteryVoltageText.setText(String.format(Locale.US, "%.2f V  |  SoC: %.0f%%", v, soc));
+        }
+        // Update SoC/SoH summary cards (quick estimate)
+        if (socValueText != null) {
+            double soc = BatteryTester.voltageToSoC(v);
+            socValueText.setText(String.format(Locale.US, "%.0f%%", soc));
+            socVoltageText.setText(String.format(Locale.US, "%.2f V", v));
+        }
+    }
+
+    /** Test 1: Resting voltage (engine off). */
+    private void testBatteryResting() {
+        if (currentDriver == null || !currentDriver.isConnected()) {
+            batteryStatusText.setText("Not connected. Start logging first.");
+            return;
+        }
+        batteryStatusText.setText("Reading resting voltage (ensure engine is OFF)...");
+        dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
+        dtcExecutor.submit(() -> {
+            double v = readBatteryVoltage();
+            restingVoltage = v;
+            runOnUiThread(() -> {
+                if (v > 0) {
+                    BatteryTester.BatteryTestResult r = BatteryTester.testStateOfCharge(v);
+                    displayBatteryResult(r);
+                } else {
+                    batteryStatusText.setText("Failed to read voltage.");
+                }
+            });
+        });
+    }
+
+    /** Test 3: Alternator voltage at idle (engine running). */
+    private void testBatteryAlternator() {
+        if (currentDriver == null || !currentDriver.isConnected()) {
+            batteryStatusText.setText("Not connected. Start logging first.");
+            return;
+        }
+        batteryStatusText.setText("Reading alternator voltage (ensure engine is RUNNING at idle)...");
+        dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
+        dtcExecutor.submit(() -> {
+            // Sample a few times to get a stable reading
+            double sum = 0;
+            int count = 0;
+            for (int i = 0; i < 5; i++) {
+                double v = readBatteryVoltage();
+                if (v > 0) { sum += v; count++; }
+                try { Thread.sleep(200); } catch (InterruptedException ignored) { break; }
+            }
+            double v = count > 0 ? sum / count : -1;
+            runningVoltage = v;
+            // Also try high-RPM reading (ask user to rev)
+            runOnUiThread(() -> {
+                if (v > 0) {
+                    BatteryTester.BatteryTestResult r = BatteryTester.testAlternatorVoltage(v);
+                    displayBatteryResult(r);
+                } else {
+                    batteryStatusText.setText("Failed to read voltage.");
+                }
+            });
+        });
+    }
+
+    /** Test 4: Voltage drop under electrical load. */
+    private void testBatteryLoadDrop() {
+        if (currentDriver == null || !currentDriver.isConnected()) {
+            batteryStatusText.setText("Not connected. Start logging first.");
+            return;
+        }
+        batteryStatusText.setText("Step 1: Reading no-load voltage (engine running, accessories OFF)...");
+        dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
+        dtcExecutor.submit(() -> {
+            double noLoad = readBatteryVoltage();
+            noLoadVoltage = noLoad;
+            runOnUiThread(() -> {
+                batteryStatusText.setText("Step 2: Turn ON headlights, blower, AC, rear defroster.\nTap OK when ready.");
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle("Voltage Drop Test")
+                        .setMessage("Turn ON all electrical loads:\n• Headlights (high beam)\n• Blower motor (max)\n• AC\n• Rear defroster\n\nKeep engine at idle.\n\nPress OK when loads are ON.")
+                        .setPositiveButton("OK", (d, w) -> {
+                            batteryStatusText.setText("Reading full-load voltage...");
+                            dtcExecutor.submit(() -> {
+                                double fullLoad = readBatteryVoltage();
+                                fullLoadVoltage = fullLoad;
+                                runOnUiThread(() -> {
+                                    if (noLoad > 0 && fullLoad > 0) {
+                                        BatteryTester.BatteryTestResult r = BatteryTester.testVoltageDrop(noLoad, fullLoad);
+                                        displayBatteryResult(r);
+                                    } else {
+                                        batteryStatusText.setText("Failed to read voltage.");
+                                    }
+                                });
+                            });
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            });
+        });
+    }
+
+    /** Test 6: Cranking voltage — minimum voltage during engine crank. */
+    private void testBatteryCranking() {
+        if (currentDriver == null || !currentDriver.isConnected()) {
+            batteryStatusText.setText("Not connected. Start logging first.");
+            return;
+        }
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Cranking Voltage Test")
+                .setMessage("This test records the minimum battery voltage during engine crank.\n\n1. Turn engine OFF\n2. Press Start below\n3. Immediately crank the engine\n\nThe test will sample rapidly for 5 seconds.")
+                .setPositiveButton("Start", (d, w) -> {
+                    batteryStatusText.setText("Sampling crank voltage — crank the engine NOW!");
+                    crankMinVoltage = 999;
+                    dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
+                    dtcExecutor.submit(() -> {
+                        double minV = 999;
+                        long endTime = System.currentTimeMillis() + 5000;
+                        while (System.currentTimeMillis() < endTime) {
+                            double v = readBatteryVoltage();
+                            if (v > 0 && v < minV) minV = v;
+                            try { Thread.sleep(80); } catch (InterruptedException e) { break; }
+                        }
+                        crankMinVoltage = (minV < 999) ? minV : -1;
+                        runOnUiThread(() -> {
+                            if (crankMinVoltage > 0) {
+                                double rest = restingVoltage > 0 ? restingVoltage : lastBatteryVoltage;
+                                BatteryTester.BatteryTestResult r = BatteryTester.testCrankingVoltage(crankMinVoltage, rest);
+                                displayBatteryResult(r);
+                            } else {
+                                batteryStatusText.setText("Failed to read crank voltage.");
+                            }
+                        });
+                    });
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    /** Test 7: Ripple / diode health — fast sampling of voltage. */
+    private void testBatteryRipple() {
+        if (currentDriver == null || !currentDriver.isConnected()) {
+            batteryStatusText.setText("Not connected. Start logging first.");
+            return;
+        }
+        batteryStatusText.setText("Sampling voltage for ripple test (2 seconds)...");
+        dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
+        dtcExecutor.submit(() -> {
+            java.util.List<Double> samples = new java.util.ArrayList<>();
+            for (int i = 0; i < 20; i++) {
+                double v = readBatteryVoltage();
+                if (v > 0) samples.add(v);
+                try { Thread.sleep(100); } catch (InterruptedException e) { break; }
+            }
+            runOnUiThread(() -> {
+                if (samples.size() >= 5) {
+                    BatteryTester.BatteryTestResult r = BatteryTester.testRipple(samples);
+                    displayBatteryResult(r);
+                } else {
+                    batteryStatusText.setText("Insufficient samples for ripple test.");
+                }
+            });
+        });
+    }
+
+    /** Full diagnostic — runs all available tests and shows a comprehensive report. */
+    private void runFullBatteryDiagnostic() {
+        if (currentDriver == null || !currentDriver.isConnected()) {
+            batteryStatusText.setText("Not connected. Start logging first.");
+            return;
+        }
+        final boolean isAgm = batteryTypeSpinner != null && batteryTypeSpinner.getText().toString().contains("AGM");
+        final int ageMonths;
+        if (batteryAgeInput != null) {
+            String ageStr = batteryAgeInput.getText().toString().trim();
+            int parsed;
+            try { parsed = Integer.parseInt(ageStr); } catch (NumberFormatException e) { parsed = -1; }
+            ageMonths = parsed;
+        } else {
+            ageMonths = -1;
+        }
+        batteryStatusText.setText("Running full battery diagnostic...");
+        batteryScoreCard.setVisibility(View.GONE);
+        dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
+        dtcExecutor.submit(() -> {
+            // Sample current voltage
+            double v = readBatteryVoltage();
+            double restV = restingVoltage > 0 ? restingVoltage : (v > 0 ? v : -1);
+            double runV = runningVoltage > 0 ? runningVoltage : (v > 0 ? v : -1);
+            final double rDelta = recoveryDelta >= 0 ? recoveryDelta : -1;
+            final double restVF = restV;
+            final double runVF = runV;
+
+            BatteryTester.BatteryReport report = BatteryTester.buildFullReport(
+                    restVF, runVF, crankMinVoltage,
+                    noLoadVoltage, fullLoadVoltage,
+                    postLoadVoltage, recoveredVoltage, -1,
+                    highRpmVoltage,
+                    rippleSamples.isEmpty() ? null : new java.util.ArrayList<>(rippleSamples),
+                    -1, -1, -1,  // drain values — need long-term monitoring
+                    rDelta, ageMonths,
+                    isAgm, true  // tropical climate default for Thailand
+            );
+
+            runOnUiThread(() -> {
+                // Clear previous results
+                LinearLayout container = findViewById(R.id.batteryResultsContainer);
+                if (container != null) {
+                    container.removeAllViews();
+                    // Keep the status text as first child
+                    container.addView(batteryStatusText);
+                }
+                batteryStatusText.setText("");
+
+                for (BatteryTester.BatteryTestResult r : report.results) {
+                    addBatteryResultRow(container, r);
+                }
+
+                // Show overall score
+                batteryScoreCard.setVisibility(View.VISIBLE);
+                batteryGradeText.setText(String.format(Locale.US, "%s  (%d%%)", report.grade, report.overallScore));
+                batterySummaryText.setText(report.summary);
+
+                // Find SOH and Life results for the summary cards
+                for (BatteryTester.BatteryTestResult r : report.results) {
+                    if (r.testName.contains("SOH")) {
+                        sohValueText.setText(r.value.replaceAll(" .*", ""));
+                        sohGradeText.setText(r.value.replaceAll("^\\d+%\\s*", ""));
+                    } else if (r.testName.contains("Life")) {
+                        batteryLifeText.setText(r.value + " — " + r.remark);
+                    }
+                }
+            });
+        });
+    }
+
+    /** Display a single battery test result. */
+    private void displayBatteryResult(BatteryTester.BatteryTestResult r) {
+        LinearLayout container = findViewById(R.id.batteryResultsContainer);
+        if (container != null) {
+            container.removeAllViews();
+            container.addView(batteryStatusText);
+        }
+        batteryStatusText.setText("");
+        addBatteryResultRow(container, r);
+    }
+
+    /** Add a result row to the battery results container. */
+    private void addBatteryResultRow(LinearLayout container, BatteryTester.BatteryTestResult r) {
+        if (container == null) return;
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(0, 12, 0, 12);
+
+        TextView nameView = new TextView(this);
+        nameView.setText(r.testName);
+        nameView.setTextColor(getColorCompat(R.color.text));
+        nameView.setTextSize(14f);
+        nameView.setTypeface(null, android.graphics.Typeface.BOLD);
+
+        TextView valueView = new TextView(this);
+        valueView.setText(r.value);
+        valueView.setTextSize(16f);
+        valueView.setTypeface(null, android.graphics.Typeface.BOLD);
+
+        int color;
+        switch (r.severity) {
+            case PASS:  color = getColorCompat(R.color.accent); break;
+            case WARN:  color = getColorCompat(R.color.warning); break;
+            case FAIL:  color = getColorCompat(R.color.danger); break;
+            default:    color = getColorCompat(R.color.muted); break;
+        }
+        valueView.setTextColor(color);
+
+        TextView remarkView = new TextView(this);
+        remarkView.setText(r.remark);
+        remarkView.setTextColor(getColorCompat(R.color.muted));
+        remarkView.setTextSize(12f);
+        remarkView.setSingleLine(false);
+        remarkView.setMaxLines(3);
+
+        row.addView(nameView);
+        row.addView(valueView);
+        row.addView(remarkView);
+
+        // Separator
+        View sep = new View(this);
+        sep.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1));
+        sep.setBackgroundColor(0x33808080);
+        row.addView(sep);
+
+        container.addView(row);
     }
 
     // --- DTC / VIN / Readiness ---
@@ -3043,13 +3436,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 card.setBackgroundResource(R.drawable.bg_dtc_card);
                 card.setPadding(16, 12, 16, 12);
 
+                // --- Fix: equal margins on both sides for symmetric spacing ---
+                // Old code applied margin to only one side (right for even, left for odd),
+                // creating asymmetric gaps. Now both sides get equal margin.
                 LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
                         0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
-                if (index % 2 == 0) {
-                    cardLp.rightMargin = margin;
-                } else {
-                    cardLp.leftMargin = margin;
-                }
+                cardLp.leftMargin = margin;
+                cardLp.rightMargin = margin;
                 card.setLayoutParams(cardLp);
 
                 TextView nameView = new TextView(this);
@@ -3107,6 +3500,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
 
             index++;
+        }
+
+        // --- Fix: if the last row has only one card (odd number of items),
+        // make it span full width instead of leaving the right half empty. ---
+        if (currentRow != null && currentRow.getChildCount() == 1) {
+            View loneCard = currentRow.getChildAt(0);
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) loneCard.getLayoutParams();
+            lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            lp.weight = 0;
+            loneCard.setLayoutParams(lp);
         }
     }
 
