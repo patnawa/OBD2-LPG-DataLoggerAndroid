@@ -1186,7 +1186,8 @@
                         android:layout_marginEnd="4dp"
                         android:text="@string/read_dtc"
                         app:backgroundTint="@color/primary"
-                        android:textColor="@color/background" />
+                        android:textColor="@color/background"
+                        app:cornerRadius="2dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnClearDtc"
@@ -1196,7 +1197,8 @@
                         android:layout_marginStart="4dp"
                         android:text="@string/clear_dtc"
                         app:backgroundTint="@color/danger"
-                        android:textColor="@color/text" />
+                        android:textColor="@color/text"
+                        app:cornerRadius="2dp" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -1214,7 +1216,8 @@
                         android:layout_marginEnd="4dp"
                         android:text="@string/read_vin"
                         android:textColor="@color/primary"
-                        app:strokeColor="@color/primary" />
+                        app:strokeColor="@color/primary"
+                        app:cornerRadius="2dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnReadiness"
@@ -1225,7 +1228,8 @@
                         android:layout_marginStart="4dp"
                         android:text="@string/read_readiness"
                         android:textColor="@color/primary"
-                        app:strokeColor="@color/primary" />
+                        app:strokeColor="@color/primary"
+                        app:cornerRadius="2dp" />
                 </LinearLayout>
 
                 <com.google.android.material.card.MaterialCardView

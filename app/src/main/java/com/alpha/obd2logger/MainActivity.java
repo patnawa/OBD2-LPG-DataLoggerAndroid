@@ -2257,7 +2257,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 LinearLayout ffLayout = new LinearLayout(this);
                 ffLayout.setOrientation(LinearLayout.VERTICAL);
                 ffLayout.setPadding(12, 8, 12, 8);
-                ffLayout.setBackgroundResource(R.color.surface2);
+                ffLayout.setBackgroundResource(R.drawable.bg_dtc_card);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                 lp.bottomMargin = 6;
@@ -2334,7 +2334,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 LinearLayout row = new LinearLayout(this);
                 row.setOrientation(LinearLayout.VERTICAL);
                 row.setPadding(12, 6, 12, 6);
-                row.setBackgroundResource(R.color.surface2);
+                row.setBackgroundResource(R.drawable.bg_dtc_card);
                 LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                 rowLp.bottomMargin = 4;
@@ -2377,7 +2377,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             LinearLayout m09Layout = new LinearLayout(this);
             m09Layout.setOrientation(LinearLayout.VERTICAL);
             m09Layout.setPadding(12, 8, 12, 8);
-            m09Layout.setBackgroundResource(R.color.surface2);
+            m09Layout.setBackgroundResource(R.drawable.bg_dtc_card);
             LinearLayout.LayoutParams m09Lp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             m09Lp.bottomMargin = 6;
@@ -2456,7 +2456,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             LinearLayout cardLayout = new LinearLayout(this);
             cardLayout.setOrientation(LinearLayout.VERTICAL);
             cardLayout.setPadding(10, 8, 10, 8);
-            cardLayout.setBackgroundResource(R.color.surface2);
+            cardLayout.setBackgroundResource(R.drawable.bg_dtc_card);
             LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             cardLp.bottomMargin = 4;
