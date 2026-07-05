@@ -142,7 +142,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="OBD2 LPG Logger"
+                    android:text="@string/home_title"
                     android:textColor="@color/primary"
                     android:textSize="22sp"
                     android:textStyle="bold"
@@ -151,7 +151,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Select a function to get started:"
+                    android:text="@string/home_subtitle"
                     android:textColor="@color/muted"
                     android:textSize="14sp"
                     android:layout_marginBottom="24dp"/>
@@ -193,7 +193,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Dashboard"
+                                android:text="@string/home_card_dashboard_title"
                                 android:textColor="@color/text"
                                 android:textSize="15sp"
                                 android:textStyle="bold"
@@ -203,7 +203,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Real-time Status"
+                                android:text="@string/home_card_dashboard_desc"
                                 android:textColor="@color/muted"
                                 android:textSize="11sp"
                                 android:gravity="center"/>
@@ -240,7 +240,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Gauges"
+                                android:text="@string/home_card_gauges_title"
                                 android:textColor="@color/text"
                                 android:textSize="15sp"
                                 android:textStyle="bold"
@@ -250,7 +250,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Dial Parameters"
+                                android:text="@string/home_card_gauges_desc"
                                 android:textColor="@color/muted"
                                 android:textSize="11sp"
                                 android:gravity="center"/>
@@ -295,7 +295,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Tuning Map"
+                                android:text="@string/home_card_map_title"
                                 android:textColor="@color/text"
                                 android:textSize="15sp"
                                 android:textStyle="bold"
@@ -305,7 +305,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Petrol vs LPG trims"
+                                android:text="@string/home_card_map_desc"
                                 android:textColor="@color/muted"
                                 android:textSize="11sp"
                                 android:gravity="center"/>
@@ -342,7 +342,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="DTC Scan"
+                                android:text="@string/home_card_dtc_title"
                                 android:textColor="@color/text"
                                 android:textSize="15sp"
                                 android:textStyle="bold"
@@ -352,7 +352,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Fault Codes &amp; Tests"
+                                android:text="@string/home_card_dtc_desc"
                                 android:textColor="@color/muted"
                                 android:textSize="11sp"
                                 android:gravity="center"/>
@@ -397,7 +397,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Logs &amp; History"
+                                android:text="@string/home_card_logs_title"
                                 android:textColor="@color/text"
                                 android:textSize="15sp"
                                 android:textStyle="bold"
@@ -407,7 +407,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Review Log Files"
+                                android:text="@string/home_card_logs_desc"
                                 android:textColor="@color/muted"
                                 android:textSize="11sp"
                                 android:gravity="center"/>
@@ -444,7 +444,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Settings"
+                                android:text="@string/home_card_settings_title"
                                 android:textColor="@color/text"
                                 android:textSize="15sp"
                                 android:textStyle="bold"
@@ -454,7 +454,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Configuration Options"
+                                android:text="@string/home_card_settings_desc"
                                 android:textColor="@color/muted"
                                 android:textSize="11sp"
                                 android:gravity="center"/>

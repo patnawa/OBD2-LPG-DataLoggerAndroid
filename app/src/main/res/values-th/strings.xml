@@ -85,4 +85,20 @@
     <string name="log_destination_label">โฟลเดอร์สำหรับเก็บล็อกไฟล์</string>
     <string name="default_log_folder">Downloads/OBD2LPGLogger (ค่าเริ่มต้น)</string>
     <string name="select_folder">เลือก</string>
+
+    <!-- Home Menu -->
+    <string name="home_title">ระบบบันทึกข้อมูล OBD2 LPG</string>
+    <string name="home_subtitle">กรุณาเลือกฟังก์ชันการทำงานที่ต้องการ:</string>
+    <string name="home_card_dashboard_title">หน้าปัดข้อมูล</string>
+    <string name="home_card_dashboard_desc">แสดงค่าพารามิเตอร์ของเครื่องยนต์และโหมดเชื้อเพลิงแบบสด</string>
+    <string name="home_card_gauges_title">เกจวัดสมรรถนะ</string>
+    <string name="home_card_gauges_desc">หน้าปัดแสดงค่าเกจวัดสดและกราฟแสดงค่าพารามิเตอร์</string>
+    <string name="home_card_map_title">ตารางวิเคราะห์การจูน</string>
+    <string name="home_card_map_desc">เปรียบเทียบค่าความต่าง Fuel Trim ระหว่างน้ำมันกับแก๊ส</string>
+    <string name="home_card_dtc_title">วิเคราะห์โค้ดปัญหา</string>
+    <string name="home_card_dtc_desc">ตรวจสอบรหัสความผิดปกติของรถยนต์และความพร้อมมลพิษ</string>
+    <string name="home_card_logs_title">ประวัติและบันทึก</string>
+    <string name="home_card_logs_desc">ดูประวัติการบันทึกล็อกไฟล์ย้อนหลังและแชร์ออก</string>
+    <string name="home_card_settings_title">การตั้งค่าระบบ</string>
+    <string name="home_card_settings_desc">ตั้งค่าการเชื่อมต่อ อะแดปเตอร์ ธีมแอป และภาษา</string>
 </resources>

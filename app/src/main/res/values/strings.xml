@@ -88,4 +88,20 @@
     <string name="log_destination_label">Log Destination Folder</string>
     <string name="default_log_folder">Downloads/OBD2LPGLogger (Default)</string>
     <string name="select_folder">Select</string>
+
+    <!-- Home Menu -->
+    <string name="home_title">OBD2 LPG Logger</string>
+    <string name="home_subtitle">Select a function to get started:</string>
+    <string name="home_card_dashboard_title">Dashboard</string>
+    <string name="home_card_dashboard_desc">Real-time parameters, status, fuel mode</string>
+    <string name="home_card_gauges_title">Performance Gauges</string>
+    <string name="home_card_gauges_desc">Real-time graphs and dial parameters</string>
+    <string name="home_card_map_title">Tuning Map</string>
+    <string name="home_card_map_desc">Petrol vs LPG trim deviation details</string>
+    <string name="home_card_dtc_title">DTC Diagnostics</string>
+    <string name="home_card_dtc_desc">Scan fault codes and smog readiness</string>
+    <string name="home_card_logs_title">Data Logger</string>
+    <string name="home_card_logs_desc">History session directory and export</string>
+    <string name="home_card_settings_title">Configuration</string>
+    <string name="home_card_settings_desc">Settings panel, theme, and language</string>
 </resources>
