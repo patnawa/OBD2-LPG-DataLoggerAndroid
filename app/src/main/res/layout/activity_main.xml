@@ -1310,7 +1310,122 @@
                     android:text="@string/map_axes"
                     android:textColor="@color/muted"
                     android:textSize="12sp"
-                    android:layout_marginBottom="12dp"/>
+                    android:layout_marginBottom="8dp"/>
+
+                <!-- Color Scale Legend Bar -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp"
+                    android:padding="6dp"
+                    android:background="@color/surface">
+
+                    <!-- Very Rich -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:layout_marginEnd="2dp">
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="6dp"
+                            android:background="#FFEF4444"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="หนามาก (Rich)"
+                            android:textColor="@color/muted"
+                            android:textSize="8sp"
+                            android:layout_marginTop="3dp"/>
+                    </LinearLayout>
+
+                    <!-- Rich -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:layout_marginEnd="2dp">
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="6dp"
+                            android:background="#FFF59E0B"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="หนาเล็กน้อย"
+                            android:textColor="@color/muted"
+                            android:textSize="8sp"
+                            android:layout_marginTop="3dp"/>
+                    </LinearLayout>
+
+                    <!-- Perfect -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:layout_marginEnd="2dp">
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="6dp"
+                            android:background="#FF22C55E"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="สมบูรณ์ (OK)"
+                            android:textColor="@color/text"
+                            android:textSize="8sp"
+                            android:textStyle="bold"
+                            android:layout_marginTop="3dp"/>
+                    </LinearLayout>
+
+                    <!-- Lean -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:layout_marginEnd="2dp">
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="6dp"
+                            android:background="#FF38BDF8"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="บางเล็กน้อย"
+                            android:textColor="@color/muted"
+                            android:textSize="8sp"
+                            android:layout_marginTop="3dp"/>
+                    </LinearLayout>
+
+                    <!-- Very Lean -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center">
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="6dp"
+                            android:background="#FF1D4ED8"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="บางมาก (Lean)"
+                            android:textColor="@color/muted"
+                            android:textSize="8sp"
+                            android:layout_marginTop="3dp"/>
+                    </LinearLayout>
+                </LinearLayout>
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
