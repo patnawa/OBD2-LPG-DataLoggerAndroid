@@ -875,10 +875,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (cardLogs != null) {
             cardLogs.setOnClickListener(v -> showTab(4));
         }
-        View cardSettings = findViewById(R.id.cardHomeSettings);
-        if (cardSettings != null) {
-            cardSettings.setOnClickListener(v -> showTab(5));
-        }
         View cardBattery = findViewById(R.id.cardHomeBattery);
         if (cardBattery != null) {
             cardBattery.setOnClickListener(v -> showTab(7));

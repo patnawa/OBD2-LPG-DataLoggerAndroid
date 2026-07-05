@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.4] - 2026-07-05
+### Changed
+- **Redesigned home screen** — Compact hero header (was 28dp padding + 30sp title + description + status pill, now 16dp padding + 20sp title + small greeting, single row). Feature cards switched from vertical-centered (56dp icon circle + negative margin overlay hack) to horizontal layout (36dp icon circle on left, title+desc on right). Card corners 20dp→12dp, padding 20dp→12dp. Much more compact and professional.
+- **Removed redundant Settings card from home screen** — Settings is already accessible via the gear icon in the top toolbar. The home card was redundant. Home screen is now 3 rows x 2 columns (Dashboard, Gauges, Map, DTC, Battery, Logs) + version text.
+
 ## [3.4.3] - 2026-07-05
 ### Fixed
 - **Start button too wide, covering VIN** — Shrunk to compact 40dp icon-only circular button (play/pause icon, no text). Now takes minimal space in the top toolbar, leaving the status + VIN text fully visible.
