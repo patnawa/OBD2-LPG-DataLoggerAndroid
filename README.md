@@ -1,4 +1,4 @@
-# OBD2 Petrol/LPG/CNG Data Logger Android
+# TunerMap Pro >> OBD2 Petrol/LPG/CNG Data Logger Android
 
 **Version 3.4.15** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
