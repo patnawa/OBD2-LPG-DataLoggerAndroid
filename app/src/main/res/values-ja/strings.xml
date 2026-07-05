@@ -23,7 +23,7 @@
     <string name="waiting_for_data">フューエルトリムデータを待機中...</string>
     <string name="live_fuel_map">リアルタイム フューエルトリム マップ</string>
     <string name="map_axes">Y = T.inj ms (2.0-18.0), X = RPM (500-6500)</string>
-    <string name="how_to_read_map_title">💡 マップの読み方</string>
+    <string name="how_to_read_map_title">マップの読み方</string>
     <string name="how_to_read_map_desc" formatted="false">トータルフューエルトリム (STFT + LTFT) を表示します\n🟢 緑 (±5%) = 完璧\n🔴 赤 (マイナス値) = リッチ (燃料を減らす)\n🔵 青 (プラス値) = リーン (燃料を増やす)\n\nセルロックとヒットカウンター:\nセルは最初は透明です。データを収集するにはRPMとMAPを一定に維持してください。ヒットするほど透明度が下がります。\nx20 ヒット = ロック完了 (金の枠線)\n\n偏差 (DEVIATION): (LPG/CNG - ガソリン) を表示します。\n+ はLPGがリーン、- はLPGがリッチであることを意味します。0%を目指して調整してください。\n\nチューニングアシスト (TUNE ASSIST): LPGマップの正確なパーセント補正値を表示します (CSVにエクスポート可能)。\n\n* 注意: チューニングアシストまたは偏差を使用するには、まずガソリンとLPG両方のデータを収集する必要があります！</string>
     <string name="petrol">ガソリン</string>
     <string name="petrol_logs_header">ガソリンログ</string>

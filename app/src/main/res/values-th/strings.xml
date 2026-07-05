@@ -24,7 +24,7 @@
     <string name="waiting_for_data">รอข้อมูล Fuel Trim...</string>
     <string name="live_fuel_map">ตาราง Fuel Trim สด</string>
     <string name="map_axes">Y = เวลาฉีดน้ำมัน T.inj ms (2.0-18.0), X = รอบเครื่อง RPM (500-6500)</string>
-    <string name="how_to_read_map_title">💡 วิธีอ่านค่า Map</string>
+    <string name="how_to_read_map_title">วิธีอ่านค่าแผนที่</string>
     <string name="how_to_read_map_desc" formatted="false">แสดงผลรวม Fuel Trim (STFT + LTFT)\n🟢 สีเขียว (±5%) = สมบูรณ์ดี\n🟡 สีส้ม/เหลือง (-5% ถึง -10%) = หนาเล็กน้อย\n🔴 สีแดง (น้อยกว่า -10%) = หนาเกินไป\n🌐 สีฟ้าอ่อน (+5% ถึง +10%) = บางเล็กน้อย\n🔵 สีน้ำเงินเข้ม (มากกว่า +10%) = บางเกินไป\n\nสูตรการคำนวณในแต่ละโหมด:\n\n1️⃣ PETROL (น้ำมัน)\nสูตร: Trim = STFT + LTFT (จากกล่องหลักขณะใช้น้ำมัน)\nใช้เป็นค่าฐานอ้างอิง (Baseline) ของเครื่องยนต์\n\n2️⃣ LPG/CNG (แก๊ส)\nสูตร: Trim = STFT + LTFT (จากกล่องหลักขณะใช้แก๊ส)\nแสดงพฤติกรรมการจ่ายเชื้อเพลิงจริงของระบบแก๊สในปัจจุบัน\n\n3️⃣ DEVIATION (ความต่าง)\nสูตร: Deviation = LPG Trim - Petrol Trim\nใช้ดูว่าแก๊สจ่ายเพี้ยนจากน้ำมันเท่าไหร่ ณ รอบและภาระโหลดนั้นๆ (ค่าบวก=แก๊สบาง, ค่าลบ=แก๊สหนา)\n\n4️⃣ TUNE ASSIST (ช่วยจูน)\nสูตร: Correction = LPG Trim - Petrol Trim\nเปอร์เซ็นต์ส่วนต่างที่ต้องป้อนเข้าไปบวก (+) หรือลบ (-) ในตารางตัวคูณ (Multiplier Map) ของกล่องจูนแก๊สเพื่อปรับให้ค่าเบี่ยงเบนกลับสู่ 0% (เท่ากับน้ำมัน)\n\n* หมายเหตุ: ต้องวิ่งเก็บข้อมูลทั้ง น้ำมัน และ แก๊ส ให้ขึ้นตัวเลขในโซนเดียวกันก่อน จึงจะคำนวณส่วนต่างได้!</string>
     <string name="petrol">น้ำมัน</string>
     <string name="petrol_logs_header">บันทึกน้ำมัน (Petrol)</string>
@@ -107,5 +107,5 @@
     <string name="dialog_select_folder_title">เลือกโฟลเดอร์เก็บข้อมูล</string>
     <string name="dialog_select_folder_msg">กรุณาเลือกโฟลเดอร์สำหรับจัดเก็บและเรียกดูไฟล์บันทึกข้อมูล OBD2</string>
     <string name="dialog_select_folder_btn">เลือกโฟลเดอร์</string>
-    <string name="gauge_peaks_header">ค่าสูงสุด-ต่ำสุดในรอบการบันทึก (Min / Max)</string>
+    <string name="gauge_peaks_header">ค่าสูงสุด-ต่ำสุดในรอบการบันทึก (Min • Max)</string>
 </resources>

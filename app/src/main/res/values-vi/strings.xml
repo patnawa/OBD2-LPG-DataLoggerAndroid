@@ -23,7 +23,7 @@
     <string name="waiting_for_data">Đang chờ dữ liệu hiệu chỉnh nhiên liệu...</string>
     <string name="live_fuel_map">Bản đồ hiệu chỉnh nhiên liệu trực tiếp</string>
     <string name="map_axes">Y = T.inj ms (2.0-18.0), X = Vòng/phút RPM (500-6500)</string>
-    <string name="how_to_read_map_title">💡 Cách đọc bản đồ</string>
+    <string name="how_to_read_map_title">Cách đọc bản đồ</string>
     <string name="how_to_read_map_desc" formatted="false">Hiển thị Hiệu chỉnh nhiên liệu tổng (STFT + LTFT)\n🟢 Xanh lá (±5%) = Hoàn hảo\n🔴 Đỏ (Âm) = Giàu xăng (Giảm nhiên liệu)\n🔵 Xanh dương (Dương) = Nghèo xăng (Thêm nhiên liệu)\n\nKHÓA Ô &amp; ĐỒNG HỒ ĐẾM LƯỢT:\nCác ô bắt đầu trong suốt. Giữ đều RPM/MAP để thu thập dữ liệu. Độ mờ giảm dần khi số lượt tăng.\nx20 lượt = Khóa ô (Viền vàng).\n\nĐỘ LỆCH (DEVIATION): Hiển thị (LPG/CNG - Xăng).\n+ nghĩa là LPG bị nghèo. - nghĩa là LPG bị giàu. Hướng tới mục tiêu 0%.\n\nTUNE ASSIST: Hiển thị % điều chỉnh chính xác cho bản đồ LPG của bạn (Có thể xuất ra CSV).\n\n* Lưu ý: Để sử dụng Tune Assist hoặc Độ lệch, bạn phải thu thập dữ liệu Xăng và LPG trước!</string>
     <string name="petrol">XĂNG</string>
     <string name="petrol_logs_header">Nhật ký Xăng</string>

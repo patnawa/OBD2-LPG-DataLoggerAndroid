@@ -23,7 +23,7 @@
     <string name="waiting_for_data">بانتظار بيانات تعديل الوقود...</string>
     <string name="live_fuel_map">خريطة تعديل الوقود الحية</string>
     <string name="map_axes">Y = T.inj ms (2.0-18.0), X = دورتين بالدقيقة RPM (500-6500)</string>
-    <string name="how_to_read_map_title">💡 كيفية قراءة الخريطة</string>
+    <string name="how_to_read_map_title">كيفية قراءة الخريطة</string>
     <string name="how_to_read_map_desc" formatted="false">توضح تعديل الوقود الإجمالي (STFT + LTFT)\n🟢 أخضر (±5%) = ممتاز\n🔴 أحمر (سالب) = غني (تقليل الوقود)\n🔵 أزرق (موجب) = فقير (زيادة الوقود)\n\nقفل الخلية وعداد النقاط:\nتبدأ الخلايا شفافة. حافظ على ثبات RPM/MAP لجمع البيانات. تزداد العتامة مع تكرار النقاط.\nx20 نقطة = مقفل (إطار ذهبي).\n\nالانحراف (DEVIATION): يوضح (LPG/CNG - بنزين).\n+ يعني أن الغاز فقير. - يعني أن الغاز غني. استهدف 0%.\n\nمساعد الضبط (TUNE ASSIST): يوضح النسبة المئوية الدقيقة للتصحيح لخريطة الغاز (يمكن تصديرها كـ CSV).\n\n* ملاحظة: لاستخدام مساعد الضبط أو الانحراف، يجب جمع بيانات البنزين والغاز أولاً!</string>
     <string name="petrol">البنزين</string>
     <string name="petrol_logs_header">سجلات البنزين</string>

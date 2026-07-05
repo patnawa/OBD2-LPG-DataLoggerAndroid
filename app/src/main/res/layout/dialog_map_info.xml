@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/surface"
+    android:padding="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Bottom Sheet Drag Handle -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp"
+            android:background="@color/border" />
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/how_to_read_map_title"
+            android:textColor="@color/text"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Color Legend Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="COLOR LEGEND / คำอธิบายสี"
+            android:textColor="@color/muted"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/surface2"
+            android:padding="12dp"
+            android:layout_marginBottom="20dp">
+
+            <!-- Perfect -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    app:cardCornerRadius="6dp"
+                    app:cardBackgroundColor="#22C55E"
+                    app:strokeWidth="0dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="12dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Perfect (±5%) • จ่ายเชื้อเพลิงสมบูรณ์ดี"
+                    android:textColor="@color/text"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- Slightly Rich -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    app:cardCornerRadius="6dp"
+                    app:cardBackgroundColor="#EAB308"
+                    app:strokeWidth="0dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="12dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Slightly Rich (-5% to -10%) • หนาเล็กน้อย"
+                    android:textColor="@color/text"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- Very Rich -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    app:cardCornerRadius="6dp"
+                    app:cardBackgroundColor="#EF4444"
+                    app:strokeWidth="0dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="12dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Very Rich (Under -10%) • หนาเกินไป"
+                    android:textColor="@color/text"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- Slightly Lean -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    app:cardCornerRadius="6dp"
+                    app:cardBackgroundColor="#06B6D4"
+                    app:strokeWidth="0dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="12dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Slightly Lean (+5% to +10%) • บางเล็กน้อย"
+                    android:textColor="@color/text"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- Very Lean -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    app:cardCornerRadius="6dp"
+                    app:cardBackgroundColor="#3B82F6"
+                    app:strokeWidth="0dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="12dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Very Lean (Over +10%) • บางเกินไป"
+                    android:textColor="@color/text"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Calculation Logic Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TUNING LOGIC / หลักการคำนวณ"
+            android:textColor="@color/muted"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Petrol Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            app:cardCornerRadius="4dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/border"
+            app:cardBackgroundColor="@color/surface">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="1. PETROL (น้ำมัน)"
+                    android:textColor="@color/text"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Formula: Trim = STFT + LTFT"
+                    android:textColor="@color/primary"
+                    android:textSize="12sp"
+                    android:textStyle="italic"
+                    android:layout_marginTop="2dp" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="ใช้เป็นฐานอ้างอิงหลัก (Baseline) ของระบบจ่ายน้ำมันเดิมของเครื่องยนต์"
+                    android:textColor="@color/muted"
+                    android:textSize="11sp"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- LPG Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            app:cardCornerRadius="4dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/border"
+            app:cardBackgroundColor="@color/surface">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="2. LPG/CNG (แก๊ส)"
+                    android:textColor="@color/text"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Formula: Trim = STFT + LTFT"
+                    android:textColor="@color/primary"
+                    android:textSize="12sp"
+                    android:textStyle="italic"
+                    android:layout_marginTop="2dp" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="แสดงผลพฤติกรรมการจ่ายเชื้อเพลิงขณะเครื่องยนต์สลับไปทำงานด้วยโหมดแก๊ส"
+                    android:textColor="@color/muted"
+                    android:textSize="11sp"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Deviation Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            app:cardCornerRadius="4dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/border"
+            app:cardBackgroundColor="@color/surface">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="3. DEVIATION (ความเบี่ยงเบน)"
+                    android:textColor="@color/text"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Formula: Deviation = LPG Trim - Petrol Trim"
+                    android:textColor="@color/primary"
+                    android:textSize="12sp"
+                    android:textStyle="italic"
+                    android:layout_marginTop="2dp" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="เปอร์เซ็นต์ส่วนต่างว่าแก๊สจ่ายเบี่ยงเบนออกนอกค่ามาตรฐานน้ำมันเท่าใด (ค่าบวก = แก๊สบาง, ค่าลบ = แก๊สหนา)"
+                    android:textColor="@color/muted"
+                    android:textSize="11sp"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Tune Assist Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="4dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/border"
+            app:cardBackgroundColor="@color/surface">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="4. TUNE ASSIST (ช่วยจูน)"
+                    android:textColor="@color/text"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Formula: Correction = LPG Trim - Petrol Trim"
+                    android:textColor="@color/primary"
+                    android:textSize="12sp"
+                    android:textStyle="italic"
+                    android:layout_marginTop="2dp" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="เปอร์เซ็นต์ที่ต้องนำไปบวก (+) หรือลบ (-) ในตารางจูนแก๊ส (Multiplier Map) เพื่อดึงค่าเบี่ยงเบนกลับมาเป็น 0% (เทียบเท่าจูนน้ำมันเดิม)"
+                    android:textColor="@color/muted"
+                    android:textSize="11sp"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Note Text -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="* หมายเหตุ: ต้องทำการวิ่งเก็บข้อมูลทั้งโหมดน้ำมัน (Petrol) และโหมดแก๊ส (LPG) ในช่วงรอบเครื่องยนต์ (RPM) และภาระโหลดเดียวกันให้ครบถ้วนก่อน ระบบจึงจะสามารถวิเคราะห์และเปรียบเทียบแสดงค่าส่วนต่างออกมาได้"
+            android:textColor="@color/muted"
+            android:textSize="11sp"
+            android:textStyle="italic"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Close Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMapInfoClose"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="ปิด (Close)"
+            style="@style/Widget.Material3.Button"
+            android:layout_marginBottom="12dp" />
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

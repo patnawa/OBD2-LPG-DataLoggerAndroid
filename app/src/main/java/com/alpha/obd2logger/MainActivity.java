@@ -455,11 +455,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     
     private void showMapInfoDialog() {
-        new android.app.AlertDialog.Builder(this)
-            .setTitle(R.string.how_to_read_map_title)
-            .setMessage(R.string.how_to_read_map_desc)
-            .setPositiveButton("OK", null)
-            .show();
+        com.google.android.material.bottomsheet.BottomSheetDialog dialog =
+                new com.google.android.material.bottomsheet.BottomSheetDialog(this);
+        View view = getLayoutInflater().inflate(R.layout.dialog_map_info, null);
+        View closeBtn = view.findViewById(R.id.btnMapInfoClose);
+        if (closeBtn != null) {
+            closeBtn.setOnClickListener(v -> dialog.dismiss());
+        }
+        dialog.setContentView(view);
+        dialog.show();
     }
     
     private void applyFuelTheme(FuelMode mode) {
@@ -2899,7 +2903,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 Double maxVal = pidMaxValues.get(pidKey);
                 String minStr = formatValue(minVal, sample.getUnit());
                 String maxStr = formatValue(maxVal, sample.getUnit());
-                statusView.setText("⬇ " + minStr + "   ⬆ " + maxStr);
+                statusView.setText("MIN: " + minStr + "  •  MAX: " + maxStr);
                 statusView.setTextColor(getColorCompat(R.color.muted));
             } else {
                 statusView.setText(sample.getStatus().toUpperCase(Locale.US));

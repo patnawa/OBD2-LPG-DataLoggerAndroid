@@ -23,7 +23,7 @@
     <string name="waiting_for_data">En attente des données Fuel Trim...</string>
     <string name="live_fuel_map">Carte Fuel Trim en direct</string>
     <string name="map_axes">Y = T.inj ms (2.0-18.0), X = tr/min (500-6500)</string>
-    <string name="how_to_read_map_title">💡 Comment lire la carte</string>
+    <string name="how_to_read_map_title">Comment lire la carte</string>
     <string name="how_to_read_map_desc" formatted="false">Affiche le Fuel Trim total (STFT + LTFT)\n🟢 Vert (±5%) = Parfait\n🔴 Rouge (Négatif) = Riche (Réduire le carburant)\n🔵 Bleu (Positif) = Pauvre (Ajouter du carburant)\n\nVERROUILLAGE DE CELLULE ET COMPTEUR DE VISITES :\nLes cellules commencent transparentes. Maintenez le tr/min/MAP stable pour collecter des données. L\'opacité augmente avec les visites.\nx20 visites = Verrouillé (Bordure dorée).\n\nDÉVIATION : Affiche (LPG/CNG - Essence).\n+ signifie que le GPL est pauvre. - signifie que le GPL est riche. Visez 0%.\n\nASSISTANT DE RÉGLAGE : Affiche la correction exacte en % pour votre carte de GPL (Exportable en CSV).\n\n* Note : Pour utiliser l\'assistant ou la déviation, vous devez collecter les données d\'essence et de GPL d\'abord !</string>
     <string name="petrol">ESSENCE</string>
     <string name="petrol_logs_header">Journaux d\'essence</string>

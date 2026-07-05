@@ -262,10 +262,14 @@ public class ReviewSessionActivity extends AppCompatActivity {
     }
 
     private void showMapInfoDialog() {
-        new android.app.AlertDialog.Builder(this)
-            .setTitle(R.string.how_to_read_map_title)
-            .setMessage(R.string.how_to_read_map_desc)
-            .setPositiveButton("OK", null)
-            .show();
+        com.google.android.material.bottomsheet.BottomSheetDialog dialog =
+                new com.google.android.material.bottomsheet.BottomSheetDialog(this);
+        View view = getLayoutInflater().inflate(R.layout.dialog_map_info, null);
+        View closeBtn = view.findViewById(R.id.btnMapInfoClose);
+        if (closeBtn != null) {
+            closeBtn.setOnClickListener(v -> dialog.dismiss());
+        }
+        dialog.setContentView(view);
+        dialog.show();
     }
 }

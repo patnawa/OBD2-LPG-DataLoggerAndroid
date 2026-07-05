@@ -1378,15 +1378,23 @@
                         android:layout_height="200dp" />
                 </com.google.android.material.card.MaterialCardView>
 
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/border"
+                    android:layout_marginTop="28dp"
+                    android:layout_marginBottom="16dp" />
+
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/gauge_peaks_header"
-                    android:textColor="@color/primary"
-                    android:textSize="18sp"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp"
                     android:textStyle="bold"
-                    android:layout_marginTop="24dp"
-                    android:layout_marginBottom="16dp" />
+                    android:letterSpacing="0.08"
+                    android:textAllCaps="true"
+                    android:layout_marginBottom="12dp" />
 
                 <LinearLayout
                     android:id="@+id/gaugeReadingsContainer"

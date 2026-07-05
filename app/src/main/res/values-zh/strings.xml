@@ -23,7 +23,7 @@
     <string name="waiting_for_data">正在等待燃油修正数据...</string>
     <string name="live_fuel_map">实时燃油修正图</string>
     <string name="map_axes">Y = T.inj ms (2.0-18.0), X = 转速 RPM (500-6500)</string>
-    <string name="how_to_read_map_title">💡 如何看懂地图数据</string>
+    <string name="how_to_read_map_title">如何看懂地图数据</string>
     <string name="how_to_read_map_desc" formatted="false">显示总燃油修正 (短期 STFT + 长期 LTFT)\n🟢 绿色 (±5%) = 完美\n🔴 红色 (负值) = 偏浓 (应减少喷油)\n🔵 蓝色 (正值) = 偏稀 (应增加喷油)\n\n单元格锁定与命中计数器:\n单元格初始为透明。保持稳定的 RPM/MAP 以收集数据。随着命中次数增加，不透明度会提高。\nx20 次命中 = 已锁定 (金色边框)。\n\n偏差 (DEVIATION): 显示 (LPG/CNG - 汽油)。\n正值表示 LPG 偏稀，负值表示 LPG 偏浓。调校目标是使偏差接近 0%。\n\n调校辅助 (TUNE ASSIST): 显示 LPG 地图的准确修正百分比 (可导出为 CSV)。\n\n* 注意: 要使用调校辅助或偏差功能，您必须先收集汽油和 LPG 两者的基准数据！</string>
     <string name="petrol">汽油</string>
     <string name="petrol_logs_header">汽油日志</string>
