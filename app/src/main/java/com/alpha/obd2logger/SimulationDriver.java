@@ -38,7 +38,7 @@ public final class SimulationDriver extends BaseDriver {
     @Override
     public boolean connect() {
         connected = true;
-        setSimState(SimState.RESTING); // Start as resting on connect
+        setSimState(SimState.RUNNING); // Start as running on connect
         return true;
     }
 
@@ -162,6 +162,98 @@ public final class SimulationDriver extends BaseDriver {
         if ("16".equals(pid) || "1A".equals(pid) || "17".equals(pid) || "1B".equals(pid)) {
             return clamp(0.3 + (random.nextDouble() - 0.5) * 0.1, 0.05, 0.95);
         }
+
+        // --- Realistic simulation of remaining PIDs to prevent erratic UI readings ---
+        if ("0D".equals(pid)) { // Vehicle Speed (km/h)
+            if (simState == SimState.RESTING || simState == SimState.CRANKING) return 0.0;
+            double speed = (rpm / 6000.0) * 120.0 + random.nextDouble() * 2.0;
+            return clamp(speed, 0.0, 255.0);
+        }
+        if ("04".equals(pid)) { // Engine Load (%)
+            if (simState == SimState.RESTING) return 0.0;
+            if (simState == SimState.CRANKING) return 65.0;
+            if (simState == SimState.RUNNING_HIGH) return 75.0 + random.nextDouble() * 5.0;
+            if (simState == SimState.LOADED) return 85.0 + random.nextDouble() * 5.0;
+            double load = 15.0 + (rpm / 6000.0) * 45.0 + random.nextDouble() * 5.0;
+            return clamp(load, 0.0, 100.0);
+        }
+        if ("03".equals(pid)) { // Fuel System Status
+            if (simState == SimState.RESTING) return 0.0;
+            if (simState == SimState.CRANKING || coolantTemp < 50.0) return 1.0; // Open Loop - Warmup
+            if (simState == SimState.LOADED) return 4.0; // Open Loop - High Load
+            return 2.0; // Closed Loop
+        }
+        if ("0F".equals(pid)) { // Intake Air Temp (°C)
+            return 35.0 + random.nextDouble() * 1.0;
+        }
+        if ("46".equals(pid)) { // Ambient Air Temp (°C)
+            return 25.0;
+        }
+        if ("11".equals(pid)) { // Throttle Position (%)
+            if (simState == SimState.RESTING) return 0.0;
+            if (simState == SimState.CRANKING) return 15.0;
+            double throttle = 8.0 + (rpm / 6000.0) * 72.0 + random.nextDouble() * 2.0;
+            return clamp(throttle, 0.0, 100.0);
+        }
+        if ("10".equals(pid)) { // MAF Air Flow (g/s)
+            if (simState == SimState.RESTING) return 0.0;
+            double maf = (rpm * map) / 12000.0;
+            return clamp(maf, 0.0, 655.35);
+        }
+        if ("0E".equals(pid)) { // Timing Advance (deg)
+            if (simState == SimState.RESTING) return 0.0;
+            double ta = 10.0 + (rpm / 6000.0) * 25.0 + random.nextDouble() * 2.0;
+            return clamp(ta, -64.0, 63.5);
+        }
+        if ("2F".equals(pid)) { // Fuel Level (%)
+            return 55.0;
+        }
+        if ("51".equals(pid)) { // Fuel Type
+            return 1.0; // Gasoline
+        }
+        if ("52".equals(pid)) { // Ethanol Fuel (%)
+            return 10.0;
+        }
+        if ("0A".equals(pid)) { // Fuel Pressure (kPa)
+            return simState == SimState.RESTING ? 0.0 : 300.0 + random.nextDouble() * 10.0;
+        }
+        if ("23".equals(pid)) { // Fuel Rail Pressure (kPa)
+            return simState == SimState.RESTING ? 0.0 : 4000.0 + random.nextDouble() * 100.0;
+        }
+        if ("33".equals(pid)) { // Barometric Pressure (kPa)
+            return 101.0;
+        }
+        if ("5D".equals(pid)) { // Fuel Inject Timing (deg)
+            return simState == SimState.RESTING ? 0.0 : 2.0;
+        }
+        if ("5E".equals(pid)) { // Engine Fuel Rate (L/h)
+            if (simState == SimState.RESTING) return 0.0;
+            return (rpm / 1000.0) * 1.2 + random.nextDouble() * 0.2;
+        }
+        if ("43".equals(pid)) { // Absolute Load (%)
+            if (simState == SimState.RESTING) return 0.0;
+            double absLoad = 12.0 + (rpm / 6000.0) * 55.0 + random.nextDouble() * 5.0;
+            return clamp(absLoad, 0.0, 100.0);
+        }
+        if ("1F".equals(pid)) { // Run Time Since Start (s)
+            return (double) (elapsed / 1000L);
+        }
+        if ("31".equals(pid)) { // Distance Since DTC Cleared (km)
+            return 120.0;
+        }
+        if ("21".equals(pid)) { // Distance With MIL On (km)
+            return 0.0;
+        }
+        if ("08".equals(pid)) { // STFT Bank 2 (%)
+            return random.nextDouble() * 6.0 - 3.0;
+        }
+        if ("09".equals(pid)) { // LTFT Bank 2 (%)
+            return 2.0 + random.nextDouble() * 3.0;
+        }
+        if ("44".equals(pid)) { // Wideband Lambda
+            return 0.98 + random.nextDouble() * 0.04;
+        }
+
         return pidDef.getMinVal() + random.nextDouble() * (pidDef.getMaxVal() - pidDef.getMinVal());
     }
 

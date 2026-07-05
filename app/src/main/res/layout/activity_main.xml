@@ -61,7 +61,7 @@
             <!-- Connection status chip -->
             <LinearLayout
                 android:id="@+id/statusLayout"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="32dp"
                 android:layout_centerVertical="true"
                 android:layout_toEndOf="@id/btnGoHome"
@@ -105,7 +105,7 @@
                     android:textSize="11sp"
                     android:singleLine="true"
                     android:ellipsize="end"
-                    android:maxWidth="120dp" />
+                    android:maxWidth="200dp" />
             </LinearLayout>
 
 
@@ -285,26 +285,41 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
 
-                        <TextView
-                            android:layout_width="wrap_content"
+                        <LinearLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="@string/home_title"
-                            android:textColor="#FFFFFF"
-                            android:textSize="26sp"
-                            android:textStyle="bold"
-                            android:letterSpacing="-0.02" />
+                            android:layout_weight="1"
+                            android:orientation="vertical">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/home_welcome_desc"
-                            android:textColor="#BFDBFE"
-                            android:textSize="11sp"
-                            android:textStyle="bold"
-                            android:letterSpacing="0.1"
-                            android:layout_marginTop="4dp" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/home_title"
+                                android:textColor="#FFFFFF"
+                                android:textSize="26sp"
+                                android:textStyle="bold"
+                                android:letterSpacing="-0.02" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/home_welcome_desc"
+                                android:textColor="#BFDBFE"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:letterSpacing="0.1"
+                                android:layout_marginTop="4dp" />
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="64dp"
+                            android:layout_height="64dp"
+                            android:layout_marginStart="16dp"
+                            android:src="@drawable/ic_launcher_foreground"
+                            android:contentDescription="App Logo" />
                     </LinearLayout>
                 </FrameLayout>
 

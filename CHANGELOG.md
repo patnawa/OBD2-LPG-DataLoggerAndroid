@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.13] - 2026-07-05
+### Fixed
+- **Top Menu VIN Visibility**: Modified the top menu status container (`statusLayout`) width to `wrap_content` and increased the `headerVin` maximum width to `200dp` to prevent VIN truncation.
+- **Simulation Coolant Temp**: Configured `SimulationDriver` to default to `RUNNING` state upon connection, ensuring the coolant temperature starts at 80°C and warms up to 90°C (passing the tuning log threshold) instead of declining.
+- **Dashboard & Sensor Simulation**: Added realistic, smooth mock simulations for Speed, Engine Load, Throttle, MAF, and other core OBD2 sensors in simulation mode to replace erratic, random readings.
+### Added
+- **Landing Page Hero Icon**: Incorporated the premium vector app icon (`ic_launcher_foreground`) into the home screen's hero welcome header.
+
 ## [3.4.12] - 2026-07-05
 ### Fixed
 - **Battery Type Selection & Calculations**:
