@@ -107,4 +107,5 @@
     <string name="dialog_select_folder_title">Select Log Folder</string>
     <string name="dialog_select_folder_msg">Please choose a directory where the app will save and load OBD2 logs.</string>
     <string name="dialog_select_folder_btn">Choose Folder</string>
+    <string name="gauge_peaks_header">Session Peak Telemetry (Min / Max)</string>
 </resources>

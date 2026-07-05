@@ -2792,17 +2792,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     // --- Rendering ---
 
+    private final java.util.Map<String, Double> pidMinValues = new java.util.HashMap<>();
+    private final java.util.Map<String, Double> pidMaxValues = new java.util.HashMap<>();
+
     private final java.util.Map<String, TextView> readingRowCache = new java.util.HashMap<>();
     private final java.util.Map<String, TextView> readingStatusCache = new java.util.HashMap<>();
     private final java.util.Map<String, TextView> gaugeRowCache = new java.util.HashMap<>();
     private final java.util.Map<String, TextView> gaugeStatusCache = new java.util.HashMap<>();
 
     private void renderReadings(DataRecord record) {
-        updateGridContainer(readingsContainer, readingRowCache, readingStatusCache, record);
-        updateGridContainer(gaugeReadingsContainer, gaugeRowCache, gaugeStatusCache, record);
+        updateGridContainer(readingsContainer, readingRowCache, readingStatusCache, record, false);
+        updateGridContainer(gaugeReadingsContainer, gaugeRowCache, gaugeStatusCache, record, true);
     }
 
-    private void updateGridContainer(LinearLayout container, java.util.Map<String, TextView> rowCache, java.util.Map<String, TextView> statusCache, DataRecord record) {
+    private void updateGridContainer(LinearLayout container, java.util.Map<String, TextView> rowCache, java.util.Map<String, TextView> statusCache, DataRecord record, boolean isGauge) {
         if (container == null) return;
         if (container.getChildCount() != (record.getSamples().size() + 1) / 2) {
             container.removeAllViews();
@@ -2816,6 +2819,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         for (SensorSample sample : record.getSamples()) {
             String pidName = sample.getName();
+            String pidKey = sample.getPidKey();
+            Double val = sample.getValue();
+
+            // Track Min/Max values
+            if (val != null) {
+                Double currentMin = pidMinValues.get(pidKey);
+                if (currentMin == null || val < currentMin) {
+                    pidMinValues.put(pidKey, val);
+                }
+                Double currentMax = pidMaxValues.get(pidKey);
+                if (currentMax == null || val > currentMax) {
+                    pidMaxValues.put(pidKey, val);
+                }
+            }
+
             TextView valueView = rowCache.get(pidName);
             TextView statusView = statusCache.get(pidName);
 
@@ -2876,8 +2894,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             valueView.setText(formatValue(sample.getValue(), sample.getUnit()));
             valueView.setTextColor(getColorCompat(sample.getStatus().equals("ok") ? R.color.primary : R.color.danger));
 
-            statusView.setText(sample.getStatus().toUpperCase(Locale.US));
-            statusView.setTextColor(getColorCompat(sample.getStatus().equals("ok") ? R.color.accent : R.color.danger));
+            if (isGauge) {
+                Double minVal = pidMinValues.get(pidKey);
+                Double maxVal = pidMaxValues.get(pidKey);
+                String minStr = formatValue(minVal, sample.getUnit());
+                String maxStr = formatValue(maxVal, sample.getUnit());
+                statusView.setText("⬇ " + minStr + "   ⬆ " + maxStr);
+                statusView.setTextColor(getColorCompat(R.color.muted));
+            } else {
+                statusView.setText(sample.getStatus().toUpperCase(Locale.US));
+                statusView.setTextColor(getColorCompat(sample.getStatus().equals("ok") ? R.color.accent : R.color.danger));
+            }
 
             index++;
         }
@@ -2890,6 +2917,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         readingStatusCache.clear();
         gaugeRowCache.clear();
         gaugeStatusCache.clear();
+        pidMinValues.clear();
+        pidMaxValues.clear();
         if (tuningStatusText != null) {
             tuningStatusText.setText(getString(R.string.waiting_for_data));
             tuningStatusText.setTextColor(getColorCompat(R.color.warning));

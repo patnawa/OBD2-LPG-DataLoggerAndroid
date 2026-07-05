@@ -104,4 +104,5 @@
     <string name="dialog_select_folder_title">เลือกโฟลเดอร์เก็บข้อมูล</string>
     <string name="dialog_select_folder_msg">กรุณาเลือกโฟลเดอร์สำหรับจัดเก็บและเรียกดูไฟล์บันทึกข้อมูล OBD2</string>
     <string name="dialog_select_folder_btn">เลือกโฟลเดอร์</string>
+    <string name="gauge_peaks_header">ค่าสูงสุด-ต่ำสุดในรอบการบันทึก (Min / Max)</string>
 </resources>
