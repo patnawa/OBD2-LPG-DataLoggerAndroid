@@ -298,20 +298,48 @@ public class FuelMapView extends View {
                     }
                 }
 
+                boolean isActive = (rpmValue == currentRpmCell && Math.abs(tinjValue - currentTinjCell) < 0.01f);
+                if (displayTrim == null && isActive) {
+                    highlightPaint.setColor(0x20FFFFFF); // semi-transparent placeholder background for active cell
+                    canvas.drawRect(cellRect, highlightPaint);
+                }
+
                 // Draw cell border
-                if (rpmValue == currentRpmCell && Math.abs(tinjValue - currentTinjCell) < 0.01f) {
-                    gridPaint.setColor(0xFFFFFFFF);
-                    gridPaint.setStrokeWidth(4f);
+                if (isActive) {
+                    // Draw base border
+                    gridPaint.setColor(0xFF334155);
+                    gridPaint.setStrokeWidth(2f);
+                    canvas.drawRect(cellRect, gridPaint);
+
+                    // Draw pulsing neon glow border
+                    Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    glowPaint.setStyle(Paint.Style.STROKE);
+                    glowPaint.setStrokeWidth(3.5f * density);
+                    long time = android.os.SystemClock.uptimeMillis();
+                    int glowAlpha = 140 + (int)(115 * Math.sin(time * 0.008));
+                    int borderCol = (currentMode == MapMode.LPG) ? 0xFFF59E0B : 0xFF38BDF8; // Amber vs Blue
+                    glowPaint.setColor(borderCol);
+                    glowPaint.setAlpha(glowAlpha);
+                    
+                    canvas.drawRect(cellRect, glowPaint);
+                    
+                    // Outer faint glow line
+                    glowPaint.setStrokeWidth(1.5f * density);
+                    glowPaint.setAlpha(glowAlpha / 2);
+                    canvas.drawRect(cellRect.left - 1.5f * density, cellRect.top - 1.5f * density, 
+                                   cellRect.right + 1.5f * density, cellRect.bottom + 1.5f * density, glowPaint);
+                    
+                    postInvalidateDelayed(40); // Request redraw to animate the pulsing glow
                 } else if (isLocked) {
                     gridPaint.setColor(0xFFFDE047);
                     gridPaint.setStrokeWidth(5f);
+                    canvas.drawRect(cellRect, gridPaint);
                 } else {
                     gridPaint.setColor(0xFF334155);
                     gridPaint.setStrokeWidth(2f);
+                    canvas.drawRect(cellRect, gridPaint);
                 }
-                
-                canvas.drawRect(cellRect, gridPaint);
-                
+
                 // Reset grid paint
                 gridPaint.setColor(0xFF334155);
                 gridPaint.setStrokeWidth(2f);

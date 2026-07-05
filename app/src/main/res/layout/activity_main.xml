@@ -120,6 +120,34 @@
                     android:paddingEnd="8dp"
                     android:paddingTop="2dp"
                     android:paddingBottom="2dp" />
+
+                <!-- Divider for API Status -->
+                <View
+                    android:id="@+id/headerApiDivider"
+                    android:layout_width="1dp"
+                    android:layout_height="14dp"
+                    android:background="@color/border"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:visibility="gone" />
+
+                <!-- API Server Status Badge -->
+                <TextView
+                    android:id="@+id/headerApiStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="API: OFF"
+                    android:textColor="@color/muted"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:background="@drawable/bg_dtc_badge_pill"
+                    android:backgroundTint="#15FFFFFF"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    android:visibility="gone" />
             </LinearLayout>
 
 

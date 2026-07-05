@@ -69,9 +69,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private androidx.activity.OnBackPressedCallback onBackPressedCallback;
     private boolean isTabChanging = false;
     // --- UI: Header ---
-    private TextView headerStatus, headerVin, headerFuelMode;
+    private TextView headerStatus, headerVin, headerFuelMode, headerApiStatus;
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
-    private View headerStatusDot;
+    private View headerStatusDot, headerApiDivider;
     private android.widget.ImageButton btnSettings;
     private android.widget.ImageButton btnGoHome;
 
@@ -393,6 +393,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         headerStatus = findViewById(R.id.headerStatus);
         headerVin = findViewById(R.id.headerVin);
         headerFuelMode = findViewById(R.id.headerFuelMode);
+        headerApiStatus = findViewById(R.id.headerApiStatus);
+        headerApiDivider = findViewById(R.id.headerApiDivider);
         headerStatusDot = findViewById(R.id.headerStatusDot);
         btnSettings = findViewById(R.id.btnSettings);
         btnGoHome = findViewById(R.id.btnGoHome);
@@ -820,6 +822,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void updateApiServerIpText(boolean isEnabled) {
+        if (headerApiStatus != null) {
+            if (!isEnabled) {
+                headerApiStatus.setVisibility(View.GONE);
+                if (headerApiDivider != null) headerApiDivider.setVisibility(View.GONE);
+            } else {
+                headerApiStatus.setVisibility(View.VISIBLE);
+                if (headerApiDivider != null) headerApiDivider.setVisibility(View.VISIBLE);
+                android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+                String ipString = "localhost";
+                if (wm != null) {
+                    int ip = wm.getConnectionInfo().getIpAddress();
+                    if (ip != 0) {
+                        ipString = String.format(java.util.Locale.US, "%d.%d.%d.%d", (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
+                    }
+                }
+                headerApiStatus.setText("API: " + ipString + ":8080");
+                headerApiStatus.setTextColor(0xFF34D399); // Neon emerald green
+                headerApiStatus.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0x2034D399));
+            }
+        }
+
         if (!isEnabled) {
             apiServerIpText.setVisibility(View.GONE);
             return;
@@ -1330,7 +1353,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     CheckBox compareCheckbox = view.findViewById(R.id.compareCheckbox);
 
                     nameText.setText(item.name);
-                    dateText.setText(sdf.format(new Date(item.date)));
+                    long size = 0;
+                    if (item.isSaf && item.df != null) {
+                        size = item.df.length();
+                    } else if (item.isFile && item.file != null) {
+                        size = item.file.length();
+                    }
+                    String sizeText = size > 1024 * 1024
+                        ? String.format(java.util.Locale.US, "%.2f MB", size / (1024f * 1024f))
+                        : (size / 1024) + " KB";
+                    dateText.setText(sdf.format(new Date(item.date)) + "  •  " + sizeText);
 
                     if (compareMode) {
                         actionLayout.setVisibility(View.GONE);
@@ -1380,7 +1412,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     CheckBox compareCheckbox = view.findViewById(R.id.compareCheckbox);
 
                     nameText.setText(item.name);
-                    dateText.setText(sdf.format(new Date(item.date)));
+                    long size = 0;
+                    if (item.isSaf && item.df != null) {
+                        size = item.df.length();
+                    } else if (item.isFile && item.file != null) {
+                        size = item.file.length();
+                    }
+                    String sizeText = size > 1024 * 1024
+                        ? String.format(java.util.Locale.US, "%.2f MB", size / (1024f * 1024f))
+                        : (size / 1024) + " KB";
+                    dateText.setText(sdf.format(new Date(item.date)) + "  •  " + sizeText);
 
                     if (compareMode) {
                         actionLayout.setVisibility(View.GONE);
@@ -2013,76 +2054,133 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 }
             });
 
+            int retryCount = 0;
+            int maxRetries = 3;
+
             while (running) {
-                Map<String, Double> batch = driver.queryPidBatch(finalPids);
-                List<SensorSample> samples = new ArrayList<>();
-                List<PIDDefinition> toRemove = new ArrayList<>();
-
-                for (PIDDefinition pid : finalPids) {
-                    Double value = batch.get(pid.getName());
-                    samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
-                            value == null ? "err" : "ok"));
-
-                    if (value == null) {
-                        int fails = consecutiveFailures.getOrDefault(pid.key(), 0) + 1;
-                        consecutiveFailures.put(pid.key(), fails);
-                        if (fails >= 3) {
-                            toRemove.add(pid);
-                        }
-                    } else {
-                        consecutiveFailures.put(pid.key(), 0);
-                    }
-                }
-
-                if (!toRemove.isEmpty()) {
-                    finalPids.removeAll(toRemove);
-                    for (PIDDefinition p : toRemove) {
-                        Log.w("OBD2Logger", "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
-                    }
-                }
-
-                DataRecord record = new DataRecord(
-                        iso.format(new Date()),
-                        (SystemClock.elapsedRealtime() - started) / 1000.0,
-                        config.fuelMode.getValue(),
-                        config.vehicleBrand,
-                        config.vin,
-                        samples
-                );
-
-                writer.writeRecord(record);
-                completed++;
-                final int finalCompleted = completed;
-                sessionRecordCount = finalCompleted;
-                runOnActiveActivity(() -> {
-                    MainActivity active = activeInstance;
-                    if (active != null) {
-                        active.countText.setText("Records: " + finalCompleted);
-                        active.updateDashboard(record);
-                        active.updateGraphs(record);
-                        active.updateFuelMap(record);
-                        active.updateFuelTrim(record);
-                        active.updateTuningData(record);
-                        active.renderReadings(record);
-                        active.updateLiveMetrics(finalCompleted, active.loggingStartTime);
-                    }
-                });
-
-                // Copy fuel map data to static maps
-                MainActivity active = activeInstance;
-                if (active != null && active.fuelMapView != null) {
-                    sessionPetrolData.clear();
-                    sessionPetrolData.putAll(active.fuelMapView.getPetrolData());
-                    sessionLpgData.clear();
-                    sessionLpgData.putAll(active.fuelMapView.getLpgData());
-                }
-
                 try {
-                    Thread.sleep(config.sampleIntervalMs);
-                } catch (InterruptedException ie) {
-                    // shutdownNow() interrupted our sleep — exit the loop gracefully
-                    Thread.currentThread().interrupt();
-                    break;
+                    if (!driver.isConnected()) {
+                        if (retryCount > 0) {
+                            final int finalRetry = retryCount;
+                            runOnActiveActivity(() -> {
+                                MainActivity active = activeInstance;
+                                if (active != null) {
+                                    active.setStatus("Connection lost. Reconnecting (" + finalRetry + "/" + maxRetries + ")...", R.color.warning);
+                                    active.updateStatusStripConnection(1, "Reconnecting...");
+                                }
+                            });
+                        }
+                        if (!driver.connect()) {
+                            throw new java.io.IOException("Reconnection failed");
+                        }
+                        retryCount = 0;
+                        runOnActiveActivity(() -> {
+                            MainActivity active = activeInstance;
+                            if (active != null) {
+                                active.setStatus("Connected. Logging resumed.", R.color.accent);
+                                active.headerStatus.setText("Connected: " + config.transportMode.getValue());
+                                active.updateStatusStripConnection(2, "Connected " + config.transportMode.getValue());
+                            }
+                        });
+                    }
+
+                    while (running) {
+                        Map<String, Double> batch = driver.queryPidBatch(finalPids);
+                        List<SensorSample> samples = new ArrayList<>();
+                        List<PIDDefinition> toRemove = new ArrayList<>();
+
+                        for (PIDDefinition pid : finalPids) {
+                            Double value = batch.get(pid.getName());
+                            samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
+                                    value == null ? "err" : "ok"));
+
+                            if (value == null) {
+                                int fails = consecutiveFailures.getOrDefault(pid.key(), 0) + 1;
+                                consecutiveFailures.put(pid.key(), fails);
+                                if (fails >= 3) {
+                                    toRemove.add(pid);
+                                }
+                            } else {
+                                consecutiveFailures.put(pid.key(), 0);
+                            }
+                        }
+
+                        if (!toRemove.isEmpty()) {
+                            finalPids.removeAll(toRemove);
+                            for (PIDDefinition p : toRemove) {
+                                Log.w("OBD2Logger", "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
+                            }
+                        }
+
+                        DataRecord record = new DataRecord(
+                                iso.format(new Date()),
+                                (SystemClock.elapsedRealtime() - started) / 1000.0,
+                                config.fuelMode.getValue(),
+                                config.vehicleBrand,
+                                config.vin,
+                                samples
+                        );
+
+                        writer.writeRecord(record);
+                        completed++;
+                        final int finalCompleted = completed;
+                        sessionRecordCount = finalCompleted;
+                        runOnActiveActivity(() -> {
+                            MainActivity active = activeInstance;
+                            if (active != null) {
+                                active.countText.setText("Records: " + finalCompleted);
+                                active.updateDashboard(record);
+                                active.updateGraphs(record);
+                                active.updateFuelMap(record);
+                                active.updateFuelTrim(record);
+                                active.updateTuningData(record);
+                                active.renderReadings(record);
+                                active.updateLiveMetrics(finalCompleted, active.loggingStartTime);
+                            }
+                        });
+
+                        // Copy fuel map data to static maps
+                        MainActivity active = activeInstance;
+                        if (active != null && active.fuelMapView != null) {
+                            sessionPetrolData.clear();
+                            sessionPetrolData.putAll(active.fuelMapView.getPetrolData());
+                            sessionLpgData.clear();
+                            sessionLpgData.putAll(active.fuelMapView.getLpgData());
+                        }
+
+                        try {
+                            Thread.sleep(config.sampleIntervalMs);
+                        } catch (InterruptedException ie) {
+                            // shutdownNow() interrupted our sleep — exit the loop gracefully
+                            running = false;
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    if (!running || e instanceof InterruptedException) {
+                        break;
+                    }
+                    driver.disconnect();
+                    retryCount++;
+                    if (retryCount > maxRetries) {
+                        running = false;
+                        runOnActiveActivity(() -> {
+                            MainActivity active = activeInstance;
+                            if (active != null) {
+                                active.setStatus("Connection failed permanently: " + e.getMessage(), R.color.danger);
+                                active.updateStatusStripConnection(0, "Disconnected");
+                                if (active.fabLog != null) active.setFabState(false);
+                            }
+                        });
+                        break;
+                    }
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
             }
 

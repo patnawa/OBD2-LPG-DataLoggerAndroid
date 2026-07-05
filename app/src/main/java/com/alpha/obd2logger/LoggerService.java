@@ -326,107 +326,141 @@ public final class LoggerService extends Service {
         try {
             writer = new DataWriter(this, sessionId, finalPids, config.vin);
             updateNotification("Logging: 0 records", 0);
-
             long lastDtcCheckMs = android.os.SystemClock.elapsedRealtime();
+            int retryCount = 0;
+            int maxRetries = 3;
 
             while (running) {
-                long nowMs = android.os.SystemClock.elapsedRealtime();
-                if (nowMs - lastDtcCheckMs >= 60000) {
-                    lastDtcCheckMs = nowMs;
-                    ExecutorService de = dtcExecutor;
-                    if (de != null && !de.isShutdown()) {
-                        de.submit(() -> {
-                            try {
-                                List<DtcCode> stored = DtcReader.readStoredDtcs(driver);
-                                List<DtcCode> pending = DtcReader.readPendingDtcs(driver);
-                                List<DtcCode> permanent = DtcReader.readPermanentDtcs(driver);
-                                
-                                List<DtcCode> newCodes = new ArrayList<>();
-                                for (DtcCode c : stored) {
-                                    if (!lastStoredDtcs.contains(c)) {
-                                        newCodes.add(c);
-                                    }
-                                }
-                                for (DtcCode c : pending) {
-                                    if (!lastPendingDtcs.contains(c)) {
-                                        newCodes.add(c);
-                                    }
-                                }
-                                
-                                lastStoredDtcs.clear();
-                                lastStoredDtcs.addAll(stored);
-                                lastPendingDtcs.clear();
-                                lastPendingDtcs.addAll(pending);
-                                lastPermanentDtcs.clear();
-                                lastPermanentDtcs.addAll(permanent);
-                                
-                                if (!newCodes.isEmpty()) {
-                                    LoggerCallback cbDtc = getCallback();
-                                    if (cbDtc != null) {
-                                        mainHandler.post(() -> cbDtc.onNewDtcDetected(newCodes));
-                                    }
-                                }
-                            } catch (Exception e) {
-                                Log.e(TAG, "Background periodic DTC scan failed", e);
-                            }
-                        });
-                    }
-                }
-                Map<String, Double> batch = driver.queryPidBatch(finalPids);
-                List<SensorSample> samples = new ArrayList<>();
-                List<PIDDefinition> toRemove = new ArrayList<>();
-                
-                for (PIDDefinition pid : finalPids) {
-                    Double value = batch.get(pid.getName());
-                    samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
-                            value == null ? "err" : "ok"));
-                    
-                    if (value == null) {
-                        int fails = consecutiveFailures.getOrDefault(pid.key(), 0) + 1;
-                        consecutiveFailures.put(pid.key(), fails);
-                        if (fails >= 3) {
-                            toRemove.add(pid);
-                        }
-                    } else {
-                        consecutiveFailures.put(pid.key(), 0);
-                    }
-                }
-                
-                if (!toRemove.isEmpty()) {
-                    finalPids.removeAll(toRemove);
-                    for (PIDDefinition p : toRemove) {
-                        Log.w(TAG, "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
-                    }
-                }
-
-                DataRecord record = new DataRecord(
-                        iso.format(new Date()),
-                        (android.os.SystemClock.elapsedRealtime() - started) / 1000.0,
-                        config.fuelMode.getValue(),
-                        config.vehicleBrand,
-                        config.vin,
-                        samples
-                );
-
-                writer.writeRecord(record);
-                recordCount++;
-                publishRecord(record, recordCount);
-                
-                if (apiServer != null) {
-                    apiServer.setLatestData(record, true);
-                }
-
-                if (recordCount % 10 == 0) {
-                    updateNotification("Logging: " + recordCount + " records", recordCount);
-                }
-
                 try {
-                    Thread.sleep(config.sampleIntervalMs);
-                } catch (InterruptedException ie) {
-                    // shutdownNow() interrupted our sleep — exit the loop gracefully
-                    running = false;
-                    Thread.currentThread().interrupt();
-                    break;
+                    if (!driver.isConnected()) {
+                        if (retryCount > 0) {
+                            final int finalRetry = retryCount;
+                            notifyStatus("Connection lost. Reconnecting (" + finalRetry + "/" + maxRetries + ")...", false);
+                        }
+                        if (!driver.connect()) {
+                            throw new java.io.IOException("Reconnection failed");
+                        }
+                        retryCount = 0;
+                        notifyStatus("Connected. Logging resumed.", false);
+                    }
+
+                    while (running) {
+                        long nowMs = android.os.SystemClock.elapsedRealtime();
+                        if (nowMs - lastDtcCheckMs >= 60000) {
+                            lastDtcCheckMs = nowMs;
+                            ExecutorService de = dtcExecutor;
+                            if (de != null && !de.isShutdown()) {
+                                de.submit(() -> {
+                                    try {
+                                        List<DtcCode> stored = DtcReader.readStoredDtcs(driver);
+                                        List<DtcCode> pending = DtcReader.readPendingDtcs(driver);
+                                        List<DtcCode> permanent = DtcReader.readPermanentDtcs(driver);
+                                        
+                                        List<DtcCode> newCodes = new ArrayList<>();
+                                        for (DtcCode c : stored) {
+                                            if (!lastStoredDtcs.contains(c)) {
+                                                newCodes.add(c);
+                                            }
+                                        }
+                                        for (DtcCode c : pending) {
+                                            if (!lastPendingDtcs.contains(c)) {
+                                                newCodes.add(c);
+                                            }
+                                        }
+                                        
+                                        lastStoredDtcs.clear();
+                                        lastStoredDtcs.addAll(stored);
+                                        lastPendingDtcs.clear();
+                                        lastPendingDtcs.addAll(pending);
+                                        lastPermanentDtcs.clear();
+                                        lastPermanentDtcs.addAll(permanent);
+                                        
+                                        if (!newCodes.isEmpty()) {
+                                            LoggerCallback cbDtc = getCallback();
+                                            if (cbDtc != null) {
+                                                mainHandler.post(() -> cbDtc.onNewDtcDetected(newCodes));
+                                            }
+                                        }
+                                    } catch (Exception e) {
+                                        Log.e(TAG, "Background periodic DTC scan failed", e);
+                                    }
+                                });
+                            }
+                        }
+                        Map<String, Double> batch = driver.queryPidBatch(finalPids);
+                        List<SensorSample> samples = new ArrayList<>();
+                        List<PIDDefinition> toRemove = new ArrayList<>();
+                        
+                        for (PIDDefinition pid : finalPids) {
+                            Double value = batch.get(pid.getName());
+                            samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
+                                    value == null ? "err" : "ok"));
+                            
+                            if (value == null) {
+                                int fails = consecutiveFailures.getOrDefault(pid.key(), 0) + 1;
+                                consecutiveFailures.put(pid.key(), fails);
+                                if (fails >= 3) {
+                                    toRemove.add(pid);
+                                }
+                            } else {
+                                consecutiveFailures.put(pid.key(), 0);
+                            }
+                        }
+                        
+                        if (!toRemove.isEmpty()) {
+                            finalPids.removeAll(toRemove);
+                            for (PIDDefinition p : toRemove) {
+                                Log.w(TAG, "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
+                            }
+                        }
+
+                        DataRecord record = new DataRecord(
+                                iso.format(new Date()),
+                                (android.os.SystemClock.elapsedRealtime() - started) / 1000.0,
+                                config.fuelMode.getValue(),
+                                config.vehicleBrand,
+                                config.vin,
+                                samples
+                        );
+
+                        writer.writeRecord(record);
+                        recordCount++;
+                        publishRecord(record, recordCount);
+                        
+                        if (apiServer != null) {
+                            apiServer.setLatestData(record, true);
+                        }
+
+                        if (recordCount % 10 == 0) {
+                            updateNotification("Logging: " + recordCount + " records", recordCount);
+                        }
+
+                        try {
+                            Thread.sleep(config.sampleIntervalMs);
+                        } catch (InterruptedException ie) {
+                            // shutdownNow() interrupted our sleep — exit the loop gracefully
+                            running = false;
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    if (!running || e instanceof InterruptedException) {
+                        break;
+                    }
+                    if (driver != null) driver.disconnect();
+                    retryCount++;
+                    if (retryCount > maxRetries) {
+                        running = false;
+                        notifyStatus("Logger disconnected permanently: " + e.getMessage(), true);
+                        break;
+                    }
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
             }
         } catch (Exception e) {
