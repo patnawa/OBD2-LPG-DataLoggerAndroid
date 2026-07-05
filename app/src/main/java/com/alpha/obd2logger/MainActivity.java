@@ -793,15 +793,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void setFabState(boolean isLogging) {
         if (fabLog == null) return;
         if (isLogging) {
-            fabLog.setText("STOP");
             fabLog.setIconResource(android.R.drawable.ic_media_pause);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
-            fabLog.setIconTint(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.background)));
         } else {
-            fabLog.setText("START");
             fabLog.setIconResource(android.R.drawable.ic_media_play);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
-            fabLog.setIconTint(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.background)));
         }
     }
 

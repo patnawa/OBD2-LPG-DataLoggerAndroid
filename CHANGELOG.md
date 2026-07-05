@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.3] - 2026-07-05
+### Fixed
+- **Start button too wide, covering VIN** — Shrunk to compact 40dp icon-only circular button (play/pause icon, no text). Now takes minimal space in the top toolbar, leaving the status + VIN text fully visible.
+
 ## [3.4.2] - 2026-07-05
 ### Changed
 - **Start/Stop button moved back to top toolbar** — User feedback: easier to reach at the top. Now a proper pill-shaped MaterialButton ("START"/"STOP" with play/pause icon) in the top header bar, positioned left of the theme toggle. Bottom status strip remains purely informational (status dot, device, RPM, Speed, Voltage, DTC badge).
