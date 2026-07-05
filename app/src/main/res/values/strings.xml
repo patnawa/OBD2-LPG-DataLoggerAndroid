@@ -104,4 +104,7 @@
     <string name="home_card_logs_desc">History session directory and export</string>
     <string name="home_card_settings_title">Configuration</string>
     <string name="home_card_settings_desc">Settings panel, theme, and language</string>
+    <string name="dialog_select_folder_title">Select Log Folder</string>
+    <string name="dialog_select_folder_msg">Please choose a directory where the app will save and load OBD2 logs.</string>
+    <string name="dialog_select_folder_btn">Choose Folder</string>
 </resources>

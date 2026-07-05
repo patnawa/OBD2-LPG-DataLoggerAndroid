@@ -101,4 +101,7 @@
     <string name="home_card_logs_desc">ดูประวัติการบันทึกล็อกไฟล์ย้อนหลังและแชร์ออก</string>
     <string name="home_card_settings_title">การตั้งค่าระบบ</string>
     <string name="home_card_settings_desc">ตั้งค่าการเชื่อมต่อ อะแดปเตอร์ ธีมแอป และภาษา</string>
+    <string name="dialog_select_folder_title">เลือกโฟลเดอร์เก็บข้อมูล</string>
+    <string name="dialog_select_folder_msg">กรุณาเลือกโฟลเดอร์สำหรับจัดเก็บและเรียกดูไฟล์บันทึกข้อมูล OBD2</string>
+    <string name="dialog_select_folder_btn">เลือกโฟลเดอร์</string>
 </resources>

@@ -329,6 +329,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 fabLog.setImageResource(android.R.drawable.ic_media_play);
                 fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
             } else {
+                if (!ensureLogFolderSelected()) {
+                    return;
+                }
                 startLogging();
                 fabLog.setImageResource(android.R.drawable.ic_media_pause);
                 fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
@@ -653,6 +656,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             
             if (index == 4) {
+                if (!ensureLogFolderSelected()) {
+                    isTabChanging = false;
+                    showTab(6);
+                    return;
+                }
                 loadHistoryFiles();
             }
         } finally {
@@ -2886,6 +2894,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         for (int i=0; i<5; i++) {
             if (graphs[i] != null) graphs[i].clear();
         }
+    }
+
+    private boolean ensureLogFolderSelected() {
+        String savedUriStr = getSharedPreferences("OBD2Prefs", MODE_PRIVATE).getString("custom_log_folder_uri", null);
+        if (savedUriStr == null) {
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.dialog_select_folder_title)
+                    .setMessage(R.string.dialog_select_folder_msg)
+                    .setCancelable(false)
+                    .setPositiveButton(R.string.dialog_select_folder_btn, (dialog, which) -> {
+                        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                        folderPickerLauncher.launch(intent);
+                    })
+                    .show();
+            return false;
+        }
+        return true;
     }
 
     // --- Log folder ---
