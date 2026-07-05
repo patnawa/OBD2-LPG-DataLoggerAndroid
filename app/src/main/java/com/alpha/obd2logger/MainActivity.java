@@ -1473,7 +1473,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 e.printStackTrace();
             }
         } else {
-            File folder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "OBD2LPGLogger");
+            File folder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "TunerMapPro");
             if (folder.exists()) {
                 scanFolderRecursively(folder, "General", logFiles);
             }

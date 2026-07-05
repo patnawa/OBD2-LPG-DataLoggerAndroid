@@ -25,7 +25,7 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class DataWriter implements AutoCloseable {
-    private static final String DOWNLOAD_SUBDIR = "OBD2LPGLogger";
+    private static final String DOWNLOAD_SUBDIR = "TunerMapPro";
 
     private final Context context;
     private final String vin;

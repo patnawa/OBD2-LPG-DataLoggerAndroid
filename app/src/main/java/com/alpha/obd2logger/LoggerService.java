@@ -482,7 +482,7 @@ public final class LoggerService extends Service {
 
     private Notification buildNotification(String text, int recordCount) {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("OBD2 LPG Logger")
+                .setContentTitle("TunerMap Pro")
                 .setContentText(text)
                 .setSmallIcon(android.R.drawable.ic_menu_compass)
                 .setOngoing(true)

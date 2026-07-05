@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">GasTuner Pro</string>
+    <string name="app_name">TunerMap Pro</string>
     <string name="start">Start</string>
     <string name="stop">Stop</string>
     <string name="idle_status">Ready. Select transport mode and start logging.</string>
-    <string name="log_path">Logs will be saved to Downloads/OBD2LPGLogger</string>
-    <string name="tap_to_open_logs">Tap to open Downloads/OBD2LPGLogger</string>
+    <string name="log_path">Logs will be saved to Downloads/TunerMapPro</string>
+    <string name="tap_to_open_logs">Tap to open Downloads/TunerMapPro</string>
     <string name="prompt_transport_mode">Transport mode</string>
     <string name="prompt_fuel_mode">Fuel mode</string>
     <string name="prompt_obd_protocol">OBD2 protocol</string>
@@ -86,14 +86,14 @@
     <string name="background_logging">Background Logging</string>
     <string name="keep_screen_on">Keep Screen On</string>
     <string name="log_destination_label">Log Destination Folder</string>
-    <string name="default_log_folder">Downloads/OBD2LPGLogger (Default)</string>
+    <string name="default_log_folder">Downloads/TunerMapPro (Default)</string>
     <string name="select_folder">Select</string>
 
     <!-- Home Menu -->
-    <string name="home_title">GasTuner Pro</string>
+    <string name="home_title">TunerMap Pro</string>
     <string name="home_subtitle">Select a function to get started:</string>
     <string name="home_greeting">WELCOME BACK</string>
-    <string name="home_welcome_desc">Professional OBD2 &amp; LPG/CNG Tuning System</string>
+    <string name="home_welcome_desc">Professional OBD2 Diagnostics &amp; Fuel Mapping System</string>
     <string name="home_welcome_status">System ready • Choose a function below to begin</string>
     <string name="home_card_dashboard_title">Dashboard</string>
     <string name="home_card_dashboard_desc">Real-time parameters, status, fuel mode</string>
