@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="app_name">TunerMap Pro</string>
     <string name="start">Bắt đầu</string>
     <string name="stop">Dừng</string>
     <string name="idle_status">Sẵn sàng. Chọn chế độ kết nối và bắt đầu ghi nhật ký.</string>
-    <string name="log_path">Nhật ký sẽ được lưu vào Downloads/OBD2LPGLogger</string>
-    <string name="tap_to_open_logs">Nhấn để mở thư mục Downloads/OBD2LPGLogger</string>
+    <string name="log_path">Nhật ký sẽ được lưu vào Downloads/TunerMapPro</string>
+    <string name="tap_to_open_logs">Nhấn để mở thư mục Downloads/TunerMapPro</string>
     <string name="prompt_transport_mode">Chế độ kết nối</string>
     <string name="prompt_fuel_mode">Chế độ nhiên liệu</string>
     <string name="prompt_obd_protocol">Giao thức OBD2</string>
@@ -85,6 +85,6 @@
     <string name="background_logging">Ghi nhật ký nền</string>
     <string name="keep_screen_on">Giữ màn hình luôn bật</string>
     <string name="log_destination_label">Thư mục lưu trữ nhật ký</string>
-    <string name="default_log_folder">Downloads/OBD2LPGLogger (Mặc định)</string>
+    <string name="default_log_folder">Downloads/TunerMapPro (Mặc định)</string>
     <string name="select_folder">Chọn</string>
 </resources>

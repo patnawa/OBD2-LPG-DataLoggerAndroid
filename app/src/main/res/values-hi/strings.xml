@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="app_name">TunerMap Pro</string>
     <string name="start">शुरू करें</string>
     <string name="stop">रोकें</string>
     <string name="idle_status">तैयार। कनेक्शन मोड चुनें और लॉगिंग शुरू करें।</string>
-    <string name="log_path">लॉग Downloads/OBD2LPGLogger में सहेजे जाएंगे</string>
-    <string name="tap_to_open_logs">Downloads/OBD2LPGLogger खोलने के लिए स्पर्श करें</string>
+    <string name="log_path">लॉग Downloads/TunerMapPro में सहेजे जाएंगे</string>
+    <string name="tap_to_open_logs">Downloads/TunerMapPro खोलने के लिए स्पर्श करें</string>
     <string name="prompt_transport_mode">कनेक्शन मोड</string>
     <string name="prompt_fuel_mode">ईंधन मोड</string>
     <string name="prompt_obd_protocol">OBD2 प्रोटोकॉल</string>
@@ -85,6 +85,6 @@
     <string name="background_logging">पृष्ठभूमि में लॉगिंग</string>
     <string name="keep_screen_on">स्क्रीन हमेशा चालू रखें</string>
     <string name="log_destination_label">लॉग सहेजने का फ़ोल्डर</string>
-    <string name="default_log_folder">Downloads/OBD2LPGLogger (डिफ़ॉल्ट)</string>
+    <string name="default_log_folder">Downloads/TunerMapPro (डिफ़ॉल्ट)</string>
     <string name="select_folder">चुनें</string>
 </resources>

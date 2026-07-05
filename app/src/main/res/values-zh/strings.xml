@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="app_name">TunerMap Pro</string>
     <string name="start">开始</string>
     <string name="stop">停止</string>
     <string name="idle_status">就绪。请选择连接模式并启动记录。</string>
-    <string name="log_path">日志将保存至 Downloads/OBD2LPGLogger</string>
-    <string name="tap_to_open_logs">轻点以打开 Downloads/OBD2LPGLogger</string>
+    <string name="log_path">日志将保存至 Downloads/TunerMapPro</string>
+    <string name="tap_to_open_logs">轻点以打开 Downloads/TunerMapPro</string>
     <string name="prompt_transport_mode">传输模式</string>
     <string name="prompt_fuel_mode">燃料模式</string>
     <string name="prompt_obd_protocol">OBD2协议</string>
@@ -85,6 +85,6 @@
     <string name="background_logging">后台日志记录</string>
     <string name="keep_screen_on">保持屏幕常亮</string>
     <string name="log_destination_label">日志保存文件夹</string>
-    <string name="default_log_folder">Downloads/OBD2LPGLogger (默认)</string>
+    <string name="default_log_folder">Downloads/TunerMapPro (默认)</string>
     <string name="select_folder">选择</string>
 </resources>

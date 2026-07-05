@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="app_name">TunerMap Pro</string>
     <string name="start">Mulai</string>
     <string name="stop">Berhenti</string>
     <string name="idle_status">Siap. Pilih mode koneksi dan mulai pencatatan log.</string>
-    <string name="log_path">Log akan disimpan di Downloads/OBD2LPGLogger</string>
-    <string name="tap_to_open_logs">Ketuk untuk membuka Downloads/OBD2LPGLogger</string>
+    <string name="log_path">Log akan disimpan di Downloads/TunerMapPro</string>
+    <string name="tap_to_open_logs">Ketuk untuk membuka Downloads/TunerMapPro</string>
     <string name="prompt_transport_mode">Mode koneksi</string>
     <string name="prompt_fuel_mode">Mode bahan bakar</string>
     <string name="prompt_obd_protocol">Protokol OBD2</string>
@@ -85,6 +85,6 @@
     <string name="background_logging">Pencatatan Latar Belakang</string>
     <string name="keep_screen_on">Biarkan Layar Menyala</string>
     <string name="log_destination_label">Folder Tujuan Log</string>
-    <string name="default_log_folder">Downloads/OBD2LPGLogger (Bawaan)</string>
+    <string name="default_log_folder">Downloads/TunerMapPro (Bawaan)</string>
     <string name="select_folder">Pilih</string>
 </resources>

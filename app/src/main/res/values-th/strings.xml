@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">GasTuner Pro</string>
+    <string name="app_name">TunerMap Pro</string>
     <string name="start">เริ่ม</string>
     <string name="stop">หยุด</string>
     <string name="idle_status">พร้อมทำงาน กรุณาเลือกวิธีเชื่อมต่อแล้วกดเริ่ม</string>
-    <string name="log_path">ล็อกไฟล์จะถูกเก็บที่ Downloads/OBD2LPGLogger</string>
+    <string name="log_path">ล็อกไฟล์จะถูกเก็บที่ Downloads/TunerMapPro</string>
     <string name="tap_to_open_logs">แตะเพื่อเปิดโฟลเดอร์ Logs</string>
     <string name="prompt_transport_mode">โหมดการเชื่อมต่อ</string>
     <string name="prompt_fuel_mode">ชนิดเชื้อเพลิง</string>
@@ -83,14 +83,14 @@
     <string name="background_logging">ทำงานพื้นหลัง</string>
     <string name="keep_screen_on">เปิดหน้าจอค้างไว้</string>
     <string name="log_destination_label">โฟลเดอร์สำหรับเก็บล็อกไฟล์</string>
-    <string name="default_log_folder">Downloads/OBD2LPGLogger (ค่าเริ่มต้น)</string>
+    <string name="default_log_folder">Downloads/TunerMapPro (ค่าเริ่มต้น)</string>
     <string name="select_folder">เลือก</string>
 
     <!-- Home Menu -->
-    <string name="home_title">GasTuner Pro</string>
+    <string name="home_title">TunerMap Pro</string>
     <string name="home_subtitle">กรุณาเลือกฟังก์ชันการทำงานที่ต้องการ:</string>
     <string name="home_greeting">ยินดีต้อนรับ</string>
-    <string name="home_welcome_desc">ระบบวิเคราะห์ข้อมูลและช่วยจูนแก๊สรถยนต์ OBD2</string>
+    <string name="home_welcome_desc">ระบบวิเคราะห์เครื่องยนต์และทำแผนที่จ่ายเชื้อเพลิง OBD2</string>
     <string name="home_welcome_status">ระบบพร้อมทำงาน • กรุณาเลือกฟังก์ชันด้านล่างเพื่อเริ่มต้น</string>
     <string name="home_card_dashboard_title">หน้าปัดข้อมูล</string>
     <string name="home_card_dashboard_desc">แสดงค่าพารามิเตอร์ของเครื่องยนต์และโหมดเชื้อเพลิงแบบสด</string>

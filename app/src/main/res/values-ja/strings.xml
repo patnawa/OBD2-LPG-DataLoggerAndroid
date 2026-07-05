@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">OBD2 LPG/CNG Logger</string>
+    <string name="app_name">TunerMap Pro</string>
     <string name="start">開始</string>
     <string name="stop">停止</string>
     <string name="idle_status">準備完了。通信モードを選択し、ログ記録を開始してください。</string>
-    <string name="log_path">ログは Downloads/OBD2LPGLogger に保存されます</string>
-    <string name="tap_to_open_logs">タップして Downloads/OBD2LPGLogger を開く</string>
+    <string name="log_path">ログは Downloads/TunerMapPro に保存されます</string>
+    <string name="tap_to_open_logs">タップして Downloads/TunerMapPro を開く</string>
     <string name="prompt_transport_mode">通信モード</string>
     <string name="prompt_fuel_mode">燃料モード</string>
     <string name="prompt_obd_protocol">OBD2プロトコル</string>
@@ -85,6 +85,6 @@
     <string name="background_logging">バックグラウンドログ記録</string>
     <string name="keep_screen_on">スリープ防止 (画面常時点灯)</string>
     <string name="log_destination_label">ログの保存先フォルダ</string>
-    <string name="default_log_folder">Downloads/OBD2LPGLogger (デフォルト)</string>
+    <string name="default_log_folder">Downloads/TunerMapPro (デフォルト)</string>
     <string name="select_folder">選択</string>
 </resources>
