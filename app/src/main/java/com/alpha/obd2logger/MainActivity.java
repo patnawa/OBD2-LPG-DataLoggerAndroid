@@ -2549,10 +2549,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             // Tap to Google search
             cardLayout.setOnClickListener(v -> {
-                String url = "https://www.google.com/search?q=OBD2+code+" + dtc.getCode();
+                String rawVin = headerVin.getText().toString().replace("VIN: ", "").trim();
+                String vin = (rawVin.isEmpty() || "Unknown".equalsIgnoreCase(rawVin)) ? "" : rawVin;
+                BrandYearProfile.Brand brand = BrandYearProfile.brandFromVin(vin);
+                String brandStr = (brand != BrandYearProfile.Brand.GENERIC) ? brand.name() : "";
+
+                String query = "OBD2 code " + dtc.getCode();
+                if (!brandStr.isEmpty()) {
+                    query += " " + brandStr;
+                }
+                if (dtc.getDescription() != null && !dtc.getDescription().isEmpty()) {
+                    query += " " + dtc.getDescription();
+                }
+                query += " symptoms causes fixes";
+
+                String url = "https://www.google.com/search?q=" + Uri.encode(query);
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                 startActivity(browserIntent);
-                Toast.makeText(this, "Searching " + dtc.getCode() + " on Google...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Searching " + dtc.getCode() + " details on Google...", Toast.LENGTH_SHORT).show();
             });
 
             dtcListContainer.addView(cardLayout);
