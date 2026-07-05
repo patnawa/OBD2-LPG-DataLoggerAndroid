@@ -76,6 +76,8 @@ public class LocaleHelper {
         LocaleList.setDefault(localeList);
         configuration.setLocales(localeList);
 
+        context.getResources().updateConfiguration(configuration, context.getResources().getDisplayMetrics());
+
         return context.createConfigurationContext(configuration);
     }
 
