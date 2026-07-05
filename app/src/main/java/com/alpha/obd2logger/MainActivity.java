@@ -34,6 +34,7 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ImageView;
 import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -94,7 +95,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private LinearLayout dtcListContainer, readinessContainer;
 
     // --- UI: Logs tab ---
-    private TextView logPathText;
+    private com.google.android.material.card.MaterialCardView cardLogStatus;
+    private TextView logStatusLabel, logCsvName, logJsonlName;
+    private ImageView logIcon;
     private TableLayout readingsTable;
 
     private com.google.android.material.floatingactionbutton.FloatingActionButton fabLog;
@@ -385,9 +388,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         readinessContainer = findViewById(R.id.readinessContainer);
 
         // Logs tab
-        logPathText = findViewById(R.id.logPathText);
+        cardLogStatus = findViewById(R.id.cardLogStatus);
+        logStatusLabel = findViewById(R.id.logStatusLabel);
+        logCsvName = findViewById(R.id.logCsvName);
+        logJsonlName = findViewById(R.id.logJsonlName);
+        logIcon = findViewById(R.id.logIcon);
         readingsTable = findViewById(R.id.readingsTable);
-        logPathText.setOnClickListener(v -> openLogFolder());
+        cardLogStatus.setOnClickListener(v -> openLogFolder());
         
         fuelMapView = findViewById(R.id.fuelMapView);
         
@@ -1717,9 +1724,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             currentDownloadFolder = dataWriter.getDownloadFolderFile();
             currentCsvUri = dataWriter.getCsvUri();
             currentJsonlUri = dataWriter.getJsonlUri();
-            runOnUiThread(() -> logPathText.setText("CSV: " + dataWriter.getCsvLocation()
-                    + "\nJSONL: " + dataWriter.getJsonlLocation()
-                    + "\n" + getString(R.string.tap_to_open_logs)));
+            runOnUiThread(() -> {
+                logStatusLabel.setText("Active Logging Session");
+                logStatusLabel.setTextColor(getColorCompat(R.color.accent));
+                logIcon.setColorFilter(getColorCompat(R.color.accent));
+                String csvPath = dataWriter.getCsvLocation();
+                String jsonlPath = dataWriter.getJsonlLocation();
+                String csvName = csvPath != null ? new File(csvPath).getName() : "--";
+                String jsonlName = jsonlPath != null ? new File(jsonlPath).getName() : "--";
+                logCsvName.setText("CSV: " + csvName);
+                logJsonlName.setText("JSONL: " + jsonlName);
+                logJsonlName.setVisibility(View.VISIBLE);
+            });
 
             while (running) {
                 Map<String, Double> batch = driver.queryPidBatch(finalPids);
