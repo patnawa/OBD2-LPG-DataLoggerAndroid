@@ -1,19 +1,18 @@
 # OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.4.14** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.4.15** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.4.6
+## What's New in 3.4.15
 
-**Multi-Chemistry Battery Support** — Battery Tester now supports 6 battery chemistries with chemistry-specific voltage tables and thresholds:
-- Flooded (Standard), AGM (Absorbent Glass Mat), EFB (Enhanced Flooded)
-- Gel Cell, Calcium (Ca/Ca), LiFePO4 (Lithium)
-- Each chemistry has accurate SoC lookup tables (e.g., LiFePO4: 13.30V = 100%, 12.50V = 0%)
-- Alternator thresholds adjust per chemistry (AGM: 14.0-14.8V, LiFePO4: 14.0-14.6V, Flooded: 13.8-14.7V)
-- Life expectancy calculations account for chemistry type and tropical climate
+- **Home Page Telemetry & Module Localization** — Fully localized all main home page labels (`VEHICLE VIN`, `LINK ADAPTER`, `ENGINE RPM`, etc.) and all module card description panels (`Engine Gauges Cluster`, `Dashboard`, `Trim Mapping`, `DTC Scanner`, `Power Monitor`, `Tuning Records`, `Data Archive`) to dynamically switch languages between Thai and English on system context reload.
+- **Premium Bottom Sheet PID Selector & Search** — Upgraded the generic popup PID selection dialog to a sleek Material `BottomSheetDialog` that slides up from the bottom. Added a real-time search input box to filter parameters instantly, and styled each PID entry with category-coded circular color badges (RPM/Speed: blue, Temps: amber, Fuel Trims: green, OFF: red, Others: purple).
+- **Professional Smart Tuning Dashboard** — Redesigned the smart tuning analysis box on the Map screen. It now features an elegant Material card layout with a `12dp` corner radius, a dedicated loop status indicator, separate diagnostic widgets for `STFT`, `LTFT`, and `COOLANT` (ECT), and a structured layout highlighting recommended tuning actions.
+- **Real-time Voltage State Analyzer** — Enhanced the Power Monitor tab with a live voltage state analysis tag below the real-time graph. Automatically monitors voltage levels and flags status states: Alternator normal charging (green, 13.2V-14.8V), overcharging (red, >14.8V), standby float charge (blue, 12.9V-13.2V), resting engine off (amber, 12.2V-12.9V), low battery under load (red, 11.5V-12.2V), and critical deep discharge (red, <11.5V).
+- **Convenient Telemetry Configuration** — Bind single-tap click triggers to all Dashboard, Gauges, and Graph cards so users can instantly open the configuration selector without needing to long-press.
 
 ---
 
