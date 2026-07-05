@@ -70,6 +70,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private boolean isTabChanging = false;
     // --- UI: Header ---
     private TextView headerStatus, headerVin;
+    private View headerStatusDot;
     private android.widget.ImageButton btnSettings;
     private android.widget.ImageButton btnThemeToggle;
     private android.widget.ImageButton btnGoHome;
@@ -391,6 +392,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Header
         headerStatus = findViewById(R.id.headerStatus);
         headerVin = findViewById(R.id.headerVin);
+        headerStatusDot = findViewById(R.id.headerStatusDot);
         btnSettings = findViewById(R.id.btnSettings);
         btnThemeToggle = findViewById(R.id.btnThemeToggle);
         btnGoHome = findViewById(R.id.btnGoHome);
@@ -793,9 +795,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void setFabState(boolean isLogging) {
         if (fabLog == null) return;
         if (isLogging) {
+            fabLog.setText("STOP");
             fabLog.setIconResource(android.R.drawable.ic_media_pause);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
         } else {
+            fabLog.setText("START");
             fabLog.setIconResource(android.R.drawable.ic_media_play);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
         }
@@ -2344,6 +2348,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         statusDot.setBackgroundResource(dotRes);
         statusDeviceText.setText(deviceName);
         statusDeviceText.setTextColor(getColorCompat(textColor));
+        // Sync header status dot + chip
+        if (headerStatusDot != null) headerStatusDot.setBackgroundResource(dotRes);
+        if (headerStatus != null) {
+            headerStatus.setText(state == 2 ? "Connected" : (state == 1 ? "Connecting" : "Offline"));
+            headerStatus.setTextColor(getColorCompat(textColor));
+        }
     }
 
     private void updateDtcBadge(int storedCount, int pendingCount, int permanentCount) {

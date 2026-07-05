@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.5] - 2026-07-05
+### Changed
+- **Professional status chip in top toolbar** — Connection status + VIN now wrapped in a rounded pill (bg_status_chip.xml) with a colored connection dot (green/amber/red), status text, divider, and VIN. Syncs with the bottom status strip.
+- **Start/Stop button redesigned** — Proper compact pill button with icon + "START"/"STOP" text (32dp height, 16dp corner radius). No longer a bare circular icon.
+
 ## [3.4.4] - 2026-07-05
 ### Changed
 - **Redesigned home screen** — Compact hero header (was 28dp padding + 30sp title + description + status pill, now 16dp padding + 20sp title + small greeting, single row). Feature cards switched from vertical-centered (56dp icon circle + negative margin overlay hack) to horizontal layout (36dp icon circle on left, title+desc on right). Card corners 20dp→12dp, padding 20dp→12dp. Much more compact and professional.
