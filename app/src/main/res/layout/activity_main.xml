@@ -478,7 +478,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
                     app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
+                    app:cardCornerRadius="2dp">
                     
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -614,7 +614,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="350dp"
                     app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
+                    app:cardCornerRadius="2dp">
 
                     <com.alpha.obd2logger.FuelMapView
                         android:id="@+id/fuelMapView"
@@ -1233,7 +1233,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
                     app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
+                    app:cardCornerRadius="2dp">
                     
                     <TextView
                         android:id="@+id/dtcStatusText"
