@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.2] - 2026-07-05
+### Changed
+- **Start/Stop button moved back to top toolbar** — User feedback: easier to reach at the top. Now a proper pill-shaped MaterialButton ("START"/"STOP" with play/pause icon) in the top header bar, positioned left of the theme toggle. Bottom status strip remains purely informational (status dot, device, RPM, Speed, Voltage, DTC badge).
+
 ## [3.4.1] - 2026-07-05
 ### Changed
 - **Moved Start/Stop button from top toolbar to bottom status strip** — The floating FAB in the top header looked unprofessional. Replaced with a proper pill-shaped MaterialButton ("START"/"STOP") at the end of the bottom status strip. The top toolbar is now clean: Home button, connection status, VIN, theme toggle, settings — no more floating button.

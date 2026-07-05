@@ -60,6 +60,27 @@
                     android:textSize="12sp" />
             </LinearLayout>
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/fabLog"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_toStartOf="@id/btnThemeToggle"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:text="START"
+                android:textColor="@color/background"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                app:backgroundTint="@color/primary"
+                app:cornerRadius="18dp"
+                app:elevation="2dp"
+                app:icon="@android:drawable/ic_media_play"
+                app:iconSize="16dp"
+                app:iconTint="@color/background" />
+
             <ImageButton
                 android:id="@+id/btnThemeToggle"
                 android:layout_width="48dp"
@@ -90,7 +111,7 @@
     <LinearLayout
         android:id="@+id/statusStrip"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="56dp"
         android:orientation="horizontal"
         android:background="@color/surface"
         android:elevation="8dp"
@@ -197,23 +218,6 @@
             android:visibility="gone"
             android:layout_marginStart="8dp" />
 
-        <!-- Start/Stop logging button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/fabLog"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:layout_marginStart="12dp"
-            android:text="START"
-            android:textColor="@color/background"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.05"
-            app:backgroundTint="@color/primary"
-            app:cornerRadius="18dp"
-            app:elevation="2dp"
-            app:icon="@android:drawable/ic_media_play"
-            app:iconSize="16dp"
-            app:iconTint="@color/background" />
     </LinearLayout>
 
     <!-- Content area -->
