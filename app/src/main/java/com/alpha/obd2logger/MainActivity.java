@@ -98,7 +98,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private com.google.android.material.card.MaterialCardView cardLogStatus;
     private TextView logStatusLabel, logCsvName, logJsonlName;
     private ImageView logIcon;
-    private TableLayout readingsTable;
+    private LinearLayout readingsContainer;
 
     private com.google.android.material.floatingactionbutton.FloatingActionButton fabLog;
     private FuelMapView fuelMapView;
@@ -393,7 +393,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         logCsvName = findViewById(R.id.logCsvName);
         logJsonlName = findViewById(R.id.logJsonlName);
         logIcon = findViewById(R.id.logIcon);
-        readingsTable = findViewById(R.id.readingsTable);
+        readingsContainer = findViewById(R.id.readingsContainer);
         cardLogStatus.setOnClickListener(v -> openLogFolder());
         
         fuelMapView = findViewById(R.id.fuelMapView);
@@ -2774,11 +2774,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private final java.util.Map<String, TextView> readingStatusCache = new java.util.HashMap<>();
 
     private void renderReadings(DataRecord record) {
-        if (readingsTable.getChildCount() - 1 != record.getSamples().size()) {
-            readingsTable.removeViews(1, Math.max(0, readingsTable.getChildCount() - 1));
+        if (readingsContainer.getChildCount() != (record.getSamples().size() + 1) / 2) {
+            readingsContainer.removeAllViews();
             readingRowCache.clear();
             readingStatusCache.clear();
         }
+
+        LinearLayout currentRow = null;
+        int index = 0;
+        int margin = (int) (4 * getResources().getDisplayMetrics().density);
 
         StringBuilder allPids = new StringBuilder();
         for (SensorSample sample : record.getSamples()) {
@@ -2787,47 +2791,76 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             TextView statusView = readingStatusCache.get(pidName);
 
             if (valueView == null) {
-                TableRow row = new TableRow(this);
-                row.setPadding(0, 4, 0, 4);
+                if (index % 2 == 0) {
+                    currentRow = new LinearLayout(this);
+                    currentRow.setOrientation(LinearLayout.HORIZONTAL);
+                    currentRow.setWeightSum(2.0f);
+                    LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    rowLp.bottomMargin = 8;
+                    currentRow.setLayoutParams(rowLp);
+                    readingsContainer.addView(currentRow);
+                }
 
-                TextView pidView = new TextView(this);
-                pidView.setText(pidName);
-                pidView.setTextColor(getColorCompat(R.color.text));
-                pidView.setPadding(8, 6, 8, 6);
+                LinearLayout card = new LinearLayout(this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setBackgroundResource(R.drawable.bg_dtc_card);
+                card.setPadding(16, 12, 16, 12);
+
+                LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
+                if (index % 2 == 0) {
+                    cardLp.rightMargin = margin;
+                } else {
+                    cardLp.leftMargin = margin;
+                }
+                card.setLayoutParams(cardLp);
+
+                TextView nameView = new TextView(this);
+                nameView.setText(pidName);
+                nameView.setTextColor(getColorCompat(R.color.muted));
+                nameView.setTextSize(11);
+                nameView.setSingleLine(true);
+                nameView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                card.addView(nameView);
 
                 valueView = new TextView(this);
-                valueView.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_END);
-                valueView.setPadding(8, 6, 8, 6);
+                valueView.setTextColor(getColorCompat(R.color.primary));
+                valueView.setTextSize(16);
+                valueView.setTypeface(null, android.graphics.Typeface.BOLD);
+                valueView.setPadding(0, 4, 0, 4);
+                valueView.setSingleLine(true);
+                card.addView(valueView);
 
                 statusView = new TextView(this);
-                statusView.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_END);
-                statusView.setPadding(8, 6, 8, 6);
+                statusView.setTextSize(9);
+                card.addView(statusView);
 
-                row.addView(pidView);
-                row.addView(valueView);
-                row.addView(statusView);
-                readingsTable.addView(row, new TableLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                if (currentRow != null) {
+                    currentRow.addView(card);
+                }
 
                 readingRowCache.put(pidName, valueView);
                 readingStatusCache.put(pidName, statusView);
             }
 
             valueView.setText(formatValue(sample.getValue(), sample.getUnit()));
-            valueView.setTextColor(getColorCompat(sample.getStatus().equals("ok") ? R.color.accent : R.color.danger));
+            valueView.setTextColor(getColorCompat(sample.getStatus().equals("ok") ? R.color.primary : R.color.danger));
 
-            statusView.setText(sample.getStatus());
+            statusView.setText(sample.getStatus().toUpperCase(Locale.US));
             statusView.setTextColor(getColorCompat(sample.getStatus().equals("ok") ? R.color.accent : R.color.danger));
 
             allPids.append(pidName).append(": ")
                     .append(formatValue(sample.getValue(), sample.getUnit()))
                     .append("\n");
+
+            index++;
         }
         allPidsText.setText(allPids.toString());
     }
 
     private void clearReadings() {
-        readingsTable.removeViews(1, Math.max(0, readingsTable.getChildCount() - 1));
+        readingsContainer.removeAllViews();
         if (tuningStatusText != null) {
             tuningStatusText.setText(getString(R.string.waiting_for_data));
             tuningStatusText.setTextColor(getColorCompat(R.color.warning));

@@ -1391,45 +1391,11 @@
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
-                    <com.google.android.material.card.MaterialCardView
+                    <LinearLayout
+                        android:id="@+id/readingsContainer"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="2dp">
-                        
-                        <TableLayout
-                            android:id="@+id/readingsTable"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:padding="8dp"
-                            android:stretchColumns="1">
-
-                            <TableRow>
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:padding="8dp"
-                                    android:text="PID"
-                                    android:textColor="@color/primary"
-                                    android:textStyle="bold" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:padding="8dp"
-                                    android:text="Value"
-                                    android:textAlignment="textEnd"
-                                    android:textColor="@color/primary"
-                                    android:textStyle="bold" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:padding="8dp"
-                                    android:text="Status"
-                                    android:textAlignment="textEnd"
-                                    android:textColor="@color/primary"
-                                    android:textStyle="bold" />
-                            </TableRow>
-                        </TableLayout>
-                    </com.google.android.material.card.MaterialCardView>
+                        android:orientation="vertical" />
                 </LinearLayout>
 
                 <!-- Container 2: Session History -->
