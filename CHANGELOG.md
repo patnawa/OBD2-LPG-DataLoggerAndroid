@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.0] - 2026-07-05
+### Added
+- **Home Hub Screen**: A card-based Home menu as the primary entry point of the app on startup. Displays 6 grid cards with modern primary color icons, headers, and descriptions for Dashboard, Gauges, Tuning Map, DTC Scan, Logs & History, and Settings.
+- **Top Bar Home Shortcut**: Dynamic home navigation button in the toolbar on all secondary pages to instantly return to the Home Hub.
+- **OnBackPressed Interception**: Callback that intercepts the system back button on any sub-page to take the user back to the Home Menu.
+- **Logs Page UI Split**: A Material Toggle Button Group at the top of the logs tab to switch between "Live Stream" (active OBD2 data) and "Session History" (saved log files list).
+
+### Fixed
+- **App Theme Toggle Loop**: Solved a race condition where binding the theme spinner listener during layout inflation repeatedly reset the night mode preference. Using layout `.post()` queues the listener setup until after initial layout completes.
+- **Always-Mutable PID Catalogue**: Resolved a potential `UnsupportedOperationException` when the live OBD2 driver tries to blacklist unsupported PIDs, ensuring `filterCatalogue` always returns a mutable `ArrayList` copy.
+- **Foreground Logging parity**: Synced `runLogger()` in `MainActivity.java` with the background logging service's caching and adaptive blacklisting.
+
 ## [3.1.0] - 2026-07-04
 ### Added
 - **Mode 06 — On-Board Monitor Test Results**: Professional-grade diagnostic feature that reads actual test values, min/max thresholds, and pass/fail status for all OBD2 monitors (Catalyst, O2 Sensors, O2 Heaters, EGR, EVAP, Misfire, Fuel System). Displays monitor name, test name, measured value, limits, and engineering unit. Includes full SAE J1979 UAS (Unit And Scaling) decoder covering 53 scaling IDs. Shown as a dedicated "Mode 06 — Monitor Test Results" section in the DTC scan results with pass/fail icons.

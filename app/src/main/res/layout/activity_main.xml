@@ -114,6 +114,340 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
+            <!-- ===== HOME MENU PANEL ===== -->
+            <LinearLayout
+                android:id="@+id/panelHome"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="visible">
+
+                <!-- Welcome/Title Header -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="OBD2 LPG Logger"
+                    android:textColor="@color/primary"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Select a function to get started:"
+                    android:textColor="@color/muted"
+                    android:textSize="14sp"
+                    android:layout_marginBottom="24dp"/>
+
+                <!-- Row 1: Dashboard & Gauges -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="16dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeDashboard"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="16dp"
+                        app:strokeColor="@color/border"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp"
+                            android:gravity="center">
+
+                            <ImageView
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:src="@drawable/ic_dashboard"
+                                app:tint="@color/primary"
+                                android:layout_marginBottom="12dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Dashboard"
+                                android:textColor="@color/text"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="4dp"
+                                android:gravity="center"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Real-time Status"
+                                android:textColor="@color/muted"
+                                android:textSize="11sp"
+                                android:gravity="center"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeGauges"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="16dp"
+                        app:strokeColor="@color/border"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp"
+                            android:gravity="center">
+
+                            <ImageView
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:src="@drawable/ic_speed"
+                                app:tint="@color/primary"
+                                android:layout_marginBottom="12dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Gauges"
+                                android:textColor="@color/text"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="4dp"
+                                android:gravity="center"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Dial Parameters"
+                                android:textColor="@color/muted"
+                                android:textSize="11sp"
+                                android:gravity="center"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+
+                <!-- Row 2: Tuning Map & DTC Scanner -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="16dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeMap"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="16dp"
+                        app:strokeColor="@color/border"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp"
+                            android:gravity="center">
+
+                            <ImageView
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:src="@drawable/ic_map"
+                                app:tint="@color/primary"
+                                android:layout_marginBottom="12dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Tuning Map"
+                                android:textColor="@color/text"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="4dp"
+                                android:gravity="center"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Petrol vs LPG trims"
+                                android:textColor="@color/muted"
+                                android:textSize="11sp"
+                                android:gravity="center"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeDtc"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="16dp"
+                        app:strokeColor="@color/border"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp"
+                            android:gravity="center">
+
+                            <ImageView
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:src="@drawable/ic_build"
+                                app:tint="@color/primary"
+                                android:layout_marginBottom="12dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="DTC Scan"
+                                android:textColor="@color/text"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="4dp"
+                                android:gravity="center"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Fault Codes &amp; Tests"
+                                android:textColor="@color/muted"
+                                android:textSize="11sp"
+                                android:gravity="center"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+
+                <!-- Row 3: Session Logs & Settings -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="16dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeLogs"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="16dp"
+                        app:strokeColor="@color/border"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp"
+                            android:gravity="center">
+
+                            <ImageView
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:src="@drawable/ic_list"
+                                app:tint="@color/primary"
+                                android:layout_marginBottom="12dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Logs &amp; History"
+                                android:textColor="@color/text"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="4dp"
+                                android:gravity="center"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Review Log Files"
+                                android:textColor="@color/muted"
+                                android:textSize="11sp"
+                                android:gravity="center"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeSettings"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardBackgroundColor="@color/surface"
+                        app:cardCornerRadius="16dp"
+                        app:strokeColor="@color/border"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp"
+                            android:gravity="center">
+
+                            <ImageView
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:src="@drawable/ic_settings"
+                                app:tint="@color/primary"
+                                android:layout_marginBottom="12dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Settings"
+                                android:textColor="@color/text"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="4dp"
+                                android:gravity="center"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Configuration Options"
+                                android:textColor="@color/muted"
+                                android:textSize="11sp"
+                                android:gravity="center"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+            </LinearLayout>
+
             <!-- ===== FUEL MAP TAB ===== -->
             <LinearLayout
                 android:id="@+id/panelFuelMap"
@@ -918,199 +1252,243 @@
                 android:padding="16dp"
                 android:visibility="gone">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Live PID Readings"
-                    android:textColor="@color/primary"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="16dp" />
-
-                <com.google.android.material.card.MaterialCardView
+                <!-- Modern tab switcher -->
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/logsTabToggle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
-
-                    <TextView
-                        android:id="@+id/logPathText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:padding="16dp"
-                        android:text="@string/log_path"
-                        android:textColor="@color/muted"
-                        android:textSize="13sp" />
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
-                    
-                    <TableLayout
-                        android:id="@+id/readingsTable"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:padding="8dp"
-                        android:stretchColumns="1">
-
-                        <TableRow>
-                            <TextView
-                                android:layout_width="0dp"
-                                android:padding="8dp"
-                                android:text="PID"
-                                android:textColor="@color/primary"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:padding="8dp"
-                                android:text="Value"
-                                android:textAlignment="textEnd"
-                                android:textColor="@color/primary"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:padding="8dp"
-                                android:text="Status"
-                                android:textAlignment="textEnd"
-                                android:textColor="@color/primary"
-                                android:textStyle="bold" />
-                        </TableRow>
-                    </TableLayout>
-                </com.google.android.material.card.MaterialCardView>
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Session History"
-                    android:textColor="@color/primary"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginBottom="16dp" />
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
-
-                    <TextView
-                        android:id="@+id/historyFolderText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:padding="16dp"
-                        android:text="Tap to select log folder..."
-                        android:textColor="@color/muted"
-                        android:textSize="13sp" />
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Back Button for VIN Folders -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnBackToFolders"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Back to Vehicles"
-                    app:icon="@android:drawable/ic_menu_revert"
-                    android:layout_marginBottom="8dp"
-                    android:visibility="gone" />
-
-                <!-- VIN Folders Section -->
-                <TextView
-                    android:id="@+id/vinFoldersHeader"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Vehicles (VIN ID)"
-                    android:textColor="@color/primary"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:layout_marginTop="8dp"
-                    android:layout_marginBottom="8dp" />
-
-                <ListView
-                    android:id="@+id/historyListViewFolders"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:divider="@color/surface2"
-                    android:dividerHeight="1dp" />
-
-                <!-- Compare-mode bar: toggle multi-select to pick a Petrol log + an
-                     LPG log and plot both onto one map for cross-file Deviation. -->
-                <LinearLayout
-                    android:id="@+id/compareBarLayout"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="8dp">
+                    app:singleSelection="true"
+                    app:checkedButton="@id/btnTabLive">
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCompareLogs"
+                        android:id="@+id/btnTabLive"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/compare_logs" />
-
-                    <TextView
-                        android:id="@+id/compareHintText"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:layout_marginStart="12dp"
-                        android:textColor="@color/muted"
-                        android:textSize="12sp"
-                        android:visibility="gone" />
+                        android:text="Live Stream" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnTabHistory"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Session History" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <!-- Container 1: Live Stream -->
+                <LinearLayout
+                    android:id="@+id/layoutLogsLive"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="visible">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Live PID Readings"
+                        android:textColor="@color/primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="16dp" />
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp"
+                        app:cardBackgroundColor="@color/surface2"
+                        app:cardCornerRadius="12dp">
+
+                        <TextView
+                            android:id="@+id/logPathText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:padding="16dp"
+                            android:text="@string/log_path"
+                            android:textColor="@color/muted"
+                            android:textSize="13sp" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="@color/surface2"
+                        app:cardCornerRadius="12dp">
+                        
+                        <TableLayout
+                            android:id="@+id/readingsTable"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="8dp"
+                            android:stretchColumns="1">
+
+                            <TableRow>
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:padding="8dp"
+                                    android:text="PID"
+                                    android:textColor="@color/primary"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:padding="8dp"
+                                    android:text="Value"
+                                    android:textAlignment="textEnd"
+                                    android:textColor="@color/primary"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:padding="8dp"
+                                    android:text="Status"
+                                    android:textAlignment="textEnd"
+                                    android:textColor="@color/primary"
+                                    android:textStyle="bold" />
+                            </TableRow>
+                        </TableLayout>
+                    </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
 
-                <!-- Petrol Logs Section -->
-                <TextView
-                    android:id="@+id/petrolLogsHeader"
+                <!-- Container 2: Session History -->
+                <LinearLayout
+                    android:id="@+id/layoutLogsHistory"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/petrol_logs_header"
-                    android:textColor="@color/primary"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginBottom="8dp" />
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
-                <ListView
-                    android:id="@+id/historyListViewPetrol"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:choiceMode="none"
-                    android:divider="@color/surface2"
-                    android:dividerHeight="1dp" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Session History"
+                        android:textColor="@color/primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="16dp" />
 
-                <!-- LPG/CNG Logs Section -->
-                <TextView
-                    android:id="@+id/lpgLogsHeader"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/lpg_logs_header"
-                    android:textColor="@color/accent"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:layout_marginTop="24dp"
-                    android:layout_marginBottom="8dp" />
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp"
+                        app:cardBackgroundColor="@color/surface2"
+                        app:cardCornerRadius="12dp">
 
-                <ListView
-                    android:id="@+id/historyListViewLpg"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:choiceMode="none"
-                    android:divider="@color/surface2"
-                    android:dividerHeight="1dp" />
+                        <TextView
+                            android:id="@+id/historyFolderText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:padding="16dp"
+                            android:text="Tap to select log folder..."
+                            android:textColor="@color/muted"
+                            android:textSize="13sp" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Back Button for VIN Folders -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnBackToFolders"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Back to Vehicles"
+                        app:icon="@android:drawable/ic_menu_revert"
+                        android:layout_marginBottom="8dp"
+                        android:visibility="gone" />
+
+                    <!-- VIN Folders Section -->
+                    <TextView
+                        android:id="@+id/vinFoldersHeader"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Vehicles (VIN ID)"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <ListView
+                        android:id="@+id/historyListViewFolders"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:divider="@color/surface2"
+                        android:dividerHeight="1dp" />
+
+                    <!-- Compare-mode bar: toggle multi-select to pick a Petrol log + an
+                         LPG log and plot both onto one map for cross-file Deviation. -->
+                    <LinearLayout
+                        android:id="@+id/compareBarLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnCompareLogs"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/compare_logs" />
+
+                        <TextView
+                            android:id="@+id/compareHintText"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:textColor="@color/muted"
+                            android:textSize="12sp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <!-- Petrol Logs Section -->
+                    <TextView
+                        android:id="@+id/petrolLogsHeader"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/petrol_logs_header"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <ListView
+                        android:id="@+id/historyListViewPetrol"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:choiceMode="none"
+                        android:divider="@color/surface2"
+                        android:dividerHeight="1dp" />
+
+                    <!-- LPG/CNG Logs Section -->
+                    <TextView
+                        android:id="@+id/lpgLogsHeader"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/lpg_logs_header"
+                        android:textColor="@color/accent"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="24dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <ListView
+                        android:id="@+id/historyListViewLpg"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:choiceMode="none"
+                        android:divider="@color/surface2"
+                        android:dividerHeight="1dp" />
+                </LinearLayout>
 
             </LinearLayout>
 

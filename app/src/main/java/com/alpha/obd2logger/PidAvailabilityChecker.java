@@ -122,7 +122,7 @@ public final class PidAvailabilityChecker {
      */
     public static List<PIDDefinition> filterCatalogue(List<String> supportedHex, List<PIDDefinition> catalogue) {
         if (supportedHex == null || supportedHex.isEmpty()) {
-            return catalogue;
+            return new ArrayList<>(catalogue);
         }
 
         // Build a set for O(1) lookup

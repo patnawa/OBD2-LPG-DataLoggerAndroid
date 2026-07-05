@@ -34,6 +34,7 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
@@ -55,7 +56,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     // --- UI: Tab bar ---
     private com.google.android.material.bottomnavigation.BottomNavigationView bottomNav;
-    private View panelDashboard, panelGauges, panelDtc, panelLogs, panelSettings;
+    private View panelHome, panelDashboard, panelGauges, panelDtc, panelLogs, panelSettings;
+    private com.google.android.material.appbar.MaterialToolbar topHeader;
     // --- UI: Header ---
     private TextView headerStatus, headerVin;
     private android.widget.ImageButton btnSettings;
@@ -207,11 +209,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             bluetoothDeviceSpinner.setEnabled(false);
             bluetoothHintText.setEnabled(false);
             
+            setupHomeMenu();
+            getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+                @Override
+                public void handleOnBackPressed() {
+                    if (currentTabIndex != 6) {
+                        showTab(6);
+                    } else {
+                        setEnabled(false);
+                        getOnBackPressedDispatcher().onBackPressed();
+                        setEnabled(true);
+                    }
+                }
+            });
+
             if (savedInstanceState != null) {
-                currentTabIndex = savedInstanceState.getInt("current_tab", 0);
+                currentTabIndex = savedInstanceState.getInt("current_tab", 6);
                 showTab(currentTabIndex);
             } else {
-                showTab(0);
+                showTab(6);
             }
         } catch (Throwable t) {
             try {
@@ -255,6 +271,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         
         bottomNav = findViewById(R.id.tabBar);
+        topHeader = findViewById(R.id.topHeader);
+        panelHome = findViewById(R.id.panelHome);
         panelDashboard = findViewById(R.id.panelDashboard);
         panelGauges = findViewById(R.id.panelGauges);
         View panelFuelMap = findViewById(R.id.panelFuelMap);
@@ -588,6 +606,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void showTab(int index) {
         currentTabIndex = index;
+        if (panelHome != null) {
+            panelHome.setVisibility(index == 6 ? View.VISIBLE : View.GONE);
+        }
         panelDashboard.setVisibility(index == 0 ? View.VISIBLE : View.GONE);
         panelGauges.setVisibility(index == 1 ? View.VISIBLE : View.GONE);
         findViewById(R.id.panelFuelMap).setVisibility(index == 2 ? View.VISIBLE : View.GONE);
@@ -595,8 +616,62 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         panelLogs.setVisibility(index == 4 ? View.VISIBLE : View.GONE);
         panelSettings.setVisibility(index == 5 ? View.VISIBLE : View.GONE);
         
+        if (index == 6) {
+            if (bottomNav != null) bottomNav.setVisibility(View.GONE);
+            if (topHeader != null) topHeader.setNavigationIcon(null);
+        } else {
+            if (bottomNav != null) {
+                bottomNav.setVisibility(View.VISIBLE);
+                if (index >= 0 && index <= 4) {
+                    int menuId = R.id.nav_dashboard;
+                    if (index == 1) menuId = R.id.nav_gauges;
+                    else if (index == 2) menuId = R.id.nav_map;
+                    else if (index == 3) menuId = R.id.nav_dtc;
+                    else if (index == 4) menuId = R.id.nav_logs;
+                    
+                    if (bottomNav.getSelectedItemId() != menuId) {
+                        bottomNav.setSelectedItemId(menuId);
+                    }
+                }
+            }
+            if (topHeader != null) {
+                topHeader.setNavigationIcon(R.drawable.ic_home);
+            }
+        }
+        
         if (index == 4) {
             loadHistoryFiles();
+        }
+    }
+
+    private void setupHomeMenu() {
+        if (topHeader != null) {
+            topHeader.setNavigationOnClickListener(v -> showTab(6));
+        }
+        
+        View cardDashboard = findViewById(R.id.cardHomeDashboard);
+        if (cardDashboard != null) {
+            cardDashboard.setOnClickListener(v -> showTab(0));
+        }
+        View cardGauges = findViewById(R.id.cardHomeGauges);
+        if (cardGauges != null) {
+            cardGauges.setOnClickListener(v -> showTab(1));
+        }
+        View cardMap = findViewById(R.id.cardHomeMap);
+        if (cardMap != null) {
+            cardMap.setOnClickListener(v -> showTab(2));
+        }
+        View cardDtc = findViewById(R.id.cardHomeDtc);
+        if (cardDtc != null) {
+            cardDtc.setOnClickListener(v -> showTab(3));
+        }
+        View cardLogs = findViewById(R.id.cardHomeLogs);
+        if (cardLogs != null) {
+            cardLogs.setOnClickListener(v -> showTab(4));
+        }
+        View cardSettings = findViewById(R.id.cardHomeSettings);
+        if (cardSettings != null) {
+            cardSettings.setOnClickListener(v -> showTab(5));
         }
     }
 
@@ -695,9 +770,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             // Use commit() for synchronous write so the pref is saved
             // before the activity recreates itself
             prefs.edit().putInt("app_theme", newMode).commit();
-            // setDefaultNightMode triggers activity recreation internally
-            // when uiMode config change occurs — do NOT call recreate() separately
             androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(newMode);
+            recreate(); // Explicitly recreate the activity to apply theme change immediately
         });
 
         if (currentTheme == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO) {
@@ -708,30 +782,33 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             themeSpinner.setSelection(0);
         }
         
-        themeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                int mode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
-                if (position == 1) mode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO;
-                else if (position == 2) mode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES;
-                
-                if (prefs.getInt("app_theme", -1) != mode) {
-                    prefs.edit().putInt("app_theme", mode).commit();
-                    androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode);
+        themeSpinner.post(() -> {
+            themeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    int mode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
+                    if (position == 1) mode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO;
+                    else if (position == 2) mode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES;
+                    
+                    if (prefs.getInt("app_theme", -1) != mode) {
+                        prefs.edit().putInt("app_theme", mode).commit();
+                        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode);
+                        recreate(); // Force recreate so it applies immediately and reliably
+                    }
+
+                    boolean isNight;
+                    if (mode == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) {
+                        isNight = (android.content.res.Resources.getSystem().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+                    } else {
+                        isNight = (mode == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES);
+                    }
+                    btnThemeToggle.setImageResource(isNight ? R.drawable.ic_sun : R.drawable.ic_moon);
                 }
 
-                boolean isNight;
-                if (mode == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) {
-                    isNight = (android.content.res.Resources.getSystem().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
-                        == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-                } else {
-                    isNight = (mode == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES);
-                }
-                btnThemeToggle.setImageResource(isNight ? R.drawable.ic_sun : R.drawable.ic_moon);
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
         });
 
         transportSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -764,6 +841,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         btnClearDtc.setOnClickListener(v -> clearDtcs());
         btnReadVin.setOnClickListener(v -> readVin());
         btnReadiness.setOnClickListener(v -> checkReadiness());
+
+        // Logs tab sub-navigation toggle listener
+        com.google.android.material.button.MaterialButtonToggleGroup logsTabToggle = findViewById(R.id.logsTabToggle);
+        final View layoutLogsLive = findViewById(R.id.layoutLogsLive);
+        final View layoutLogsHistory = findViewById(R.id.layoutLogsHistory);
+        if (logsTabToggle != null && layoutLogsLive != null && layoutLogsHistory != null) {
+            logsTabToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+                if (isChecked) {
+                    layoutLogsLive.setVisibility(checkedId == R.id.btnTabLive ? View.VISIBLE : View.GONE);
+                    layoutLogsHistory.setVisibility(checkedId == R.id.btnTabHistory ? View.VISIBLE : View.GONE);
+                }
+            });
+        }
 
 
 
@@ -1561,32 +1651,44 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         int completed = 0;
         long started = SystemClock.elapsedRealtime();
         List<PIDDefinition> allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgCritical() : PIDCatalogue.getAll();
-        List<PIDDefinition> pids = allPids;
+        List<PIDDefinition> pids = new ArrayList<>(allPids);
+        boolean detectedFromLive = false;
 
         // --- Auto-detect supported PIDs ---
         if (driver instanceof SimulationDriver) {
             List<String> supportedHex = PidAvailabilityChecker.querySupportedPids(driver);
             if (supportedHex != null) {
                 pids = PidAvailabilityChecker.filterCatalogue(supportedHex, allPids);
+                detectedFromLive = true;
             }
         } else if (driver instanceof ElmDriver) {
-            runOnUiThread(() -> setStatus("Detecting supported PIDs...", R.color.accent));
-            List<String> supportedHex = PidAvailabilityChecker.querySupportedPids(driver);
-            boolean fromLive = false;
+            List<String> supportedHex = getCachedPids(config.vin);
             if (supportedHex != null && !supportedHex.isEmpty()) {
                 pids = PidAvailabilityChecker.filterCatalogue(supportedHex, allPids);
-                fromLive = true;
+                detectedFromLive = true;
+                Log.i("OBD2Logger", "Cached PIDs loaded for VIN " + config.vin + ": " + pids.size() + " PIDs");
             } else {
-                // Fallback: VIN-based brand/year profile
-                java.util.Set<String> brandPids = BrandYearProfile.getProfileFromVin(config.vin);
-                if (brandPids != null) {
-                    pids = PidAvailabilityChecker.filterCatalogue(
-                            new ArrayList<>(brandPids), allPids);
+                runOnUiThread(() -> setStatus("Detecting supported PIDs...", R.color.accent));
+                supportedHex = PidAvailabilityChecker.querySupportedPids(driver);
+                if (supportedHex != null && !supportedHex.isEmpty()) {
+                    pids = PidAvailabilityChecker.filterCatalogue(supportedHex, allPids);
+                    detectedFromLive = true;
+                    cachePids(config.vin, supportedHex);
+                    Log.i("OBD2Logger", "Live detection: " + pids.size() + "/" + allPids.size() + " PIDs supported");
+                } else {
+                    // Fallback: use VIN-based brand/year profile
+                    Log.w("OBD2Logger", "Live PID detection failed — trying VIN-based profile");
+                    java.util.Set<String> brandPids = BrandYearProfile.getProfileFromVin(config.vin);
+                    if (brandPids != null) {
+                        pids = PidAvailabilityChecker.filterCatalogue(
+                                new ArrayList<>(brandPids), allPids);
+                        Log.i("OBD2Logger", "VIN profile: " + pids.size() + "/" + allPids.size() + " PIDs");
+                    }
                 }
             }
             final int detectedCount = pids.size();
             final int totalCount = allPids.size();
-            final boolean fromLiveFinal = fromLive;
+            final boolean fromLiveFinal = detectedFromLive;
             runOnUiThread(() -> {
                 String msg = fromLiveFinal
                         ? detectedCount + "/" + totalCount + " PIDs detected (live query)"
@@ -1597,6 +1699,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         final List<PIDDefinition> finalPids = pids;
         SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US);
+        final java.util.Map<String, Integer> consecutiveFailures = new java.util.HashMap<>();
 
         try {
             writer = new DataWriter(this, sessionId, finalPids, config.vin);
@@ -1612,10 +1715,29 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             while (running) {
                 Map<String, Double> batch = driver.queryPidBatch(finalPids);
                 List<SensorSample> samples = new ArrayList<>();
+                List<PIDDefinition> toRemove = new ArrayList<>();
+
                 for (PIDDefinition pid : finalPids) {
                     Double value = batch.get(pid.getName());
                     samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
                             value == null ? "err" : "ok"));
+
+                    if (value == null) {
+                        int fails = consecutiveFailures.getOrDefault(pid.key(), 0) + 1;
+                        consecutiveFailures.put(pid.key(), fails);
+                        if (fails >= 3) {
+                            toRemove.add(pid);
+                        }
+                    } else {
+                        consecutiveFailures.put(pid.key(), 0);
+                    }
+                }
+
+                if (!toRemove.isEmpty()) {
+                    finalPids.removeAll(toRemove);
+                    for (PIDDefinition p : toRemove) {
+                        Log.w("OBD2Logger", "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
+                    }
                 }
 
                 DataRecord record = new DataRecord(
@@ -3013,5 +3135,29 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         Toast.LENGTH_LONG).show();
             }
         }
+    }
+
+    private List<String> getCachedPids(String vin) {
+        if (vin == null || vin.isEmpty()) return null;
+        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
+        String cached = prefs.getString("pids_cache_" + vin, null);
+        if (cached == null || cached.isEmpty()) return null;
+        
+        List<String> list = new ArrayList<>();
+        for (String s : cached.split(",")) {
+            list.add(s.trim());
+        }
+        return list;
+    }
+
+    private void cachePids(String vin, List<String> pids) {
+        if (vin == null || vin.isEmpty() || pids == null || pids.isEmpty()) return;
+        StringBuilder sb = new StringBuilder();
+        for (String s : pids) {
+            if (sb.length() > 0) sb.append(",");
+            sb.append(s);
+        }
+        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
+        prefs.edit().putString("pids_cache_" + vin, sb.toString()).apply();
     }
 }
