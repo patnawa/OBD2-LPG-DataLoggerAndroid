@@ -63,6 +63,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView headerStatus, headerVin;
     private android.widget.ImageButton btnSettings;
     private android.widget.ImageButton btnThemeToggle;
+    private android.widget.ImageButton btnGoHome;
 
     // --- UI: Settings ---
     private Spinner languageSpinner, themeSpinner, transportSpinner, fuelSpinner, obdProtocolSpinner, bluetoothDeviceSpinner;
@@ -246,6 +247,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         headerVin = findViewById(R.id.headerVin);
         btnSettings = findViewById(R.id.btnSettings);
         btnThemeToggle = findViewById(R.id.btnThemeToggle);
+        btnGoHome = findViewById(R.id.btnGoHome);
         historyListViewPetrol = findViewById(R.id.historyListViewPetrol);
         historyListViewLpg = findViewById(R.id.historyListViewLpg);
         historyFolderText = findViewById(R.id.historyFolderText);
@@ -616,9 +618,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             onBackPressedCallback.setEnabled(index != 6);
         }
 
+        if (btnGoHome != null) {
+            btnGoHome.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
+        }
+
         if (index == 6) {
             if (bottomNav != null) bottomNav.setVisibility(View.GONE);
-            if (topHeader != null) topHeader.setNavigationIcon(null);
         } else {
             if (bottomNav != null) {
                 bottomNav.setVisibility(View.VISIBLE);
@@ -634,9 +639,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     }
                 }
             }
-            if (topHeader != null) {
-                topHeader.setNavigationIcon(R.drawable.ic_home);
-            }
         }
         
         if (index == 4) {
@@ -645,8 +647,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void setupHomeMenu() {
-        if (topHeader != null) {
-            topHeader.setNavigationOnClickListener(v -> showTab(6));
+        if (btnGoHome != null) {
+            btnGoHome.setOnClickListener(v -> showTab(6));
         }
         
         View cardDashboard = findViewById(R.id.cardHomeDashboard);
