@@ -10,8 +10,8 @@ android {
         applicationId 'com.alpha.obd2logger'
         minSdk 23
         targetSdk 35
-        versionCode 44
-        versionName '3.4.10'
+        versionCode 45
+        versionName '3.4.11'
     }
 
     buildTypes {

@@ -2560,6 +2560,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return;
         }
         BatteryTester.Chemistry chem = getSelectedChemistry();
+        if (currentDriver instanceof SimulationDriver) {
+            ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RESTING);
+        }
         batteryStatusText.setText("Reading resting voltage (ensure engine is OFF)...\nSelected: " + chem.getDisplayName(this));
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
@@ -2583,6 +2586,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return;
         }
         BatteryTester.Chemistry chem = getSelectedChemistry();
+        if (currentDriver instanceof SimulationDriver) {
+            ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING);
+        }
         batteryStatusText.setText("Step 1: Reading alternator voltage at idle (keep engine at idle)...");
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
@@ -2604,6 +2610,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             .setTitle("High RPM Charging Test")
                             .setMessage("Please rev the engine and hold it steady at 2500 - 3000 RPM.\n\nPress OK while holding the RPM to measure the alternator regulation under load.")
                             .setPositiveButton("OK", (dialog, which) -> {
+                                if (currentDriver instanceof SimulationDriver) {
+                                    ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING_HIGH);
+                                }
                                 batteryStatusText.setText("Reading high-RPM voltage...");
                                 dtcExecutor.submit(() -> {
                                     double highSum = 0;
@@ -2651,6 +2660,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             batteryStatusText.setText("Not connected. Start logging first.");
             return;
         }
+        if (currentDriver instanceof SimulationDriver) {
+            ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING);
+        }
         batteryStatusText.setText("Step 1: Reading no-load voltage (engine running, accessories OFF)...");
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
@@ -2662,6 +2674,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         .setTitle("Voltage Drop Test")
                         .setMessage("Turn ON all electrical loads:\n• Headlights (high beam)\n• Blower motor (max)\n• AC\n• Rear defroster\n\nKeep engine at idle.\n\nPress OK when loads are ON.")
                         .setPositiveButton("OK", (d, w) -> {
+                            if (currentDriver instanceof SimulationDriver) {
+                                ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.LOADED);
+                            }
                             batteryStatusText.setText("Reading full-load voltage...");
                             dtcExecutor.submit(() -> {
                                 double fullLoad = readBatteryVoltage();
@@ -2679,6 +2694,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                                         // 1. Immediately read post-load voltage (right after turning accessories off)
                                                         double postLoad = readBatteryVoltage();
                                                         postLoadVoltage = postLoad;
+
+                                                        if (currentDriver instanceof SimulationDriver) {
+                                                            ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RECOVERING);
+                                                        }
 
                                                         // 2. Wait 5 seconds for recovery with a live countdown on screen
                                                         for (int i = 5; i > 0; i--) {
@@ -2741,6 +2760,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 .setTitle("Cranking Voltage Test")
                 .setMessage("This test records the minimum battery voltage during engine crank.\n\n1. Turn engine OFF\n2. Press Start below\n3. Immediately crank the engine\n\nThe test will sample rapidly for 5 seconds.")
                 .setPositiveButton("Start", (d, w) -> {
+                    if (currentDriver instanceof SimulationDriver) {
+                        ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.CRANKING);
+                    }
                     batteryStatusText.setText("Sampling crank voltage — crank the engine NOW!");
                     crankMinVoltage = 999;
                     dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
@@ -2773,6 +2795,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (currentDriver == null || !currentDriver.isConnected()) {
             batteryStatusText.setText("Not connected. Start logging first.");
             return;
+        }
+        if (currentDriver instanceof SimulationDriver) {
+            ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING);
         }
         batteryStatusText.setText("Sampling voltage for ripple test (2 seconds)...");
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
@@ -2816,6 +2841,26 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         batteryScoreCard.setVisibility(View.GONE);
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
+            if (currentDriver instanceof SimulationDriver) {
+                // Auto-populate simulation testing values to generate a full report
+                if (restingVoltage <= 0) restingVoltage = 12.62;
+                if (runningVoltage <= 0) runningVoltage = 14.12;
+                if (crankMinVoltage <= 0 || crankMinVoltage == 999) crankMinVoltage = 9.85;
+                if (noLoadVoltage <= 0) noLoadVoltage = 14.12;
+                if (fullLoadVoltage <= 0) fullLoadVoltage = 13.72;
+                if (postLoadVoltage <= 0) postLoadVoltage = 13.72;
+                if (recoveredVoltage <= 0) recoveredVoltage = 14.06;
+                if (highRpmVoltage <= 0) highRpmVoltage = 14.32;
+                if (rippleSamples.isEmpty()) {
+                    rippleSamples.clear();
+                    rippleSamples.add(14.10);
+                    rippleSamples.add(14.12);
+                    rippleSamples.add(14.09);
+                    rippleSamples.add(14.13);
+                    rippleSamples.add(14.11);
+                }
+                recoveryDelta = noLoadVoltage - recoveredVoltage;
+            }
             // Sample current voltage
             double v = readBatteryVoltage();
             double restV = restingVoltage > 0 ? restingVoltage : (v > 0 ? v : -1);

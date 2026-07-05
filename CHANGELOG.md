@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.11] - 2026-07-05
+### Fixed
+- **Battery Tester Simulator Mode Support**:
+  - **Stateful Simulator Engine**: Redesigned `SimulationDriver` to support stateful transitions corresponding to resting, cranking, normal running, high-RPM running, loaded, and recovery states.
+  - **Dynamic Voltage & RPM Simulation**: Mapped PID `01_42` (Control Module Voltage) and PID `01_0C` (RPM) to output realistic waveforms and curves based on the active test state (e.g. simulated cranking voltage dip to 9.7V, high-RPM charging stability, and load-drop voltage dips).
+  - **Full Diagnostic Auto-Population**: Added automatic parameter population when clicking "Full Diagnostic" in simulation mode so that a complete, realistic, passing diagnostic report is compiled instantly.
+  - **Ripple Noise Simulation**: Adjusted simulated AC noise under normal running to match standard vehicle bounds (approx. 0.03V peak-to-peak), allowing the ripple test to pass successfully in simulation mode.
+
 ## [3.4.10] - 2026-07-05
 ### Fixed
 - **Battery Analyzer Logic & Validation**:
