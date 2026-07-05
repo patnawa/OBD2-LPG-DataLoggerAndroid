@@ -70,7 +70,10 @@ This calculates the net fuel trim difference between running on gas and the petr
 - **Readiness monitors**: Check emission inspection readiness — Misfire, Fuel System, Components, Catalyst, Heated Catalyst, EVAP, Secondary Air, EGR, Particulate Filter, NOx/SOR, O2 Sensor, O2 Heater
 
 ### Battery & Charging System Tester (NEW in v3.3.0)
-Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Voltage). 11 automated tests with pass/fail/warn severity, overall health grade (A+ to F), and Battery Life estimation:
+Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Voltage) or AT RV fallback. 11 automated tests with pass/fail/warn severity, overall health grade (A+ to F), and Battery Life estimation:
+- **ระบบเลือกช่องสัญญาณแรงดันไฟอัจฉริยะ (Smart Voltage Acquisition with AT RV Fallback)**:
+  - อ่านแรงดันไฟฟ้าหลักผ่าน OBD2 PID `01 42` (Control Module Voltage) จากกล่อง ECU โดยตรง
+  - **ระบบสำรองอัตโนมัติ (Fallback)**: ในกรณีที่เป็นรถยนต์รุ่นเก่า (เช่น รถก่อนปี 2008) ที่กล่อง ECU ไม่รองรับรหัส PID `01 42` แอปพลิเคชันจะสลับไปส่งคำสั่งตรงเข้าฮาร์ดแวร์อะแดปเตอร์ ELM327 ด้วยคำสั่ง **`AT RV`** ทันที เพื่ออ่านค่าแรงดันไฟฟ้าทางกายภาพ (Analog Voltage) จาก Pin 16 ของพอร์ต OBD2 (ซึ่งเชื่อมกับแบตเตอรี่รถยนต์โดยตรง) ทำให้มั่นใจได้ว่าระบบสามารถแสดงผลค่าแรงดันไฟได้สำเร็จกับรถยนต์ทุกรุ่น 100%
 - **State of Charge (SoC)**: Open-circuit voltage → SoC% lookup (flooded lead-acid, 25°C)
 - **State of Health (SOH)**: Multi-factor degradation estimate (resting voltage + cranking voltage + recovery + charge acceptance)
 - **Battery Life Estimate**: Remaining months based on SOH, battery type (Flooded/AGM), age, and tropical climate factor
