@@ -311,13 +311,6 @@ public final class BatteryTester {
                         {12.00, 0}, {12.12, 10}, {12.28, 25}, {12.40, 45}, {12.52, 60}, {12.62, 80}, {12.75, 100}});
             case LIFePO4:
                 // LiFePO4: very flat curve ~13.3-13.1V = 90-20%
-                if (v >= 13.60) return 100.0;
-                if (v >= 13.30) return 95.0;
-                if (v >= 13.20) return 80.0;
-                if (v >= 13.10) return 30.0;
-                if (v >= 13.00) return 15.0;
-                if (v >= 12.80) return 5.0;
-                if (v <= 12.50) return 0.0;
                 return interpTable(v, new double[][]{
                         {12.50, 0}, {12.80, 5}, {13.00, 15}, {13.10, 30}, {13.20, 80}, {13.30, 95}, {13.60, 100}});
             default: // FLOODED
@@ -372,20 +365,16 @@ public final class BatteryTester {
         int score;
 
         double soc = voltageToSoC(restingV, chem);
-        // Chemistry-adjusted thresholds (proportional to fullRestV)
-        double excellentV = chem.fullRestV - 0.15;  // e.g. 12.50 for flooded, 12.65 for AGM
-        double goodV = chem.fullRestV - 0.30;       // e.g. 12.35 for flooded, 12.50 for AGM
-        double fairV = chem.restLowV();             // ~75% SoC point
 
         // If we have a cranking voltage, factor it in
         if (crankMinV > 0) {
-            if (restingV >= excellentV && crankMinV >= Thresholds.CRANK_GOOD) {
+            if (soc >= 80 && crankMinV >= Thresholds.CRANK_GOOD) {
                 grade = "Excellent"; sev = Severity.PASS; score = 95;
                 remark = "Battery capacity and CCA are excellent";
-            } else if (restingV >= goodV && crankMinV >= Thresholds.CRANK_MIN) {
+            } else if (soc >= 50 && crankMinV >= Thresholds.CRANK_MIN) {
                 grade = "Good"; sev = Severity.PASS; score = 75;
                 remark = "Battery serviceable, slight capacity loss";
-            } else if (restingV >= fairV && crankMinV >= 9.00) {
+            } else if (soc >= 15 && crankMinV >= 9.00) {
                 grade = "Fair"; sev = Severity.WARN; score = 50;
                 remark = "Battery aging — monitor, replace within 6 months";
             } else if (crankMinV > 0 && crankMinV < 9.00) {

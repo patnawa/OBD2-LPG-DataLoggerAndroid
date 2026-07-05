@@ -30,9 +30,18 @@ public class BatteryTesterTest {
         assertTrue(lithiumFull.value.contains("95%")); // 13.30 is 95% SoC per curve
         assertEquals(BatteryTester.Severity.PASS, lithiumFull.severity);
 
+        // Smooth interpolation check (13.25V is halfway between 13.20V [80%] and 13.30V [95%] -> 87.5% -> rounds to 88%)
+        BatteryTester.BatteryTestResult lithiumInterp = BatteryTester.testStateOfCharge(13.25, BatteryTester.Chemistry.LIFePO4);
+        assertTrue(lithiumInterp.value.contains("88%"));
+
         BatteryTester.BatteryTestResult lithiumLow = BatteryTester.testStateOfCharge(12.70, BatteryTester.Chemistry.LIFePO4);
         assertTrue(lithiumLow.value.contains("3%"));
         assertEquals(BatteryTester.Severity.FAIL, lithiumLow.severity);
+
+        // Verify chemistry-aware health grading for LiFePO4 at 13.15V (SoC is 55% -> Fair, not Excellent/Good)
+        BatteryTester.BatteryTestResult lithiumHealth = BatteryTester.testBatteryHealth(13.15, -1, BatteryTester.Chemistry.LIFePO4);
+        assertTrue(lithiumHealth.value.contains("Fair")); // 55% SoC should be Fair (voltage only)
+        assertEquals(BatteryTester.Severity.WARN, lithiumHealth.severity);
     }
 
     @Test

@@ -473,6 +473,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         batteryTypeSpinner.setAdapter(new android.widget.ArrayAdapter<>(
                 this, android.R.layout.simple_spinner_dropdown_item, typeList));
         batteryTypeSpinner.setText(batteryTypes[0], false);
+        batteryTypeSpinner.setOnItemClickListener((parent, view, position, id) -> {
+            if (lastBatteryVoltage > 0) {
+                updateBatteryMonitor(lastBatteryVoltage);
+            }
+            if (batteryScoreCard != null && batteryScoreCard.getVisibility() == View.VISIBLE) {
+                runFullBatteryDiagnostic();
+            }
+        });
 
         // Settings
         languageSpinner = findViewById(R.id.languageSpinner);
@@ -2515,12 +2523,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
      * Quick single voltage reading — updates the graph + SoC/SoH display.
      * Called from onRecord to keep the live graph fed.
      */
-    private void updateBatteryMonitor(DataRecord record) {
-        Double v = valueByKey(record, "01_42");
-        if (v == null || v <= 0) return;
+    private void updateBatteryMonitor(double v) {
+        if (v <= 0) return;
         lastBatteryVoltage = v;
         if (batteryTestView != null) {
-            batteryTestView.addSample(v.floatValue());
+            batteryTestView.addSample((float) v);
         }
         // Get selected chemistry for accurate SoC
         BatteryTester.Chemistry chem = getSelectedChemistry();
@@ -2534,6 +2541,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             socValueText.setText(String.format(Locale.US, "%.0f%%", soc));
             socVoltageText.setText(String.format(Locale.US, "%.2f V (%s)", v, chem.getDisplayName(this)));
         }
+    }
+
+    private void updateBatteryMonitor(DataRecord record) {
+        Double v = valueByKey(record, "01_42");
+        if (v == null || v <= 0) return;
+        updateBatteryMonitor(v);
     }
 
     /** Read the currently selected battery chemistry from the spinner. */

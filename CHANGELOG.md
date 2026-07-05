@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.12] - 2026-07-05
+### Fixed
+- **Battery Type Selection & Calculations**:
+  - **Dynamic Dropdown Selection Response**: Added an `OnItemClickListener` listener to `batteryTypeSpinner` to immediately refresh the dashboard's quick SoC estimates, battery metrics, and any displayed full diagnostic reports when the user selects a different battery type.
+  - **Smooth LiFePO4 SoC Curve Interpolation**: Removed redundant step-like conditional checks inside `voltageToSoC()` for LiFePO4 chemistry. This enables smooth, linear interpolation between calibration points (e.g. 13.25V now correctly evaluates to 87.5% SoC instead of jumping discretely from 30% to 80%).
+  - **SoC-Based Health Classification**: Refactored `testBatteryHealth()` to grade resting voltage status using chemistry-aware SoC percentage boundaries instead of raw voltage offsets from `fullRestV`. This fixes a bug where a LiFePO4 battery at 13.15V resting voltage (representing only ~55% charge) was incorrectly graded as "Excellent".
+  - **Enhanced Unit Tests**: Added unit tests in `BatteryTesterTest.java` verifying smooth interpolation metrics and chemistry-aware health classifications.
+
 ## [3.4.11] - 2026-07-05
 ### Fixed
 - **Battery Tester Simulator Mode Support**:
