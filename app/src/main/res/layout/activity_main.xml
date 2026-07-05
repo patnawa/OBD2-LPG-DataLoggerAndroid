@@ -64,27 +64,13 @@
                 android:id="@+id/btnThemeToggle"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:layout_toStartOf="@id/fabLog"
+                android:layout_toStartOf="@id/btnSettings"
                 android:layout_centerVertical="true"
-                android:layout_marginEnd="16dp"
+                android:layout_marginEnd="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_sun"
                 app:tint="@color/text"
                 android:contentDescription="Toggle Theme" />
-
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/fabLog"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_toStartOf="@id/btnSettings"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="16dp"
-                app:fabSize="mini"
-                app:elevation="2dp"
-                app:backgroundTint="@color/primary"
-                app:tint="@color/background"
-                android:src="@android:drawable/ic_media_play"
-                android:contentDescription="Start Logging" />
 
             <ImageButton
                 android:id="@+id/btnSettings"
@@ -92,7 +78,7 @@
                 android:layout_height="48dp"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
-                android:layout_marginEnd="16dp"
+                android:layout_marginEnd="12dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_settings"
                 app:tint="@color/text"
@@ -104,7 +90,7 @@
     <LinearLayout
         android:id="@+id/statusStrip"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="60dp"
         android:orientation="horizontal"
         android:background="@color/surface"
         android:elevation="8dp"
@@ -210,6 +196,24 @@
             android:gravity="center"
             android:visibility="gone"
             android:layout_marginStart="8dp" />
+
+        <!-- Start/Stop logging button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/fabLog"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginStart="12dp"
+            android:text="START"
+            android:textColor="@color/background"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            app:backgroundTint="@color/primary"
+            app:cornerRadius="18dp"
+            app:elevation="2dp"
+            app:icon="@android:drawable/ic_media_play"
+            app:iconSize="16dp"
+            app:iconTint="@color/background" />
     </LinearLayout>
 
     <!-- Content area -->

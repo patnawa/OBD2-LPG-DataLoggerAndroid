@@ -131,7 +131,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private long loggingStartTime = 0;
     private LinearLayout readingsContainer;
 
-    private com.google.android.material.floatingactionbutton.FloatingActionButton fabLog;
+    private com.google.android.material.button.MaterialButton fabLog;
     private FuelMapView fuelMapView;
 
     // --- UI: History tab ---
@@ -300,8 +300,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             LoggerService.setCallback(this);
             
             if (fabLog != null) {
-                fabLog.setImageResource(android.R.drawable.ic_media_pause);
-                fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
+                setFabState(true);
             }
             
             LoggerService service = LoggerService.getInstance();
@@ -340,8 +339,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         } else if (running) {
             if (fabLog != null) {
-                fabLog.setImageResource(android.R.drawable.ic_media_pause);
-                fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
+                setFabState(true);
             }
             setStatus("Logging active...", R.color.accent);
             headerStatus.setText("Logging...");
@@ -523,15 +521,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         fabLog.setOnClickListener(v -> {
             if (running) {
                 stopLogging();
-                fabLog.setImageResource(android.R.drawable.ic_media_play);
-                fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
+                setFabState(false);
             } else {
                 if (!ensureLogFolderSelected()) {
                     return;
                 }
                 startLogging();
-                fabLog.setImageResource(android.R.drawable.ic_media_pause);
-                fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
+                setFabState(true);
             }
         });
         
@@ -667,7 +663,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         int accentColor = mode == FuelMode.LPG ? 0xFFD97706 : 0xFF0284C7;
         
         if (fabLog != null) {
-            fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(running ? getColorCompat(R.color.danger) : primaryColor));
+            setFabState(running);
         }
         
         // Update graphs to match theme
@@ -788,6 +784,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
         apiServerIpText.setText("URL: http://localhost:8080/api/data");
+    }
+
+    /**
+     * Update the Start/Stop logging button appearance.
+     * @param isLogging true = show STOP (red), false = show START (primary)
+     */
+    private void setFabState(boolean isLogging) {
+        if (fabLog == null) return;
+        if (isLogging) {
+            fabLog.setText("STOP");
+            fabLog.setIconResource(android.R.drawable.ic_media_pause);
+            fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
+            fabLog.setIconTint(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.background)));
+        } else {
+            fabLog.setText("START");
+            fabLog.setIconResource(android.R.drawable.ic_media_play);
+            fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
+            fabLog.setIconTint(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.background)));
+        }
     }
 
     private void setupTabs() {
@@ -1852,8 +1867,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     active.headerStatus.setText("Connection failed");
                     active.updateStatusStripConnection(0, "Connection failed");
                     if (active.fabLog != null) {
-                        active.fabLog.setImageResource(android.R.drawable.ic_media_play);
-                        active.fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(active.getColorCompat(R.color.primary)));
+                        active.setFabState(false);
                     }
                 }
             });
@@ -2067,8 +2081,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 MainActivity active = activeInstance;
                 if (active != null) {
                     if (active.fabLog != null) {
-                        active.fabLog.setImageResource(android.R.drawable.ic_media_play);
-                        active.fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(active.getColorCompat(R.color.primary)));
+                        active.setFabState(false);
                     }
                     active.headerStatus.setText("Disconnected");
                     active.updateStatusStripConnection(0, "Disconnected");
@@ -2173,8 +2186,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     public void onStopped(int totalRecords) {
         runOnUiThread(() -> {
             if (fabLog != null) {
-                fabLog.setImageResource(android.R.drawable.ic_media_play);
-                fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
+                setFabState(false);
             }
             setStatus("Background logging stopped. " + totalRecords + " records saved.", R.color.primary);
             headerStatus.setText("Disconnected");

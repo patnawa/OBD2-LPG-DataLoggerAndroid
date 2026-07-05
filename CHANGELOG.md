@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.1] - 2026-07-05
+### Changed
+- **Moved Start/Stop button from top toolbar to bottom status strip** — The floating FAB in the top header looked unprofessional. Replaced with a proper pill-shaped MaterialButton ("START"/"STOP") at the end of the bottom status strip. The top toolbar is now clean: Home button, connection status, VIN, theme toggle, settings — no more floating button.
+- Added `setFabState(boolean)` helper to centralize all Start/Stop button appearance changes (text, icon, color) in one place. Eliminates duplicated `setImageResource`/`setBackgroundTintList` calls across 8 call sites.
+
 ## [3.4.0] - 2026-07-05
 ### Changed
 - **Bottom navigation bar replaced with live status strip** — The old `BottomNavigationView` (5 tab icons) has been replaced with a persistent bottom status bar that shows real-time information on every screen:
