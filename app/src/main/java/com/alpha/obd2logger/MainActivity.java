@@ -783,9 +783,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             } else if (id == R.id.nav_dtc) {
                 showTab(3);
                 return true;
-            } else if (id == R.id.nav_logs) {
-                showTab(4);
-                return true;
             } else if (id == R.id.nav_battery) {
                 showTab(7);
                 return true;
@@ -830,7 +827,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         if (index == 1) menuId = R.id.nav_gauges;
                         else if (index == 2) menuId = R.id.nav_map;
                         else if (index == 3) menuId = R.id.nav_dtc;
-                        else if (index == 4) menuId = R.id.nav_logs;
+                        else if (index == 4) menuId = R.id.nav_battery; // Logs tab (4) — no bottom nav item, use battery highlight as fallback
                         else if (index == 7) menuId = R.id.nav_battery;
                         
                         if (bottomNav.getSelectedItemId() != menuId) {

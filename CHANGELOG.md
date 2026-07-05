@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.1] - 2026-07-05
+### Fixed
+- **CRITICAL: App crash on startup (InflateException)** — BottomNavigationView had 6 menu items, but Material Design's BottomNavigationView supports a maximum of 5. The 6th item (nav_battery, added in v3.3.0) caused `IllegalArgumentException: Maximum number of items supported by BottomNavigationView is 5` during layout inflation on startup, crashing the app immediately. Fix: removed `nav_logs` from the bottom nav menu (Logs tab remains accessible via the home screen card). Battery tab keeps its bottom nav slot.
+- **paddingHorizontal/paddingVertical on API 23-25** — These XML attributes require API 26+; using them on minSdk 23 can cause crashes on older devices. Replaced with paddingStart/paddingEnd/paddingTop/paddingBottom.
+
 ## [3.3.0] - 2026-07-05
 ### Added
 - **Battery & Charging System Tester**: Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Voltage). A new dedicated "Battery" tab in the bottom navigation with 11 automated tests:

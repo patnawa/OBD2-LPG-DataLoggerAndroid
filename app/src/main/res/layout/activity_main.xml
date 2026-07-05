@@ -2140,8 +2140,10 @@
                                     android:orientation="horizontal"
                                     android:gravity="center_vertical"
                                     android:background="@drawable/bg_dtc_card"
-                                    android:paddingHorizontal="8dp"
-                                    android:paddingVertical="4dp"
+                                    android:paddingStart="8dp"
+                                    android:paddingEnd="8dp"
+                                    android:paddingTop="4dp"
+                                    android:paddingBottom="4dp"
                                     android:layout_alignParentEnd="true"
                                     android:layout_centerVertical="true">
 
