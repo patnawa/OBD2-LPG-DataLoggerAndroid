@@ -95,7 +95,8 @@
                 android:layout_marginBottom="16dp"
                 app:singleSelection="true"
                 app:selectionRequired="true"
-                app:checkedButton="@+id/btnReviewPetrol">
+                app:checkedButton="@+id/btnReviewPetrol"
+                app:cornerRadius="2dp">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnReviewPetrol"
@@ -103,7 +104,7 @@
                     android:layout_weight="1"
                     android:layout_height="48dp"
                     android:text="@string/petrol"
-                    android:textSize="10sp"
+                    android:textSize="11sp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:padding="0dp"
@@ -116,7 +117,7 @@
                     android:layout_weight="1"
                     android:layout_height="48dp"
                     android:text="@string/lpg"
-                    android:textSize="10sp"
+                    android:textSize="11sp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:padding="0dp"
@@ -129,7 +130,7 @@
                     android:layout_weight="1"
                     android:layout_height="48dp"
                     android:text="@string/deviation"
-                    android:textSize="10sp"
+                    android:textSize="11sp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:padding="0dp"
@@ -142,7 +143,7 @@
                     android:layout_weight="1"
                     android:layout_height="48dp"
                     android:text="TUNE ASSIST"
-                    android:textSize="10sp"
+                    android:textSize="11sp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:padding="0dp"
@@ -162,13 +163,199 @@
                 android:layout_width="match_parent"
                 android:layout_height="400dp"
                 app:cardBackgroundColor="@color/surface2"
-                app:cardCornerRadius="12dp">
+                app:cardCornerRadius="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/border">
 
                 <com.alpha.obd2logger.FuelMapView
                     android:id="@+id/reviewFuelMapView"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"/>
 
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Professional Formula & Description Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                app:cardBackgroundColor="@color/surface2"
+                app:cardCornerRadius="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/border">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="FORMULA &amp; TUNING LOGIC • สูตรและหลักการจูน"
+                        android:textColor="@color/muted"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="10dp"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Deviation = LPG Trim - Petrol Trim"
+                        android:textColor="@color/primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:background="@color/background"
+                        android:padding="10dp"
+                        android:layout_marginBottom="10dp"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/map_formula_hint"
+                        android:textColor="@color/text"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Professional Color Legend Grid -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                app:cardBackgroundColor="@color/surface2"
+                app:cardCornerRadius="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/border">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="MAP COLOR LEGEND • คำอธิบายสีตาราง"
+                        android:textColor="@color/muted"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="12dp"/>
+
+                    <GridLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:columnCount="2"
+                        android:alignmentMode="alignBounds"
+                        android:columnOrderPreserved="false">
+
+                        <!-- Perfect (Green) -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_margin="4dp">
+                            <View
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:background="#22C55E"
+                                android:layout_marginEnd="8dp"/>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="±5% (Perfect / สมบูรณ์)"
+                                android:textColor="@color/text"
+                                android:textSize="12sp"/>
+                        </LinearLayout>
+
+                        <!-- Slightly Rich (Yellow) -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_margin="4dp">
+                            <View
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:background="#EAB308"
+                                android:layout_marginEnd="8dp"/>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="-5% to -10% (Slightly Rich / หนา)"
+                                android:textColor="@color/text"
+                                android:textSize="12sp"/>
+                        </LinearLayout>
+
+                        <!-- Slightly Lean (Light Blue) -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_margin="4dp">
+                            <View
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:background="#06B6D4"
+                                android:layout_marginEnd="8dp"/>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="+5% to +10% (Slightly Lean / บาง)"
+                                android:textColor="@color/text"
+                                android:textSize="12sp"/>
+                        </LinearLayout>
+
+                        <!-- Very Rich (Red) -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_margin="4dp">
+                            <View
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:background="#EF4444"
+                                android:layout_marginEnd="8dp"/>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="&lt; -10% (Very Rich / หนามาก)"
+                                android:textColor="@color/text"
+                                android:textSize="12sp"/>
+                        </LinearLayout>
+
+                        <!-- Very Lean (Dark Blue) -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_margin="4dp">
+                            <View
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:background="#2563EB"
+                                android:layout_marginEnd="8dp"/>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="&gt; +10% (Very Lean / บางมาก)"
+                                android:textColor="@color/text"
+                                android:textSize="12sp"/>
+                        </LinearLayout>
+
+                    </GridLayout>
+
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.button.MaterialButton
@@ -185,7 +372,7 @@
                 android:id="@+id/btnReviewMapInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:text="@string/how_to_read_map_title"
                 app:icon="@android:drawable/ic_dialog_info"
                 style="@style/Widget.Material3.Button.TextButton" />
