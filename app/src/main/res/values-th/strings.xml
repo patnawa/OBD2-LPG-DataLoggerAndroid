@@ -210,4 +210,18 @@
     <string name="home_sec_archive">คลังข้อมูลย้อนหลัง</string>
     <string name="home_mod_records_title">ประวัติการบันทึกข้อมูล</string>
     <string name="home_mod_records_desc">จัดการและเปิดดูไฟล์บันทึก CSV/JSONL</string>
+
+    <!-- Map Tab localizations -->
+    <string name="map_formula_logic_title">สูตรและหลักการจูน</string>
+    <string name="map_color_legend_title">คำอธิบายสีตาราง</string>
+    <string name="map_legend_perfect" formatted="false">±5% (สมบูรณ์ดี)</string>
+    <string name="map_legend_slightly_rich" formatted="false">-5% ถึง -10% (หนาเล็กน้อย)</string>
+    <string name="map_legend_slightly_lean" formatted="false">+5% ถึง +10% (บางเล็กน้อย)</string>
+    <string name="map_legend_very_rich" formatted="false">&lt; -10% (หนามาก)</string>
+    <string name="map_legend_very_lean" formatted="false">&gt; +10% (บางมาก)</string>
+    <string name="scale_very_rich">หนามาก (Rich)</string>
+    <string name="scale_slightly_rich">หนาเล็กน้อย</string>
+    <string name="scale_perfect">สมบูรณ์ (OK)</string>
+    <string name="scale_slightly_lean">บางเล็กน้อย</string>
+    <string name="scale_very_lean">บางมาก (Lean)</string>
 </resources>

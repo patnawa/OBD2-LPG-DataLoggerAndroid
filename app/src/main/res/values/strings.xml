@@ -215,4 +215,18 @@
     <string name="home_sec_archive">Data Archive</string>
     <string name="home_mod_records_title">Tuning Records</string>
     <string name="home_mod_records_desc">Manage recorded CSV/JSONL logs</string>
+
+    <!-- Map Tab localizations -->
+    <string name="map_formula_logic_title">FORMULA &amp; TUNING LOGIC</string>
+    <string name="map_color_legend_title">MAP COLOR LEGEND</string>
+    <string name="map_legend_perfect" formatted="false">±5% (Perfect)</string>
+    <string name="map_legend_slightly_rich" formatted="false">-5% to -10% (Slightly Rich)</string>
+    <string name="map_legend_slightly_lean" formatted="false">+5% to +10% (Slightly Lean)</string>
+    <string name="map_legend_very_rich" formatted="false">&lt; -10% (Very Rich)</string>
+    <string name="map_legend_very_lean" formatted="false">&gt; +10% (Very Lean)</string>
+    <string name="scale_very_rich">Very Rich</string>
+    <string name="scale_slightly_rich">Slightly Rich</string>
+    <string name="scale_perfect">Perfect (OK)</string>
+    <string name="scale_slightly_lean">Slightly Lean</string>
+    <string name="scale_very_lean">Very Lean</string>
 </resources>

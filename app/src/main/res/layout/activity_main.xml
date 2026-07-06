@@ -1336,7 +1336,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="หนามาก (Rich)"
+                            android:text="@string/scale_very_rich"
                             android:textColor="@color/muted"
                             android:textSize="8sp"
                             android:layout_marginTop="3dp"/>
@@ -1357,7 +1357,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="หนาเล็กน้อย"
+                            android:text="@string/scale_slightly_rich"
                             android:textColor="@color/muted"
                             android:textSize="8sp"
                             android:layout_marginTop="3dp"/>
@@ -1378,7 +1378,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="สมบูรณ์ (OK)"
+                            android:text="@string/scale_perfect"
                             android:textColor="@color/text"
                             android:textSize="8sp"
                             android:textStyle="bold"
@@ -1400,7 +1400,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="บางเล็กน้อย"
+                            android:text="@string/scale_slightly_lean"
                             android:textColor="@color/muted"
                             android:textSize="8sp"
                             android:layout_marginTop="3dp"/>
@@ -1420,7 +1420,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="บางมาก (Lean)"
+                            android:text="@string/scale_very_lean"
                             android:textColor="@color/muted"
                             android:textSize="8sp"
                             android:layout_marginTop="3dp"/>
@@ -1461,7 +1461,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="FORMULA &amp; TUNING LOGIC • สูตรและหลักการจูน"
+                            android:text="@string/map_formula_logic_title"
                             android:textColor="@color/muted"
                             android:textSize="11sp"
                             android:textStyle="bold"
@@ -1510,7 +1510,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="MAP COLOR LEGEND • คำอธิบายสีตาราง"
+                            android:text="@string/map_color_legend_title"
                             android:textColor="@color/muted"
                             android:textSize="11sp"
                             android:textStyle="bold"
@@ -1538,7 +1538,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="±5% (Perfect / สมบูรณ์)"
+                                    android:text="@string/map_legend_perfect"
                                     android:textColor="@color/text"
                                     android:textSize="12sp"/>
                             </LinearLayout>
@@ -1558,7 +1558,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="-5% to -10% (Slightly Rich / หนา)"
+                                    android:text="@string/map_legend_slightly_rich"
                                     android:textColor="@color/text"
                                     android:textSize="12sp"/>
                             </LinearLayout>
@@ -1578,7 +1578,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="+5% to +10% (Slightly Lean / บาง)"
+                                    android:text="@string/map_legend_slightly_lean"
                                     android:textColor="@color/text"
                                     android:textSize="12sp"/>
                             </LinearLayout>
@@ -1598,7 +1598,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="&lt; -10% (Very Rich / หนามาก)"
+                                    android:text="@string/map_legend_very_rich"
                                     android:textColor="@color/text"
                                     android:textSize="12sp"/>
                             </LinearLayout>
@@ -1618,7 +1618,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="&gt; +10% (Very Lean / บางมาก)"
+                                    android:text="@string/map_legend_very_lean"
                                     android:textColor="@color/text"
                                     android:textSize="12sp"/>
                             </LinearLayout>
