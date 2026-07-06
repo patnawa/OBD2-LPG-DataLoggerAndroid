@@ -1246,20 +1246,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         final String[] langCodes = {
             LocaleHelper.LANG_SYSTEM,
             LocaleHelper.LANG_ENGLISH,
-            LocaleHelper.LANG_THAI,
-            "es",
-            "pt",
-            "de",
-            "fr",
-            "it",
-            "ru",
-            "hi",
-            "ar",
-            "id",
-            "vi",
-            "ja",
-            "ko",
-            "zh"
+            LocaleHelper.LANG_THAI
         };
         String currentLang = LocaleHelper.getLanguage(this);
         int langIndex = 0; // Default to System Default
