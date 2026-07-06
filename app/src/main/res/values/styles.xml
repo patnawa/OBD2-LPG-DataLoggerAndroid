@@ -1,5 +1,5 @@
 <resources>
-    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="BaseAppTheme" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/background</item>
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryVariant">@color/primary_variant</item>
@@ -18,10 +18,6 @@
         <item name="android:navigationBarColor">@color/background</item>
         <item name="materialCardViewStyle">@style/CustomCardViewStyle</item>
 
-        <!-- Global Font Configuration -->
-        <item name="android:fontFamily">@font/outfit</item>
-        <item name="fontFamily">@font/outfit</item>
-
         <!-- Material 3 Color Role Mappings -->
         <item name="colorPrimaryContainer">@color/colorPrimaryContainer</item>
         <item name="colorOnPrimaryContainer">@color/colorOnPrimaryContainer</item>
@@ -34,6 +30,12 @@
         <item name="colorOnSurfaceVariant">@color/colorOnSurfaceVariant</item>
         <item name="colorOutline">@color/colorOutline</item>
         <item name="colorOutlineVariant">@color/colorOutlineVariant</item>
+    </style>
+
+    <style name="AppTheme" parent="BaseAppTheme">
+        <!-- Global Font Configuration -->
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="fontFamily">@font/outfit</item>
     </style>
 
     <style name="CustomCardViewStyle" parent="Widget.Material3.CardView.Elevated">

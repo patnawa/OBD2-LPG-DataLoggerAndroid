@@ -1,13 +1,13 @@
 package com.alpha.obd2logger;
 
 import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.LocaleList;
-
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.os.LocaleListCompat;
 import java.util.Locale;
 
 public class LocaleHelper {
@@ -19,12 +19,7 @@ public class LocaleHelper {
 
     public static Context onAttach(Context context) {
         String lang = getPersistedData(context, LANG_SYSTEM);
-        return setLocale(context, lang);
-    }
-
-    public static Context onAttach(Context context, String defaultLanguage) {
-        String lang = getPersistedData(context, defaultLanguage);
-        return setLocale(context, lang);
+        return wrapContext(context, lang);
     }
 
     public static String getLanguage(Context context) {
@@ -34,13 +29,28 @@ public class LocaleHelper {
     public static Context setLocale(Context context, String language) {
         persist(context, language);
 
+        // Update AndroidX AppCompat application locales
+        try {
+            if (LANG_SYSTEM.equals(language)) {
+                AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList());
+            } else {
+                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language));
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+
+        return wrapContext(context, language);
+    }
+
+    private static Context wrapContext(Context context, String language) {
         String resolveLang = language;
         if (LANG_SYSTEM.equals(language)) {
             Locale sysLocale;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                sysLocale = android.content.res.Resources.getSystem().getConfiguration().getLocales().get(0);
+                sysLocale = Resources.getSystem().getConfiguration().getLocales().get(0);
             } else {
-                sysLocale = android.content.res.Resources.getSystem().getConfiguration().locale;
+                sysLocale = Resources.getSystem().getConfiguration().locale;
             }
             resolveLang = sysLocale.getLanguage();
         }
@@ -67,18 +77,25 @@ public class LocaleHelper {
         Locale locale = new Locale(language);
         Locale.setDefault(locale);
 
-        Configuration configuration = context.getResources().getConfiguration();
-        configuration.setLocale(locale);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            configuration.setLayoutDirection(locale);
+        Configuration configuration = new Configuration(context.getResources().getConfiguration());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            configuration.setLocale(locale);
+            LocaleList localeList = new LocaleList(locale);
+            LocaleList.setDefault(localeList);
+            configuration.setLocales(localeList);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                configuration.setLayoutDirection(locale);
+            }
+            context.getResources().updateConfiguration(configuration, context.getResources().getDisplayMetrics());
+            return context.createConfigurationContext(configuration);
+        } else {
+            configuration.setLocale(locale);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                configuration.setLayoutDirection(locale);
+            }
+            context.getResources().updateConfiguration(configuration, context.getResources().getDisplayMetrics());
+            return context;
         }
-        LocaleList localeList = new LocaleList(locale);
-        LocaleList.setDefault(localeList);
-        configuration.setLocales(localeList);
-
-        context.getResources().updateConfiguration(configuration, context.getResources().getDisplayMetrics());
-
-        return context.createConfigurationContext(configuration);
     }
 
     @SuppressWarnings("deprecation")
@@ -87,7 +104,7 @@ public class LocaleHelper {
         Locale.setDefault(locale);
 
         Resources resources = context.getResources();
-        Configuration configuration = resources.getConfiguration();
+        Configuration configuration = new Configuration(resources.getConfiguration());
         configuration.locale = locale;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             configuration.setLayoutDirection(locale);

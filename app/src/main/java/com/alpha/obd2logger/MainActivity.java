@@ -1276,10 +1276,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 String selectedLang = langCodes[position];
                 if (!selectedLang.equals(LocaleHelper.getLanguage(MainActivity.this))) {
                     LocaleHelper.setLocale(MainActivity.this, selectedLang);
-                    android.content.Intent intent = new android.content.Intent(MainActivity.this, MainActivity.class);
-                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP | android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(intent);
-                    finish();
+                    recreate();
                 }
             }
 
