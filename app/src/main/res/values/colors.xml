@@ -1,4 +1,5 @@
 <resources>
+    <!-- Base Color Palette -->
     <color name="background">#F8FAFC</color>
     <color name="surface">#FFFFFF</color>
     <color name="surface2">#F1F5F9</color>
@@ -14,4 +15,17 @@
     <color name="tab_active">#2563EB</color>
     <color name="tab_inactive">#94A3B8</color>
     <color name="gauge_bg">#F1F5F9</color>
+
+    <!-- Material 3 Color Roles (Light) -->
+    <color name="colorPrimaryContainer">#EFF6FF</color>
+    <color name="colorOnPrimaryContainer">#1E40AF</color>
+    <color name="colorSecondaryContainer">#DBEAFE</color>
+    <color name="colorOnSecondaryContainer">#1E3A8A</color>
+    <color name="colorTertiary">#059669</color>
+    <color name="colorTertiaryContainer">#D1FAE5</color>
+    <color name="colorOnTertiaryContainer">#065F46</color>
+    <color name="colorSurfaceVariant">#F1F5F9</color>
+    <color name="colorOnSurfaceVariant">#475569</color>
+    <color name="colorOutline">#CBD5E1</color>
+    <color name="colorOutlineVariant">#E2E8F0</color>
 </resources>

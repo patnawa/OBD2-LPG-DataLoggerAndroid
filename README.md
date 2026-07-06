@@ -1,18 +1,17 @@
 # TunerMap Pro >> OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.4.15** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.4.16** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.4.15
+## What's New in 3.4.16
 
-- **Home Page Telemetry & Module Localization** — Fully localized all main home page labels (`VEHICLE VIN`, `LINK ADAPTER`, `ENGINE RPM`, etc.) and all module card description panels (`Engine Gauges Cluster`, `Dashboard`, `Trim Mapping`, `DTC Scanner`, `Power Monitor`, `Tuning Records`, `Data Archive`) to dynamically switch languages between Thai and English on system context reload.
-- **Premium Bottom Sheet PID Selector & Search** — Upgraded the generic popup PID selection dialog to a sleek Material `BottomSheetDialog` that slides up from the bottom. Added a real-time search input box to filter parameters instantly, and styled each PID entry with category-coded circular color badges (RPM/Speed: blue, Temps: amber, Fuel Trims: green, OFF: red, Others: purple).
-- **Professional Smart Tuning Dashboard** — Redesigned the smart tuning analysis box on the Map screen. It now features an elegant Material card layout with a `12dp` corner radius, a dedicated loop status indicator, separate diagnostic widgets for `STFT`, `LTFT`, and `COOLANT` (ECT), and a structured layout highlighting recommended tuning actions.
-- **Real-time Voltage State Analyzer** — Enhanced the Power Monitor tab with a live voltage state analysis tag below the real-time graph. Automatically monitors voltage levels and flags status states: Alternator normal charging (green, 13.2V-14.8V), overcharging (red, >14.8V), standby float charge (blue, 12.9V-13.2V), resting engine off (amber, 12.2V-12.9V), low battery under load (red, 11.5V-12.2V), and critical deep discharge (red, <11.5V).
-- **Convenient Telemetry Configuration** — Bind single-tap click triggers to all Dashboard, Gauges, and Graph cards so users can instantly open the configuration selector without needing to long-press.
+- **Material 3 UI Overhaul** — Migrated the visual identity of the entire app to Google's modern Material Design 3 (M3) specifications. This includes card shapes, flat layout borders, and dynamic styling support for light/dark mode transitions.
+- **Custom Google Font Integration** — Embedded the premium, geometric **Outfit** font family (Regular, Medium, Bold weights) globally, replacing standard system typography for a sleeker telemetry-oriented visual hierarchy.
+- **Uniform M3 Layout Cards** — Restructured all cards to use a standardized `16dp` rounded corner design and modern outline style (`?attr/colorOutlineVariant`) instead of legacy sharp borders and shadow elevations.
+- **Unified Map Tuner Table Localization** — Extracted and localized fuel trim tuner map legends under the 2D fuel table for both English and Thai, providing clean explanations for perfect, rich, and lean trim zones.
 
 ---
 

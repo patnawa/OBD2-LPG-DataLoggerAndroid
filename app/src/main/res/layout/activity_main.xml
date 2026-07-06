@@ -11,7 +11,7 @@
         android:id="@+id/topHeader"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/surface"
+        android:background="?attr/colorSurface"
         app:elevation="4dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -174,7 +174,7 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:orientation="horizontal"
-        android:background="@color/surface"
+        android:background="?attr/colorSurface"
         android:elevation="8dp"
         android:gravity="center_vertical"
         android:paddingStart="16dp"
@@ -367,10 +367,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
-                        app:cardBackgroundColor="@color/surface"
-                        app:cardCornerRadius="12dp"
+                        app:cardBackgroundColor="?attr/colorSurface"
+                        app:cardCornerRadius="16dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -504,10 +504,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="20dp"
-                        app:cardBackgroundColor="@color/surface"
-                        app:cardCornerRadius="12dp"
+                        app:cardBackgroundColor="?attr/colorSurface"
+                        app:cardCornerRadius="16dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -663,10 +663,10 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
-                        app:cardBackgroundColor="@color/surface"
-                        app:cardCornerRadius="12dp"
+                        app:cardBackgroundColor="?attr/colorSurface"
+                        app:cardCornerRadius="16dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -732,10 +732,10 @@
                             android:clickable="true"
                             android:focusable="true"
                             android:foreground="?attr/selectableItemBackground"
-                            app:cardBackgroundColor="@color/surface"
-                            app:cardCornerRadius="12dp"
+                            app:cardBackgroundColor="?attr/colorSurface"
+                            app:cardCornerRadius="16dp"
                             app:strokeWidth="1dp"
-                            app:strokeColor="@color/border">
+                            app:strokeColor="?attr/colorOutlineVariant">
 
                             <LinearLayout
                                 android:layout_width="match_parent"
@@ -778,10 +778,10 @@
                             android:clickable="true"
                             android:focusable="true"
                             android:foreground="?attr/selectableItemBackground"
-                            app:cardBackgroundColor="@color/surface"
-                            app:cardCornerRadius="12dp"
+                            app:cardBackgroundColor="?attr/colorSurface"
+                            app:cardCornerRadius="16dp"
                             app:strokeWidth="1dp"
-                            app:strokeColor="@color/border">
+                            app:strokeColor="?attr/colorOutlineVariant">
 
                             <LinearLayout
                                 android:layout_width="match_parent"
@@ -832,10 +832,10 @@
                             android:clickable="true"
                             android:focusable="true"
                             android:foreground="?attr/selectableItemBackground"
-                            app:cardBackgroundColor="@color/surface"
-                            app:cardCornerRadius="12dp"
+                            app:cardBackgroundColor="?attr/colorSurface"
+                            app:cardCornerRadius="16dp"
                             app:strokeWidth="1dp"
-                            app:strokeColor="@color/border">
+                            app:strokeColor="?attr/colorOutlineVariant">
 
                             <LinearLayout
                                 android:layout_width="match_parent"
@@ -878,10 +878,10 @@
                             android:clickable="true"
                             android:focusable="true"
                             android:foreground="?attr/selectableItemBackground"
-                            app:cardBackgroundColor="@color/surface"
-                            app:cardCornerRadius="12dp"
+                            app:cardBackgroundColor="?attr/colorSurface"
+                            app:cardCornerRadius="16dp"
                             app:strokeWidth="1dp"
-                            app:strokeColor="@color/border">
+                            app:strokeColor="?attr/colorOutlineVariant">
 
                             <LinearLayout
                                 android:layout_width="match_parent"
@@ -936,10 +936,10 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
-                        app:cardBackgroundColor="@color/surface"
-                        app:cardCornerRadius="12dp"
+                        app:cardBackgroundColor="?attr/colorSurface"
+                        app:cardCornerRadius="16dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -1023,10 +1023,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="@color/surface"
-                    app:cardCornerRadius="12dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:cardCornerRadius="16dp"
                     app:strokeWidth="1dp"
-                    app:strokeColor="@color/border">
+                    app:strokeColor="?attr/colorOutlineVariant">
                     
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -1087,7 +1087,7 @@
                                 android:layout_weight="1"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
-                                android:background="@color/surface2"
+                                android:background="?attr/colorSurfaceVariant"
                                 android:padding="8dp"
                                 android:gravity="center"
                                 android:layout_marginEnd="6dp">
@@ -1117,7 +1117,7 @@
                                 android:layout_weight="1"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
-                                android:background="@color/surface2"
+                                android:background="?attr/colorSurfaceVariant"
                                 android:padding="8dp"
                                 android:gravity="center"
                                 android:layout_marginEnd="6dp">
@@ -1147,7 +1147,7 @@
                                 android:layout_weight="1"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
-                                android:background="@color/surface2"
+                                android:background="?attr/colorSurfaceVariant"
                                 android:padding="8dp"
                                 android:gravity="center">
                                 
@@ -1208,7 +1208,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:background="@color/surface2"
+                            android:background="?attr/colorSurfaceVariant"
                             android:padding="12dp">
                             
                             <TextView
@@ -1319,7 +1319,7 @@
                     android:orientation="horizontal"
                     android:layout_marginBottom="12dp"
                     android:padding="6dp"
-                    android:background="@color/surface">
+                    android:background="?attr/colorSurface">
 
                     <!-- Very Rich -->
                     <LinearLayout
@@ -1430,10 +1430,10 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="350dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="2dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="12dp"
                     app:strokeWidth="1dp"
-                    app:strokeColor="@color/border">
+                    app:strokeColor="?attr/colorOutlineVariant">
 
                     <com.alpha.obd2logger.FuelMapView
                         android:id="@+id/fuelMapView"
@@ -1447,10 +1447,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="2dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="12dp"
                     app:strokeWidth="1dp"
-                    app:strokeColor="@color/border">
+                    app:strokeColor="?attr/colorOutlineVariant">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -1496,10 +1496,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="2dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="12dp"
                     app:strokeWidth="1dp"
-                    app:strokeColor="@color/border">
+                    app:strokeColor="?attr/colorOutlineVariant">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -1663,8 +1663,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="16dp"
                     app:cardElevation="2dp">
                     
                     <LinearLayout
@@ -1783,10 +1783,10 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="2dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="12dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
                         
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge1"
@@ -1804,10 +1804,10 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="2dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="12dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
 
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge2"
@@ -1833,10 +1833,10 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="2dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="12dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
 
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge3"
@@ -1854,10 +1854,10 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="2dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="12dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
 
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge4"
@@ -1883,10 +1883,10 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="2dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="12dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
                         
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -1921,10 +1921,10 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="2dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="12dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -1967,10 +1967,10 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="2dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="12dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -2005,10 +2005,10 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="2dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="12dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -2039,10 +2039,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="2dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="12dp"
                     app:strokeWidth="1dp"
-                    app:strokeColor="@color/border">
+                    app:strokeColor="?attr/colorOutlineVariant">
 
                     <TextView
                         android:id="@+id/countText"
@@ -2081,8 +2081,8 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="16dp">
                     <com.alpha.obd2logger.GraphView
                         android:id="@+id/graph1"
                         android:layout_width="match_parent"
@@ -2097,8 +2097,8 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="16dp">
                     <com.alpha.obd2logger.GraphView
                         android:id="@+id/graph2"
                         android:layout_width="match_parent"
@@ -2113,8 +2113,8 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="16dp">
                     <com.alpha.obd2logger.GraphView
                         android:id="@+id/graph3"
                         android:layout_width="match_parent"
@@ -2129,8 +2129,8 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="16dp">
                     <com.alpha.obd2logger.GraphView
                         android:id="@+id/graph4"
                         android:layout_width="match_parent"
@@ -2145,8 +2145,8 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="12dp">
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="16dp">
                     <com.alpha.obd2logger.GraphView
                         android:id="@+id/graph5"
                         android:layout_width="match_parent"
@@ -2260,8 +2260,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="2dp">
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="12dp">
                     
                     <TextView
                         android:id="@+id/dtcStatusText"
@@ -2317,9 +2317,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="8dp"
-                    app:strokeColor="@color/border"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="16dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
                     app:strokeWidth="1dp">
 
                     <LinearLayout
@@ -2377,7 +2377,7 @@
                                     android:textColor="@color/warning"
                                     android:textSize="10sp"
                                     android:textStyle="bold"
-                                    android:background="@color/surface2"
+                                    android:background="?attr/colorSurfaceVariant"
                                     android:paddingHorizontal="8dp"
                                     android:paddingVertical="4dp"/>
                             </LinearLayout>
@@ -2406,9 +2406,9 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginEnd="6dp"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="8dp"
-                        app:strokeColor="@color/border"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="16dp"
+                        app:strokeColor="?attr/colorOutlineVariant"
                         app:strokeWidth="1dp">
 
                         <LinearLayout
@@ -2451,9 +2451,9 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="6dp"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="8dp"
-                        app:strokeColor="@color/border"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="16dp"
+                        app:strokeColor="?attr/colorOutlineVariant"
                         app:strokeWidth="1dp">
 
                         <LinearLayout
@@ -2631,9 +2631,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="8dp"
-                    app:strokeColor="@color/border"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="16dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
                     app:strokeWidth="1dp">
 
                     <LinearLayout
@@ -2659,9 +2659,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="@color/surface2"
-                    app:cardCornerRadius="8dp"
-                    app:strokeColor="@color/border"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="16dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
                     app:strokeWidth="1dp"
                     android:visibility="gone">
 
@@ -2767,10 +2767,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="2dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="12dp"
                         app:strokeWidth="1dp"
-                        app:strokeColor="@color/border">
+                        app:strokeColor="?attr/colorOutlineVariant">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -2813,7 +2813,7 @@
                                         android:id="@+id/sessionStatusDotCard"
                                         android:layout_width="8dp"
                                         android:layout_height="8dp"
-                                        app:cardCornerRadius="4dp"
+                                        app:cardCornerRadius="12dp"
                                         app:cardElevation="0dp"
                                         app:cardBackgroundColor="@color/muted"
                                         android:layout_marginEnd="6dp" />
@@ -2956,8 +2956,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
-                        app:cardBackgroundColor="@color/surface2"
-                        app:cardCornerRadius="12dp">
+                        app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                        app:cardCornerRadius="16dp">
 
                         <TextView
                             android:id="@+id/historyFolderText"
@@ -3105,10 +3105,10 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/surface"
-                    app:cardCornerRadius="12dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:cardCornerRadius="16dp"
                     app:strokeWidth="1dp"
-                    app:strokeColor="@color/border"
+                    app:strokeColor="?attr/colorOutlineVariant"
                     android:layout_marginBottom="20dp"
                     app:cardElevation="0dp">
 
@@ -3221,10 +3221,10 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/surface"
-                    app:cardCornerRadius="12dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:cardCornerRadius="16dp"
                     app:strokeWidth="1dp"
-                    app:strokeColor="@color/border"
+                    app:strokeColor="?attr/colorOutlineVariant"
                     android:layout_marginBottom="20dp"
                     app:cardElevation="0dp">
 
@@ -3384,10 +3384,10 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/surface"
-                    app:cardCornerRadius="12dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:cardCornerRadius="16dp"
                     app:strokeWidth="1dp"
-                    app:strokeColor="@color/border"
+                    app:strokeColor="?attr/colorOutlineVariant"
                     android:layout_marginBottom="20dp"
                     app:cardElevation="0dp">
 
@@ -3601,10 +3601,10 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/surface"
-                    app:cardCornerRadius="12dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:cardCornerRadius="16dp"
                     app:strokeWidth="1dp"
-                    app:strokeColor="@color/border"
+                    app:strokeColor="?attr/colorOutlineVariant"
                     android:layout_marginBottom="20dp"
                     app:cardElevation="0dp">
 

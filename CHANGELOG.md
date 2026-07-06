@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.16] - 2026-07-06
+### Added
+- **Material 3 UI Overhaul**: Fully migrated the application styling to Google's modern Material Design 3 (M3) specifications.
+- **Custom Google Font**: Integrated the premium, geometric **Outfit** font family (Regular, Medium, Bold weights) globally.
+- **M3 Colors & Theme System**: Added semantic Material 3 color roles (surface variant, outline, containers, etc.) to both light (`colors.xml`) and dark (`values-night/colors.xml`) configurations.
+- **Uniform M3 Layout Cards**: Standardized all cards to use modern `16dp` rounded corners and flat `1dp` outline margins (`?attr/colorOutlineVariant`) instead of legacy sharp borders and shadow elevations.
+
+## [3.4.15] - 2026-07-05
+### Fixed
+- **Map & Review screen localization**: Replaced hardcoded bilingual strings under the fuel trim tuner map with dynamic localized string resources in both English and Thai.
+
 ## [3.4.14] - 2026-07-05
 ### Added
 - **Professional Tuner Home Screen Redesign**: Replaced the flat list on the landing page (`panelHome`) with a high-end tuning dashboard layout, including a vehicle status card, action controls, and an organized 2x2 grid representing functional modules (Gauges, Dashboard, Fuel Trim Map, DTC Scanner, Power Monitor).
