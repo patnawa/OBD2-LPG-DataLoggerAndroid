@@ -224,4 +224,24 @@
     <string name="scale_perfect">สมบูรณ์ (OK)</string>
     <string name="scale_slightly_lean">บางเล็กน้อย</string>
     <string name="scale_very_lean">บางมาก (Lean)</string>
+
+    <!-- Map Info Dialog -->
+    <string name="map_info_color_legend_header">คำอธิบายสีตาราง</string>
+    <string name="map_info_legend_perfect">สมบูรณ์ดี (±5%) • การจ่ายเชื้อเพลิงสมบูรณ์ดี</string>
+    <string name="map_info_legend_slightly_rich" formatted="false">หนาเล็กน้อย (-5% ถึง -10%) • มีการฉีดเชื้อเพลิงหนาเล็กน้อย</string>
+    <string name="map_info_legend_very_rich" formatted="false">หนาเกินไป (น้อยกว่า -10%) • มีการฉีดเชื้อเพลิงหนาเกินไป</string>
+    <string name="map_info_legend_slightly_lean" formatted="false">บางเล็กน้อย (+5% ถึง +10%) • มีการฉีดเชื้อเพลิงบางเล็กน้อย</string>
+    <string name="map_info_legend_very_lean" formatted="false">บางเกินไป (มากกว่า +10%) • มีการฉีดเชื้อเพลิงบางเกินไป</string>
+    
+    <string name="map_info_tuning_logic_header">หลักการคำนวณ</string>
+    <string name="map_info_petrol_title">1. PETROL (น้ำมัน)</string>
+    <string name="map_info_petrol_desc">ใช้เป็นฐานอ้างอิงหลัก (Baseline) ของระบบจ่ายน้ำมันเดิมของเครื่องยนต์</string>
+    <string name="map_info_lpg_title">2. LPG/CNG (แก๊ส)</string>
+    <string name="map_info_lpg_desc">แสดงผลพฤติกรรมการจ่ายเชื้อเพลิงขณะเครื่องยนต์สลับไปทำงานด้วยโหมดแก๊ส</string>
+    <string name="map_info_deviation_title">3. DEVIATION (ความเบี่ยงเบน)</string>
+    <string name="map_info_deviation_desc">เปอร์เซ็นต์ส่วนต่างว่าแก๊สจ่ายเบี่ยงเบนออกนอกค่ามาตรฐานน้ำมันเท่าใด (ค่าบวก = แก๊สบาง, ค่าลบ = แก๊สหนา)</string>
+    <string name="map_info_tune_assist_title">4. TUNE ASSIST (ช่วยจูน)</string>
+    <string name="map_info_tune_assist_desc">เปอร์เซ็นต์ที่ต้องนำไปบวก (+) หรือลบ (-) ในตารางจูนแก๊ส (Multiplier Map) เพื่อดึงค่าเบี่ยงเบนกลับมาเป็น 0% (เทียบเท่าจูนน้ำมันเดิม)</string>
+    <string name="map_info_note">* หมายเหตุ: ต้องทำการวิ่งเก็บข้อมูลทั้งโหมดน้ำมัน (Petrol) และโหมดแก๊ส (LPG) ในช่วงรอบเครื่องยนต์ (RPM) และภาระโหลดเดียวกันให้ครบถ้วนก่อน ระบบจึงจะสามารถวิเคราะห์และเปรียบเทียบแสดงค่าส่วนต่างออกมาได้</string>
+    <string name="map_info_close">ปิด</string>
 </resources>

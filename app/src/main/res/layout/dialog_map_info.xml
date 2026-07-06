@@ -33,7 +33,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="COLOR LEGEND / คำอธิบายสี"
+            android:text="@string/map_info_color_legend_header"
             android:textColor="@color/muted"
             android:textSize="11sp"
             android:textStyle="bold"
@@ -66,7 +66,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Perfect (±5%) • จ่ายเชื้อเพลิงสมบูรณ์ดี"
+                    android:text="@string/map_info_legend_perfect"
                     android:textColor="@color/text"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -89,7 +89,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Slightly Rich (-5% to -10%) • หนาเล็กน้อย"
+                    android:text="@string/map_info_legend_slightly_rich"
                     android:textColor="@color/text"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -112,7 +112,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Very Rich (Under -10%) • หนาเกินไป"
+                    android:text="@string/map_info_legend_very_rich"
                     android:textColor="@color/text"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -135,7 +135,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Slightly Lean (+5% to +10%) • บางเล็กน้อย"
+                    android:text="@string/map_info_legend_slightly_lean"
                     android:textColor="@color/text"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -157,7 +157,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Very Lean (Over +10%) • บางเกินไป"
+                    android:text="@string/map_info_legend_very_lean"
                     android:textColor="@color/text"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -167,7 +167,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="TUNING LOGIC / หลักการคำนวณ"
+            android:text="@string/map_info_tuning_logic_header"
             android:textColor="@color/muted"
             android:textSize="11sp"
             android:textStyle="bold"
@@ -191,7 +191,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="1. PETROL (น้ำมัน)"
+                    android:text="@string/map_info_petrol_title"
                     android:textColor="@color/text"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -206,7 +206,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="ใช้เป็นฐานอ้างอิงหลัก (Baseline) ของระบบจ่ายน้ำมันเดิมของเครื่องยนต์"
+                    android:text="@string/map_info_petrol_desc"
                     android:textColor="@color/muted"
                     android:textSize="11sp"
                     android:layout_marginTop="4dp" />
@@ -230,7 +230,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="2. LPG/CNG (แก๊ส)"
+                    android:text="@string/map_info_lpg_title"
                     android:textColor="@color/text"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -245,7 +245,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="แสดงผลพฤติกรรมการจ่ายเชื้อเพลิงขณะเครื่องยนต์สลับไปทำงานด้วยโหมดแก๊ส"
+                    android:text="@string/map_info_lpg_desc"
                     android:textColor="@color/muted"
                     android:textSize="11sp"
                     android:layout_marginTop="4dp" />
@@ -269,7 +269,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="3. DEVIATION (ความเบี่ยงเบน)"
+                    android:text="@string/map_info_deviation_title"
                     android:textColor="@color/text"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -284,7 +284,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="เปอร์เซ็นต์ส่วนต่างว่าแก๊สจ่ายเบี่ยงเบนออกนอกค่ามาตรฐานน้ำมันเท่าใด (ค่าบวก = แก๊สบาง, ค่าลบ = แก๊สหนา)"
+                    android:text="@string/map_info_deviation_desc"
                     android:textColor="@color/muted"
                     android:textSize="11sp"
                     android:layout_marginTop="4dp" />
@@ -308,7 +308,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="4. TUNE ASSIST (ช่วยจูน)"
+                    android:text="@string/map_info_tune_assist_title"
                     android:textColor="@color/text"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -323,7 +323,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="เปอร์เซ็นต์ที่ต้องนำไปบวก (+) หรือลบ (-) ในตารางจูนแก๊ส (Multiplier Map) เพื่อดึงค่าเบี่ยงเบนกลับมาเป็น 0% (เทียบเท่าจูนน้ำมันเดิม)"
+                    android:text="@string/map_info_tune_assist_desc"
                     android:textColor="@color/muted"
                     android:textSize="11sp"
                     android:layout_marginTop="4dp" />
@@ -334,7 +334,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="* หมายเหตุ: ต้องทำการวิ่งเก็บข้อมูลทั้งโหมดน้ำมัน (Petrol) และโหมดแก๊ส (LPG) ในช่วงรอบเครื่องยนต์ (RPM) และภาระโหลดเดียวกันให้ครบถ้วนก่อน ระบบจึงจะสามารถวิเคราะห์และเปรียบเทียบแสดงค่าส่วนต่างออกมาได้"
+            android:text="@string/map_info_note"
             android:textColor="@color/muted"
             android:textSize="11sp"
             android:textStyle="italic"
@@ -345,7 +345,7 @@
             android:id="@+id/btnMapInfoClose"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:text="ปิด (Close)"
+            android:text="@string/map_info_close"
             style="@style/Widget.Material3.Button"
             android:layout_marginBottom="12dp" />
 

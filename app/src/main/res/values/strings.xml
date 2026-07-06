@@ -229,4 +229,24 @@
     <string name="scale_perfect">Perfect (OK)</string>
     <string name="scale_slightly_lean">Slightly Lean</string>
     <string name="scale_very_lean">Very Lean</string>
+
+    <!-- Map Info Dialog -->
+    <string name="map_info_color_legend_header">COLOR LEGEND</string>
+    <string name="map_info_legend_perfect">Perfect (±5%) • Healthy fuel mixture</string>
+    <string name="map_info_legend_slightly_rich" formatted="false">Slightly Rich (-5% to -10%) • Slightly high fuel injection</string>
+    <string name="map_info_legend_very_rich" formatted="false">Very Rich (Under -10%) • Excessive fuel injection</string>
+    <string name="map_info_legend_slightly_lean" formatted="false">Slightly Lean (+5% to +10%) • Slightly low fuel injection</string>
+    <string name="map_info_legend_very_lean" formatted="false">Very Lean (Over +10%) • Insufficient fuel injection</string>
+    
+    <string name="map_info_tuning_logic_header">TUNING LOGIC</string>
+    <string name="map_info_petrol_title">1. PETROL</string>
+    <string name="map_info_petrol_desc">Acts as the engine\'s factory baseline for original fuel delivery.</string>
+    <string name="map_info_lpg_title">2. LPG/CNG</string>
+    <string name="map_info_lpg_desc">Shows the current fuel delivery behavior under gas operation.</string>
+    <string name="map_info_deviation_title">3. DEVIATION</string>
+    <string name="map_info_deviation_desc">Calculates how far the gas calibration drifts from petrol (+ is lean, - is rich).</string>
+    <string name="map_info_tune_assist_title">4. TUNE ASSIST</string>
+    <string name="map_info_tune_assist_desc">The exact percentage to add (+) or subtract (-) in your gas ECU multiplier map to bring deviation to 0%.</string>
+    <string name="map_info_note">Note: You must collect both Petrol and LPG data in the same cells first for comparison to work!</string>
+    <string name="map_info_close">Close</string>
 </resources>
