@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.20] - 2026-07-07
+### Fixed
+- **Python client — vLinker detection dead-code bug (CRITICAL)**: `vlinker_optimizer.py` `detect_device()` and `apply_optimizations()` both checked `elm.connected`, which is always `False` during `initialize_elm327()` (before `self.connected` is set). This meant vLinker device detection always returned `UNKNOWN` and firmware-specific optimizations (ATAT2, ATST1A, ATAL, 6-PID chunks) were never applied on the Python client — the exact bug the Java version explicitly documents and avoids. Removed the `elm.connected` guard from both functions.
+- **Python client — ATZ boot-buffer contamination**: `obd2_client.py` `initialize_elm327()` had only a 500ms sleep after ATZ with no buffer drain, so the ELM327 boot banner (`ELM327 v2.x\r\n>`) could interleave with the ATI/AT@1 probe — the stray `>` prematurely closed the recv loop and the adapter was misclassified as a non-standard clone. Now waits 1.5s after ATZ and calls new `drain_stale_bytes(0.5s)` to flush leftover boot bytes before probing. Mirrors the Java fix from v3.4.19.
+- **Python client — init-phase timeout race in `WiFiDriver.send_command()`**: Per-recv timeout was hardcoded at 500ms for all phases, too tight for ATZ/ATI/AT@1 during init (ELM327 needs 500ms–1.5s to produce its first `>` after reset). Added `_initializing` flag (mirrors Java's `volatile boolean initializing`) — during init, per-recv timeout is `max(connectionTimeoutMs, 2000ms)` and the recv loop waits through timeouts instead of breaking on first partial response.
+
 ## [3.4.19] - 2026-07-07
 ### Fixed
 - **WiFi connection — additional fix for ELM327 boot-buffer contamination**: v3.4.18 fixed the per-read timeout but missed a class of failures where the ATZ boot banner (`ELM327 v2.x\r\n>`) arrives in pieces interleaved with the subsequent ATI/AT@1 probe — the stray boot-prompt `>` prematurely closed the recv loop, the response parser saw an empty/truncated string, and the adapter was misclassified as a non-standard clone (so vLinker optimizations never applied). New behaviour:

@@ -1,19 +1,17 @@
 # TunerMap Pro >> OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.4.18** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.4.20** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.4.18
+## What's New in 3.4.20
 
-- **WiFi connection reliability fix — ELM327 boot-timeout race resolved** — Rewrote `WiFiDriver.connect()` to fix a class of failures where the app reported "could not connect" against perfectly reachable vLinker MC WiFi adapters (while other apps like Car Scanner Pro worked fine on the same hardware). Root causes:
-  - Hardcoded 250ms `Socket.setSoTimeout` on the WiFi socket caused every recv during the ATZ/ATI/AT@1 init probe to time out before the slow-booting ELM327 (500ms–1.5s after TCP accept) could respond. Now uses `Math.max(connectionTimeoutMs, 2000)` for the init probe and tightens to `Math.max(connectionTimeoutMs / 4, 500)` for steady-state.
-  - Connect handshake timeout floor raised from 2s to 5s to absorb slow Android hotspot join latency.
-  - Added `Thread.sleep(500ms)` after `socket.connect()` so the ELM327 finishes booting before we send the first ATZ — eliminates the race where the boot prompt `>` arrives after our read timeout.
-  - New `volatile boolean initializing` flag lets `sendCommand()` distinguish init-phase (wait through timeouts for the boot prompt) from steady-state (treat timeout with partial response as end-of-message).
-  - Replaced silent `catch (Exception ignored)` with `android.util.Log.e/w("WiFiDriver", ...)` so connection failures show up in `adb logcat` for debugging.
+- **Python client WiFi bug sync** — Ported the same WiFi connection reliability fixes from the Android app (v3.4.18/v3.4.19) to the companion Python client (`obd2-python-client/`):
+  - **CRITICAL**: `vlinker_optimizer.py` `detect_device()` and `apply_optimizations()` checked `elm.connected` (always `False` during init) — vLinker optimizations never applied. Guard removed.
+  - **CRITICAL**: `initialize_elm327()` now waits 1.5s after ATZ and drains stale boot-banner bytes via new `drain_stale_bytes()` before ATI/AT@1 probe — prevents adapter misclassification as non-standard clone.
+  - `WiFiDriver.send_command()` now uses `_initializing` flag for longer per-recv timeout during init phase, matching the Java `volatile boolean initializing` pattern.
 
 ---
 
