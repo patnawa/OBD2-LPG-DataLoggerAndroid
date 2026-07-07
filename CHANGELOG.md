@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.17] - 2026-07-07
+### Added
+- **vLinker FS USB on Termux — Setup Guide**: New `docs/termux-usb-setup.md` companion document covering the verified working path for using a vLinker FS USB adapter directly from Termux/Python on Android 11+ (Android 16 verified, Xiaomi 2311DRK48G). Explains the SELinux sandbox limitation, the `termux:API` v0.53.0 FD-passing mechanism, and the `libusb_wrap_sys_device()` pattern required to bridge a Termux USB handle into Python. Documents pitfalls encountered (v0.51 "No such device" bug, FD ordering, CDC notification-header stripping, FTDI FT230X quirks) so future users do not repeat the same debug cycle.
+### Fixed
+- **Locale cleanup**: Removed 13 unused translation resources (Arabic, German, Spanish, French, Hindi, Indonesian, Italian, Japanese, Korean, Portuguese, Russian, Vietnamese, Chinese), keeping only `System Default`, `English`, and `Thai`. Trims APK size and removes maintenance debt for translations that were never actually populated beyond the base English copy.
+
 ## [3.4.16] - 2026-07-06
 ### Added
 - **Material 3 UI Overhaul**: Fully migrated the application styling to Google's modern Material Design 3 (M3) specifications.

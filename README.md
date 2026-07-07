@@ -1,17 +1,15 @@
 # TunerMap Pro >> OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.4.16** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.4.17** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.4.16
+## What's New in 3.4.17
 
-- **Material 3 UI Overhaul** — Migrated the visual identity of the entire app to Google's modern Material Design 3 (M3) specifications. This includes card shapes, flat layout borders, and dynamic styling support for light/dark mode transitions.
-- **Custom Google Font Integration** — Embedded the premium, geometric **Outfit** font family (Regular, Medium, Bold weights) globally, replacing standard system typography for a sleeker telemetry-oriented visual hierarchy.
-- **Uniform M3 Layout Cards** — Restructured all cards to use a standardized `16dp` rounded corner design and modern outline style (`?attr/colorOutlineVariant`) instead of legacy sharp borders and shadow elevations.
-- **Unified Map Tuner Table Localization** — Extracted and localized fuel trim tuner map legends under the 2D fuel table for both English and Thai, providing clean explanations for perfect, rich, and lean trim zones.
+- **vLinker FS USB on Termux — Setup Guide** — New `docs/termux-usb-setup.md` companion document with the verified working path for using a vLinker FS USB adapter directly from Termux/Python on Android 11+ (verified on Xiaomi 2311DRK48G, Android 16). Walks through the SELinux sandbox limitation that blocks raw `/dev/bus/usb/*` access from `untrusted_app` and shows how to bridge a `termux:API` v0.53.0 USB file-descriptor into Python via `libusb_wrap_sys_device()`. Documents every pitfall encountered during bring-up (v0.51 "No such device" bug, FD ordering, CDC notification-header stripping, FTDI FT230X quirks) so users do not repeat the same debug cycle.
+- **Locale cleanup** — Removed 13 unused translation resources (Arabic, German, Spanish, French, Hindi, Indonesian, Italian, Japanese, Korean, Portuguese, Russian, Vietnamese, Chinese), keeping only `System Default`, `English`, and `Thai`. Reduces APK size and removes maintenance debt for translations that were never populated beyond the base English copy.
 
 ---
 
@@ -202,6 +200,10 @@ app/src/main/java/com/alpha/obd2logger/
 ```
 
 ## Changelog
+
+### v3.4.17 (2026-07-07) — Termux USB Guide + Locale Cleanup
+- **New `docs/termux-usb-setup.md`**: Companion guide for using vLinker FS USB from Termux/Python on Android 11+ (Android 16 verified). Documents SELinux sandbox workaround via `termux:API` v0.53.0 FD-passing + `libusb_wrap_sys_device()` bridge.
+- **Removed 13 unused translation resources** (ar, de, es, fr, hi, id, it, ja, ko, pt, ru, vi, zh); kept `System Default`, `English`, `Thai`.
 
 ### v3.1.1 (2026-07-04) — Bug Hunt: Threading & vLinker Fixes
 - **[HIGH] vLinker optimizations were dead code** — `detectDevice()` checked `isConnected()` before `connected` was set, so all vLinker-specific AT commands (ATST32/ATST1A/ATST23, ATAT1/ATAT2, 6-PID chunks) never applied. Every adapter got generic ELM327 settings. Fixed by removing the premature guard.
