@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.21] - 2026-07-07
+### Fixed
+- **CRITICAL: WiFi connection fails when gateway disabled (mobile data + WiFi simultaneous)** — When the user disables the WiFi gateway to use mobile data alongside the vLinker WiFi adapter, Android's routing table doesn't route the adapter's subnet (192.168.0.x) through wlan0, so `Socket.connect()` times out. CarScanner Pro works because it uses `ConnectivityManager` to find the WiFi transport and calls `Network.bindSocket()` to force the socket onto the WiFi link. Now the app does the same: `WiFiDriver.findWifiNetwork()` locates the active WiFi `Network` (TRANSPORT_WIFI) and binds the socket before `connect()`. This bypasses the missing route entirely.
+  - Added `Context context` field to `LoggerConfig` (transient) so WiFiDriver can access `ConnectivityManager`.
+  - `MainActivity.readConfigFromUi()` and `LoggerService` both set `config.context = getApplicationContext()`.
+  - `DriverFactory.copyConfig()` propagates `context` to cloned configs.
+- **Python client: `SO_BINDTODEVICE` for same routing issue** — `WiFiDriver.connect()` now binds the socket to `wlan0` via `SO_BINDTODEVICE` (sockopt 25) before `connect()`, with a config flag `wifi_bind_interface` (default True) to disable if needed.
+- **Python client: PID parser missing formulas for 3E/46/5C** — `Control Module Voltage` (0x3E) returned 4628V instead of 4.628V (missing `/1000.0`), `Ambient Air Temp` (0x46) returned 115°C instead of 75°C (missing `-40`). Added explicit cases for 3E, 46, and 5C (Engine Oil Temp) in `pid_parser.py`.
+
 ## [3.4.20] - 2026-07-07
 ### Fixed
 - **Python client — vLinker detection dead-code bug (CRITICAL)**: `vlinker_optimizer.py` `detect_device()` and `apply_optimizations()` both checked `elm.connected`, which is always `False` during `initialize_elm327()` (before `self.connected` is set). This meant vLinker device detection always returned `UNKNOWN` and firmware-specific optimizations (ATAT2, ATST1A, ATAL, 6-PID chunks) were never applied on the Python client — the exact bug the Java version explicitly documents and avoids. Removed the `elm.connected` guard from both functions.

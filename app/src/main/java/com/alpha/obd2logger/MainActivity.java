@@ -4143,6 +4143,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private LoggerConfig readConfigFromUi() {
         LoggerConfig config = new LoggerConfig();
+        config.context = getApplicationContext();
         config.transportMode = transportModeFromSpinner(transportSpinner.getSelectedItemPosition());
         config.fuelMode = fuelSpinner.getSelectedItemPosition() == 0 ? FuelMode.LPG : FuelMode.PETROL;
         config.obdProtocol = obdProtocolFromSpinner(obdProtocolSpinner.getSelectedItemPosition());

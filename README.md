@@ -1,17 +1,16 @@
 # TunerMap Pro >> OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.4.20** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.4.21** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.4.20
+## What's New in 3.4.21
 
-- **Python client WiFi bug sync** — Ported the same WiFi connection reliability fixes from the Android app (v3.4.18/v3.4.19) to the companion Python client (`obd2-python-client/`):
-  - **CRITICAL**: `vlinker_optimizer.py` `detect_device()` and `apply_optimizations()` checked `elm.connected` (always `False` during init) — vLinker optimizations never applied. Guard removed.
-  - **CRITICAL**: `initialize_elm327()` now waits 1.5s after ATZ and drains stale boot-banner bytes via new `drain_stale_bytes()` before ATI/AT@1 probe — prevents adapter misclassification as non-standard clone.
-  - `WiFiDriver.send_command()` now uses `_initializing` flag for longer per-recv timeout during init phase, matching the Java `volatile boolean initializing` pattern.
+- **CRITICAL: WiFi connect fails when gateway disabled** — When using mobile data + WiFi adapter simultaneously (gateway disabled), Android doesn't route the adapter's subnet through wlan0. Now uses `Network.bindSocket()` (same trick CarScanner Pro uses) to force the socket onto the WiFi link.
+- Python client: `SO_BINDTODEVICE` on wlan0 for the same routing fix.
+- Python client: PID parser — Control Module Voltage (0x3E) and Ambient Air Temp (0x46) had wrong formulas, returned 4628V / 115°C instead of 4.628V / 75°C. Fixed.
 
 ---
 

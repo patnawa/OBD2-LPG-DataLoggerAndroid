@@ -106,6 +106,7 @@ public final class DriverFactory {
         target.connectionTimeoutMs = source.connectionTimeoutMs;
         target.maxRetries = source.maxRetries;
         target.enableApiServer = source.enableApiServer;
+        target.context = source.context;
         return target;
     }
 }

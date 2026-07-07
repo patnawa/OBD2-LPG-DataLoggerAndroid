@@ -1,5 +1,9 @@
 package com.alpha.obd2logger;
 
+import android.net.Network;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
+import android.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -21,6 +25,37 @@ public final class WiFiDriver extends ElmDriver {
         super(config);
     }
 
+    /**
+     * On Android, when the user disables the WiFi gateway to use mobile data
+     * simultaneously, the default routing table doesn't route the adapter's
+     * subnet (e.g. 192.168.0.x) through wlan0 — so Socket.connect() times out.
+     * CarScanner Pro works because it uses ConnectivityManager to find the
+     * WiFi transport and calls Network.bindSocket() to force the socket onto
+     * the WiFi link, bypassing the missing route.
+     *
+     * This method finds the active WiFi Network (transport WIFI) and binds
+     * our socket to it. Falls back gracefully if no WiFi network is found.
+     */
+    private Network findWifiNetwork() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) config.context
+                    .getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return null;
+
+            Network[] networks = cm.getAllNetworks();
+            for (Network network : networks) {
+                NetworkCapabilities caps = cm.getNetworkCapabilities(network);
+                if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                    Log.i("WiFiDriver", "Found WiFi transport network: " + network);
+                    return network;
+                }
+            }
+        } catch (Exception e) {
+            Log.w("WiFiDriver", "findWifiNetwork failed: " + e.getMessage());
+        }
+        return null;
+    }
+
     @Override
     public boolean connect() {
         try {
@@ -33,6 +68,19 @@ public final class WiFiDriver extends ElmDriver {
             // sometimes too tight; the per-read SO_TIMEOUT below covers steady
             // state). We bump to 5s as a safer floor for slow networks.
             int connectTimeoutMs = Math.max(config.connectionTimeoutMs, 5000);
+
+            // Bind socket to WiFi network to bypass missing route when
+            // gateway is disabled (mobile data + WiFi adapter simultaneously).
+            Network wifiNetwork = findWifiNetwork();
+            if (wifiNetwork != null) {
+                try {
+                    wifiNetwork.bindSocket(socket);
+                    Log.i("WiFiDriver", "Bound socket to WiFi network");
+                } catch (Exception e) {
+                    Log.w("WiFiDriver", "bindSocket failed: " + e.getMessage());
+                }
+            }
+
             socket.connect(new InetSocketAddress(config.wifiIp, config.wifiPort), connectTimeoutMs);
             // Give the ELM327/vLinker time to finish booting after TCP accept
             // before we start banging ATZ at it. Without this, ATZ races the

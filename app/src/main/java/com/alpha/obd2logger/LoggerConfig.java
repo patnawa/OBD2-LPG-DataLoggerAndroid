@@ -1,6 +1,7 @@
 package com.alpha.obd2logger;
 
 import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 
 public final class LoggerConfig {
     public TransportMode transportMode;
@@ -19,6 +20,10 @@ public final class LoggerConfig {
     public int connectionTimeoutMs;
     public int maxRetries;
     public boolean enableApiServer;
+    /** Application context — needed by WiFiDriver for ConnectivityManager
+     *  to bind sockets to the WiFi network (bypasses missing route when
+     *  gateway is disabled for mobile data + WiFi simultaneous use). */
+    public transient Context context;
 
     public LoggerConfig() {
         this.transportMode = TransportMode.SIM;

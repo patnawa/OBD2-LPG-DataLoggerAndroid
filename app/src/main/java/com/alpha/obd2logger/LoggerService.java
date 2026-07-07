@@ -141,6 +141,9 @@ public final class LoggerService extends Service {
         if (config == null) {
             config = new LoggerConfig();
         }
+        if (config.context == null) {
+            config.context = getApplicationContext();
+        }
         pendingConfig = null;
 
         startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0));
