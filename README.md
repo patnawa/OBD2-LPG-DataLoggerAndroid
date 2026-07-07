@@ -1,15 +1,19 @@
 # TunerMap Pro >> OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.4.17** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.4.18** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.4.17
+## What's New in 3.4.18
 
-- **vLinker FS USB on Termux — Setup Guide** — New `docs/termux-usb-setup.md` companion document with the verified working path for using a vLinker FS USB adapter directly from Termux/Python on Android 11+ (verified on Xiaomi 2311DRK48G, Android 16). Walks through the SELinux sandbox limitation that blocks raw `/dev/bus/usb/*` access from `untrusted_app` and shows how to bridge a `termux:API` v0.53.0 USB file-descriptor into Python via `libusb_wrap_sys_device()`. Documents every pitfall encountered during bring-up (v0.51 "No such device" bug, FD ordering, CDC notification-header stripping, FTDI FT230X quirks) so users do not repeat the same debug cycle.
-- **Locale cleanup** — Removed 13 unused translation resources (Arabic, German, Spanish, French, Hindi, Indonesian, Italian, Japanese, Korean, Portuguese, Russian, Vietnamese, Chinese), keeping only `System Default`, `English`, and `Thai`. Reduces APK size and removes maintenance debt for translations that were never populated beyond the base English copy.
+- **WiFi connection reliability fix — ELM327 boot-timeout race resolved** — Rewrote `WiFiDriver.connect()` to fix a class of failures where the app reported "could not connect" against perfectly reachable vLinker MC WiFi adapters (while other apps like Car Scanner Pro worked fine on the same hardware). Root causes:
+  - Hardcoded 250ms `Socket.setSoTimeout` on the WiFi socket caused every recv during the ATZ/ATI/AT@1 init probe to time out before the slow-booting ELM327 (500ms–1.5s after TCP accept) could respond. Now uses `Math.max(connectionTimeoutMs, 2000)` for the init probe and tightens to `Math.max(connectionTimeoutMs / 4, 500)` for steady-state.
+  - Connect handshake timeout floor raised from 2s to 5s to absorb slow Android hotspot join latency.
+  - Added `Thread.sleep(500ms)` after `socket.connect()` so the ELM327 finishes booting before we send the first ATZ — eliminates the race where the boot prompt `>` arrives after our read timeout.
+  - New `volatile boolean initializing` flag lets `sendCommand()` distinguish init-phase (wait through timeouts for the boot prompt) from steady-state (treat timeout with partial response as end-of-message).
+  - Replaced silent `catch (Exception ignored)` with `android.util.Log.e/w("WiFiDriver", ...)` so connection failures show up in `adb logcat` for debugging.
 
 ---
 
@@ -200,6 +204,15 @@ app/src/main/java/com/alpha/obd2logger/
 ```
 
 ## Changelog
+
+### v3.4.18 (2026-07-07) — WiFi Connection Reliability Fix
+- **ELM327 boot-timeout race in `WiFiDriver.connect()`**:
+  - Replaced hardcoded `Socket.setSoTimeout(250)` with adaptive timeout: `Math.max(connectionTimeoutMs, 2000)` during ATZ/ATI/AT@1 init probe, tightened to `Math.max(connectionTimeoutMs / 4, 500)` for steady-state.
+  - Connect handshake timeout floor raised from 2s to 5s.
+  - Added 500ms `Thread.sleep` after TCP accept to let ELM327 finish booting before sending ATZ.
+  - New `volatile boolean initializing` flag distinguishes init-phase (wait through timeouts for boot prompt) from steady-state (treat timeout-with-data as end-of-message).
+  - Replaced silent `catch (Exception ignored)` with `Log.e/w("WiFiDriver", ...)` for debugging via `adb logcat`.
+- Verified on Xiaomi 2311DRK48G / Android 16 / vLinker MC WiFi (same setup where Car Scanner Pro works fine).
 
 ### v3.4.17 (2026-07-07) — Termux USB Guide + Locale Cleanup
 - **New `docs/termux-usb-setup.md`**: Companion guide for using vLinker FS USB from Termux/Python on Android 11+ (Android 16 verified). Documents SELinux sandbox workaround via `termux:API` v0.53.0 FD-passing + `libusb_wrap_sys_device()` bridge.

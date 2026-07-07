@@ -12,6 +12,10 @@ public final class WiFiDriver extends ElmDriver {
     private Socket socket;
     private InputStream inputStream;
     private OutputStream outputStream;
+    /** True between TCP connect and end of initializeElm327() — used to give
+     *  ATZ/ATI/AT@1 a longer per-read timeout since ELM327 needs ~500ms-1.5s
+     *  to produce its first prompt after a reset. */
+    private volatile boolean initializing = false;
 
     public WiFiDriver(LoggerConfig config) {
         super(config);
@@ -24,18 +28,41 @@ public final class WiFiDriver extends ElmDriver {
                 disconnect();
             }
             socket = new Socket();
-            socket.setSoTimeout(250);
-            socket.connect(new InetSocketAddress(config.wifiIp, config.wifiPort), config.connectionTimeoutMs);
+            // Use connection timeout for the TCP handshake (vLinker MC WiFi
+            // through Android hotspot can take 2-5s — previous default 2s was
+            // sometimes too tight; the per-read SO_TIMEOUT below covers steady
+            // state). We bump to 5s as a safer floor for slow networks.
+            int connectTimeoutMs = Math.max(config.connectionTimeoutMs, 5000);
+            socket.connect(new InetSocketAddress(config.wifiIp, config.wifiPort), connectTimeoutMs);
+            // Give the ELM327/vLinker time to finish booting after TCP accept
+            // before we start banging ATZ at it. Without this, ATZ races the
+            // boot sequence and the prompt `>` arrives after our read timeout.
+            try { Thread.sleep(500L); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+            // Set a longer SO_TIMEOUT for the initial probe (ATZ / ATI / AT@1)
+            // — ELM327 reset can take 500ms-1.5s to produce its first `>`.
+            // We restore a tighter timeout in steady state once init is done.
+            int initSoTimeout = Math.max(config.connectionTimeoutMs, 2000);
+            socket.setSoTimeout(initSoTimeout);
+            initializing = true;
             inputStream = socket.getInputStream();
             outputStream = socket.getOutputStream();
             connected = initializeElm327();
-            if (!connected) {
+            if (connected) {
+                // Init succeeded — tighten per-read timeout so a dead adapter
+                // doesn't freeze the whole loop, but still long enough for
+                // multi-frame responses (VIN, DTC list, Mode 06).
+                int steadySoTimeout = Math.max(config.connectionTimeoutMs / 4, 500);
+                socket.setSoTimeout(steadySoTimeout);
+            } else {
                 disconnect();
             }
             return connected;
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            android.util.Log.e("WiFiDriver", "connect failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             disconnect();
             return false;
+        } finally {
+            initializing = false;
         }
     }
 
@@ -82,12 +109,11 @@ public final class WiFiDriver extends ElmDriver {
                 try {
                     b = inputStream.read();
                 } catch (SocketTimeoutException timeout) {
-                    // Prevent busy-waiting: setSoTimeout(250) means we spin every
-                    // 250ms for the entire connectionTimeoutMs window otherwise.
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
+                    // If we already got a partial response and are in steady
+                    // state, treat the timeout as end-of-message. During init
+                    // (ATZ / ATI / AT@1), keep waiting — ELM327 may need up
+                    // to a full second to produce the first prompt after reset.
+                    if (!initializing && response.length() > 0) {
                         break;
                     }
                     continue;
@@ -103,7 +129,8 @@ public final class WiFiDriver extends ElmDriver {
                 }
             }
             return response.toString();
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            android.util.Log.w("WiFiDriver", "sendCommand '" + command + "' failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             return "";
         } finally {
             commandLock.unlock();

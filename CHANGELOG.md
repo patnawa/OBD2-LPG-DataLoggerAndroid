@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.18] - 2026-07-07
+### Fixed
+- **WiFi connection reliability — ELM327 boot-timeout race**: Rewrote `WiFiDriver.connect()` to fix a class of failures where the app reported "could not connect" against perfectly reachable vLinker MC WiFi adapters (other apps like Car Scanner Pro worked fine on the same hardware/network). Root causes addressed:
+  - Hardcoded `Socket.setSoTimeout(250)` on the WiFi socket caused every recv during the ATZ/ATI/AT@1 init probe to expire at 250ms — too tight for a slow-booting ELM327 (often 500ms–1.5s after TCP accept). Now uses `Math.max(connectionTimeoutMs, 2000)` during init and tightens to `Math.max(connectionTimeoutMs / 4, 500)` for steady-state queries.
+  - Connect handshake timeout was 2s; bumped floor to 5s to absorb slow Android hotspot join latency.
+  - Added `Thread.sleep(500ms)` immediately after `socket.connect()` to let the ELM327 finish booting before we send the first ATZ — eliminates the race where the boot prompt `>` arrives after our read timeout.
+  - New `volatile boolean initializing` flag lets `sendCommand()` distinguish init-phase (wait through timeouts for boot prompt) from steady-state (treat timeout with partial response as end-of-message).
+  - Replaced `catch (Exception ignored)` swallowing with `android.util.Log.e/w("WiFiDriver", ...)` so connection failures are visible in `adb logcat` for debugging.
+
 ## [3.4.17] - 2026-07-07
 ### Added
 - **vLinker FS USB on Termux — Setup Guide**: New `docs/termux-usb-setup.md` companion document covering the verified working path for using a vLinker FS USB adapter directly from Termux/Python on Android 11+ (Android 16 verified, Xiaomi 2311DRK48G). Explains the SELinux sandbox limitation, the `termux:API` v0.53.0 FD-passing mechanism, and the `libusb_wrap_sys_device()` pattern required to bridge a Termux USB handle into Python. Documents pitfalls encountered (v0.51 "No such device" bug, FD ordering, CDC notification-header stripping, FTDI FT230X quirks) so future users do not repeat the same debug cycle.
