@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.19] - 2026-07-07
+### Fixed
+- **WiFi connection — additional fix for ELM327 boot-buffer contamination**: v3.4.18 fixed the per-read timeout but missed a class of failures where the ATZ boot banner (`ELM327 v2.x\r\n>`) arrives in pieces interleaved with the subsequent ATI/AT@1 probe — the stray boot-prompt `>` prematurely closed the recv loop, the response parser saw an empty/truncated string, and the adapter was misclassified as a non-standard clone (so vLinker optimizations never applied). New behaviour:
+  - `ElmDriver.initializeElm327()` now waits `Thread.sleep(1500L)` after ATZ (was 500ms) and then calls `drainStaleBytes(500ms)` to flush any leftover bytes from the boot banner before the ATI/AT@1 probe.
+  - New `BaseDriver.drainStaleBytes(long maxMillis)` no-op default + `WiFiDriver.drainStaleBytes()` override that reads & discards buffered bytes with a tight 50ms per-read SO_TIMEOUT (then restores the previous SO_TIMEOUT). Holds `commandLock` so it cannot race with concurrent `sendCommand`.
+  - `WiFiDriver.sendCommand()` simplified: during init-phase, the recv loop no longer breaks on first `response.length() > 0` — it keeps reading until the `>` prompt arrives, because a `>` from the ATZ boot banner can sit at the head of the response and we must not treat that as end-of-message. The deadline itself is the only bound.
+- Same root cause: `vLinkerOptimizer.detectDevice()` was previously returning `GENERIC_ELM327` for these adapters, so even when the connection succeeded the firmware-specific optimizations (ATAT1/2, ATST32/1A/23, ATAL) were never applied. With the buffer-drain in place, vLinker devices are now correctly identified and tuned.
+
 ## [3.4.18] - 2026-07-07
 ### Fixed
 - **WiFi connection reliability — ELM327 boot-timeout race**: Rewrote `WiFiDriver.connect()` to fix a class of failures where the app reported "could not connect" against perfectly reachable vLinker MC WiFi adapters (other apps like Car Scanner Pro worked fine on the same hardware/network). Root causes addressed:

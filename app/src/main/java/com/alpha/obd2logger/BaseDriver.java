@@ -38,6 +38,18 @@ public abstract class BaseDriver {
         return "";
     }
 
+    /**
+     * Drain any bytes that may have accumulated in the transport buffer
+     * (e.g. ATZ boot banner, stale prompt from a previous session). Subclasses
+     * with a real stream (WiFi, USB, BT) should override this; the default
+     * no-op is safe for stateless drivers (Simulation).
+     *
+     * @param maxMillis total time budget for draining
+     */
+    protected void drainStaleBytes(long maxMillis) {
+        // Default no-op — subclasses override.
+    }
+
     public boolean isConnected() {
         return connected;
     }

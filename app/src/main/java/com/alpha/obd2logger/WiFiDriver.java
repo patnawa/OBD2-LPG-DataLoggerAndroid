@@ -109,11 +109,16 @@ public final class WiFiDriver extends ElmDriver {
                 try {
                     b = inputStream.read();
                 } catch (SocketTimeoutException timeout) {
-                    // If we already got a partial response and are in steady
-                    // state, treat the timeout as end-of-message. During init
-                    // (ATZ / ATI / AT@1), keep waiting — ELM327 may need up
-                    // to a full second to produce the first prompt after reset.
-                    if (!initializing && response.length() > 0) {
+                    // Init-phase policy: ELM327 may need a full second to push
+                    // its boot prompt `>` after ATZ. Keep waiting through
+                    // timeouts — the deadline itself is the bound.
+                    //
+                    // Steady-state policy: if we got any bytes, the timeout
+                    // signals end-of-message (ELM327 sent `>` already and
+                    // there's nothing more to read).
+                    if (!initializing) {
+                        // Either we got bytes (treat as complete) or nothing
+                        // arrived and the steady-state budget is exhausted.
                         break;
                     }
                     continue;
@@ -132,6 +137,59 @@ public final class WiFiDriver extends ElmDriver {
         } catch (IOException e) {
             android.util.Log.w("WiFiDriver", "sendCommand '" + command + "' failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             return "";
+        } finally {
+            commandLock.unlock();
+        }
+    }
+
+    /**
+     * Read and discard any bytes currently in the socket buffer. Used after
+     * ATZ (which produces a boot banner + prompt) so subsequent ATI/AT@1
+     * commands see a clean transport. Bounded by {@code maxMillis} total.
+     *
+     * Holds the command lock so it cannot race with concurrent sendCommand.
+     */
+    @Override
+    protected void drainStaleBytes(long maxMillis) {
+        if (inputStream == null || outputStream == null) {
+            return;
+        }
+        commandLock.lock();
+        try {
+            int prevTimeout;
+            try {
+                prevTimeout = socket.getSoTimeout();
+            } catch (Exception ignore) {
+                prevTimeout = 250;
+            }
+            // Short per-read timeout so drain returns quickly once the buffer
+            // is empty; the total budget is bounded by maxMillis.
+            try {
+                socket.setSoTimeout(50);
+            } catch (Exception ignore) {}
+            long deadline = System.currentTimeMillis() + maxMillis;
+            int discarded = 0;
+            try {
+                while (System.currentTimeMillis() < deadline) {
+                    int b = inputStream.read();
+                    if (b < 0) {
+                        connected = false;
+                        break;
+                    }
+                    discarded++;
+                }
+            } catch (SocketTimeoutException timeout) {
+                // Buffer empty — that's the success case.
+            } catch (IOException ioe) {
+                android.util.Log.w("WiFiDriver", "drainStaleBytes error: " + ioe.getMessage());
+            }
+            if (discarded > 0) {
+                android.util.Log.i("WiFiDriver", "drained " + discarded + " stale byte(s)");
+            }
+            // Restore the previous SO_TIMEOUT (init-phase or steady).
+            try {
+                socket.setSoTimeout(prevTimeout);
+            } catch (Exception ignore) {}
         } finally {
             commandLock.unlock();
         }

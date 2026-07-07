@@ -42,8 +42,21 @@ public abstract class ElmDriver extends BaseDriver {
 
     protected boolean initializeElm327() {
         try {
+            // ATZ is destructive: the ELM327 chip resets itself and pushes a
+            // multi-line boot banner followed by a `>` prompt. We must wait
+            // long enough for that banner to arrive AND drain it from the
+            // socket buffer before sending any further command — otherwise
+            // ATI/AT@1 would race against the still-arriving boot data and
+            // either time out or get garbage mixed into their response
+            // (the stray `>` from the boot prompt would prematurely close
+            // the recv loop, dropping ATI's actual response and making the
+            // adapter look like a non-standard clone).
             sendCommand("ATZ");
-            Thread.sleep(500L);
+            Thread.sleep(1500L);
+
+            // Drain any leftover bytes from the boot (banner + prompt that
+            // may have arrived after our read deadline) before probing again.
+            drainStaleBytes(500L);
 
             // Clone check queries
             String atiRes = sendCommand("ATI");
