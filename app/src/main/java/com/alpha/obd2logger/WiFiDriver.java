@@ -1,5 +1,6 @@
 package com.alpha.obd2logger;
 
+import android.content.Context;
 import android.net.Network;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
