@@ -26,6 +26,7 @@ This app connects to your vehicle's OBD2 port via ELM327-compatible adapters (vL
 - **Background foreground service**: Logging continues when screen is off or app is minimised (PARTIAL_WAKE_LOCK)
 - **PID auto-detection**: Queries SAE J1979 PID availability bitmaps (0x00, 0x20, 0x40) to poll only supported PIDs — 30-50% faster cycles
 - **VIN-based fallback**: If live detection fails, decodes brand/year from VIN WMI + model year code to estimate supported PIDs
+- **Config persistence**: Transport mode, WiFi IP/port, baud, interval, fuel mode, protocol, LPG-only, API server — all restored on reopen
 
 ### LPG/CNG Tune Assist
 - **Live Fuel Map**: 2D grid (T.inj ms × RPM) with color-coded STFT+LTFT averages — red (rich) to blue (lean), green (perfect)
@@ -81,7 +82,7 @@ Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Vol
 - **Parasitic Drain Estimate**: Voltage decay rate when engine off
 - **Charging Efficiency**: Voltage stability across RPM range (idle vs high RPM)
 - **Live Voltage Monitor**: Real-time scrolling graph with threshold bands (crank/rest/alternator/overcharge zones)
-- **Battery type selector**: Flooded (Standard), AGM/Gel, Calcium
+- **Battery type selector**: Flooded (Standard), AGM, EFB, Gel, Calcium, LiFePO4 — with chemistry-aware voltage thresholds
 - **Full Diagnostic**: One-tap comprehensive report with weighted overall score
 
 ### Adapter Support
@@ -190,6 +191,7 @@ app/src/main/java/com/alpha/obd2logger/
 ├── Mode09Reader.java        # Cal-ID and CVN reader
 ├── ReadinessMonitor.java    # Mode 01 PID 01 readiness parser
 ├── VinReader.java           # Mode 09 PID 02 VIN reader
+├── BatteryTester.java      # Professional 12V battery + charging system tester
 ├── ApiServer.java           # NanoHTTPD REST API server
 ├── LoggerConfig.java        # Configuration data class
 ├── ObdProtocol.java         # OBD protocol enum (ATSP values)
@@ -200,25 +202,23 @@ app/src/main/java/com/alpha/obd2logger/
 
 ## Changelog
 
-### v3.4.18 (2026-07-07) — WiFi Connection Reliability Fix
-- **ELM327 boot-timeout race in `WiFiDriver.connect()`**:
-  - Replaced hardcoded `Socket.setSoTimeout(250)` with adaptive timeout: `Math.max(connectionTimeoutMs, 2000)` during ATZ/ATI/AT@1 init probe, tightened to `Math.max(connectionTimeoutMs / 4, 500)` for steady-state.
-  - Connect handshake timeout floor raised from 2s to 5s.
-  - Added 500ms `Thread.sleep` after TCP accept to let ELM327 finish booting before sending ATZ.
-  - New `volatile boolean initializing` flag distinguishes init-phase (wait through timeouts for boot prompt) from steady-state (treat timeout-with-data as end-of-message).
-  - Replaced silent `catch (Exception ignored)` with `Log.e/w("WiFiDriver", ...)` for debugging via `adb logcat`.
-- Verified on Xiaomi 2311DRK48G / Android 16 / vLinker MC WiFi (same setup where Car Scanner Pro works fine).
+See [CHANGELOG.md](./CHANGELOG.md) for the full release history. Recent highlights:
 
-### v3.4.17 (2026-07-07) — Termux USB Guide + Locale Cleanup
-- **New `docs/termux-usb-setup.md`**: Companion guide for using vLinker FS USB from Termux/Python on Android 11+ (Android 16 verified). Documents SELinux sandbox workaround via `termux:API` v0.53.0 FD-passing + `libusb_wrap_sys_device()` bridge.
-- **Removed 13 unused translation resources** (ar, de, es, fr, hi, id, it, ja, ko, pt, ru, vi, zh); kept `System Default`, `English`, `Thai`.
+### v3.4.25 — Battery status chemistry-aware
+- Live voltage monitor badge uses selected battery type's thresholds (AGM at 13.5 V now correctly shows undercharge)
 
-### v3.1.1 (2026-07-04) — Bug Hunt: Threading & vLinker Fixes
-- **[HIGH] vLinker optimizations were dead code** — `detectDevice()` checked `isConnected()` before `connected` was set, so all vLinker-specific AT commands (ATST32/ATST1A/ATST23, ATAT1/ATAT2, 6-PID chunks) never applied. Every adapter got generic ELM327 settings. Fixed by removing the premature guard.
-- **[HIGH] Concurrent OBD2 command corruption** — Logger thread and DTC executor thread both called `sendCommand()` on the same driver simultaneously, interleaving writes/reads and corrupting responses. Added `ReentrantLock` to all 4 drivers (USB, WiFi, BT SPP, BLE).
-- **[HIGH] removeAll() crash on unmodifiable PID list** — When PID detection failed, `LoggerService` tried to `removeAll()` on `PIDCatalogue.getAll()` which returns an unmodifiable list → `UnsupportedOperationException`. Now always uses a mutable copy.
-- **[HIGH] FuelMapView thread-unsafe HashMap** — Background log replay thread wrote to `HashMap` while UI thread read/iterated → `ConcurrentModificationException`. Changed to `ConcurrentHashMap`.
-- **[MEDIUM] Bluetooth SPP socket leak** — When standard RFCOMM `connect()` failed, the old socket wasn't closed before creating the fallback socket via reflection, leaking native Bluetooth resources.
+### v3.4.24 — Config persistence
+- Transport, WiFi, fuel, protocol, API server settings survive app restarts
+
+### v3.4.23 — Background crash + fuel map RPM fix
+- No more NPE when logging in background and activity destroyed
+- Fuel map RPM binning changed to floor-based — matches tachometer
+
+### v3.4.22 — ELM327 init fail-fast
+- `initializeElm327()` now returns false on dead adapter instead of silent fake "connected"
+
+### v3.4.21 — WiFi routing fix
+- `Network.bindSocket()` bypasses missing route when gateway disabled (mobile data + WiFi simultaneous)
 
 ## License
 
