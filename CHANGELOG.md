@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.24] - 2026-07-08
+### Fixed
+- **Config not persisted across app restarts** — Transport mode, WiFi IP/port, baud rate, sample interval, fuel mode, OBD protocol, LPG-only, and API server settings all reset to defaults every time the app was closed/reopened. No `onPause()` save existed. Now `saveConfigPrefs()` persists all 9 settings to SharedPreferences on pause, and `restoreConfigPrefs()` restores them on resume — the app picks up exactly where you left it.
+
 ## [3.4.23] - 2026-07-08
 ### Fixed
 - **Background logging crash** — `MainActivity.onRecord()` called `countText.setText()` without null-/destroyed-guard. When the activity was destroyed (swipe-away, rotation) while `LoggerService` kept firing callbacks through `mainHandler`, the UI thread crashed with `NullPointerException` because all views were already cleared. Now `onRecord()` checks `isFinishing() || isDestroyed()` at entry and inside the `runOnUiThread` block, plus null-checks `countText`.

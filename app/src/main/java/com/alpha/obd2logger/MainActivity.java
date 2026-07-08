@@ -4690,9 +4690,71 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
     }
 
+    private void saveConfigPrefs() {
+        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
+        android.content.SharedPreferences.Editor ed = prefs.edit();
+        ed.putInt("pref_transport_position", transportSpinner != null ? transportSpinner.getSelectedItemPosition() : 0);
+        ed.putInt("pref_fuel_position", fuelSpinner != null ? fuelSpinner.getSelectedItemPosition() : 0);
+        ed.putInt("pref_obd_protocol_position", obdProtocolSpinner != null ? obdProtocolSpinner.getSelectedItemPosition() : 0);
+        ed.putString("pref_wifi_ip", wifiIpInput != null ? wifiIpInput.getText().toString().trim() : "192.168.0.10");
+        ed.putString("pref_wifi_port", wifiPortInput != null ? wifiPortInput.getText().toString().trim() : "35000");
+        ed.putString("pref_baud", baudInput != null ? baudInput.getText().toString().trim() : "115200");
+        ed.putString("pref_interval", intervalInput != null ? intervalInput.getText().toString().trim() : "0.5");
+        ed.putBoolean("pref_lpg_only", lpgOnlyCheckbox != null && lpgOnlyCheckbox.isChecked());
+        ed.putBoolean("pref_api_server", apiServerCheckbox != null && apiServerCheckbox.isChecked());
+        ed.apply();
+    }
+
+    private void restoreConfigPrefs() {
+        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
+        if (transportSpinner != null) {
+            int pos = prefs.getInt("pref_transport_position", 0);
+            if (pos >= 0 && pos < transportSpinner.getAdapter().getCount()) {
+                transportSpinner.setSelection(pos);
+            }
+        }
+        if (fuelSpinner != null) {
+            int pos = prefs.getInt("pref_fuel_position", 0);
+            if (pos >= 0 && pos < fuelSpinner.getAdapter().getCount()) {
+                fuelSpinner.setSelection(pos);
+            }
+        }
+        if (obdProtocolSpinner != null) {
+            int pos = prefs.getInt("pref_obd_protocol_position", 0);
+            if (pos >= 0 && pos < obdProtocolSpinner.getAdapter().getCount()) {
+                obdProtocolSpinner.setSelection(pos);
+            }
+        }
+        if (wifiIpInput != null) {
+            wifiIpInput.setText(prefs.getString("pref_wifi_ip", "192.168.0.10"));
+        }
+        if (wifiPortInput != null) {
+            wifiPortInput.setText(prefs.getString("pref_wifi_port", "35000"));
+        }
+        if (baudInput != null) {
+            baudInput.setText(prefs.getString("pref_baud", "115200"));
+        }
+        if (intervalInput != null) {
+            intervalInput.setText(prefs.getString("pref_interval", "0.5"));
+        }
+        if (lpgOnlyCheckbox != null) {
+            lpgOnlyCheckbox.setChecked(prefs.getBoolean("pref_lpg_only", false));
+        }
+        if (apiServerCheckbox != null) {
+            apiServerCheckbox.setChecked(prefs.getBoolean("pref_api_server", false));
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        saveConfigPrefs();
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+        restoreConfigPrefs();
         // Re-assert the keep-screen-on flag on resume in case the activity/window was recreated.
         if (keepScreenOnCheckbox != null) {
             applyKeepScreenOn(keepScreenOnCheckbox.isChecked());
