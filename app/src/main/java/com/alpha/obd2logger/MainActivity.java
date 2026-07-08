@@ -3573,7 +3573,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             
             runOnUiThread(() -> {
                 displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
-                displayModuleStatus(scanResult.modules, scanResult.msCanIncluded, scanResult.msCanModules);
+                displayModuleStatus(scanResult.modules, scanResult.msCanIncluded, scanResult.msCanModuleCount);
                 updateDtcBadge(stored.size(), pending.size(), permanent.size());
             });
         });
