@@ -134,6 +134,21 @@ public final class DtcReader {
         ECU_NAMES.put(0x7E2, "ABS/VDC (Nissan)");
         ECU_NAMES.put(0x7E3, "SRS — Airbag (Nissan)");
 
+        // ── Mitsubishi (unique CAN IDs; shared 7E0-7EF covered by Toyota) ──
+        ECU_NAMES.put(0x762, "AWC/S-AWC — All Wheel Control (Mitsubishi)");
+        ECU_NAMES.put(0x763, "ASC — Active Stability (Mitsubishi)");
+        ECU_NAMES.put(0x764, "ETACS — Body Control/BCM (Mitsubishi)");
+        ECU_NAMES.put(0x765, "EPS — Steering (Mitsubishi)");
+        ECU_NAMES.put(0x76A, "KOS/OSS — Keyless Operation (Mitsubishi)");
+        ECU_NAMES.put(0x76B, "TPMS — Tire Pressure (Mitsubishi)");
+        ECU_NAMES.put(0x72E, "4WD — Transfer Case (Mitsubishi Triton/Pajero)");
+        ECU_NAMES.put(0x72F, "AFS — Adaptive Front Light (Mitsubishi)");
+        ECU_NAMES.put(0x744, "MMCS — Multimedia/Navi (Mitsubishi)");
+        ECU_NAMES.put(0x611, "Engine-ECU Diesel (Mitsubishi 4D56/4N15)");
+        ECU_NAMES.put(0x619, "Engine-ECU Response (Mitsubishi Diesel)");
+        // MUT protocol (ISO 14230 KWP) — older Mitsubishi (pre-2008 Lancer, Pajero Sport, Strada)
+        // Uses functional addressing 0x33, but ELM327 handles this transparently via ATSP auto.
+
         // ── Ford MS-CAN ──
         ECU_NAMES.put(0x726, "GEM — Generic Electronic Module (Ford)");
         ECU_NAMES.put(0x727, "SJB — Smart Junction Box");
