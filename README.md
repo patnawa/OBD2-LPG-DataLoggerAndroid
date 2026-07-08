@@ -1,16 +1,14 @@
 # TunerMap Pro >> OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.4.21** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.4.22** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.4.21
+## What's New in 3.4.22
 
-- **CRITICAL: WiFi connect fails when gateway disabled** — When using mobile data + WiFi adapter simultaneously (gateway disabled), Android doesn't route the adapter's subnet through wlan0. Now uses `Network.bindSocket()` (same trick CarScanner Pro uses) to force the socket onto the WiFi link.
-- Python client: `SO_BINDTODEVICE` on wlan0 for the same routing fix.
-- Python client: PID parser — Control Module Voltage (0x3E) and Ambient Air Temp (0x46) had wrong formulas, returned 4628V / 115°C instead of 4.628V / 75°C. Fixed.
+- **initializeElm327() now fails fast when adapter doesn't respond** — Previously the method always returned `true` even when `sendCommand()` returned empty (dead adapter, wrong WiFi). Now checks ATZ + ATI responses and returns `false` immediately on empty — no more fake "connected" state.
 
 ---
 

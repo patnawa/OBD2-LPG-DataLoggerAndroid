@@ -51,7 +51,12 @@ public abstract class ElmDriver extends BaseDriver {
             // (the stray `>` from the boot prompt would prematurely close
             // the recv loop, dropping ATI's actual response and making the
             // adapter look like a non-standard clone).
-            sendCommand("ATZ");
+            String atzRes = sendCommand("ATZ");
+            if (atzRes == null || atzRes.trim().isEmpty()) {
+                android.util.Log.e("OBD2Logger", "ELM327 ATZ failed — no response from adapter");
+                disconnect();
+                return false;
+            }
             Thread.sleep(1500L);
 
             // Drain any leftover bytes from the boot (banner + prompt that
@@ -61,6 +66,12 @@ public abstract class ElmDriver extends BaseDriver {
             // Clone check queries
             String atiRes = sendCommand("ATI");
             String at1Res = sendCommand("AT@1");
+
+            if (atiRes == null || atiRes.trim().isEmpty()) {
+                android.util.Log.e("OBD2Logger", "ELM327 ATI failed — no response from adapter");
+                disconnect();
+                return false;
+            }
 
             boolean hasAtiErr = atiRes == null || atiRes.contains("?") || atiRes.trim().isEmpty();
             boolean hasAt1Err = at1Res == null || at1Res.contains("?");

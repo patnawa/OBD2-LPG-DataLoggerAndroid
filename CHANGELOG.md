@@ -2,7 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [3.4.21] - 2026-07-07
+## [3.4.22] - 2026-07-08
+### Fixed
+- **ElmDriver.initializeElm327() always returns true even when AT commands fail** — The method had a try/catch that only caught exceptions, but `sendCommand()` returns empty string on socket failure instead of throwing. This meant `WiFiDriver.connect()` would report success with `connected = true` even when the ELM327 never responded (dead adapter, wrong WiFi network, etc.). Now:
+  - Checks `ATZ` response — if empty/null, logs error + disconnects + returns `false` immediately.
+  - Checks `ATI` response — if empty/null, logs error + disconnects + returns `false` immediately.
+  - This prevents the app from silently staying in a broken "connected but not really" state.
 ### Fixed
 - **CRITICAL: WiFi connection fails when gateway disabled (mobile data + WiFi simultaneous)** — When the user disables the WiFi gateway to use mobile data alongside the vLinker WiFi adapter, Android's routing table doesn't route the adapter's subnet (192.168.0.x) through wlan0, so `Socket.connect()` times out. CarScanner Pro works because it uses `ConnectivityManager` to find the WiFi transport and calls `Network.bindSocket()` to force the socket onto the WiFi link. Now the app does the same: `WiFiDriver.findWifiNetwork()` locates the active WiFi `Network` (TRANSPORT_WIFI) and binds the socket before `connect()`. This bypasses the missing route entirely.
   - Added `Context context` field to `LoggerConfig` (transient) so WiFiDriver can access `ConnectivityManager`.
