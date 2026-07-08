@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.25] - 2026-07-08
+### Fixed
+- **Battery status badge now uses chemistry-specific thresholds** — `getBatteryStatusDescription()` and `getBatteryStatusColor()` had hardcoded Flooded-battery thresholds (13.2–14.8 V charging band). An AGM battery whose alternator outputs 13.5 V is *undercharging* (AGM needs ≥14.0 V) but the badge showed green "charging normal." Now both methods accept a Chemistry parameter and use `chem.altMinV/altMaxV/restLowV/restDeepV` — the live monitor badge reflects the actual chemistry selected in settings.
+
 ## [3.4.24] - 2026-07-08
 ### Fixed
 - **Config not persisted across app restarts** — Transport mode, WiFi IP/port, baud rate, sample interval, fuel mode, OBD protocol, LPG-only, and API server settings all reset to defaults every time the app was closed/reopened. No `onPause()` save existed. Now `saveConfigPrefs()` persists all 9 settings to SharedPreferences on pause, and `restoreConfigPrefs()` restores them on resume — the app picks up exactly where you left it.

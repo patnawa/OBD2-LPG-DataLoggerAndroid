@@ -1,14 +1,14 @@
 # TunerMap Pro >> OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.4.24** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.4.25** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.4.24
+## What's New in 3.4.25
 
-- **Settings now persist across restarts** — Transport mode, WiFi IP/port, baud, interval, fuel mode, protocol, LPG-only, API server — all saved automatically when app closes and restored when reopened.
+- **Battery status badge now chemistry-aware** — Live voltage monitor uses selected battery type's thresholds. AGM at 13.5 V shows undercharge warning (was: green "normal"). LiFePO4, Gel, Calcium, EFB all get correct ranges.
 
 ---
 

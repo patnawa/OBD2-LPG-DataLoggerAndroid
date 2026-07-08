@@ -2976,8 +2976,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
 
         if (batteryVoltageStatusBadge != null) {
-            String desc = getBatteryStatusDescription(v);
-            int color = getBatteryStatusColor(v);
+            String desc = getBatteryStatusDescription(v, chem);
+            int color = getBatteryStatusColor(v, chem);
             batteryVoltageStatusBadge.setText(desc);
             
             android.graphics.drawable.GradientDrawable statusGd = new android.graphics.drawable.GradientDrawable();
@@ -2999,15 +2999,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private String getBatteryStatusDescription(double v) {
-        if (v >= 13.2 && v <= 14.8) {
+        return getBatteryStatusDescription(v, BatteryTester.Chemistry.FLOODED);
+    }
+
+    private String getBatteryStatusDescription(double v, BatteryTester.Chemistry chem) {
+        double altMin = chem.altMinV;
+        double altMax = chem.altMaxV;
+        double restLow = chem.restLowV();
+        double restDeep = chem.restDeepV();
+
+        if (v >= altMin && v <= altMax) {
             return "กำลังชาร์จ (Charging / Alternator Normal)";
-        } else if (v > 14.8) {
+        } else if (v > altMax) {
             return "กำลังชาร์จสูงเกินไป (Overcharging Alert)";
-        } else if (v >= 12.9 && v < 13.2) {
+        } else if (v >= altMin - 0.7 && v < altMin) {
             return "แรงดันสแตนด์บาย (Float Charging / Standby)";
-        } else if (v >= 12.2 && v < 12.9) {
+        } else if (v >= restLow && v < altMin - 0.7) {
             return "ดับเครื่องปกติ (Resting / Normal)";
-        } else if (v >= 11.5 && v < 12.2) {
+        } else if (v >= restDeep && v < restLow) {
             return "แรงดันต่ำ / ใช้โหลดหนัก (Low Battery / Under Load)";
         } else {
             return "วิกฤต / คายประจุลึก (Critically Low / Deep Discharge)";
@@ -3015,16 +3024,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private int getBatteryStatusColor(double v) {
-        if (v >= 13.2 && v <= 14.8) {
-            return 0xFF22C55E; // Green
-        } else if (v > 14.8) {
-            return 0xFFEF4444; // Red
-        } else if (v >= 12.9 && v < 13.2) {
-            return 0xFF38BDF8; // Blue
-        } else if (v >= 12.2 && v < 12.9) {
-            return 0xFFF59E0B; // Amber
+        return getBatteryStatusColor(v, BatteryTester.Chemistry.FLOODED);
+    }
+
+    private int getBatteryStatusColor(double v, BatteryTester.Chemistry chem) {
+        double altMin = chem.altMinV;
+        double altMax = chem.altMaxV;
+        double restLow = chem.restLowV();
+
+        if (v >= altMin && v <= altMax) {
+            return 0xFF22C55E; // Green — charging normal
+        } else if (v > altMax) {
+            return 0xFFEF4444; // Red — overcharging
+        } else if (v >= altMin - 0.7 && v < altMin) {
+            return 0xFF38BDF8; // Blue — standby/float
+        } else if (v >= restLow && v < altMin - 0.7) {
+            return 0xFFF59E0B; // Amber — resting normal
         } else {
-            return 0xFFEF4444; // Red
+            return 0xFFEF4444; // Red — critically low
         }
     }
 
