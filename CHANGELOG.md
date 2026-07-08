@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.28] - 2026-07-08
+### Added
+- **Ford MS-CAN support** — DTC scan now supports Ford's secondary CAN bus (MS-CAN, 125 kbps) for body/GEM modules. Enable via Settings checkbox "Ford MS-CAN Scan". Scans both HS-CAN (powertrain) and MS-CAN (body modules) buses sequentially.
+- **Module detection with scan status** — DTC scan now identifes which ECUs responded and displays per-module scan status in the DTC tab. Shows CAN ID, module name, and colored chips per mode (✓ clean / ● X DTCs / ⚠ no response). Supports 30+ known ECU IDs across HS-CAN and MS-CAN buses.
+
+### Changed
+- **DtcReader refactored** — new `readAllDtcs()` API with `DtcScanResult` containing codes + `ModuleInfo` list. Backward-compatible simple methods preserved.
+- **LoggerService** auto-scan and periodic check now use the module-aware `readAllDtcs()` API.
+
 ## [3.4.27] - 2026-07-08
 ### Fixed
 - **Fuel map debounce too strict — missed stable data during RPM jitter** — v3.4.26 added a 2-consecutive-ticks debounce but the 500-RPM cell boundary caused problems: idle at 800 RPM (cell 500) with a brief 1050 RPM blip (cell 1000) reset the counter. Returning to idle started from tick 1 again — idle data never accumulated. Replaced with a **sliding window** debounce (ring buffer of last 4 cell positions). A cell is accepted if it appeared at least once in the window — tolerates boundary jitter while still filtering one-off transient cells.

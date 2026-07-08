@@ -101,6 +101,7 @@ public final class LoggerService extends Service {
         void onDeviceDetected(VLinkerOptimizer.DeviceType deviceType);
         void onAdapterCheckResult(boolean isStandard, String details);
         void onDtcAutoScan(int storedCount, int pendingCount, int permanentCount);
+        void onDtcAutoScanDetails(DtcReader.DtcScanResult result);
         void onNewDtcDetected(java.util.List<DtcCode> newCodes);
     }
 
@@ -247,22 +248,24 @@ public final class LoggerService extends Service {
             }
         }
 
-        // --- Auto-scan DTCs ---
+        // --- Auto-scan DTCs (module-aware, supports Ford MS-CAN) ---
         try {
-            List<DtcCode> stored = DtcReader.readStoredDtcs(driver);
-            List<DtcCode> pending = DtcReader.readPendingDtcs(driver);
-            List<DtcCode> permanent = DtcReader.readPermanentDtcs(driver);
+            DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcs(driver, config.fordMsCanEnabled);
             
             lastStoredDtcs.clear();
-            lastStoredDtcs.addAll(stored);
+            lastStoredDtcs.addAll(scanResult.storedDtcs);
             lastPendingDtcs.clear();
-            lastPendingDtcs.addAll(pending);
+            lastPendingDtcs.addAll(scanResult.pendingDtcs);
             lastPermanentDtcs.clear();
-            lastPermanentDtcs.addAll(permanent);
+            lastPermanentDtcs.addAll(scanResult.permanentDtcs);
             
             LoggerCallback cbDtc = getCallback();
             if (cbDtc != null) {
-                mainHandler.post(() -> cbDtc.onDtcAutoScan(stored.size(), pending.size(), permanent.size()));
+                mainHandler.post(() -> cbDtc.onDtcAutoScan(
+                    scanResult.storedDtcs.size(),
+                    scanResult.pendingDtcs.size(),
+                    scanResult.permanentDtcs.size()));
+                mainHandler.post(() -> cbDtc.onDtcAutoScanDetails(scanResult));
             }
         } catch (Exception e) {
             Log.e(TAG, "DTC Auto-scan failed", e);
@@ -355,9 +358,11 @@ public final class LoggerService extends Service {
                             if (de != null && !de.isShutdown()) {
                                 de.submit(() -> {
                                     try {
-                                        List<DtcCode> stored = DtcReader.readStoredDtcs(driver);
-                                        List<DtcCode> pending = DtcReader.readPendingDtcs(driver);
-                                        List<DtcCode> permanent = DtcReader.readPermanentDtcs(driver);
+                                        DtcReader.DtcScanResult sr = DtcReader.readAllDtcs(
+                                            driver, activeConfig.fordMsCanEnabled);
+                                        List<DtcCode> stored = sr.storedDtcs;
+                                        List<DtcCode> pending = sr.pendingDtcs;
+                                        List<DtcCode> permanent = sr.permanentDtcs;
                                         
                                         List<DtcCode> newCodes = new ArrayList<>();
                                         for (DtcCode c : stored) {

@@ -20,6 +20,7 @@ public final class LoggerConfig {
     public int connectionTimeoutMs;
     public int maxRetries;
     public boolean enableApiServer;
+    public boolean fordMsCanEnabled;
     /** Application context — needed by WiFiDriver for ConnectivityManager
      *  to bind sockets to the WiFi network (bypasses missing route when
      *  gateway is disabled for mobile data + WiFi simultaneous use). */
@@ -41,5 +42,6 @@ public final class LoggerConfig {
         this.connectionTimeoutMs = 2000;
         this.maxRetries = 3;
         this.enableApiServer = false;
+        this.fordMsCanEnabled = false;
     }
 }

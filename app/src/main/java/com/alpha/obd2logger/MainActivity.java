@@ -79,7 +79,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private Spinner languageSpinner, themeSpinner, transportSpinner, fuelSpinner, obdProtocolSpinner, bluetoothDeviceSpinner;
     private EditText wifiIpInput, wifiPortInput, baudInput, intervalInput;
     private TextView bluetoothHintText;
-    private CheckBox lpgOnlyCheckbox, backgroundLoggingCheckbox, keepScreenOnCheckbox, apiServerCheckbox;
+    private CheckBox lpgOnlyCheckbox, backgroundLoggingCheckbox, keepScreenOnCheckbox, apiServerCheckbox, fordMsCanCheckbox;
     private TextView apiServerIpText;
     private TextView customLogFolderText;
     private Button btnSelectLogFolder;
@@ -529,6 +529,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         keepScreenOnCheckbox = findViewById(R.id.keepScreenOnCheckbox);
         apiServerCheckbox = findViewById(R.id.apiServerCheckbox);
         apiServerIpText = findViewById(R.id.apiServerIpText);
+        fordMsCanCheckbox = findViewById(R.id.fordMsCanCheckbox);
         customLogFolderText = findViewById(R.id.customLogFolderText);
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
         boolean isApiServerEnabled = prefs.getBoolean("apiServerEnabled", false);
@@ -2645,6 +2646,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     @Override
+    public void onDtcAutoScanDetails(DtcReader.DtcScanResult result) {
+        // Module info from auto-scan is stored for display on the DTC tab
+        lastAutoScanModules = result.modules;
+        lastAutoScanMsCanIncluded = result.msCanIncluded;
+        lastAutoScanMsCanModules = result.msCanModuleCount;
+        // Don't show toast — just populate data for when user opens DTC tab
+    }
+
+    // Module info from last auto-scan
+    private volatile List<DtcReader.ModuleInfo> lastAutoScanModules = null;
+    private volatile boolean lastAutoScanMsCanIncluded = false;
+    private volatile int lastAutoScanMsCanModules = 0;
+
+    @Override
     public void onNewDtcDetected(List<DtcCode> newCodes) {
         runOnUiThread(() -> {
             StringBuilder sb = new StringBuilder();
@@ -3510,9 +3525,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
-            List<DtcCode> stored = DtcReader.readStoredDtcs(currentDriver);
-            List<DtcCode> pending = DtcReader.readPendingDtcs(currentDriver);
-            List<DtcCode> permanent = DtcReader.readPermanentDtcs(currentDriver);
+            boolean msCan = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
+            DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcs(currentDriver, msCan);
+            List<DtcCode> stored = scanResult.storedDtcs;
+            List<DtcCode> pending = scanResult.pendingDtcs;
+            List<DtcCode> permanent = scanResult.permanentDtcs;
             
             // Read Mode 06 — on-board monitor test results
             List<Mode06Result> mode06Results = Mode06Reader.readDiagnostic(currentDriver);
@@ -3556,6 +3573,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             
             runOnUiThread(() -> {
                 displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
+                displayModuleStatus(scanResult.modules, scanResult.msCanIncluded, scanResult.msCanModules);
                 updateDtcBadge(stored.size(), pending.size(), permanent.size());
             });
         });
@@ -3815,6 +3833,99 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(Intent.createChooser(intent, "Share Diagnostic PDF Report"));
         Toast.makeText(this, "PDF Report generated: " + pdfFile.getName(), Toast.LENGTH_LONG).show();
+    }
+
+    /**
+     * Display module scan status section — shows which ECUs responded
+     * to the DTC scan and their status on each diagnostic mode.
+     */
+    private void displayModuleStatus(List<DtcReader.ModuleInfo> modules,
+                                     boolean msCanIncluded, int msCanModules) {
+        if (modules == null || modules.isEmpty()) return;
+
+        // Section header card
+        LinearLayout sectionHeader = new LinearLayout(this);
+        sectionHeader.setOrientation(LinearLayout.HORIZONTAL);
+        sectionHeader.setPadding(0, dpToPx(8), 0, dpToPx(8));
+        sectionHeader.setGravity(android.view.Gravity.CENTER_VERTICAL);
+
+        View accentBar = new View(this);
+        accentBar.setBackgroundColor(getColorCompat(R.color.primary));
+        LinearLayout.LayoutParams accentParams = new LinearLayout.LayoutParams(dpToPx(4), dpToPx(18));
+        accentParams.rightMargin = dpToPx(8);
+        accentBar.setLayoutParams(accentParams);
+        sectionHeader.addView(accentBar);
+
+        TextView headerView = new TextView(this);
+        String headerText = "🔌 Detected Modules (" + modules.size() + ")";
+        if (msCanIncluded) {
+            headerText += " — incl. " + msCanModules + " on MS-CAN";
+        }
+        headerView.setText(headerText);
+        headerView.setTextColor(getColorCompat(R.color.accent));
+        headerView.setTextSize(14);
+        headerView.setTypeface(null, android.graphics.Typeface.BOLD);
+        sectionHeader.addView(headerView);
+        dtcListContainer.addView(sectionHeader);
+
+        // Per-module cards
+        for (DtcReader.ModuleInfo mod : modules) {
+            LinearLayout modCard = new LinearLayout(this);
+            modCard.setOrientation(LinearLayout.VERTICAL);
+            modCard.setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10));
+            modCard.setBackgroundResource(R.drawable.bg_dtc_card);
+            LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            cardLp.bottomMargin = dpToPx(4);
+            modCard.setLayoutParams(cardLp);
+
+            // Module name + CAN ID row
+            TextView nameRow = new TextView(this);
+            nameRow.setText("  ID:" + mod.canId + " — " + mod.moduleName);
+            nameRow.setTextColor(getColorCompat(R.color.text));
+            nameRow.setTextSize(12);
+            nameRow.setTypeface(null, android.graphics.Typeface.BOLD);
+            modCard.addView(nameRow);
+
+            // Status chips row
+            LinearLayout chipsRow = new LinearLayout(this);
+            chipsRow.setOrientation(LinearLayout.HORIZONTAL);
+            chipsRow.setPadding(dpToPx(16), dpToPx(4), 0, 0);
+
+            chipsRow.addView(scanStatusChip("Stored", mod.storedDtcCount, mod.storedOk));
+            chipsRow.addView(scanStatusChip("Pending", mod.pendingDtcCount, mod.pendingOk));
+            chipsRow.addView(scanStatusChip("Permanent", mod.permanentDtcCount, mod.permanentOk));
+
+            modCard.addView(chipsRow);
+            dtcListContainer.addView(modCard);
+        }
+    }
+
+    /**
+     * Create a small status chip showing scan result for one mode.
+     * ● Stored: 2 DTCs  (green=OK, red=has DTCs, grey=no response)
+     */
+    private TextView scanStatusChip(String label, int count, boolean responded) {
+        TextView chip = new TextView(this);
+        String status;
+        int color;
+
+        if (!responded) {
+            status = "⚠ " + label + ": no resp";
+            color = getColorCompat(R.color.muted);
+        } else if (count > 0) {
+            status = "● " + label + ": " + count + " DTC";
+            color = getColorCompat(R.color.danger);
+        } else {
+            status = "✓ " + label + ": clean";
+            color = getColorCompat(R.color.accent);
+        }
+
+        chip.setText(status);
+        chip.setTextColor(color);
+        chip.setTextSize(11);
+        chip.setPadding(0, 0, dpToPx(16), 0);
+        return chip;
     }
 
     private int dpToPx(int dp) {
@@ -4185,6 +4296,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         config.sampleIntervalMs = Math.max(50, (long) Math.round(seconds * 1000.0));
         config.lpgOnlyMode = lpgOnlyCheckbox.isChecked();
         config.enableApiServer = apiServerCheckbox.isChecked();
+        config.fordMsCanEnabled = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
         return config;
     }
 
@@ -4730,6 +4842,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         ed.putString("pref_interval", intervalInput != null ? intervalInput.getText().toString().trim() : "0.5");
         ed.putBoolean("pref_lpg_only", lpgOnlyCheckbox != null && lpgOnlyCheckbox.isChecked());
         ed.putBoolean("pref_api_server", apiServerCheckbox != null && apiServerCheckbox.isChecked());
+        ed.putBoolean("pref_ford_ms_can", fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked());
         ed.apply();
     }
 
@@ -4770,6 +4883,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         if (apiServerCheckbox != null) {
             apiServerCheckbox.setChecked(prefs.getBoolean("pref_api_server", false));
+        }
+        if (fordMsCanCheckbox != null) {
+            fordMsCanCheckbox.setChecked(prefs.getBoolean("pref_ford_ms_can", false));
         }
     }
 
