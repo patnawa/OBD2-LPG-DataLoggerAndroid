@@ -7,46 +7,184 @@ import java.util.Map;
 import java.util.LinkedHashSet;
 
 /**
- * Reads and clears Diagnostic Trouble Codes via OBD2 Mode 03 (read stored)
- * and Mode 04 (clear all).
+ * Reads and clears Diagnostic Trouble Codes via OBD2 Mode 03/07/0A.
  *
- * v2.0: Ford MS-CAN support — scans both HS-CAN and MS-CAN buses when
- * enabled, with per-module detection and scan status tracking.
- *
- * Mode 03 response format:
- *   43 NN [DTC1_H DTC1_L] [DTC2_H DTC2_L] ...
- * where NN = number of DTCs, followed by 2-byte DTC codes.
- *
- * Mode 07 (pending DTCs) uses the same format but response starts with 47.
+ * v3.0: Multi-brand, multi-protocol support for Thai-market vehicles.
+ *   - Exhaustive deep scan across all OBD2 protocol buses
+ *   - ECU name database: Toyota, Honda, Mazda, Isuzu, Nissan, Ford + generic
+ *   - Per-protocol scan status tracking
+ *   - Backward-compatible simple API preserved
  */
 public final class DtcReader {
 
     private DtcReader() {}
 
-    // ── Module Detection ──────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+    //  Protocol Bus Definitions
+    // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Information about a detected ECU module during DTC scan.
-     */
+    /** A protocol bus that can be scanned for DTCs. */
+    public static class ProtocolBus {
+        public final String label;           // "HS-CAN (auto)", "MS-CAN", "CAN 29-bit"
+        public final String atSpCommand;     // "ATSP0", "ATSPB", "ATSP7", etc.
+        public final String description;     // User-visible description
+        public final boolean isMsCan;        // true = MS-CAN body bus
+        public final String atPbParams;      // optional: AT PB custom baud params, null if none
+
+        public ProtocolBus(String label, String atSpCommand, String description,
+                           boolean isMsCan, String atPbParams) {
+            this.label = label;
+            this.atSpCommand = atSpCommand;
+            this.description = description;
+            this.isMsCan = isMsCan;
+            this.atPbParams = atPbParams;
+        }
+
+        @Override
+        public String toString() { return label + " (" + description + ")"; }
+    }
+
+    /** All protocol buses scanned in a deep scan. Ordered by likelihood. */
+    static final List<ProtocolBus> ALL_BUSES = new ArrayList<>();
+
+    /** Fast scan: auto-detect only (for auto-scan on logger start). */
+    static final List<ProtocolBus> FAST_BUSES = new ArrayList<>();
+
+    static {
+        // ── Primary buses (always scanned) ──
+        // ATSP0 = auto-detect → covers 90% of vehicles
+        FAST_BUSES.add(new ProtocolBus("HS-CAN (auto)", "ATSP0",
+            "Auto-detect: CAN 11/500, CAN 29/500, KWP, ISO9141",
+            false, null));
+
+        // ── Secondary buses (deep scan only) ──
+        // MS-CAN — Ford/Mazda body modules
+        ALL_BUSES.add(new ProtocolBus("MS-CAN", "ATSPB",
+            "Ford/Mazda medium-speed CAN 125kbps — Body/GEM/IC modules",
+            true, "ATPB4001"));
+        // CAN 29-bit 500kbps — Isuzu D-Max, trucks, J1939
+        ALL_BUSES.add(new ProtocolBus("CAN 29-bit", "ATSP7",
+            "Isuzu D-Max, trucks, SAE J1939 — 29-bit CAN IDs",
+            false, null));
+        // CAN 11-bit 250kbps — older Mazda, Ford, European
+        ALL_BUSES.add(new ProtocolBus("CAN 11-bit 250k", "ATSP8",
+            "Older Mazda/Ford/European — CAN 250 kbps",
+            false, null));
+        // ISO 14230 KWP2000 fast init — older Toyota diesel (Hilux Vigo, Fortuner)
+        ALL_BUSES.add(new ProtocolBus("KWP2000 Fast", "ATSP5",
+            "Older Toyota Diesel (Hilux Vigo, Fortuner 2004-2011) — ISO 14230 KWP fast",
+            false, null));
+        // ISO 9141-2 — older Honda, Nissan (Civic EG/EK, Sunny N16)
+        ALL_BUSES.add(new ProtocolBus("ISO 9141-2", "ATSP3",
+            "Older Honda (Civic EG/EK), Nissan (Sunny N16) — 5-baud init",
+            false, null));
+        // SAE J1850 VPW — some older GM/Isuzu (MU-7, D-Max 2004)
+        ALL_BUSES.add(new ProtocolBus("J1850 VPW", "ATSP2",
+            "Older Isuzu MU-7, D-Max 2004 — SAE J1850 VPW 10.4kbps",
+            false, null));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Module Detection (ECU CAN ID → Name)
+    // ═══════════════════════════════════════════════════════════════
+
+    /** ECU CAN IDs on HS-CAN (500 kbps) — all brands. */
+    static final Map<Integer, String> ECU_NAMES = new LinkedHashMap<>();
+
+    static {
+        // ── Toyota ──
+        ECU_NAMES.put(0x7E0, "ECM — Engine Control (Toyota)");
+        ECU_NAMES.put(0x7E1, "TCM — Transmission (Toyota)");
+        ECU_NAMES.put(0x7E2, "ABS/VSC — Brakes (Toyota)");
+        ECU_NAMES.put(0x7E3, "SRS — Airbag (Toyota)");
+        ECU_NAMES.put(0x7E4, "HV ECU — Hybrid Vehicle (Toyota)");
+        ECU_NAMES.put(0x7E5, "EPS — Power Steering (Toyota)");
+        ECU_NAMES.put(0x7E6, "A/C — Air Conditioner (Toyota)");
+        ECU_NAMES.put(0x7E7, "BCM — Body Control (Toyota)");
+        ECU_NAMES.put(0x7E8, "ECM Response");
+        ECU_NAMES.put(0x7E9, "TCM Response");
+        ECU_NAMES.put(0x7EA, "ABS Response");
+        ECU_NAMES.put(0x7EB, "SRS Response");
+        ECU_NAMES.put(0x7EC, "HV ECU Response");
+        ECU_NAMES.put(0x7ED, "EPS Response");
+        ECU_NAMES.put(0x7EE, "A/C Response");
+        ECU_NAMES.put(0x7EF, "BCM Response");
+
+        // ── Honda ──
+        ECU_NAMES.put(0x7C0, "PGM-FI — Fuel Injection (Honda)");
+        ECU_NAMES.put(0x7C1, "AT — Auto Transmission (Honda)");
+        ECU_NAMES.put(0x7C2, "VSA — Stability Assist (Honda)");
+        ECU_NAMES.put(0x7C3, "SRS — Airbag (Honda)");
+        ECU_NAMES.put(0x7C8, "PGM-FI Response");
+
+        // ── Mazda ── (shares Ford architecture)
+        ECU_NAMES.put(0x7E0, "PCM — Powertrain (Mazda)");
+        ECU_NAMES.put(0x7E1, "TCM — Transmission (Mazda)");
+        ECU_NAMES.put(0x7E2, "ABS/DSC (Mazda)");
+        ECU_NAMES.put(0x7E3, "EPS — Steering (Mazda)");
+
+        // ── Isuzu D-Max (29-bit CAN) ──
+        ECU_NAMES.put(0x18DA00F1, "ECM — Engine (Isuzu D-Max)");
+        ECU_NAMES.put(0x18DA00F2, "TCM — Transmission (Isuzu)");
+        ECU_NAMES.put(0x18DA00F3, "ABS — Brakes (Isuzu)");
+
+        // ── Nissan ──
+        ECU_NAMES.put(0x7E0, "ECM — Engine (Nissan)");
+        ECU_NAMES.put(0x7E1, "TCM — CVT/Auto (Nissan)");
+        ECU_NAMES.put(0x7E2, "ABS/VDC (Nissan)");
+        ECU_NAMES.put(0x7E3, "SRS — Airbag (Nissan)");
+
+        // ── Ford MS-CAN ──
+        ECU_NAMES.put(0x726, "GEM — Generic Electronic Module (Ford)");
+        ECU_NAMES.put(0x727, "SJB — Smart Junction Box");
+        ECU_NAMES.put(0x728, "BCM — Body Control (Ford)");
+        ECU_NAMES.put(0x733, "IC — Instrument Cluster");
+        ECU_NAMES.put(0x736, "DATC — Climate Control");
+        ECU_NAMES.put(0x737, "PAM — Parking Aid");
+        ECU_NAMES.put(0x73C, "DSM — Driver Seat");
+        ECU_NAMES.put(0x73D, "DDM — Driver Door");
+        ECU_NAMES.put(0x73E, "PDM — Passenger Door");
+        ECU_NAMES.put(0x745, "ACM — Audio");
+        ECU_NAMES.put(0x750, "FCIM — Front Controls");
+    }
+
+    /** Look up a human-readable module name from a CAN ID. */
+    private static String moduleNameForCanId(int ecuId) {
+        String name = ECU_NAMES.get(ecuId);
+        if (name != null) return name;
+
+        // Generic fallback based on common patterns
+        if (ecuId >= 0x7E0 && ecuId <= 0x7EF) {
+            return String.format("ECU 0x%03X (HS-CAN)", ecuId);
+        }
+        if (ecuId >= 0x720 && ecuId <= 0x7FF) {
+            return String.format("Module 0x%03X (MS-CAN)", ecuId);
+        }
+        return String.format("Module 0x%X", ecuId);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Data Types
+    // ═══════════════════════════════════════════════════════════════
+
+    /** Information about a detected ECU module during DTC scan. */
     public static class ModuleInfo {
-        public final String canId;        // e.g. "7E8", "7E9", "7EC"
-        public final int ecuId;           // numeric CAN ID (e.g. 0x7E8)
-        public final String moduleName;   // e.g. "Engine Control Module"
-        public final boolean moduleScanned;    // responded to at least one mode
-        public final boolean storedOk;    // Mode 03 responded
-        public final boolean pendingOk;   // Mode 07 responded
-        public final boolean permanentOk; // Mode 0A responded
-        public final int storedDtcCount;
-        public final int pendingDtcCount;
-        public final int permanentDtcCount;
+        public final String canId;              // e.g. "7E8", "18DA00F1"
+        public final int ecuId;                 // numeric CAN ID
+        public final String moduleName;         // human-readable
+        public final String protocolLabel;      // "MS-CAN", "HS-CAN (auto)", etc.
+        public final boolean moduleScanned;     // responded to at least one mode
+        public final boolean storedOk, pendingOk, permanentOk;
+        public final int storedDtcCount, pendingDtcCount, permanentDtcCount;
 
-        ModuleInfo(String canId, int ecuId, String moduleName,
+        ModuleInfo(String canId, int ecuId, String moduleName, String protocolLabel,
                    boolean moduleScanned, boolean storedOk, boolean pendingOk,
                    boolean permanentOk, int storedDtcCount, int pendingDtcCount,
                    int permanentDtcCount) {
             this.canId = canId;
             this.ecuId = ecuId;
             this.moduleName = moduleName;
+            this.protocolLabel = protocolLabel;
             this.moduleScanned = moduleScanned;
             this.storedOk = storedOk;
             this.pendingOk = pendingOk;
@@ -56,341 +194,362 @@ public final class DtcReader {
             this.permanentDtcCount = permanentDtcCount;
         }
 
-        /** Total active+warning DTCs across all modes */
         public int getTotalDtcCount() {
             return storedDtcCount + pendingDtcCount + permanentDtcCount;
         }
 
         @Override
         public String toString() {
-            return canId + " (" + moduleName + ") stored=" + storedDtcCount
-                + " pending=" + pendingDtcCount + " perm=" + permanentDtcCount;
+            return canId + " (" + moduleName + ") [" + protocolLabel + "]";
         }
 
-        // ── Builder (set fields before calling build()) ─────
+        // ── Builder ──────────────────────────────────────────────
 
         public static class Builder {
             final int ecuId;
             final String canId;
-            final String busLabel;
+            final String protocolLabel;
             final String moduleName;
             boolean storedOk, pendingOk, permanentOk;
             int storedDtcCount, pendingDtcCount, permanentDtcCount;
 
-            public Builder(int ecuId, String busLabel, boolean isMsCan) {
+            public Builder(int ecuId, String protocolLabel) {
                 this.ecuId = ecuId;
-                this.canId = String.format("%03X", ecuId);
-                this.busLabel = busLabel;
-                this.moduleName = moduleNameForCanId(ecuId, isMsCan) + " [" + busLabel + "]";
+                this.canId = ecuId > 0xFFFF
+                    ? String.format("%08X", ecuId)
+                    : String.format("%03X", ecuId);
+                this.protocolLabel = protocolLabel;
+                this.moduleName = moduleNameForCanId(ecuId);
             }
 
             public ModuleInfo build() {
                 boolean scanned = storedOk || pendingOk || permanentOk;
-                return new ModuleInfo(canId, ecuId, moduleName,
+                return new ModuleInfo(canId, ecuId, moduleName, protocolLabel,
                     scanned, storedOk, pendingOk, permanentOk,
                     storedDtcCount, pendingDtcCount, permanentDtcCount);
             }
         }
     }
 
-    /**
-     * Complete DTC scan result including codes and module info.
-     */
+    /** Status of a single protocol bus after scanning. */
+    public static class ProtocolScanStatus {
+        public final ProtocolBus bus;
+        public final boolean responded;       // got any response from this bus
+        public final int modulesFound;        // distinct ECUs that responded
+        public final int totalDtcCount;       // DTCs found on this bus
+
+        ProtocolScanStatus(ProtocolBus bus, boolean responded, int modulesFound, int totalDtcCount) {
+            this.bus = bus;
+            this.responded = responded;
+            this.modulesFound = modulesFound;
+            this.totalDtcCount = totalDtcCount;
+        }
+    }
+
+    /** Complete DTC scan result. */
     public static class DtcScanResult {
         public final List<DtcCode> storedDtcs;
         public final List<DtcCode> pendingDtcs;
         public final List<DtcCode> permanentDtcs;
         public final List<ModuleInfo> modules;
-        /** Whether MS-CAN bus was included in this scan */
-        public final boolean msCanIncluded;
-        /** How many modules responded on MS-CAN */
-        public final int msCanModuleCount;
+        public final List<ProtocolScanStatus> protocolStatuses;
+        public final int protocolsScanned;
+        public final int protocolsResponded;
 
         DtcScanResult(List<DtcCode> stored, List<DtcCode> pending,
                       List<DtcCode> permanent, List<ModuleInfo> modules,
-                      boolean msCanIncluded, int msCanModuleCount) {
+                      List<ProtocolScanStatus> protocolStatuses) {
             this.storedDtcs = stored;
             this.pendingDtcs = pending;
             this.permanentDtcs = permanent;
             this.modules = modules;
-            this.msCanIncluded = msCanIncluded;
-            this.msCanModuleCount = msCanModuleCount;
+            this.protocolStatuses = protocolStatuses;
+            this.protocolsScanned = protocolStatuses.size();
+            int responded = 0;
+            for (ProtocolScanStatus s : protocolStatuses) {
+                if (s.responded) responded++;
+            }
+            this.protocolsResponded = responded;
         }
 
-        /** Empty result (no scan possible) */
         public static DtcScanResult empty() {
             return new DtcScanResult(new ArrayList<>(), new ArrayList<>(),
-                new ArrayList<>(), new ArrayList<>(), false, 0);
+                new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
         }
     }
 
-    // ── CAN ID → Module Name Mapping ─────────────────────────────
-
-    /** Known ECU CAN IDs (11-bit) on HS-CAN (500 kbps). */
-    static final Map<Integer, String> HS_CAN_ECU_NAMES = new LinkedHashMap<>();
-    /** Known ECU CAN IDs on MS-CAN (125 kbps, Ford). */
-    static final Map<Integer, String> MS_CAN_ECU_NAMES = new LinkedHashMap<>();
-
-    static {
-        // HS-CAN Powertrain ECUs
-        HS_CAN_ECU_NAMES.put(0x7E0, "ECM — Engine Control Module");
-        HS_CAN_ECU_NAMES.put(0x7E1, "TCM — Transmission Control Module");
-        HS_CAN_ECU_NAMES.put(0x7E2, "TCCM — Transfer Case Control Module");
-        HS_CAN_ECU_NAMES.put(0x7E3, "ABS — Anti-lock Brake System");
-        HS_CAN_ECU_NAMES.put(0x7E4, "PSCM — Power Steering Control");
-        HS_CAN_ECU_NAMES.put(0x7E5, "IPC — Instrument Panel Cluster");
-        HS_CAN_ECU_NAMES.put(0x7E6, "RCM — Restraints Control");
-        HS_CAN_ECU_NAMES.put(0x7E7, "APIM — Accessory Protocol Interface");
-        HS_CAN_ECU_NAMES.put(0x7E8, "ECM (Response)");
-        HS_CAN_ECU_NAMES.put(0x7E9, "TCM (Response)");
-        HS_CAN_ECU_NAMES.put(0x7EA, "TCCM (Response)");
-        HS_CAN_ECU_NAMES.put(0x7EB, "ABS (Response)");
-        HS_CAN_ECU_NAMES.put(0x7EC, "PSCM (Response)");
-        HS_CAN_ECU_NAMES.put(0x7ED, "IPC (Response)");
-        HS_CAN_ECU_NAMES.put(0x7EE, "RCM (Response)");
-        HS_CAN_ECU_NAMES.put(0x7EF, "APIM (Response)");
-        HS_CAN_ECU_NAMES.put(0x7DF, "OBD2 Broadcast");
-
-        // MS-CAN Body/Chassis ECUs (Ford-specific)
-        MS_CAN_ECU_NAMES.put(0x726, "GEM — Generic Electronic Module");
-        MS_CAN_ECU_NAMES.put(0x727, "SJB — Smart Junction Box");
-        MS_CAN_ECU_NAMES.put(0x728, "BCM — Body Control Module");
-        MS_CAN_ECU_NAMES.put(0x733, "IC — Instrument Cluster");
-        MS_CAN_ECU_NAMES.put(0x736, "DATC — Dual Auto Temp Control");
-        MS_CAN_ECU_NAMES.put(0x737, "PAM — Parking Aid Module");
-        MS_CAN_ECU_NAMES.put(0x73A, "OCS — Occupant Classification");
-        MS_CAN_ECU_NAMES.put(0x73B, "RCM — Restraints (MS-CAN)");
-        MS_CAN_ECU_NAMES.put(0x73C, "DSM — Driver Seat Module");
-        MS_CAN_ECU_NAMES.put(0x73D, "DDM — Driver Door Module");
-        MS_CAN_ECU_NAMES.put(0x73E, "PDM — Passenger Door Module");
-        MS_CAN_ECU_NAMES.put(0x745, "ACM — Audio Control Module");
-        MS_CAN_ECU_NAMES.put(0x750, "FCIM — Front Controls Interface");
-        MS_CAN_ECU_NAMES.put(0x760, "ABS/TC — ABS on MS-CAN");
-    }
-
-    /** Look up a human-readable module name from a CAN ID (hex). */
-    private static String moduleNameForCanId(int ecuId, boolean isMsCan) {
-        Map<Integer, String> primary = isMsCan ? MS_CAN_ECU_NAMES : HS_CAN_ECU_NAMES;
-        Map<Integer, String> fallback = isMsCan ? HS_CAN_ECU_NAMES : MS_CAN_ECU_NAMES;
-
-        String name = primary.get(ecuId);
-        if (name != null) return name;
-        name = fallback.get(ecuId);
-        if (name != null) return name;
-        return String.format("Module 0x%X", ecuId);
-    }
-
-    // ── Public API ────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+    //  Public API
+    // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Full DTC scan with module detection.
-     * Scans stored (03), pending (07), permanent (0A).
-     * When fordMsCan is enabled, also scans the MS-CAN bus.
-     *
-     * @param driver connected ELM327 driver
-     * @param fordMsCan enable Ford MS-CAN secondary-bus scan
-     * @return complete scan result with codes + module info
+     * Fast DTC scan: auto-detect only (one protocol bus).
+     * Used by auto-scan on logger start.
      */
     public static DtcScanResult readAllDtcs(BaseDriver driver, boolean fordMsCan) {
         if (driver == null || !driver.isConnected()) {
             return DtcScanResult.empty();
         }
 
+        List<ProtocolBus> buses = new ArrayList<>();
+        buses.add(FAST_BUSES.get(0)); // auto-detect
+
+        // If MS-CAN enabled, add it as a secondary bus
+        if (fordMsCan && ALL_BUSES.size() > 0) {
+            buses.add(ALL_BUSES.get(0)); // MS-CAN
+        }
+
+        return scanBuses(driver, buses);
+    }
+
+    /**
+     * Deep DTC scan: try ALL protocol buses sequentially.
+     * Covers every protocol for Thai-market vehicles.
+     * Use for manual "Deep Scan" button — slower but exhaustive.
+     *
+     * @return comprehensive scan result with per-protocol status
+     */
+    public static DtcScanResult readAllDtcsDeep(BaseDriver driver) {
+        if (driver == null || !driver.isConnected()) {
+            return DtcScanResult.empty();
+        }
+
+        // Build full bus list: primary auto-detect + all secondary buses
+        List<ProtocolBus> buses = new ArrayList<>();
+        buses.add(FAST_BUSES.get(0)); // auto-detect first
+        buses.addAll(ALL_BUSES);       // then all secondary buses
+
+        return scanBuses(driver, buses);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Multi-Bus Scan Engine
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Scan DTCs across multiple protocol buses.
+     * For each bus: switch protocol, scan Modes 03/07/0A with headers,
+     * collect module info, restore auto protocol.
+     */
+    private static DtcScanResult scanBuses(BaseDriver driver, List<ProtocolBus> buses) {
         List<DtcCode> allStored = new ArrayList<>();
         List<DtcCode> allPending = new ArrayList<>();
         List<DtcCode> allPermanent = new ArrayList<>();
         List<ModuleInfo> allModules = new ArrayList<>();
-        boolean msCanIncluded = false;
-        int msCanModules = 0;
+        List<ProtocolScanStatus> statuses = new ArrayList<>();
+        java.util.Set<String> seenCanIds = new java.util.HashSet<>();
 
-        // ── Scan HS-CAN (primary bus, auto protocol) ──
-        BusScanResult hs = scanSingleBus(driver, "HS-CAN", false);
-        allStored.addAll(hs.stored);
-        allPending.addAll(hs.pending);
-        allPermanent.addAll(hs.permanent);
-        allModules.addAll(hs.modules);
+        // Save current protocol to restore at end
+        driver.sendCommandRaw("ATSP0"); // start clean
+        try { Thread.sleep(150); } catch (InterruptedException ignored) {}
 
-        // ── Scan MS-CAN (Ford secondary bus) ──
-        if (fordMsCan) {
-            msCanIncluded = true;
-            String savedProtocol = saveProtocol(driver);
+        for (ProtocolBus bus : buses) {
+            BusScanResult result;
             try {
-                switchToMsCan(driver);
-                BusScanResult ms = scanSingleBus(driver, "MS-CAN", true);
-                allStored.addAll(ms.stored);
-                allPending.addAll(ms.pending);
-                allPermanent.addAll(ms.permanent);
-                allModules.addAll(ms.modules);
-                msCanModules = ms.modules.size();
+                result = scanSingleBus(driver, bus);
             } catch (Exception e) {
-                android.util.Log.e("DtcReader", "MS-CAN scan failed", e);
-            } finally {
-                restoreProtocol(driver, savedProtocol);
+                android.util.Log.e("DtcReader", "Bus scan failed: " + bus.label, e);
+                statuses.add(new ProtocolScanStatus(bus, false, 0, 0));
+                continue;
             }
+
+            // Merge DTCs (deduplicate by code string)
+            for (DtcCode c : result.stored) {
+                if (!containsCode(allStored, c)) allStored.add(c);
+            }
+            for (DtcCode c : result.pending) {
+                if (!containsCode(allPending, c)) allPending.add(c);
+            }
+            for (DtcCode c : result.permanent) {
+                if (!containsCode(allPermanent, c)) allPermanent.add(c);
+            }
+
+            // Merge modules (deduplicate by CAN ID)
+            for (ModuleInfo mod : result.modules) {
+                if (seenCanIds.add(mod.canId + "@" + mod.protocolLabel)) {
+                    allModules.add(mod);
+                }
+            }
+
+            statuses.add(new ProtocolScanStatus(
+                bus, result.anyResponse,
+                result.modules.size(),
+                result.stored.size() + result.pending.size() + result.permanent.size()
+            ));
         }
 
-        return new DtcScanResult(allStored, allPending, allPermanent,
-            allModules, msCanIncluded, msCanModules);
+        // Always restore to auto-detect
+        driver.sendCommandRaw("ATSP0");
+        try { Thread.sleep(150); } catch (InterruptedException ignored) {}
+
+        return new DtcScanResult(allStored, allPending, allPermanent, allModules, statuses);
     }
 
-    // ── Single-bus Scan ─────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+    //  Single-Bus Scan
+    // ═══════════════════════════════════════════════════════════════
 
-    /** Result for one bus scan. */
     private static class BusScanResult {
-        final List<DtcCode> stored;
-        final List<DtcCode> pending;
-        final List<DtcCode> permanent;
+        final List<DtcCode> stored, pending, permanent;
         final List<ModuleInfo> modules;
+        final boolean anyResponse;
 
         BusScanResult(List<DtcCode> stored, List<DtcCode> pending,
-                      List<DtcCode> permanent, List<ModuleInfo> modules) {
+                      List<DtcCode> permanent, List<ModuleInfo> modules,
+                      boolean anyResponse) {
             this.stored = stored;
             this.pending = pending;
             this.permanent = permanent;
             this.modules = modules;
+            this.anyResponse = anyResponse;
         }
     }
 
-    /**
-     * Scan one CAN bus: temporarily enable headers, run Mode 03/07/0A,
-     * parse per-module responses, then restore headers off.
-     */
-    private static BusScanResult scanSingleBus(BaseDriver driver, String busLabel, boolean isMsCan) {
+    private static BusScanResult scanSingleBus(BaseDriver driver, ProtocolBus bus) {
         List<DtcCode> stored = new ArrayList<>();
         List<DtcCode> pending = new ArrayList<>();
         List<DtcCode> permanent = new ArrayList<>();
         Map<Integer, ModuleInfo.Builder> moduleBuilders = new LinkedHashMap<>();
+        boolean anyResponse = false;
 
-        // Step 1: Enable headers temporarily so we see CAN IDs in responses
+        // Switch to this protocol
+        driver.sendCommandRaw(bus.atSpCommand);
+        try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+
+        // Apply custom baud params if needed (MS-CAN: AT PB 40 01)
+        if (bus.atPbParams != null) {
+            driver.sendCommandRaw(bus.atPbParams);
+            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+        }
+
+        // Enable headers to see CAN IDs
         driver.sendCommandRaw("ATH1");
+        try { Thread.sleep(50); } catch (InterruptedException ignored) {}
 
         try {
-            // Step 2: Read stored DTCs (Mode 03)
+            // Mode 03 — Stored DTCs
             String raw03 = driver.sendCommandRaw("03");
-            ScanLineResult slr03 = parseWithModuleHeaders(raw03, "43", moduleBuilders, busLabel, isMsCan,
-                new java.util.HashSet<>()); // store mode label for builders
-            stored.addAll(slr03.codes);
-            for (java.util.Map.Entry<Integer, List<DtcCode>> e : slr03.perModule.entrySet()) {
-                ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
-                    k -> new ModuleInfo.Builder(k, busLabel, isMsCan));
-                mb.storedOk = true;
-                mb.storedDtcCount = e.getValue().size();
+            if (raw03 != null && !raw03.isEmpty()) {
+                ScanLineResult slr = parseWithModuleHeaders(raw03, "43", bus.label);
+                stored.addAll(slr.codes);
+                for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
+                    ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
+                        k -> new ModuleInfo.Builder(k, bus.label));
+                    mb.storedOk = true;
+                    mb.storedDtcCount = e.getValue().size();
+                }
+                if (!slr.codes.isEmpty()) anyResponse = true;
             }
 
-            // Step 3: Read pending DTCs (Mode 07)
+            // Mode 07 — Pending DTCs
             String raw07 = driver.sendCommandRaw("07");
-            ScanLineResult slr07 = parseWithModuleHeaders(raw07, "47", moduleBuilders, busLabel, isMsCan, null);
-            pending.addAll(slr07.codes);
-            for (java.util.Map.Entry<Integer, List<DtcCode>> e : slr07.perModule.entrySet()) {
-                ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
-                    k -> new ModuleInfo.Builder(k, busLabel, isMsCan));
-                mb.pendingOk = true;
-                mb.pendingDtcCount = e.getValue().size();
+            if (raw07 != null && !raw07.isEmpty()) {
+                ScanLineResult slr = parseWithModuleHeaders(raw07, "47", bus.label);
+                pending.addAll(slr.codes);
+                for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
+                    ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
+                        k -> new ModuleInfo.Builder(k, bus.label));
+                    mb.pendingOk = true;
+                    mb.pendingDtcCount = e.getValue().size();
+                }
             }
 
-            // Step 4: Read permanent DTCs (Mode 0A)
+            // Mode 0A — Permanent DTCs
             String raw0A = driver.sendCommandRaw("0A");
-            ScanLineResult slr0A = parseWithModuleHeaders(raw0A, "4A", moduleBuilders, busLabel, isMsCan, null);
-            permanent.addAll(slr0A.codes);
-            for (java.util.Map.Entry<Integer, List<DtcCode>> e : slr0A.perModule.entrySet()) {
-                ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
-                    k -> new ModuleInfo.Builder(k, busLabel, isMsCan));
-                mb.permanentOk = true;
-                mb.permanentDtcCount = e.getValue().size();
+            if (raw0A != null && !raw0A.isEmpty()) {
+                ScanLineResult slr = parseWithModuleHeaders(raw0A, "4A", bus.label);
+                permanent.addAll(slr.codes);
+                for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
+                    ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
+                        k -> new ModuleInfo.Builder(k, bus.label));
+                    mb.permanentOk = true;
+                    mb.permanentDtcCount = e.getValue().size();
+                }
             }
+
+            // A bus "responded" even if we just got "NO DATA" back (means it connected)
+            // Check if any response came back at all (raw03 non-null means bus exists)
+            if (raw03 != null) anyResponse = true;
 
         } finally {
-            // Step 5: Restore headers off
             driver.sendCommandRaw("ATH0");
         }
 
-        // Build ModuleInfo list
+        // Build module list
         List<ModuleInfo> modules = new ArrayList<>();
         for (ModuleInfo.Builder mb : moduleBuilders.values()) {
             modules.add(mb.build());
         }
 
-        // If no modules detected but we got DTCs, add a virtual module
+        // If we didn't get headers but got DTCs, create a synthetic module entry
         if (modules.isEmpty() && (!stored.isEmpty() || !pending.isEmpty() || !permanent.isEmpty())) {
-            ModuleInfo fallback = new ModuleInfo(
-                "???", 0, busLabel + " (ECU unknown)",
+            ModuleInfo fallback = new ModuleInfo("???", 0,
+                bus.label + " (no header info)", bus.label,
                 true, !stored.isEmpty(), !pending.isEmpty(), !permanent.isEmpty(),
-                stored.size(), pending.size(), permanent.size()
-            );
+                stored.size(), pending.size(), permanent.size());
             modules.add(fallback);
         }
 
-        return new BusScanResult(stored, pending, permanent, modules);
+        return new BusScanResult(stored, pending, permanent, modules, anyResponse);
     }
 
-    // ── Response Parsing with Module Headers ─────────────────────
+    // ═══════════════════════════════════════════════════════════════
+    //  Response Parsing with Module Headers
+    // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Intermediate result from parsing one mode response.
-     */
     private static class ScanLineResult {
         final List<DtcCode> codes = new ArrayList<>();
-        /** DTCs grouped by ECU CAN ID that reported them. */
         final Map<Integer, List<DtcCode>> perModule = new LinkedHashMap<>();
     }
 
     /**
      * Parse a mode response with AT H1 headers enabled.
-     * Response lines look like:
-     *   7E8 06 43 04 01 33 00 00 00 00
-     *   7E9 06 47 00 (no DTCs)
-     *
-     * First hex token = CAN ID of responding ECU.
+     * Response lines: "7E8 06 43 04 01 33 00 00 00 00"
+     * First token = CAN ID (11-bit or 29-bit hex).
      */
     private static ScanLineResult parseWithModuleHeaders(
-            String response, String modeHeader,
-            Map<Integer, ModuleInfo.Builder> moduleBuilders,
-            String busLabel, boolean isMsCan,
-            java.util.Set<Integer> knownIds) {
+            String response, String modeHeader, String protocolLabel) {
 
         ScanLineResult result = new ScanLineResult();
-
         if (response == null || response.isEmpty()) return result;
 
         String[] lines = response.replace("\r", "\n").split("\n");
+        ScanLineResult tempResult = new ScanLineResult();
+
         for (String line : lines) {
             String clean = line.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "").trim();
             if (clean.isEmpty() || clean.matches("(?i)NODATA|NO DATA")) continue;
 
-            // Strip frame number prefix (e.g. "0:", "1:")
+            // Strip frame number prefix
             int colonIdx = clean.indexOf(':');
             if (colonIdx >= 0) {
                 clean = clean.substring(colonIdx + 1);
             }
 
-            // Tokenize: split on whitespace, each token is hex
             String[] tokens = clean.split("\\s+");
             if (tokens.length < 2) continue;
 
-            // First token should be CAN ID (3 hex chars like "7E8")
+            // Parse CAN ID — first token
             int ecuId;
             try {
                 ecuId = Integer.parseInt(tokens[0], 16);
             } catch (NumberFormatException e) {
-                // No valid CAN ID — fall back to old headerless parsing
+                // Not a CAN header line — try legacy parse
+                List<DtcCode> fallbackCodes = parseDtcPayload(
+                    clean.replaceAll("\\s+", ""), modeHeader);
+                result.codes.addAll(fallbackCodes);
                 continue;
             }
 
-            // Build the hex string from ONLY the data bytes (skip CAN ID,
-            // skip expected frame count, keep mode header + data)
+            // Build hex from data bytes (skip CAN ID)
             StringBuilder hexData = new StringBuilder();
             for (int i = 1; i < tokens.length; i++) {
                 hexData.append(tokens[i]);
             }
-            String hexLine = hexData.toString();
 
-            // Parse DTCs from this module's data payload
-            List<DtcCode> lineCodes = parseDtcPayload(hexLine, modeHeader);
+            List<DtcCode> lineCodes = parseDtcPayload(hexData.toString(), modeHeader);
             result.codes.addAll(lineCodes);
 
-            // Track per-module
-            ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(ecuId,
-                k -> new ModuleInfo.Builder(k, busLabel, isMsCan));
             result.perModule.computeIfAbsent(ecuId, k -> new ArrayList<>()).addAll(lineCodes);
         }
 
@@ -398,7 +557,7 @@ public final class DtcReader {
     }
 
     /**
-     * Parse DTCs from a hex payload string (no header, just mode byte + data).
+     * Parse DTCs from a hex payload string (mode byte + data, no CAN ID header).
      */
     private static List<DtcCode> parseDtcPayload(String hex, String modeHeader) {
         List<DtcCode> codes = new ArrayList<>();
@@ -410,12 +569,8 @@ public final class DtcReader {
         int pos = 0;
         if (cleanHex.startsWith(modeHeader)) {
             pos = modeHeader.length();
-            // Skip count byte on first frame
-            if (pos + 2 <= cleanHex.length()) {
-                pos += 2;
-            }
+            if (pos + 2 <= cleanHex.length()) pos += 2;
         } else {
-            // Consecutive ISO-TP frame — strip PCI header (21, 22, etc.)
             if (cleanHex.length() >= 2 && cleanHex.substring(0, 2).matches("2[0-9A-F]")) {
                 pos = 2;
             }
@@ -434,64 +589,13 @@ public final class DtcReader {
         return codes;
     }
 
-    // ── MS-CAN Protocol Switching ────────────────────────────────
-
-    /**
-     * Save current protocol setting so we can restore after MS-CAN scan.
-     * Returns the current ATDP response or "0" (auto) as default.
-     */
-    private static String saveProtocol(BaseDriver driver) {
-        String resp = driver.sendCommandRaw("ATDP");
-        if (resp != null && !resp.isEmpty()) {
-            // Extract protocol number from response like "AUTO, ISO 15765-4 (CAN 11/500)"
-            String clean = resp.trim();
-            // Fallback: just use saved ATSP value
-            return "0"; // restore to auto
-        }
-        return "0";
-    }
-
-    /**
-     * Switch ELM327 to Ford MS-CAN protocol.
-     * MS-CAN = CAN 11-bit 125kbps on a separate physical bus.
-     *
-     * Approach:
-     *   1. AT SP B — User1 CAN 11-bit 500kbps (closest built-in)
-     *      Some vLinker/OBDLink adapters auto-detect MS-CAN on this setting.
-     *   2. If adapter supports custom baud via AT PB:
-     *      AT PB 40 01 — sets Protocol B parameters for MS-CAN (125 kbps)
-     *      (only works on OBDLink/vLinker with extended ST command set)
-     */
-    private static void switchToMsCan(BaseDriver driver) {
-        // Try User1 CAN first (most adapters map this or can be configured)
-        driver.sendCommandRaw("ATSPB");
-        // Wait for protocol switch
-        try { Thread.sleep(200); } catch (InterruptedException ignored) {}
-
-        // Try to set MS-CAN custom baud (vLinker/OBDLink extended commands)
-        // AT PB <mode> <param>: set protocol B parameters
-        // Mode 0x40 = CAN 11-bit, next byte = baud prescaler
-        // This is silently ignored if adapter doesn't support it.
-        driver.sendCommandRaw("ATPB4001");
-        try { Thread.sleep(100); } catch (InterruptedException ignored) {}
-    }
-
-    /**
-     * Restore protocol after MS-CAN scan. Auto-detect is fine for normal use.
-     */
-    private static void restoreProtocol(BaseDriver driver, String savedProtocol) {
-        // Restore to auto protocol detect — the ELM327 will re-detect HS-CAN
-        driver.sendCommandRaw("ATSP0");
-        try { Thread.sleep(300); } catch (InterruptedException ignored) {}
-    }
-
-    // ── Backward-Compatible Simple API ──────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+    //  Backward-Compatible Simple API
+    // ═══════════════════════════════════════════════════════════════
 
     public static List<DtcCode> parseDtcResponse(String response, String modeHeader) {
         List<DtcCode> codes = new ArrayList<>();
-        if (response == null || response.isEmpty()) {
-            return codes;
-        }
+        if (response == null || response.isEmpty()) return codes;
 
         String[] lines = response.replace("\r", "\n").split("\n");
         for (String line : lines) {
@@ -499,9 +603,7 @@ public final class DtcReader {
             if (clean.isEmpty() || clean.equals("NODATA")) continue;
 
             int colonIdx = clean.indexOf(':');
-            if (colonIdx >= 0) {
-                clean = clean.substring(colonIdx + 1);
-            }
+            if (colonIdx >= 0) clean = clean.substring(colonIdx + 1);
 
             String hex = clean.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
             if (hex.length() < 4) continue;
@@ -509,9 +611,7 @@ public final class DtcReader {
             int pos = 0;
             if (hex.startsWith(modeHeader)) {
                 pos = modeHeader.length();
-                if (pos + 2 <= hex.length()) {
-                    pos += 2;
-                }
+                if (pos + 2 <= hex.length()) pos += 2;
             } else {
                 if (hex.length() >= 2 && hex.substring(0, 2).matches("2[0-9A-F]")) {
                     pos = 2;
@@ -521,7 +621,6 @@ public final class DtcReader {
             while (pos + 4 <= hex.length()) {
                 int byteA = Integer.parseInt(hex.substring(pos, pos + 2), 16);
                 int byteB = Integer.parseInt(hex.substring(pos + 2, pos + 4), 16);
-
                 if (byteA != 0x00 || byteB != 0x00) {
                     codes.add(DtcCode.fromHexBytes(byteA, byteB));
                 }
@@ -531,52 +630,36 @@ public final class DtcReader {
         return codes;
     }
 
-    /**
-     * Read stored DTCs (Mode 03) — simple, no module tracking.
-     */
     public static List<DtcCode> readStoredDtcs(BaseDriver driver) {
-        if (driver == null || !driver.isConnected()) {
-            return new ArrayList<>();
-        }
-        String response = driver.sendCommandRaw("03");
-        return parseDtcResponse(response, "43");
+        if (driver == null || !driver.isConnected()) return new ArrayList<>();
+        return parseDtcResponse(driver.sendCommandRaw("03"), "43");
     }
 
-    /**
-     * Read pending DTCs (Mode 07) — simple, no module tracking.
-     */
     public static List<DtcCode> readPendingDtcs(BaseDriver driver) {
-        if (driver == null || !driver.isConnected()) {
-            return new ArrayList<>();
-        }
-        String response = driver.sendCommandRaw("07");
-        return parseDtcResponse(response, "47");
+        if (driver == null || !driver.isConnected()) return new ArrayList<>();
+        return parseDtcResponse(driver.sendCommandRaw("07"), "47");
     }
 
-    /**
-     * Read permanent DTCs (Mode 0A) — simple, no module tracking.
-     */
     public static List<DtcCode> readPermanentDtcs(BaseDriver driver) {
-        if (driver == null || !driver.isConnected()) {
-            return new ArrayList<>();
-        }
-        String response = driver.sendCommandRaw("0A");
-        return parseDtcResponse(response, "4A");
+        if (driver == null || !driver.isConnected()) return new ArrayList<>();
+        return parseDtcResponse(driver.sendCommandRaw("0A"), "4A");
     }
 
-    /**
-     * Clear all DTCs and reset MIL (Mode 04).
-     * @return true if command was sent successfully
-     */
     public static boolean clearDtcs(BaseDriver driver) {
-        if (driver == null || !driver.isConnected()) {
-            return false;
-        }
+        if (driver == null || !driver.isConnected()) return false;
         String response = driver.sendCommandRaw("04");
-        if (response == null || response.isEmpty()) {
-            return false;
+        if (response == null || response.isEmpty()) return false;
+        return response.replaceAll("[^0-9A-Fa-f]", "").contains("44");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Helpers
+    // ═══════════════════════════════════════════════════════════════
+
+    private static boolean containsCode(List<DtcCode> list, DtcCode code) {
+        for (DtcCode c : list) {
+            if (c.getCode() != null && c.getCode().equals(code.getCode())) return true;
         }
-        String clean = response.replaceAll("[^0-9A-Fa-f]", "");
-        return clean.contains("44");
+        return false;
     }
 }

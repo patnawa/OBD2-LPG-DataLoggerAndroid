@@ -1342,11 +1342,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // DTC
         btnReadDtc.setOnClickListener(v -> readDtcs());
         btnReadDtc.setOnLongClickListener(v -> {
-            showScanHistoryDialog();
+            readDtcsDeep();
             return true;
         });
         btnClearDtc.setOnClickListener(v -> clearDtcs());
         btnReadVin.setOnClickListener(v -> readVin());
+        btnReadVin.setOnLongClickListener(v -> {
+            showScanHistoryDialog();
+            return true;
+        });
         btnReadiness.setOnClickListener(v -> checkReadiness());
 
         // Battery tester buttons
@@ -2647,17 +2651,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     @Override
     public void onDtcAutoScanDetails(DtcReader.DtcScanResult result) {
-        // Module info from auto-scan is stored for display on the DTC tab
         lastAutoScanModules = result.modules;
-        lastAutoScanMsCanIncluded = result.msCanIncluded;
-        lastAutoScanMsCanModules = result.msCanModuleCount;
-        // Don't show toast — just populate data for when user opens DTC tab
+        lastAutoScanProtocolStatuses = result.protocolStatuses;
     }
 
     // Module info from last auto-scan
     private volatile List<DtcReader.ModuleInfo> lastAutoScanModules = null;
-    private volatile boolean lastAutoScanMsCanIncluded = false;
-    private volatile int lastAutoScanMsCanModules = 0;
+    private volatile List<DtcReader.ProtocolScanStatus> lastAutoScanProtocolStatuses = null;
 
     @Override
     public void onNewDtcDetected(List<DtcCode> newCodes) {
@@ -3573,7 +3573,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             
             runOnUiThread(() -> {
                 displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
-                displayModuleStatus(scanResult.modules, scanResult.msCanIncluded, scanResult.msCanModuleCount);
+                displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
                 updateDtcBadge(stored.size(), pending.size(), permanent.size());
             });
         });
@@ -3836,14 +3836,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     /**
-     * Display module scan status section — shows which ECUs responded
-     * to the DTC scan and their status on each diagnostic mode.
+     * Display protocol scan status — shows which protocol buses responded
+     * and what modules were found on each.
      */
-    private void displayModuleStatus(List<DtcReader.ModuleInfo> modules,
-                                     boolean msCanIncluded, int msCanModules) {
-        if (modules == null || modules.isEmpty()) return;
+    private void displayProtocolScanStatus(List<DtcReader.ProtocolScanStatus> protocolStatuses,
+                                           List<DtcReader.ModuleInfo> modules) {
+        if (protocolStatuses == null || protocolStatuses.isEmpty()) {
+            // Fallback: show modules only
+            if (modules != null && !modules.isEmpty()) {
+                showModulesList(modules);
+            }
+            return;
+        }
 
-        // Section header card
+        // ── Protocol Scan Summary ──
+        int respondedCnt = 0;
+        int totalFound = 0;
+        for (DtcReader.ProtocolScanStatus s : protocolStatuses) {
+            if (s.responded) respondedCnt++;
+            totalFound += s.totalDtcCount;
+        }
+
         LinearLayout sectionHeader = new LinearLayout(this);
         sectionHeader.setOrientation(LinearLayout.HORIZONTAL);
         sectionHeader.setPadding(0, dpToPx(8), 0, dpToPx(8));
@@ -3857,29 +3870,76 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         sectionHeader.addView(accentBar);
 
         TextView headerView = new TextView(this);
-        String headerText = "🔌 Detected Modules (" + modules.size() + ")";
-        if (msCanIncluded) {
-            headerText += " — incl. " + msCanModules + " on MS-CAN";
-        }
-        headerView.setText(headerText);
+        headerView.setText("🔌 Protocols Scanned: " + protocolStatuses.size() + "  |  "
+            + respondedCnt + " responded  |  Total DTCs: " + totalFound);
         headerView.setTextColor(getColorCompat(R.color.accent));
-        headerView.setTextSize(14);
+        headerView.setTextSize(13);
         headerView.setTypeface(null, android.graphics.Typeface.BOLD);
         sectionHeader.addView(headerView);
         dtcListContainer.addView(sectionHeader);
 
-        // Per-module cards
+        // Per-protocol rows
+        for (DtcReader.ProtocolScanStatus s : protocolStatuses) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6));
+            row.setBackgroundResource(R.drawable.bg_dtc_card);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            rowLp.bottomMargin = dpToPx(2);
+            row.setLayoutParams(rowLp);
+
+            // Status icon
+            TextView iconView = new TextView(this);
+            iconView.setText(s.responded ? (s.totalDtcCount > 0 ? "🔴" : "🟢") : "⚫");
+            iconView.setTextSize(12);
+            iconView.setPadding(0, 0, dpToPx(8), 0);
+            row.addView(iconView);
+
+            // Protocol name
+            TextView labelView = new TextView(this);
+            String extra = s.responded
+                ? (" — " + s.modulesFound + " modules, " + s.totalDtcCount + " DTCs")
+                : " — no response";
+            labelView.setText(s.bus.label + extra);
+            labelView.setTextColor(s.responded ? getColorCompat(R.color.text) : getColorCompat(R.color.muted));
+            labelView.setTextSize(11);
+            LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
+            labelView.setLayoutParams(labelLp);
+            row.addView(labelView);
+
+            dtcListContainer.addView(row);
+        }
+
+        // ── Module list ──
+        if (modules != null && !modules.isEmpty()) {
+            showModulesList(modules);
+        }
+    }
+
+    /** Show per-module scan status cards. */
+    private void showModulesList(List<DtcReader.ModuleInfo> modules) {
+        TextView modHeader = new TextView(this);
+        modHeader.setText("🔧 Detected Modules (" + modules.size() + "):");
+        modHeader.setTextColor(getColorCompat(R.color.accent));
+        modHeader.setTextSize(13);
+        modHeader.setPadding(0, dpToPx(12), 0, dpToPx(6));
+        modHeader.setTypeface(null, android.graphics.Typeface.BOLD);
+        dtcListContainer.addView(modHeader);
+
         for (DtcReader.ModuleInfo mod : modules) {
             LinearLayout modCard = new LinearLayout(this);
             modCard.setOrientation(LinearLayout.VERTICAL);
-            modCard.setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10));
+            modCard.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
             modCard.setBackgroundResource(R.drawable.bg_dtc_card);
             LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            cardLp.bottomMargin = dpToPx(4);
+            cardLp.bottomMargin = dpToPx(3);
             modCard.setLayoutParams(cardLp);
 
-            // Module name + CAN ID row
+            // Name row
             TextView nameRow = new TextView(this);
             nameRow.setText("  ID:" + mod.canId + " — " + mod.moduleName);
             nameRow.setTextColor(getColorCompat(R.color.text));
@@ -3887,18 +3947,75 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             nameRow.setTypeface(null, android.graphics.Typeface.BOLD);
             modCard.addView(nameRow);
 
-            // Status chips row
+            // Status chips
             LinearLayout chipsRow = new LinearLayout(this);
             chipsRow.setOrientation(LinearLayout.HORIZONTAL);
-            chipsRow.setPadding(dpToPx(16), dpToPx(4), 0, 0);
-
+            chipsRow.setPadding(dpToPx(16), dpToPx(2), 0, 0);
             chipsRow.addView(scanStatusChip("Stored", mod.storedDtcCount, mod.storedOk));
             chipsRow.addView(scanStatusChip("Pending", mod.pendingDtcCount, mod.pendingOk));
             chipsRow.addView(scanStatusChip("Permanent", mod.permanentDtcCount, mod.permanentOk));
-
             modCard.addView(chipsRow);
+
             dtcListContainer.addView(modCard);
         }
+    }
+
+    /**
+     * Deep DTC scan — try ALL protocol buses for exhaustive coverage.
+     * Triggered by long-press on the Read DTCs button.
+     */
+    private void readDtcsDeep() {
+        if (currentDriver == null || !currentDriver.isConnected()) {
+            dtcStatusText.setText("Not connected. Start logging first.");
+            dtcStatusText.setTextColor(getColorCompat(R.color.danger));
+            return;
+        }
+        dtcStatusText.setText("🔬 Deep Scan: probing all protocols...");
+        dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+        dtcListContainer.removeAllViews();
+        Toast.makeText(this, "Deep scanning all protocols — this may take 20-30s...", Toast.LENGTH_SHORT).show();
+
+        dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
+        dtcExecutor.submit(() -> {
+            DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcsDeep(currentDriver);
+            List<DtcCode> stored = scanResult.storedDtcs;
+            List<DtcCode> pending = scanResult.pendingDtcs;
+            List<DtcCode> permanent = scanResult.permanentDtcs;
+
+            // Read Mode 06
+            List<Mode06Result> mode06Results = Mode06Reader.readDiagnostic(currentDriver);
+            List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames = FreezeFrameReader.readAllFreezeFrames(currentDriver);
+            List<Mode09Reader.CalIdEntry> calIds = Mode09Reader.readCalIds(currentDriver);
+            List<Mode09Reader.CvnEntry> cvns = Mode09Reader.readCvns(currentDriver);
+
+            FreezeFrameData ffData = null;
+            if (!stored.isEmpty() || !pending.isEmpty()) {
+                ffData = FreezeFrameReader.readFreezeFrame(currentDriver);
+            }
+
+            // Scan comparison
+            if (dtcHistoryDb == null) dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
+            String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
+            if (vinStr.isEmpty()) vinStr = "UNKNOWN_VIN";
+            DtcComparison comparison = DtcComparison.compareWithHistory(
+                dtcHistoryDb.getHistory(vinStr), stored, pending);
+
+            lastStoredDtcs.clear(); lastStoredDtcs.addAll(stored);
+            lastPendingDtcs.clear(); lastPendingDtcs.addAll(pending);
+            lastPermanentDtcs.clear(); lastPermanentDtcs.addAll(permanent);
+            LoggerService.lastStoredDtcs.clear(); LoggerService.lastStoredDtcs.addAll(stored);
+            LoggerService.lastPendingDtcs.clear(); LoggerService.lastPendingDtcs.addAll(pending);
+            LoggerService.lastPermanentDtcs.clear(); LoggerService.lastPermanentDtcs.addAll(permanent);
+
+            String ffJson = ffData != null ? ffData.toJsonObject().toString() : null;
+            dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
+
+            runOnUiThread(() -> {
+                displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
+                displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
+                updateDtcBadge(stored.size(), pending.size(), permanent.size());
+            });
+        });
     }
 
     /**

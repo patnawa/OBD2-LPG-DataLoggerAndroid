@@ -3860,7 +3860,7 @@
                                 android:visibility="gone" />
                         </LinearLayout>
 
-                        <!-- Row: Ford MS-CAN Toggle -->
+                        <!-- Row: Multi-Protocol Deep Scan -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -3883,7 +3883,7 @@
                                     <TextView
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
-                                        android:text="Ford MS-CAN Scan"
+                                        android:text="Deep Multi-Protocol Scan"
                                         android:textColor="@color/text"
                                         android:textSize="14sp"
                                         android:textStyle="bold" />
@@ -3891,7 +3891,7 @@
                                     <TextView
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
-                                        android:text="Scan Body/GEM modules on Ford secondary CAN bus"
+                                        android:text="Scan all protocols: CAN, MS-CAN, KWP2000, ISO9141, J1850"
                                         android:textColor="@color/muted"
                                         android:textSize="11sp"
                                         android:layout_marginTop="2dp" />

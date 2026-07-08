@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.29] - 2026-07-08
+### Added
+- **Multi-Protocol Deep Scan** — DTC scan now covers all major protocol buses for Thai-market vehicles: HS-CAN auto-detect, MS-CAN (Ford/Mazda body), CAN 29-bit (Isuzu D-Max/trucks), CAN 11-bit 250k, KWP2000 Fast (older Toyota Diesel), ISO 9141-2 (older Honda/Nissan), J1850 VPW (older Isuzu MU-7). Long-press "Read DTCs" button triggers exhaustive deep scan.
+- **Brand-aware ECU name database** — 40+ ECU CAN IDs mapped to human-readable names: Toyota (ECM, TCM, ABS/VSC, SRS, HV ECU), Honda (PGM-FI, AT, VSA), Mazda (PCM, ABS/DSC), Isuzu D-Max 29-bit (ECM, TCM), Nissan (ECM, CVT, ABS/VDC), Ford MS-CAN (GEM, SJB, BCM, IC, etc)
+- **Protocol scan status display** — DTC tab now shows a protocol scan summary table (🟢 responded / 🔴 has DTCs / ⚫ no response) with module count and DTC count per protocol bus
+- **Deep Scan button** — long-press "Read DTCs" for exhaustive multi-protocol scan; long-press "Read VIN" for scan history
+
+### Changed
+- **DtcReader v3.0** — `ProtocolBus` class, `ProtocolScanStatus`, `readAllDtcsDeep()`, multi-bus scan engine with ATSP switching
+- **Settings checkbox renamed** — "Ford MS-CAN Scan" → "Deep Multi-Protocol Scan"
+- **Decreased auto-scan disruption** — fast scan still uses auto-detect only; deep scan is manual trigger
+
 ## [3.4.28] - 2026-07-08
 ### Added
 - **Ford MS-CAN support** — DTC scan now supports Ford's secondary CAN bus (MS-CAN, 125 kbps) for body/GEM modules. Enable via Settings checkbox "Ford MS-CAN Scan". Scans both HS-CAN (powertrain) and MS-CAN (body modules) buses sequentially.
