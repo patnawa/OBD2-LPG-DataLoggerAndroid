@@ -1,15 +1,14 @@
 # TunerMap Pro >> OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.4.26** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.4.27** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.4.26
+## What's New in 3.4.27
 
-- **Fuel map debounce now active** — Dead-code `consecutiveTicks` tracking wired up. Map cells only accept data after 2+ consecutive stable ticks — filters transient accel/decel blips.
-- **Fuel mode change now live** — Switching Petrol/LPG spinner mid-session instantly routes new data to the correct map layer (was: silently ignored until restart).
+- **Fuel map debounce now sliding-window** — v3.4.26's strict consecutive-ticks filter dropped valid data when RPM jittered across 500-step cell boundaries. Now uses 4-sample ring buffer — accepts cells that reappear in the window, tolerating brief excursions without resetting.
 
 ---
 

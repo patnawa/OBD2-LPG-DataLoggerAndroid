@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.27] - 2026-07-08
+### Fixed
+- **Fuel map debounce too strict — missed stable data during RPM jitter** — v3.4.26 added a 2-consecutive-ticks debounce but the 500-RPM cell boundary caused problems: idle at 800 RPM (cell 500) with a brief 1050 RPM blip (cell 1000) reset the counter. Returning to idle started from tick 1 again — idle data never accumulated. Replaced with a **sliding window** debounce (ring buffer of last 4 cell positions). A cell is accepted if it appeared at least once in the window — tolerates boundary jitter while still filtering one-off transient cells.
+
 ## [3.4.26] - 2026-07-08
 ### Fixed
 - **Fuel map debounce was dead code** — `FuelMapView` had `consecutiveTicks`/`lastRpmCell`/`lastTinjCell` tracking variables that were set but never read. Every sample pushed to the map immediately, including transient pass-through points during acceleration/deceleration — contaminating cell averages with unstable readings. Now wired up: data only enters the map after ≥2 consecutive ticks at the same cell, filtering out momentary RPM/load transitions.

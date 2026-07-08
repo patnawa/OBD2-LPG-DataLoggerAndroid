@@ -44,10 +44,18 @@ public class FuelMapView extends View {
     private int currentRpmCell = -1;
     private float currentTinjCell = -1f;
 
-    // Debounce tracking
-    private int lastRpmCell = -1;
-    private float lastTinjCell = -1f;
-    private int consecutiveTicks = 0;
+    // Debounce tracking: sliding window of last N cell positions.
+    // Uses a ring buffer of the last 4 (rpmCell, tinjBinValue) pairs.
+    // A sample is accepted if the current cell was seen at least once
+    // in the window — this tolerates brief RPM jitter across cell
+    // boundaries (e.g. idle at 800 RPM in cell 500, blip to 1050 in
+    // cell 1000, then back to 500) without resetting, while still
+    // filtering truly transient one-off pass-through cells.
+    private static final int DEBOUNCE_WINDOW = 4;
+    private final int[] windowRpm = new int[DEBOUNCE_WINDOW];
+    private final float[] windowTinj = new float[DEBOUNCE_WINDOW];
+    private int windowIdx = 0;    // next write position
+    private int windowFill = 0;   // how many slots filled so far
 
     private static float mapLoadToTinj(double loadOrMap) {
         if (loadOrMap <= 20) return 2.0f;
@@ -152,23 +160,38 @@ public class FuelMapView extends View {
         int tinjIdx = findClosestBinIndex(tinj, T_INJ_BINS);
         float tinjBinValue = T_INJ_BINS[tinjIdx];
 
-        // Debounce: only push data when the cell has been stable for
-        // ≥2 consecutive ticks. Filters out transient points during
-        // acceleration/deceleration — the cell represents a steady
-        // operating point, not a momentary pass-through.
-        boolean sameCell = (rpmCell == lastRpmCell && Math.abs(tinjBinValue - lastTinjCell) < 0.01f);
-        if (sameCell) {
-            consecutiveTicks++;
-        } else {
-            consecutiveTicks = 1;
-            lastRpmCell = rpmCell;
-            lastTinjCell = tinjBinValue;
+        // Sliding-window debounce: accept this sample if the current cell
+        // was seen at least once in the last DEBOUNCE_WINDOW samples.
+        // This tolerates brief RPM jitter crossing cell boundaries
+        // (idle→blip→idle doesn't reset the counter) while filtering
+        // truly transient one-off pass-through cells.
+        windowRpm[windowIdx] = rpmCell;
+        windowTinj[windowIdx] = tinjBinValue;
+        windowIdx = (windowIdx + 1) % DEBOUNCE_WINDOW;
+        if (windowFill < DEBOUNCE_WINDOW) windowFill++;
+
+        boolean seenBefore = false;
+        int limit = Math.min(windowFill, DEBOUNCE_WINDOW);
+        for (int i = 0; i < limit; i++) {
+            int idx = (windowIdx - 1 - i + DEBOUNCE_WINDOW) % DEBOUNCE_WINDOW;
+            if (windowRpm[idx] == rpmCell && Math.abs(windowTinj[idx] - tinjBinValue) < 0.01f) {
+                if (i > 0) { seenBefore = true; break; }  // seen in a PREVIOUS sample (not current)
+            }
         }
 
-        if (consecutiveTicks < 2) {
+        if (windowFill < DEBOUNCE_WINDOW && !seenBefore) {
+            // Still filling the window: accept first occurrence as seed,
+            // skip subsequent new cells until they appear again.
             currentRpmCell = rpmCell;
             currentTinjCell = tinjBinValue;
-            return;  // Not stable yet — skip this sample
+            return;
+        }
+
+        if (!seenBefore) {
+            // First time this cell appears in the full window — skip.
+            currentRpmCell = rpmCell;
+            currentTinjCell = tinjBinValue;
+            return;
         }
 
         currentRpmCell = rpmCell;
@@ -189,10 +212,9 @@ public class FuelMapView extends View {
         lpgData.clear();
         currentRpmCell = -1;
         currentTinjCell = -1f;
-        // Reset dwell tracking so the next session starts fresh.
-        lastRpmCell = -1;
-        lastTinjCell = -1f;
-        consecutiveTicks = 0;
+        // Reset sliding-window debounce so the next session starts fresh.
+        windowIdx = 0;
+        windowFill = 0;
         invalidate();
     }
 
@@ -214,9 +236,8 @@ public class FuelMapView extends View {
         }
         currentRpmCell = -1;
         currentTinjCell = -1f;
-        lastRpmCell = -1;
-        lastTinjCell = -1f;
-        consecutiveTicks = 0;
+        windowIdx = 0;
+        windowFill = 0;
         invalidate();
     }
 
