@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.23] - 2026-07-08
+### Fixed
+- **Background logging crash** — `MainActivity.onRecord()` called `countText.setText()` without null-/destroyed-guard. When the activity was destroyed (swipe-away, rotation) while `LoggerService` kept firing callbacks through `mainHandler`, the UI thread crashed with `NullPointerException` because all views were already cleared. Now `onRecord()` checks `isFinishing() || isDestroyed()` at entry and inside the `runOnUiThread` block, plus null-checks `countText`.
+- **Fuel map RPM cell mismatch** — `FuelMapView.pushDataInternal()` used `Math.round(rpm/500)*500` (HALF_UP rounding) to bin RPM into 500-step grid cells. At idle (~750 RPM), `Math.round(1.5)=2` placed the highlight at the 1000 RPM cell while the dashboard showed 750 — the cell looked 250 RPM ahead of actual. Changed to floor-based binning `(int)(rpm/500)*500` so each cell covers `[cell, cell+500)` and the highlight always sits at or below the actual RPM.
+
 ## [3.4.22] - 2026-07-08
 ### Fixed
 - **ElmDriver.initializeElm327() always returns true even when AT commands fail** — The method had a try/catch that only caught exceptions, but `sendCommand()` returns empty string on socket failure instead of throwing. This meant `WiFiDriver.connect()` would report success with `connected = true` even when the ELM327 never responded (dead adapter, wrong WiFi network, etc.). Now:

@@ -142,7 +142,10 @@ public class FuelMapView extends View {
     }
 
     private void pushDataInternal(double rpm, double map, double trim, FuelMode fuelMode) {
-        int rpmCell = (int) (Math.round(rpm / RPM_STEP) * RPM_STEP);
+        // Floor-based binning: RPM 750→500, 1499→1000, 1500→1500.
+        // Each cell covers [cell, cell+500), so the highlight always
+        // sits at or below the actual RPM — matching the driver's tachometer.
+        int rpmCell = (int)(rpm / RPM_STEP) * RPM_STEP;
         rpmCell = Math.max(RPM_MIN, Math.min(RPM_MAX, rpmCell));
 
         double tinj = mapLoadToTinj(map);

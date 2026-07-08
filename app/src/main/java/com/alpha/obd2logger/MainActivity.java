@@ -2455,8 +2455,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     @Override
     public void onRecord(DataRecord record, int count) {
+        if (isFinishing() || isDestroyed()) return;
         runOnUiThread(() -> {
-            countText.setText("Records: " + count);
+            if (isFinishing() || isDestroyed()) return;
+            if (countText != null) countText.setText("Records: " + count);
             updateDashboard(record);
             updateGraphs(record);
             updateFuelMap(record);
