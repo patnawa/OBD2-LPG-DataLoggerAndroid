@@ -579,3 +579,4 @@ public final class DtcReader {
         String clean = response.replaceAll("[^0-9A-Fa-f]", "");
         return clean.contains("44");
     }
+}
