@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.30] - 2026-07-08
+### Added
+- **Ford HS-CAN ECU names** — brand-aware ECU naming: when Deep Scan is on, shared HS-CAN IDs (0x7E0-0x7EF) show Ford-specific names (PCM, TCM, ABS Module, RCM, IPC, PSCM, HVAC, APIM) instead of Toyota names
+- **Mitsubishi ECU database** — 13 unique CAN IDs: AWC/S-AWC (0x762), ETACS (0x764), KOS/OSS (0x76A), MMCS (0x744), Diesel Engine-ECU (0x611/0x619), 4WD Transfer (0x72E), AFS (0x72F), TPMS (0x76B), ASC (0x763), EPS (0x765)
+
+### Changed
+- **moduleNameForCanId** now accepts `fordMode` parameter — Ford names override Toyota for shared HS-CAN IDs when checkbox is enabled
+- **readAllDtcsDeep** now accepts `fordMode` flag — threaded through entire scan pipeline (scanBuses → scanSingleBus → ModuleInfo.Builder)
+- **Settings description** updated: "Scan all protocols (Ford: HS-CAN + MS-CAN, Toyota, Honda, Isuzu, etc)"
+
 ## [3.4.29] - 2026-07-08
 ### Added
 - **Multi-Protocol Deep Scan** — DTC scan now covers all major protocol buses for Thai-market vehicles: HS-CAN auto-detect, MS-CAN (Ford/Mazda body), CAN 29-bit (Isuzu D-Max/trucks), CAN 11-bit 250k, KWP2000 Fast (older Toyota Diesel), ISO 9141-2 (older Honda/Nissan), J1850 VPW (older Isuzu MU-7). Long-press "Read DTCs" button triggers exhaustive deep scan.

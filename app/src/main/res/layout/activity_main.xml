@@ -3891,7 +3891,7 @@
                                     <TextView
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
-                                        android:text="Scan all protocols: CAN, MS-CAN, KWP2000, ISO9141, J1850"
+                                        android:text="Scan all protocols (Ford: HS-CAN + MS-CAN, Toyota, Honda, Isuzu, etc)"
                                         android:textColor="@color/muted"
                                         android:textSize="11sp"
                                         android:layout_marginTop="2dp" />

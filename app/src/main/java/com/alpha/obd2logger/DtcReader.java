@@ -88,8 +88,30 @@ public final class DtcReader {
     //  Module Detection (ECU CAN ID → Name)
     // ═══════════════════════════════════════════════════════════════
 
-    /** ECU CAN IDs on HS-CAN (500 kbps) — all brands. */
+    /** ECU CAN IDs — generic defaults (Toyota wins for shared 0x7E0-0x7EF). */
     static final Map<Integer, String> ECU_NAMES = new LinkedHashMap<>();
+
+    /** Ford HS-CAN names — override shared IDs when Ford mode is active. */
+    static final Map<Integer, String> FORD_HS_CAN_NAMES = new LinkedHashMap<>();
+
+    static {
+        // ── Ford HS-CAN (overrides shared 0x7E0-0x7EF when Ford mode active) ──
+        FORD_HS_CAN_NAMES.put(0x7E0, "PCM — Powertrain Control (Ford)");
+        FORD_HS_CAN_NAMES.put(0x7E1, "TCM — Transmission (Ford)");
+        FORD_HS_CAN_NAMES.put(0x7E2, "ABS Module (Ford)");
+        FORD_HS_CAN_NAMES.put(0x7E3, "RCM — Restraints Control (Ford)");
+        FORD_HS_CAN_NAMES.put(0x7E4, "IPC — Instrument Panel (Ford)");
+        FORD_HS_CAN_NAMES.put(0x7E5, "PSCM — Power Steering (Ford)");
+        FORD_HS_CAN_NAMES.put(0x7E6, "HVAC — Climate Control (Ford)");
+        FORD_HS_CAN_NAMES.put(0x7E7, "APIM — Sync/Infotainment (Ford)");
+        FORD_HS_CAN_NAMES.put(0x7E8, "PCM Response");
+        FORD_HS_CAN_NAMES.put(0x7E9, "TCM Response");
+        FORD_HS_CAN_NAMES.put(0x7EA, "ABS Module Response");
+        FORD_HS_CAN_NAMES.put(0x7EB, "RCM Response");
+        FORD_HS_CAN_NAMES.put(0x7EC, "IPC Response");
+        FORD_HS_CAN_NAMES.put(0x7ED, "PSCM Response");
+        FORD_HS_CAN_NAMES.put(0x7EE, "HVAC Response");
+        FORD_HS_CAN_NAMES.put(0x7EF, "APIM Response");
 
     static {
         // ── Toyota ──
@@ -163,8 +185,12 @@ public final class DtcReader {
         ECU_NAMES.put(0x750, "FCIM — Front Controls");
     }
 
-    /** Look up a human-readable module name from a CAN ID. */
-    private static String moduleNameForCanId(int ecuId) {
+    /** Look up ECU name — prefers Ford names when fordMode is true. */
+    private static String moduleNameForCanId(int ecuId, boolean fordMode) {
+        if (fordMode) {
+            String fordName = FORD_HS_CAN_NAMES.get(ecuId);
+            if (fordName != null) return fordName;
+        }
         String name = ECU_NAMES.get(ecuId);
         if (name != null) return name;
 
@@ -228,13 +254,13 @@ public final class DtcReader {
             boolean storedOk, pendingOk, permanentOk;
             int storedDtcCount, pendingDtcCount, permanentDtcCount;
 
-            public Builder(int ecuId, String protocolLabel) {
+            public Builder(int ecuId, String protocolLabel, boolean fordMode) {
                 this.ecuId = ecuId;
                 this.canId = ecuId > 0xFFFF
                     ? String.format("%08X", ecuId)
                     : String.format("%03X", ecuId);
                 this.protocolLabel = protocolLabel;
-                this.moduleName = moduleNameForCanId(ecuId);
+                this.moduleName = moduleNameForCanId(ecuId, fordMode);
             }
 
             public ModuleInfo build() {
@@ -314,7 +340,7 @@ public final class DtcReader {
             buses.add(ALL_BUSES.get(0)); // MS-CAN
         }
 
-        return scanBuses(driver, buses);
+        return scanBuses(driver, buses, fordMsCan);
     }
 
     /**
@@ -322,9 +348,10 @@ public final class DtcReader {
      * Covers every protocol for Thai-market vehicles.
      * Use for manual "Deep Scan" button — slower but exhaustive.
      *
+     * @param fordMode use Ford-specific ECU names on HS-CAN
      * @return comprehensive scan result with per-protocol status
      */
-    public static DtcScanResult readAllDtcsDeep(BaseDriver driver) {
+    public static DtcScanResult readAllDtcsDeep(BaseDriver driver, boolean fordMode) {
         if (driver == null || !driver.isConnected()) {
             return DtcScanResult.empty();
         }
@@ -334,7 +361,7 @@ public final class DtcReader {
         buses.add(FAST_BUSES.get(0)); // auto-detect first
         buses.addAll(ALL_BUSES);       // then all secondary buses
 
-        return scanBuses(driver, buses);
+        return scanBuses(driver, buses, fordMode);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -346,7 +373,7 @@ public final class DtcReader {
      * For each bus: switch protocol, scan Modes 03/07/0A with headers,
      * collect module info, restore auto protocol.
      */
-    private static DtcScanResult scanBuses(BaseDriver driver, List<ProtocolBus> buses) {
+    private static DtcScanResult scanBuses(BaseDriver driver, List<ProtocolBus> buses, boolean fordMode) {
         List<DtcCode> allStored = new ArrayList<>();
         List<DtcCode> allPending = new ArrayList<>();
         List<DtcCode> allPermanent = new ArrayList<>();
@@ -361,7 +388,7 @@ public final class DtcReader {
         for (ProtocolBus bus : buses) {
             BusScanResult result;
             try {
-                result = scanSingleBus(driver, bus);
+                result = scanSingleBus(driver, bus, fordMode);
             } catch (Exception e) {
                 android.util.Log.e("DtcReader", "Bus scan failed: " + bus.label, e);
                 statuses.add(new ProtocolScanStatus(bus, false, 0, 0));
@@ -420,7 +447,7 @@ public final class DtcReader {
         }
     }
 
-    private static BusScanResult scanSingleBus(BaseDriver driver, ProtocolBus bus) {
+    private static BusScanResult scanSingleBus(BaseDriver driver, ProtocolBus bus, boolean fordMode) {
         List<DtcCode> stored = new ArrayList<>();
         List<DtcCode> pending = new ArrayList<>();
         List<DtcCode> permanent = new ArrayList<>();
@@ -449,7 +476,7 @@ public final class DtcReader {
                 stored.addAll(slr.codes);
                 for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
                     ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
-                        k -> new ModuleInfo.Builder(k, bus.label));
+                        k -> new ModuleInfo.Builder(k, bus.label, fordMode));
                     mb.storedOk = true;
                     mb.storedDtcCount = e.getValue().size();
                 }
@@ -463,7 +490,7 @@ public final class DtcReader {
                 pending.addAll(slr.codes);
                 for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
                     ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
-                        k -> new ModuleInfo.Builder(k, bus.label));
+                        k -> new ModuleInfo.Builder(k, bus.label, fordMode));
                     mb.pendingOk = true;
                     mb.pendingDtcCount = e.getValue().size();
                 }
@@ -476,7 +503,7 @@ public final class DtcReader {
                 permanent.addAll(slr.codes);
                 for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
                     ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
-                        k -> new ModuleInfo.Builder(k, bus.label));
+                        k -> new ModuleInfo.Builder(k, bus.label, fordMode));
                     mb.permanentOk = true;
                     mb.permanentDtcCount = e.getValue().size();
                 }

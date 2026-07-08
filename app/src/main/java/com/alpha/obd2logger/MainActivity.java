@@ -3975,9 +3975,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcListContainer.removeAllViews();
         Toast.makeText(this, "Deep scanning all protocols — this may take 20-30s...", Toast.LENGTH_SHORT).show();
 
+        final boolean msCan = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
-            DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcsDeep(currentDriver);
+            DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcsDeep(currentDriver, msCan);
             List<DtcCode> stored = scanResult.storedDtcs;
             List<DtcCode> pending = scanResult.pendingDtcs;
             List<DtcCode> permanent = scanResult.permanentDtcs;
