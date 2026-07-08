@@ -152,6 +152,25 @@ public class FuelMapView extends View {
         int tinjIdx = findClosestBinIndex(tinj, T_INJ_BINS);
         float tinjBinValue = T_INJ_BINS[tinjIdx];
 
+        // Debounce: only push data when the cell has been stable for
+        // ≥2 consecutive ticks. Filters out transient points during
+        // acceleration/deceleration — the cell represents a steady
+        // operating point, not a momentary pass-through.
+        boolean sameCell = (rpmCell == lastRpmCell && Math.abs(tinjBinValue - lastTinjCell) < 0.01f);
+        if (sameCell) {
+            consecutiveTicks++;
+        } else {
+            consecutiveTicks = 1;
+            lastRpmCell = rpmCell;
+            lastTinjCell = tinjBinValue;
+        }
+
+        if (consecutiveTicks < 2) {
+            currentRpmCell = rpmCell;
+            currentTinjCell = tinjBinValue;
+            return;  // Not stable yet — skip this sample
+        }
+
         currentRpmCell = rpmCell;
         currentTinjCell = tinjBinValue;
 

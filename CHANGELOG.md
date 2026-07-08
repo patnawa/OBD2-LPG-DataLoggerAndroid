@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.26] - 2026-07-08
+### Fixed
+- **Fuel map debounce was dead code** — `FuelMapView` had `consecutiveTicks`/`lastRpmCell`/`lastTinjCell` tracking variables that were set but never read. Every sample pushed to the map immediately, including transient pass-through points during acceleration/deceleration — contaminating cell averages with unstable readings. Now wired up: data only enters the map after ≥2 consecutive ticks at the same cell, filtering out momentary RPM/load transitions.
+- **Fuel mode change mid-session ignored** — Changing the fuel spinner (Petrol ↔ LPG) while logging only changed the UI theme color. The running `LoggerService` and `activeInProcessConfig` still used the fuel mode set at session start, so all new records routed to the OLD map layer. Switching from Petrol to LPG mid-drive silently continued filling the Petrol map. Now the spinner propagates the change to both the service config and the in-process config.
+
 ## [3.4.25] - 2026-07-08
 ### Fixed
 - **Battery status badge now uses chemistry-specific thresholds** — `getBatteryStatusDescription()` and `getBatteryStatusColor()` had hardcoded Flooded-battery thresholds (13.2–14.8 V charging band). An AGM battery whose alternator outputs 13.5 V is *undercharging* (AGM needs ≥14.0 V) but the badge showed green "charging normal." Now both methods accept a Chemistry parameter and use `chem.altMinV/altMaxV/restLowV/restDeepV` — the live monitor badge reflects the actual chemistry selected in settings.

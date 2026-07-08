@@ -583,7 +583,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         fuelSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                applyFuelTheme(position == 0 ? FuelMode.LPG : FuelMode.PETROL);
+                FuelMode mode = position == 0 ? FuelMode.LPG : FuelMode.PETROL;
+                applyFuelTheme(mode);
+                // Propagate fuel mode change to the running logger so
+                // subsequent records route to the correct map layer.
+                LoggerService svc = LoggerService.getInstance();
+                if (svc != null) {
+                    LoggerConfig cfg = svc.getConfig();
+                    if (cfg != null) cfg.fuelMode = mode;
+                }
+                if (activeInProcessConfig != null) {
+                    activeInProcessConfig.fuelMode = mode;
+                }
             }
 
             @Override
