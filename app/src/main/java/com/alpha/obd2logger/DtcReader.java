@@ -113,7 +113,6 @@ public final class DtcReader {
         FORD_HS_CAN_NAMES.put(0x7EE, "HVAC Response");
         FORD_HS_CAN_NAMES.put(0x7EF, "APIM Response");
 
-    static {
         // ── Toyota ──
         ECU_NAMES.put(0x7E0, "ECM — Engine Control (Toyota)");
         ECU_NAMES.put(0x7E1, "TCM — Transmission (Toyota)");
