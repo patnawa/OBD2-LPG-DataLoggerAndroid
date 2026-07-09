@@ -2116,7 +2116,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (backgroundLoggingCheckbox.isChecked()) {
             requestBatteryOptimizationExemption();
         }
-        running = true;
         loggingStartTime = SystemClock.elapsedRealtime();
         updateSessionStatus(true);
         clearReadings();
@@ -2161,6 +2160,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void startInProcessLogging(LoggerConfig config) {
+        running = true;
         activeInProcessConfig = config;
         executor = Executors.newSingleThreadExecutor();
         executor.submit(() -> runLogger(config));
@@ -2186,6 +2186,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void actuallyStartBackgroundLogging(LoggerConfig config) {
+        running = true;
         LoggerService.setCallback(this);
         LoggerService.setPendingConfig(config);
         Intent intent = new Intent(this, LoggerService.class);
@@ -2199,6 +2200,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void stopLogging() {
         running = false;
+        pendingBackgroundConfig = null; // cancel any deferred (permission-gated) start
         // Don't call currentDriver.disconnect() from the main thread — the
         // logger thread performs disconnect() in its finally block. Calling it
         // here too races with that thread and can double-free native resources

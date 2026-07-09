@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.6] - 2026-07-09
+### Fixed
+- **Background logging wouldn't start until app reopen** — `startLogging()` set `running = true` *before* the `POST_NOTIFICATIONS` permission gate. On Android 13+, if the permission wasn't granted yet, `startBackgroundLogging` deferred the start (requested permission + returned) but `running` was already stuck `true` with the checkbox checked and no session active. The first Start did nothing; only a Stop/restart made it work — and reopening the app (which resets `running` via `isLoggingActive()`) "fixed" it. Now `running = true` is set only when logging actually launches (`actuallyStartBackgroundLogging` / `startInProcessLogging`), and `stopLogging()` clears any deferred (permission-gated) start.
+
 ## [3.5.5] - 2026-07-09
 ### Fixed
 - **Background logging crash on Android 13+ (Android 16)** — `startForeground()` requires the runtime `POST_NOTIFICATIONS` permission. If it wasn't granted, `startForeground()` threw `SecurityException` on the system binder thread and killed the whole app the moment background logging started (the service worker thread's own try/catch does not cover `onStartCommand`). Fix: `startBackgroundLogging` now gates on `POST_NOTIFICATIONS` (API ≥ 33) and defers the `startForegroundService` call until the user grants it (resumed in `onRequestPermissionsResult`). Also hardened `LoggerService.onStartCommand` so a foreground-service startup failure degrades to a clean stop with an error instead of crashing.
