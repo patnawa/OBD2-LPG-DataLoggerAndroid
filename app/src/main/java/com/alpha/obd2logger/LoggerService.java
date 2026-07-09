@@ -162,8 +162,19 @@ public final class LoggerService extends Service {
         // clean stop with a user-visible error instead of a crash.
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0),
-                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
+                int fgsType = (config != null && (config.transportMode == TransportMode.SIM || config.transportMode == TransportMode.WIFI))
+                        ? android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                        : android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE;
+                try {
+                    startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0), fgsType);
+                } catch (Exception e1) {
+                    try {
+                        startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0),
+                                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+                    } catch (Exception e2) {
+                        startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0));
+                    }
+                }
             } else {
                 startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0));
             }
@@ -246,15 +257,15 @@ public final class LoggerService extends Service {
             return;
         }
 
-        if (config.transportMode == TransportMode.AUTO && driver instanceof SimulationDriver) {
+        if (config.transportMode == TransportMode.AUTO && localDriver instanceof SimulationDriver) {
             notifyStatus("Auto probe failed — running simulation.", false);
         } else {
             notifyStatus("Connected. Logging in background.", false);
         }
 
         // Notify UI of detected vLinker device type
-        if (driver instanceof ElmDriver) {
-            final VLinkerOptimizer.DeviceType dt = ((ElmDriver) driver).getVlinkerType();
+        if (localDriver instanceof ElmDriver) {
+            final VLinkerOptimizer.DeviceType dt = ((ElmDriver) localDriver).getVlinkerType();
             LoggerCallback cb0 = getCallback();
             if (cb0 != null && dt != VLinkerOptimizer.DeviceType.UNKNOWN) {
                 mainHandler.post(() -> cb0.onDeviceDetected(dt));
@@ -262,15 +273,15 @@ public final class LoggerService extends Service {
         }
 
         // Notify UI of adapter standard/clone validation result
-        final boolean isStd = driver.isStandardAdapter();
-        final String details = driver.getAdapterDetails();
+        final boolean isStd = localDriver.isStandardAdapter();
+        final String details = localDriver.getAdapterDetails();
         LoggerCallback cbCheck = getCallback();
         if (cbCheck != null) {
             mainHandler.post(() -> cbCheck.onAdapterCheckResult(isStd, details));
         }
 
         if (config.vin == null || config.vin.isEmpty()) {
-            String vin = VinReader.readVin(driver);
+            String vin = VinReader.readVin(localDriver);
                 if (vin != null) {
                     config.vin = vin;
                     LoggerCallback cb = getCallback();
@@ -416,12 +427,12 @@ public final class LoggerService extends Service {
 
             while (running) {
                 try {
-                    if (!driver.isConnected()) {
+                    if (!localDriver.isConnected()) {
                         if (retryCount > 0) {
                             final int finalRetry = retryCount;
                             notifyStatus("Connection lost. Reconnecting (" + finalRetry + "/" + maxRetries + ")...", false);
                         }
-                        if (!driver.connect()) {
+                        if (!localDriver.connect()) {
                             throw new java.io.IOException("Reconnection failed");
                         }
                         retryCount = 0;
