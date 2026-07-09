@@ -72,6 +72,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView headerStatus, headerVin, headerFuelMode, headerApiStatus;
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
     private TextView txtHomeFuelEconomy, txtHomeBoost, txtHomeDpf;
+    private TextView stripBoost, stripFuel;
     private View headerStatusDot, headerApiDivider;
     private android.widget.ImageButton btnSettings;
     private android.widget.ImageButton btnGoHome;
@@ -447,13 +448,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtHomeRpm = findViewById(R.id.txtHomeRpm);
         txtHomeSpeed = findViewById(R.id.txtHomeSpeed);
         txtHomeCoolant = findViewById(R.id.txtHomeCoolant);
-        // Derived sensor displays — resource name lookup (safe when not in layout)
-        txtHomeFuelEconomy = findViewById(getResources().getIdentifier(
-            "txtHomeFuelEconomy", "id", getPackageName()));
-        txtHomeBoost = findViewById(getResources().getIdentifier(
-            "txtHomeBoost", "id", getPackageName()));
-        txtHomeDpf = findViewById(getResources().getIdentifier(
-            "txtHomeDpf", "id", getPackageName()));
+        // Derived sensor displays
+        txtHomeFuelEconomy = findViewById(R.id.txtHomeFuelEconomy);
+        txtHomeBoost = findViewById(R.id.txtHomeBoost);
+        txtHomeDpf = findViewById(R.id.txtHomeDpf);
+        stripBoost = findViewById(R.id.stripBoost);
+        stripFuel = findViewById(R.id.stripFuel);
 
         com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnHomeConnect);
         if (btnHomeConnect != null) {
@@ -541,16 +541,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         fordMsCanCheckbox = findViewById(R.id.fordMsCanCheckbox);
         customLogFolderText = findViewById(R.id.customLogFolderText);
 
-        // Feature toggle checkboxes — use resource name lookup so they don't
-        // fail compilation when the IDs aren't yet defined in layout XML.
-        turboBoostCheckbox = findViewById(getResources().getIdentifier(
-            "turboBoostCheckbox", "id", getPackageName()));
-        fuelEconomyCheckbox = findViewById(getResources().getIdentifier(
-            "fuelEconomyCheckbox", "id", getPackageName()));
-        dpfMonitorCheckbox = findViewById(getResources().getIdentifier(
-            "dpfMonitorCheckbox", "id", getPackageName()));
-        customPidCheckbox = findViewById(getResources().getIdentifier(
-            "customPidCheckbox", "id", getPackageName()));
+        // Feature toggle checkboxes
+        turboBoostCheckbox = findViewById(R.id.turboBoostCheckbox);
+        fuelEconomyCheckbox = findViewById(R.id.fuelEconomyCheckbox);
+        dpfMonitorCheckbox = findViewById(R.id.dpfMonitorCheckbox);
+        customPidCheckbox = findViewById(R.id.customPidCheckbox);
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
         boolean isApiServerEnabled = prefs.getBoolean("apiServerEnabled", false);
         apiServerCheckbox.setChecked(isApiServerEnabled);
@@ -2770,6 +2765,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             } else {
                 txtHomeDpf.setText("DPF: ---");
             }
+        }
+
+        // Status strip: boost + fuel economy
+        if (stripBoost != null) {
+            stripBoost.setText(boostPsi != null ? String.format(Locale.US, "%.1f", boostPsi) : "--");
+        }
+        if (stripFuel != null) {
+            stripFuel.setText(fuelKmL != null ? String.format(Locale.US, "%.1f", fuelKmL) : "--");
         }
     }
 
