@@ -547,6 +547,28 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         fuelEconomyCheckbox = findViewById(R.id.fuelEconomyCheckbox);
         dpfMonitorCheckbox = findViewById(R.id.dpfMonitorCheckbox);
         customPidCheckbox = findViewById(R.id.customPidCheckbox);
+
+        // ── Instant-save on toggle (no need to wait for onPause) ──
+        if (turboBoostCheckbox != null) {
+            turboBoostCheckbox.setOnCheckedChangeListener((btn, checked) ->
+                prefs.edit().putBoolean("pref_turbo_boost", checked).apply());
+        }
+        if (fuelEconomyCheckbox != null) {
+            fuelEconomyCheckbox.setOnCheckedChangeListener((btn, checked) ->
+                prefs.edit().putBoolean("pref_fuel_economy", checked).apply());
+        }
+        if (dpfMonitorCheckbox != null) {
+            dpfMonitorCheckbox.setOnCheckedChangeListener((btn, checked) ->
+                prefs.edit().putBoolean("pref_dpf_monitor", checked).apply());
+        }
+        if (customPidCheckbox != null) {
+            customPidCheckbox.setOnCheckedChangeListener((btn, checked) ->
+                prefs.edit().putBoolean("pref_custom_pid", checked).apply());
+        }
+        if (fordMsCanCheckbox != null) {
+            fordMsCanCheckbox.setOnCheckedChangeListener((btn, checked) ->
+                prefs.edit().putBoolean("pref_ford_ms_can", checked).apply());
+        }
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
         boolean isApiServerEnabled = prefs.getBoolean("apiServerEnabled", false);
         apiServerCheckbox.setChecked(isApiServerEnabled);
@@ -2595,7 +2617,35 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         runOnUiThread(() -> {
             headerVin.setText("VIN: " + vin);
             if (txtHomeVin != null) txtHomeVin.setText(vin);
+
+            // ── Auto-detect diesel: enable DPF + Deep Scan on first run ──
+            if (vin != null && !vin.isEmpty() && !vin.equals("UNKNOWN")) {
+                android.content.SharedPreferences p = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
+                boolean alreadySet = p.getBoolean("pref_auto_detect_done", false);
+                if (!alreadySet && isDieselVin(vin)) {
+                    if (dpfMonitorCheckbox != null) dpfMonitorCheckbox.setChecked(true);
+                    if (fordMsCanCheckbox != null) fordMsCanCheckbox.setChecked(true);
+                    p.edit().putBoolean("pref_auto_detect_done", true).apply();
+                    Toast.makeText(this, "Diesel detected — DPF + Deep Scan enabled", Toast.LENGTH_LONG).show();
+                }
+            }
         });
+    }
+
+    /** Heuristic: returns true if VIN suggests a diesel vehicle. */
+    private static boolean isDieselVin(String vin) {
+        if (vin == null || vin.length() < 3) return false;
+        String wmi = vin.substring(0, 3).toUpperCase();
+        // Common Thai-market diesel WMI prefixes
+        switch (wmi) {
+            case "MPA": // Isuzu (Thailand) — almost all diesel
+            case "MNB": // Ford (Thailand) — Ranger mostly diesel
+            case "MMB": // Mitsubishi (Thailand) — Triton/Pajero diesel
+            case "MR0": // Toyota (Thailand) — Hilux/Fortuner mostly diesel
+                return true;
+            default:
+                return false;
+        }
     }
 
     @Override
