@@ -548,6 +548,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dpfMonitorCheckbox = findViewById(R.id.dpfMonitorCheckbox);
         customPidCheckbox = findViewById(R.id.customPidCheckbox);
 
+        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
+
         // ── Instant-save on toggle (no need to wait for onPause) ──
         if (turboBoostCheckbox != null) {
             turboBoostCheckbox.setOnCheckedChangeListener((btn, checked) ->
@@ -569,7 +571,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fordMsCanCheckbox.setOnCheckedChangeListener((btn, checked) ->
                 prefs.edit().putBoolean("pref_ford_ms_can", checked).apply());
         }
-        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
         boolean isApiServerEnabled = prefs.getBoolean("apiServerEnabled", false);
         apiServerCheckbox.setChecked(isApiServerEnabled);
         
