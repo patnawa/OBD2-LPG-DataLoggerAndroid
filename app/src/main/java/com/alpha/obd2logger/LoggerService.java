@@ -217,7 +217,7 @@ public final class LoggerService extends Service {
         // socket that never completes). Bound it with a timeout so a dead adapter
         // reports "Connection failed" instead of freezing on "Connecting…" forever.
         java.util.concurrent.Future<Boolean> connectTask =
-                Executors.newSingleThreadExecutor().submit(() -> !localDriver.isConnected() && localDriver.connect());
+                Executors.newSingleThreadExecutor().submit(() -> localDriver.isConnected() || localDriver.connect());
         boolean connectedResult;
         try {
             connectedResult = connectTask.get(15, java.util.concurrent.TimeUnit.SECONDS);

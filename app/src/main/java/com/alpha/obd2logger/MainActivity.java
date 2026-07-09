@@ -4674,29 +4674,42 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void readVin() {
-        if (currentDriver == null || !currentDriver.isConnected()) {
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
             dtcStatusText.setText("Not connected. Start logging first.");
             return;
         }
         dtcStatusText.setText("Reading VIN...");
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
-            String vin = VinReader.readVin(currentDriver);
-            runOnUiThread(() -> {
-                if (vin != null) {
-                    headerVin.setText("VIN: " + vin);
-                    dtcStatusText.setText("VIN: " + vin);
-                    dtcStatusText.setTextColor(getColorCompat(R.color.accent));
-                } else {
-                    dtcStatusText.setText("VIN not available. Some vehicles don't support Mode 09.");
-                    dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+            boolean wasPaused = isPaused;
+            if (!wasPaused) {
+                isPaused = true;
+                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+            }
+            try {
+                String vin = VinReader.readVin(activeDriver);
+                runOnUiThread(() -> {
+                    if (vin != null) {
+                        headerVin.setText("VIN: " + vin);
+                        dtcStatusText.setText("VIN: " + vin);
+                        dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+                    } else {
+                        dtcStatusText.setText("VIN not available. Some vehicles don't support Mode 09.");
+                        dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+                    }
+                });
+            } finally {
+                if (!wasPaused) {
+                    isPaused = false;
                 }
-            });
+            }
         });
     }
 
     private void checkReadiness() {
-        if (currentDriver == null || !currentDriver.isConnected()) {
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
             dtcStatusText.setText("Not connected. Start logging first.");
             return;
         }
@@ -4704,8 +4717,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         readinessContainer.removeAllViews();
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
-            ReadinessMonitor rm = ReadinessMonitor.read(currentDriver);
-            runOnUiThread(() -> displayReadiness(rm));
+            boolean wasPaused = isPaused;
+            if (!wasPaused) {
+                isPaused = true;
+                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+            }
+            try {
+                ReadinessMonitor rm = ReadinessMonitor.read(activeDriver);
+                runOnUiThread(() -> displayReadiness(rm));
+            } finally {
+                if (!wasPaused) {
+                    isPaused = false;
+                }
+            }
         });
     }
 
