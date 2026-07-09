@@ -71,7 +71,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // --- UI: Header ---
     private TextView headerStatus, headerVin, headerFuelMode, headerApiStatus;
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
-    private TextView txtHomeFuelEconomy, txtHomeBoost, txtHomeDpf;
+    private TextView txtHomeFuelEconomy, txtHomeBoost, txtHomeDpf, txtHomeDtc;
     private TextView stripBoost, stripFuel;
     private View headerStatusDot, headerApiDivider;
     private android.widget.ImageButton btnSettings;
@@ -452,6 +452,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtHomeFuelEconomy = findViewById(R.id.txtHomeFuelEconomy);
         txtHomeBoost = findViewById(R.id.txtHomeBoost);
         txtHomeDpf = findViewById(R.id.txtHomeDpf);
+        txtHomeDtc = findViewById(R.id.txtHomeDtc);
         stripBoost = findViewById(R.id.stripBoost);
         stripFuel = findViewById(R.id.stripFuel);
 
@@ -2773,6 +2774,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         if (stripFuel != null) {
             stripFuel.setText(fuelKmL != null ? String.format(Locale.US, "%.1f", fuelKmL) : "--");
+        }
+
+        // DTC count badge
+        if (txtHomeDtc != null) {
+            int dtcCount = LoggerService.lastStoredDtcs.size() + LoggerService.lastPendingDtcs.size();
+            txtHomeDtc.setText(dtcCount > 0 ? String.valueOf(dtcCount) : "0");
+            txtHomeDtc.setTextColor(getColorCompat(dtcCount > 0 ? R.color.danger : R.color.accent));
         }
     }
 

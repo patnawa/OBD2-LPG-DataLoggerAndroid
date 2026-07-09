@@ -548,10 +548,16 @@
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:paddingTop="12dp"
-                            android:paddingBottom="12dp"
-                            android:gravity="center">
+                            android:orientation="vertical"
+                            android:paddingTop="10dp"
+                            android:paddingBottom="10dp">
+
+                            <!-- Row 1: RPM / Speed / Coolant / Voltage -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center">
 
                             <!-- Column 1: RPM -->
                             <LinearLayout
@@ -617,7 +623,7 @@
                                 android:layout_height="32dp"
                                 android:background="@color/border" />
 
-                            <!-- Column 3: Temp -->
+                            <!-- Column 3: Coolant -->
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -675,15 +681,22 @@
                                     android:textStyle="bold"
                                     android:layout_marginTop="2dp" />
                             </LinearLayout>
-                        </LinearLayout>
+                            </LinearLayout>
 
-                        <!-- Row 2: Fuel Economy / Boost / DPF -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginTop="8dp"
-                            android:baselineAligned="false">
+                            <!-- divider between rows -->
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="@color/border"
+                                android:layout_marginTop="6dp"
+                                android:layout_marginBottom="6dp" />
+
+                            <!-- Row 2: Fuel Economy / Boost / DPF / --- -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center">
 
                             <!-- Column 5: Fuel Economy -->
                             <LinearLayout
@@ -774,6 +787,39 @@
                                     android:textSize="13sp"
                                     android:textStyle="bold"
                                     android:layout_marginTop="2dp" />
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="1dp"
+                                android:layout_height="32dp"
+                                android:background="@color/border" />
+
+                            <!-- Column 8: MIL/Status -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="DTC"
+                                    android:textColor="@color/muted"
+                                    android:textSize="9sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/txtHomeDtc"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="---"
+                                    android:textColor="@color/warning"
+                                    android:textSize="18sp"
+                                    android:textStyle="bold"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
                             </LinearLayout>
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
