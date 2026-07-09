@@ -355,6 +355,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 fuelMapView.setPetrolData(sessionPetrolData);
                 fuelMapView.setLpgData(sessionLpgData);
             }
+            setConfigUiEnabled(false);
         } else if (running) {
             if (fabLog != null) {
                 setFabState(true);
@@ -389,6 +390,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 fuelMapView.setPetrolData(sessionPetrolData);
                 fuelMapView.setLpgData(sessionLpgData);
             }
+            setConfigUiEnabled(false);
+        } else {
+            setConfigUiEnabled(true);
         }
     }
 
@@ -2163,6 +2167,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
 
+        setConfigUiEnabled(false);
+
         if (backgroundLoggingCheckbox.isChecked()) {
             startBackgroundLogging(config);
         } else {
@@ -2256,6 +2262,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     if (active.fabLog != null) {
                         active.setFabState(false);
                     }
+                    active.setConfigUiEnabled(true);
                 }
             });
             return;
@@ -2583,6 +2590,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     }
                     active.headerStatus.setText("Disconnected");
                     active.updateStatusStripConnection(0, "Disconnected");
+                    active.setConfigUiEnabled(true);
                 }
             });
         }
@@ -2693,6 +2701,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             headerStatus.setText("Disconnected");
             updateStatusStripConnection(0, "Disconnected");
             updateSessionStatus(false);
+            setConfigUiEnabled(true);
         });
     }
 
@@ -4607,6 +4616,53 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         return config;
     }
 
+    private void setConfigUiEnabled(boolean enabled) {
+        if (transportSpinner != null) transportSpinner.setEnabled(enabled);
+        if (obdProtocolSpinner != null) obdProtocolSpinner.setEnabled(enabled);
+        if (wifiIpInput != null) wifiIpInput.setEnabled(enabled);
+        if (wifiPortInput != null) wifiPortInput.setEnabled(enabled);
+        if (baudInput != null) baudInput.setEnabled(enabled);
+        if (intervalInput != null) intervalInput.setEnabled(enabled);
+        if (backgroundLoggingCheckbox != null) backgroundLoggingCheckbox.setEnabled(enabled);
+        if (lpgOnlyCheckbox != null) lpgOnlyCheckbox.setEnabled(enabled);
+        if (apiServerCheckbox != null) apiServerCheckbox.setEnabled(enabled);
+        if (fordMsCanCheckbox != null) fordMsCanCheckbox.setEnabled(enabled);
+        if (turboBoostCheckbox != null) turboBoostCheckbox.setEnabled(enabled);
+        if (fuelEconomyCheckbox != null) fuelEconomyCheckbox.setEnabled(enabled);
+        if (dpfMonitorCheckbox != null) dpfMonitorCheckbox.setEnabled(enabled);
+        if (customPidCheckbox != null) customPidCheckbox.setEnabled(enabled);
+        if (btnSelectLogFolder != null) btnSelectLogFolder.setEnabled(enabled);
+        
+        if (bluetoothDeviceSpinner != null) {
+            if (enabled) {
+                int pos = transportSpinner != null ? transportSpinner.getSelectedItemPosition() : 0;
+                bluetoothDeviceSpinner.setEnabled(pos == 2 || pos == 3 || pos == 4);
+            } else {
+                bluetoothDeviceSpinner.setEnabled(false);
+            }
+        }
+        if (bluetoothHintText != null) {
+            if (enabled) {
+                int pos = transportSpinner != null ? transportSpinner.getSelectedItemPosition() : 0;
+                bluetoothHintText.setEnabled(pos == 2 || pos == 3 || pos == 4);
+            } else {
+                bluetoothHintText.setEnabled(false);
+            }
+        }
+
+        if (btnReadDtc != null) btnReadDtc.setEnabled(enabled);
+        if (btnClearDtc != null) btnClearDtc.setEnabled(enabled);
+        if (btnReadVin != null) btnReadVin.setEnabled(enabled);
+        if (btnReadiness != null) btnReadiness.setEnabled(enabled);
+
+        if (btnBatteryResting != null) btnBatteryResting.setEnabled(enabled);
+        if (btnBatteryAlternator != null) btnBatteryAlternator.setEnabled(enabled);
+        if (btnBatteryLoad != null) btnBatteryLoad.setEnabled(enabled);
+        if (btnBatteryCrank != null) btnBatteryCrank.setEnabled(enabled);
+        if (btnBatteryRipple != null) btnBatteryRipple.setEnabled(enabled);
+        if (btnBatteryFull != null) btnBatteryFull.setEnabled(enabled);
+    }
+
     private ObdProtocol obdProtocolFromSpinner(int position) {
         ObdProtocol[] protocols = ObdProtocol.values();
         if (position >= 0 && position < protocols.length) return protocols[position];
@@ -5299,8 +5355,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     actuallyStartBackgroundLogging(cfg);
                 }
             } else {
-                Toast.makeText(this, "Notification permission denied — background logging off",
-                        Toast.LENGTH_LONG).show();
+                pendingBackgroundConfig = null;
+                running = false;
+                runOnUiThread(() -> {
+                    setFabState(false);
+                    setConfigUiEnabled(true);
+                    Toast.makeText(this, "Notification permission denied — background logging off",
+                            Toast.LENGTH_LONG).show();
+                });
             }
             return;
         }

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.10] - 2026-07-09
+### Fixed
+- **UI Settings and Diagnostic Button Interference During Logging** — Added dynamic UI disablement (via `setConfigUiEnabled()`) which disables settings input spinners/checkboxes, alternative OBD2 commands (DTC diagnostics: read/clear DTCs, read VIN, check readiness), and battery tester buttons during active logging. This prevents users from altering parameters mid-session and avoids adapter command collisions.
+- **Notification Permission Denial Graceful Recovery** — Hardened the notification permission result callback to reset `running` to false, update the FAB state, and re-enable UI controls upon permission denial.
+
 ## [3.5.9] - 2026-07-09
 ### Fixed
 - **Foreground Service Startup Crash on Android 14+ (SDK 34+)** — Added the required service type parameter `ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE` in the `startForeground()` call.

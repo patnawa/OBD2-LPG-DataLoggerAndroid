@@ -1,16 +1,15 @@
 # TunerMap Pro — OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.5.9** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.5.10** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.5.9
+## What's New in 3.5.10
 
-- **Foreground Service Startup Crash on Android 14+ (SDK 34+)** — Added the required service type parameter `ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE` in the `startForeground()` call.
-- **Background Logging Status / FAB State Desynchronization** — Added a reset in `syncLoggerState()` to clear the static `running` flag when neither background service nor in-process logging is active. Updated `stopLogging()` to ensure that the stop intent is always dispatched to the service even if the user toggled the background setting off while logging was running.
-- **Log Directory Permission & Auto-Resume** — Validated directory read/write permissions via `DocumentFile.canWrite()`. Added support for an auto-resume flag that automatically starts the log session once the user selects the folder, without requiring a second tap.
+- **UI Settings & Diagnostic Button Interference During Logging** — Added dynamic UI disablement (`setConfigUiEnabled()`) which disables settings input spinners/checkboxes, alternative OBD2 commands (DTC diagnostics: read/clear DTCs, read VIN, check readiness), and battery tester buttons during active logging. This prevents users from altering parameters mid-session and avoids adapter command collisions.
+- **Notification Permission Denial Graceful Recovery** — Hardened the notification permission result callback to reset `running` to false, update the FAB state, and re-enable UI controls upon permission denial.
 
 ---
 
