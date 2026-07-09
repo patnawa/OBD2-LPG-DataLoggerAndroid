@@ -155,8 +155,10 @@ public final class LoggerService extends Service {
             startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0));
         } catch (Exception e) {
             Log.e(TAG, "startForeground failed — cannot run as foreground service", e);
-            notifyStatus("Background logging failed to start (notification permission?). "
-                    + e.getMessage(), true);
+            notifyStatus("Background logging failed to start: " + e.getMessage(), true);
+            // Fire onStopped so the UI (running flag, FAB) returns to a startable
+            // state instead of freezing on "Connecting…".
+            notifyStopped();
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -197,9 +199,28 @@ public final class LoggerService extends Service {
         
         driver = DriverFactory.create(config);
 
-        if (!driver.isConnected() && !driver.connect()) {
+        // connect() can hang on some adapters/Android versions (e.g. a Bluetooth
+        // socket that never completes). Bound it with a timeout so a dead adapter
+        // reports "Connection failed" instead of freezing on "Connecting…" forever.
+        java.util.concurrent.Future<Boolean> connectTask =
+                Executors.newSingleThreadExecutor().submit(() -> !driver.isConnected() && driver.connect());
+        boolean connectedResult;
+        try {
+            connectedResult = connectTask.get(15, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (java.util.concurrent.TimeoutException e) {
+            connectTask.cancel(true);
+            try { driver.disconnect(); } catch (Throwable ignored) {}
+            connectedResult = false;
+            Log.w(TAG, "driver.connect() timed out after 15s");
+        } catch (Exception e) {
+            connectTask.cancel(true);
+            connectedResult = false;
+        }
+
+        if (!connectedResult) {
             running = false;
             notifyStatus("Connection failed. Check adapter and settings.", true);
+            notifyStopped();
             releaseWakeLock();
             stopForeground(true);
             stopSelf();
@@ -638,6 +659,14 @@ public final class LoggerService extends Service {
             mainHandler.post(() -> cb.onStatus(status, isError));
         }
         updateNotification(status, recordCount);
+    }
+
+    private void notifyStopped() {
+        LoggerCallback cb = getCallback();
+        if (cb != null) {
+            final int total = recordCount;
+            mainHandler.post(() -> cb.onStopped(total));
+        }
     }
 
     private void createNotificationChannel() {

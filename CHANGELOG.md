@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.7] - 2026-07-09
+### Fixed
+- **Background logging stuck on "Connecting…" / can't start** — two defects:
+  1. `MainActivity.onStopped` never reset `running`, so whenever the service stopped (including a failed foreground-service start on Android 16) `running` stayed `true` and the next Start tap did nothing — the app had to be reopened to recover. `onStopped` now sets `running = false`.
+  2. `LoggerService.onStartCommand`'s `startForeground` failure (e.g. Android 16 foreground-service restriction) now reports the real error via `onStatus` AND fires `onStopped`, so the UI returns to a startable state with a visible message instead of freezing.
+- **Connect timeout** — `driver.connect()` is synchronous and could hang forever on some adapters/Android Bluetooth stacks, leaving status frozen on "Connecting…". It is now bounded to 15s in a separate task; on timeout it reports "Connection failed" and stops cleanly (with `onStopped` so `running` resets).
+
 ## [3.5.6] - 2026-07-09
 ### Fixed
 - **Background logging wouldn't start until app reopen** — `startLogging()` set `running = true` *before* the `POST_NOTIFICATIONS` permission gate. On Android 13+, if the permission wasn't granted yet, `startBackgroundLogging` deferred the start (requested permission + returned) but `running` was already stuck `true` with the checkbox checked and no session active. The first Start did nothing; only a Stop/restart made it work — and reopening the app (which resets `running` via `isLoggingActive()`) "fixed" it. Now `running = true` is set only when logging actually launches (`actuallyStartBackgroundLogging` / `startInProcessLogging`), and `stopLogging()` clears any deferred (permission-gated) start.

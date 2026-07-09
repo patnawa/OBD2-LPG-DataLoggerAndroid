@@ -2673,6 +2673,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     @Override
     public void onStopped(int totalRecords) {
+        running = false;
         runOnUiThread(() -> {
             if (fabLog != null) {
                 setFabState(false);
