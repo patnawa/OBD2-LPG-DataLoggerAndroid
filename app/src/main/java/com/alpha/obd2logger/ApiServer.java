@@ -5,11 +5,16 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -28,6 +33,85 @@ public class ApiServer extends NanoHTTPD {
 
     public void setDtcProvider(DtcProvider provider) {
         this.dtcProvider = provider;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  SSE (Server-Sent Events) — Real-time data streaming
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Tracks active SSE client streams. Each client gets a PipedOutputStream
+     * that we write to from setLatestData(). The corresponding PipedInputStream
+     * feeds NanoHTTPD's chunked response.
+     */
+    private final Set<SseClient> sseClients = new CopyOnWriteArraySet<>();
+
+    private static class SseClient {
+        final PipedOutputStream out;
+        final PipedInputStream in;
+        volatile boolean closed = false;
+
+        SseClient() throws IOException {
+            // 16KB pipe buffer — enough for ~100 SSE events before backpressure
+            this.in = new PipedInputStream(16384);
+            this.out = new PipedOutputStream(in);
+        }
+
+        void send(String event) {
+            if (closed) return;
+            try {
+                out.write(event.getBytes("UTF-8"));
+                out.flush();
+            } catch (IOException e) {
+                closed = true;
+            }
+        }
+
+        void close() {
+            closed = true;
+            try { out.close(); } catch (IOException ignored) {}
+            try { in.close(); } catch (IOException ignored) {}
+        }
+    }
+
+    /**
+     * Called from LoggerService.publishRecord → setLatestData.
+     * Pushes the new record as an SSE event to all connected clients.
+     */
+    private void broadcastSse(DataRecord record) {
+        if (sseClients.isEmpty()) return;
+
+        String json = recordToSseJson(record);
+        String event = "data: " + json + "\n\n";
+
+        for (SseClient client : sseClients) {
+            client.send(event);
+        }
+
+        // Remove closed clients
+        sseClients.removeIf(c -> c.closed);
+    }
+
+    /**
+     * Convert a DataRecord to compact JSON for SSE streaming.
+     */
+    private String recordToSseJson(DataRecord record) {
+        JSONObject obj = new JSONObject();
+        try {
+            obj.put("ts", record.getTimestamp());
+            obj.put("elapsed", Math.round(record.getElapsedS() * 1000.0) / 1000.0);
+            obj.put("fuel", record.getFuelMode());
+            obj.put("vin", record.getVin() != null ? record.getVin() : "");
+
+            JSONObject sensors = new JSONObject();
+            for (SensorSample s : record.getSamples()) {
+                if (s.getValue() != null) {
+                    sensors.put(s.getName(), Math.round(s.getValue() * 100.0) / 100.0);
+                }
+            }
+            obj.put("sensors", sensors);
+        } catch (JSONException ignored) {}
+        return obj.toString();
     }
 
     // Fuel Map Constants matching FuelMapView
@@ -89,6 +173,7 @@ public class ApiServer extends NanoHTTPD {
         this.isLogging = isLogging;
         if (data != null) {
             updateLiveMap(data);
+            broadcastSse(data);
         }
     }
 
@@ -199,6 +284,8 @@ public class ApiServer extends NanoHTTPD {
                 response = handleMapExport();
             } else if ("/api/dtc".equals(uri)) {
                 response = handleGetDtc();
+            } else if ("/api/stream".equals(uri) || "/api/events".equals(uri)) {
+                response = handleSseStream(session);
             } else {
                 response = newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found");
             }
@@ -498,6 +585,69 @@ public class ApiServer extends NanoHTTPD {
             e.printStackTrace();
             return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\": \"" + e.getMessage() + "\"}");
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  SSE Stream Handler
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Handle GET /api/stream — opens an SSE connection that pushes
+     * real-time OBD2 data as it arrives from the vehicle.
+     *
+     * Response format (text/event-stream):
+     *   data: {"ts":"...","elapsed":1.23,"fuel":"PETROL","sensors":{"RPM":2500,...}}
+     *   data: {"ts":"...","elapsed":1.73,"fuel":"PETROL","sensors":{"RPM":2510,...}}
+     *   ...
+     *
+     * Agent usage:
+     *   curl -N http://192.168.0.x:8080/api/stream
+     *   Python: requests.get(url, stream=True) → for line in r.iter_lines()
+     *   JS: new EventSource("http://192.168.0.x:8080/api/stream")
+     */
+    private Response handleSseStream(IHTTPSession session) {
+        try {
+            final SseClient client = new SseClient();
+            sseClients.add(client);
+
+            // Send initial hello event so the client knows it's connected
+            client.send("event: connected\ndata: {\"status\":\"streaming\",\"clients\":" + sseClients.size() + "}\n\n");
+
+            // If we have latest data, send it immediately
+            if (latestData != null) {
+                String json = recordToSseJson(latestData);
+                client.send("data: " + json + "\n\n");
+            }
+
+            // NanoHTTPD chunked response reads from the InputStream
+            Response response = newChunkedResponse(Response.Status.OK, "text/event-stream", client.in);
+
+            // Add cache-control + connection headers
+            response.addHeader("Cache-Control", "no-cache");
+            response.addHeader("Connection", "keep-alive");
+            response.addHeader("X-Accel-Buffering", "no");  // Disable nginx buffering
+
+            // Clean up when client disconnects — NanoHTTPD will close the input stream
+            // when the HTTP connection is terminated. The SseClient.closed flag will
+            // be set by the IOException in send() on the next write attempt.
+            return response;
+
+        } catch (IOException e) {
+            return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json",
+                "{\"error\":\"Failed to create SSE stream: " + e.getMessage() + "\"}");
+        }
+    }
+
+    /**
+     * Clean up SSE clients on server stop.
+     */
+    @Override
+    public void stop() {
+        for (SseClient client : sseClients) {
+            client.close();
+        }
+        sseClients.clear();
+        super.stop();
     }
 
     private Response handleGetDtc() {
