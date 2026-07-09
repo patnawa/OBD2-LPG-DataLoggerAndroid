@@ -193,6 +193,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private LoggerConfig pendingBackgroundConfig = null;
 
     private androidx.activity.result.ActivityResultLauncher<Intent> folderPickerLauncher;
+    private boolean pendingStartLoggingAfterFolderSelect = false;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -239,7 +240,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 getContentResolver().takePersistableUriPermission(uri, takeFlags);
                                 getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putString("custom_log_folder_uri", uri.toString()).apply();
                                 updateCustomFolderText(uri);
+                                if (pendingStartLoggingAfterFolderSelect) {
+                                    pendingStartLoggingAfterFolderSelect = false;
+                                    startLogging();
+                                    setFabState(true);
+                                }
                             }
+                        } else {
+                            pendingStartLoggingAfterFolderSelect = false;
                         }
                     }
             );
@@ -302,6 +310,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void syncLoggerState() {
+        if (!LoggerService.isLoggingActive() && (executor == null || executor.isShutdown())) {
+            running = false;
+        }
         if (LoggerService.isLoggingActive()) {
             running = true;
             LoggerService.setCallback(this);
@@ -464,7 +475,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     stopLogging();
                     setFabState(false);
                 } else {
-                    if (!ensureLogFolderSelected()) {
+                    if (!ensureLogFolderSelected(true)) {
                         return;
                     }
                     startLogging();
@@ -609,7 +620,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 stopLogging();
                 setFabState(false);
             } else {
-                if (!ensureLogFolderSelected()) {
+                if (!ensureLogFolderSelected(true)) {
                     return;
                 }
                 startLogging();
@@ -1197,7 +1208,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             
             if (index == 4) {
-                if (!ensureLogFolderSelected()) {
+                if (!ensureLogFolderSelected(false)) {
                     isTabChanging = false;
                     showTab(6);
                     return;
@@ -2207,7 +2218,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // (GATT handles, BluetoothSocket, UsbSerialPort). Setting running=false
         // and shutdownNow() is enough to make the logger thread exit and clean up.
 
-        if (backgroundLoggingCheckbox.isChecked()) {
+        if (backgroundLoggingCheckbox.isChecked() || LoggerService.isLoggingActive()) {
             Intent intent = new Intent(this, LoggerService.class);
             intent.setAction(LoggerService.ACTION_STOP);
             startService(intent);
@@ -4832,8 +4843,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private boolean ensureLogFolderSelected() {
+        return ensureLogFolderSelected(false);
+    }
+
+    private boolean ensureLogFolderSelected(boolean triggerStartLoggingOnSuccess) {
         String savedUriStr = getSharedPreferences("OBD2Prefs", MODE_PRIVATE).getString("custom_log_folder_uri", null);
+        if (savedUriStr != null) {
+            try {
+                Uri uri = Uri.parse(savedUriStr);
+                androidx.documentfile.provider.DocumentFile tree = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, uri);
+                if (tree == null || !tree.exists() || !tree.canWrite()) {
+                    savedUriStr = null;
+                }
+            } catch (Exception e) {
+                savedUriStr = null;
+            }
+        }
+
         if (savedUriStr == null) {
+            pendingStartLoggingAfterFolderSelect = triggerStartLoggingOnSuccess;
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.dialog_select_folder_title)
                     .setMessage(R.string.dialog_select_folder_msg)

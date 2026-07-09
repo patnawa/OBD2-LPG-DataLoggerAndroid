@@ -1,17 +1,16 @@
 # TunerMap Pro — OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.5.1** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.5.9** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.5.1
+## What's New in 3.5.9
 
-- **DTC Non-Header Parsing Bug** — Enforced 3-character minimum check on CAN ID tokens to prevent 2-character mode response headers from corrupting trouble codes when headers are disabled.
-- **In-Process Telemetry Derived Sensors** — Added real-time derived sensor computations (Fuel Economy, Turbo Boost, DPF Health) to the foreground/in-process polling loop so the home page updates correctly.
-- **Multi-Frame VIN & Mode 09 Parsing Bugs** — Integrated robust line-by-line normalization to strip CAN ID headers, PCI frame descriptors, and frame indexes from multi-frame VIN, Cal-ID, and CVN responses to prevent ASCII/hex character corruption.
-- **Simulation Driver Mode 07 Response Typo** — Corrected Simulated Mode 07 response string to output a standard `47` header instead of a Mode 01 header.
+- **Foreground Service Startup Crash on Android 14+ (SDK 34+)** — Added the required service type parameter `ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE` in the `startForeground()` call.
+- **Background Logging Status / FAB State Desynchronization** — Added a reset in `syncLoggerState()` to clear the static `running` flag when neither background service nor in-process logging is active. Updated `stopLogging()` to ensure that the stop intent is always dispatched to the service even if the user toggled the background setting off while logging was running.
+- **Log Directory Permission & Auto-Resume** — Validated directory read/write permissions via `DocumentFile.canWrite()`. Added support for an auto-resume flag that automatically starts the log session once the user selects the folder, without requiring a second tap.
 
 ---
 

@@ -152,7 +152,12 @@ public final class LoggerService extends Service {
         // Guard every step so a foreground-service startup failure degrades to a
         // clean stop with a user-visible error instead of a crash.
         try {
-            startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0),
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
+            } else {
+                startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0));
+            }
         } catch (Exception e) {
             Log.e(TAG, "startForeground failed — cannot run as foreground service", e);
             notifyStatus("Background logging failed to start: " + e.getMessage(), true);

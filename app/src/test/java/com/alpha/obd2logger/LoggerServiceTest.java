@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * in-process logging tests, which run on the default SDK.
  */
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 33)
+@Config(sdk = {33, 34})
 public class LoggerServiceTest {
 
     private ServiceController<LoggerService> controller;

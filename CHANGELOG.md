@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.9] - 2026-07-09
+### Fixed
+- **Foreground Service Startup Crash on Android 14+ (SDK 34+)** — Added the required service type parameter `ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE` in the `startForeground()` call.
+- **Background Logging Status / FAB State Desynchronization** — Added a reset in `syncLoggerState()` to clear the static `running` flag when neither background service nor in-process logging is active. Updated `stopLogging()` to ensure that the stop intent is always dispatched to the service even if the user toggled the background setting off while logging was running.
+- **Log Directory Permission & Auto-Resume** — Validated directory read/write permissions via `DocumentFile.canWrite()`. Added support for an auto-resume flag that automatically starts the log session once the user selects the folder, without requiring a second tap.
+
 ## [3.5.8] - 2026-07-09
 ### Fixed
 - **Startup language wrong / app doesn't remember language setting** — `LocaleHelper` wrote the language choice to TWO stores: a custom `OBD2Prefs` key AND `AppCompatDelegate.setApplicationLocales()`. On Android 13+ (API 33, incl. Android 16) `AppCompatActivity` applies AppCompat's own store in `attachBaseContext`, overriding the manual `createConfigurationContext` wrap, so the effective language was whatever AppCompat had — which silently diverged from `OBD2Prefs`. That caused the wrong language at startup and the choice not being remembered. Now AppCompat's application-locale store is the single source of truth (it persists correctly across restarts on every API level AppCompat supports); the conflicting `OBD2Prefs` dual-write is removed and the old value is migrated once so existing users keep their setting. Works on Android 6 (API 23) through 16 (API 36).
