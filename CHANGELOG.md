@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.15] - 2026-07-09
+### Fixed
+- **Battery Tester Active Logging & Background Support** — Fixed the battery tester by keeping its control buttons enabled during active logging. Resolved active driver mapping by introducing `getActiveDriver()` in `MainActivity` which accesses the active driver from either `MainActivity` (for in-process logging) or `LoggerService` (for background logging). The battery tester now successfully reads live/direct adapter voltages in both configurations.
+- **Android 14+ Background FGS Bluetooth Permission Compliance** — Updated `ensureTransportPermissions()` to always request Bluetooth permissions when `backgroundLoggingCheckbox` is checked. This guarantees the app holds the required permissions for the service type `connectedDevice` before calling `startForegroundService()`, preventing Android 14+ startup security exceptions even when using Simulation or WiFi transport modes.
+
 ## [3.5.14] - 2026-07-09
 ### Fixed
 - **Connection Timeout Watchdog** — Implemented a 20-second connection timeout watchdog in `MainActivity` that auto-stops logging, resets states, and releases the UI if starting background logging is silently blocked by the OS (autostart/battery limits) or if the adapter connection hangs.

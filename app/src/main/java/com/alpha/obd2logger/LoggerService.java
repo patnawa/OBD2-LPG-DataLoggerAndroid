@@ -69,6 +69,10 @@ public final class LoggerService extends Service {
         return activeConfig;
     }
 
+    public BaseDriver getDriver() {
+        return driver;
+    }
+
     public int getRecordCount() {
         return recordCount;
     }

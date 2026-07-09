@@ -198,6 +198,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private static final java.util.Map<String, FuelMapView.TrimData> sessionLpgData = new java.util.concurrent.ConcurrentHashMap<>();
     private final List<BluetoothDevice> bluetoothDevices = new ArrayList<>();
     private long lastSampleTimeMs = 0;
+
+    private BaseDriver getActiveDriver() {
+        BaseDriver cd = currentDriver;
+        if (cd != null && cd.isConnected()) {
+            return cd;
+        }
+        LoggerService s = LoggerService.getInstance();
+        if (s != null) {
+            BaseDriver sd = s.getDriver();
+            if (sd != null && sd.isConnected()) {
+                return sd;
+            }
+        }
+        return null;
+    }
     private int currentTabIndex = 0;
 
     private static final int PERMISSION_REQUEST_CODE = 1001;
@@ -3180,9 +3195,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
      * Read PID 0x42 voltage from the driver. Returns -1 on failure.
      */
     private double readBatteryVoltage() {
-        if (currentDriver == null || !currentDriver.isConnected()) return -1;
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) return -1;
         try {
-            Double v = currentDriver.queryPid(PIDDefinition.findByKey("01_42"));
+            Double v = activeDriver.queryPid(PIDDefinition.findByKey("01_42"));
             if (v != null && v > 0) {
                 return v;
             }
@@ -3192,7 +3208,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         
         // Fallback: Query direct ELM327 analog voltage using command "AT RV"
         try {
-            String raw = currentDriver.sendCommandRaw("AT RV");
+            String raw = activeDriver.sendCommandRaw("AT RV");
             if (raw != null && !raw.isEmpty()) {
                 String clean = raw.replaceAll("[^0-9.]", "");
                 if (!clean.isEmpty()) {
@@ -3321,13 +3337,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     /** Test 1: Resting voltage (engine off). */
     private void testBatteryResting() {
-        if (currentDriver == null || !currentDriver.isConnected()) {
+        final BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
             batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
         BatteryTester.Chemistry chem = getSelectedChemistry();
-        if (currentDriver instanceof SimulationDriver) {
-            ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RESTING);
+        if (activeDriver instanceof SimulationDriver) {
+            ((SimulationDriver) activeDriver).setSimState(SimulationDriver.SimState.RESTING);
         }
         batteryStatusText.setText(getString(R.string.battery_resting_reading, chem.getDisplayName(this)));
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
@@ -3347,13 +3364,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     /** Test 3 & 9: Alternator voltage at idle & Charging system regulation efficiency at high RPM. */
     private void testBatteryAlternator() {
-        if (currentDriver == null || !currentDriver.isConnected()) {
+        final BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
             batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
         BatteryTester.Chemistry chem = getSelectedChemistry();
-        if (currentDriver instanceof SimulationDriver) {
-            ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING);
+        if (activeDriver instanceof SimulationDriver) {
+            ((SimulationDriver) activeDriver).setSimState(SimulationDriver.SimState.RUNNING);
         }
         batteryStatusText.setText(getString(R.string.battery_alt_step1));
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
@@ -3376,8 +3394,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             .setTitle(getString(R.string.battery_alt_high_rpm_title))
                             .setMessage(getString(R.string.battery_alt_high_rpm_msg))
                             .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                                if (currentDriver instanceof SimulationDriver) {
-                                    ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING_HIGH);
+                                if (activeDriver instanceof SimulationDriver) {
+                                    ((SimulationDriver) activeDriver).setSimState(SimulationDriver.SimState.RUNNING_HIGH);
                                 }
                                 batteryStatusText.setText(getString(R.string.battery_alt_reading_high));
                                 dtcExecutor.submit(() -> {
@@ -3422,12 +3440,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     /** Test 4 & 5: Voltage drop under electrical load & Voltage recovery after load removal. */
     private void testBatteryLoadDrop() {
-        if (currentDriver == null || !currentDriver.isConnected()) {
+        final BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
             batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
-        if (currentDriver instanceof SimulationDriver) {
-            ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING);
+        if (activeDriver instanceof SimulationDriver) {
+            ((SimulationDriver) activeDriver).setSimState(SimulationDriver.SimState.RUNNING);
         }
         batteryStatusText.setText(getString(R.string.battery_load_step1));
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
@@ -3440,8 +3459,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         .setTitle(getString(R.string.battery_load_drop_title))
                         .setMessage(getString(R.string.battery_load_drop_msg))
                         .setPositiveButton(android.R.string.ok, (d, w) -> {
-                            if (currentDriver instanceof SimulationDriver) {
-                                ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.LOADED);
+                            if (activeDriver instanceof SimulationDriver) {
+                                ((SimulationDriver) activeDriver).setSimState(SimulationDriver.SimState.LOADED);
                             }
                             batteryStatusText.setText(getString(R.string.battery_load_reading_full));
                             dtcExecutor.submit(() -> {
@@ -3455,6 +3474,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                                 .setTitle(getString(R.string.battery_recovery_title))
                                                 .setMessage(getString(R.string.battery_recovery_msg))
                                                 .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                                                    if (activeDriver instanceof SimulationDriver) {
+                                                        ((SimulationDriver) activeDriver).setSimState(SimulationDriver.SimState.RECOVERING);
+                                                    }
                                                     batteryStatusText.setText(getString(R.string.battery_recovery_sampling));
                                                     dtcExecutor.submit(() -> {
                                                         // 1. Immediately read post-load voltage (right after turning accessories off)
@@ -3518,7 +3540,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     /** Test 6: Cranking voltage — minimum voltage during engine crank. */
     private void testBatteryCranking() {
-        if (currentDriver == null || !currentDriver.isConnected()) {
+        final BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
             batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
@@ -3526,8 +3549,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 .setTitle(getString(R.string.battery_crank_title))
                 .setMessage(getString(R.string.battery_crank_msg))
                 .setPositiveButton(getString(R.string.battery_crank_start), (d, w) -> {
-                    if (currentDriver instanceof SimulationDriver) {
-                        ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.CRANKING);
+                    if (activeDriver instanceof SimulationDriver) {
+                        ((SimulationDriver) activeDriver).setSimState(SimulationDriver.SimState.CRANKING);
                     }
                     batteryStatusText.setText(getString(R.string.battery_crank_sampling));
                     crankMinVoltage = 999;
@@ -3558,12 +3581,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     /** Test 7: Ripple / diode health — fast sampling of voltage. */
     private void testBatteryRipple() {
-        if (currentDriver == null || !currentDriver.isConnected()) {
+        final BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
             batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
-        if (currentDriver instanceof SimulationDriver) {
-            ((SimulationDriver) currentDriver).setSimState(SimulationDriver.SimState.RUNNING);
+        if (activeDriver instanceof SimulationDriver) {
+            ((SimulationDriver) activeDriver).setSimState(SimulationDriver.SimState.RUNNING);
         }
         batteryStatusText.setText(getString(R.string.battery_ripple_sampling));
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
@@ -3589,7 +3613,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     /** Full diagnostic — runs all available tests and shows a comprehensive report. */
     private void runFullBatteryDiagnostic() {
-        if (currentDriver == null || !currentDriver.isConnected()) {
+        final BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
             batteryStatusText.setText(getString(R.string.battery_not_connected));
             return;
         }
@@ -3607,7 +3632,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         batteryScoreCard.setVisibility(View.GONE);
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
-            if (currentDriver instanceof SimulationDriver) {
+            if (activeDriver instanceof SimulationDriver) {
                 // Auto-populate simulation testing values to generate a full report
                 if (restingVoltage <= 0) restingVoltage = 12.62;
                 if (runningVoltage <= 0) runningVoltage = 14.12;
@@ -4686,12 +4711,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (btnReadVin != null) btnReadVin.setEnabled(enabled);
         if (btnReadiness != null) btnReadiness.setEnabled(enabled);
 
-        if (btnBatteryResting != null) btnBatteryResting.setEnabled(enabled);
-        if (btnBatteryAlternator != null) btnBatteryAlternator.setEnabled(enabled);
-        if (btnBatteryLoad != null) btnBatteryLoad.setEnabled(enabled);
-        if (btnBatteryCrank != null) btnBatteryCrank.setEnabled(enabled);
-        if (btnBatteryRipple != null) btnBatteryRipple.setEnabled(enabled);
-        if (btnBatteryFull != null) btnBatteryFull.setEnabled(enabled);
+        if (btnBatteryResting != null) btnBatteryResting.setEnabled(true);
+        if (btnBatteryAlternator != null) btnBatteryAlternator.setEnabled(true);
+        if (btnBatteryLoad != null) btnBatteryLoad.setEnabled(true);
+        if (btnBatteryCrank != null) btnBatteryCrank.setEnabled(true);
+        if (btnBatteryRipple != null) btnBatteryRipple.setEnabled(true);
+        if (btnBatteryFull != null) btnBatteryFull.setEnabled(true);
     }
 
     private ObdProtocol obdProtocolFromSpinner(int position) {
@@ -5166,7 +5191,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private boolean ensureTransportPermissions() {
         int pos = transportSpinner.getSelectedItemPosition();
-        if (pos == 2 || pos == 3 || pos == 4) {
+        if (backgroundLoggingCheckbox.isChecked() || pos == 2 || pos == 3 || pos == 4) {
             return ensureBluetoothPermissions();
         }
         return true;

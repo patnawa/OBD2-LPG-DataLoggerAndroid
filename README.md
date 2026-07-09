@@ -1,15 +1,15 @@
 # TunerMap Pro — OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.5.14** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.5.15** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.5.14
+## What's New in 3.5.15
 
-- **Connection Timeout Watchdog** — Implemented a 20-second connection timeout watchdog in `MainActivity` that auto-stops logging, resets states, and releases the UI if starting background logging is silently blocked by the OS (autostart/battery limits) or if the adapter connection hangs.
-- **Manual Stop UI Lock Release** — Fixed a bug where stopping logging manually via the FAB or Connect button left all UI settings inputs (spinners, text inputs, checkboxes) disabled because the callback was cleared before the UI release routine was invoked. Now, `stopLogging()` immediately releases the UI input locks.
+- **Battery Tester Active Logging & Background Support** — Fixed the battery tester by keeping its control buttons enabled during active logging. Resolved active driver mapping by introducing `getActiveDriver()` in `MainActivity` which accesses the active driver from either `MainActivity` (for in-process logging) or `LoggerService` (for background logging). The battery tester now successfully reads live/direct adapter voltages in both configurations.
+- **Android 14+ Background FGS Bluetooth Permission Compliance** — Updated `ensureTransportPermissions()` to always request Bluetooth permissions when `backgroundLoggingCheckbox` is checked. This guarantees the app holds the required permissions for the service type `connectedDevice` before calling `startForegroundService()`, preventing Android 14+ startup security exceptions even when using Simulation or WiFi transport modes.
 
 ---
 
