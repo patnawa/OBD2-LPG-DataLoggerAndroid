@@ -404,21 +404,28 @@ public final class DataWriter implements AutoCloseable {
             }
             values.put(MediaStore.Downloads.RELATIVE_PATH, path);
             Uri uri = context.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
-            if (uri == null) {
-                throw new IOException("MediaStore could not create Download entry: " + displayName);
-            }
-            return new DownloadTarget(null, uri) {
-                @Override
-                OutputStream openOutputStream() throws IOException {
-                    OutputStream stream = context.getContentResolver().openOutputStream(uri, "w");
-                    if (stream == null) {
-                        throw new IOException("Could not open Download output stream: " + uri);
+            if (uri != null) {
+                return new DownloadTarget(null, uri) {
+                    @Override
+                    OutputStream openOutputStream() throws IOException {
+                        OutputStream stream = context.getContentResolver().openOutputStream(uri, "w");
+                        if (stream == null) {
+                            throw new IOException("Could not open Download output stream: " + uri);
+                        }
+                        return stream;
                     }
-                    return stream;
-                }
-            };
+                };
+            }
+            // MediaStore.insert() returned null (some emulators / restricted storage
+            // profiles do this). Fall through to a direct file under Downloads so
+            // logging still works instead of throwing on the first record.
+            Log.w(TAG, "MediaStore insert returned null for " + displayName
+                    + "; falling back to direct file path");
         }
+        return localFileTarget(displayName);
+    }
 
+    private DownloadTarget localFileTarget(String displayName) throws IOException {
         String cleanVin = sanitizeVin(this.vin);
         File downloadDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), DOWNLOAD_SUBDIR);
         if (!cleanVin.isEmpty()) {

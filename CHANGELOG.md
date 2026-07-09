@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.4] - 2026-07-09
+### Fixed
+- **DataWriter MediaStore fallback** — on API ≥ Q, if `MediaStore.Downloads.insert` returns null (some emulators / restricted-storage profiles), `createDownloadTarget` previously threw and logging died on the first record. Now falls back to a direct file under `Download/<TunerMapPro>` instead of throwing. (Found while standing up the regression test below.)
+### Added
+- **Regression test: LoggerServiceTest** — drives the real `LoggerService` lifecycle with the SIM driver (no hardware) and asserts background logging survives multiple records without an error status. This is the exact class of bug that caused the 3.5.2 background-logging crash (unassigned `activeConfig` → watchdog NPE), so it can't silently regress again.
+
 ## [3.5.3] - 2026-07-09
 ### Fixed
 - **Background logging crash (regression in 3.5.2)** — `LoggerService.activeConfig` was never assigned (always null), so the new low-voltage watchdog NPE'd on the first background record and killed the logging session. Now set at the top of `runLogger`, with a null-guard in `checkVoltageWatchdog()` and the periodic DTC-scan lambda so a missed assignment can never crash the worker thread again. In-process logging was unaffected (MainActivity used its own local config), which is why only background logging crashed.
