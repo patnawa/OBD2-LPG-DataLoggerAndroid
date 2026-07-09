@@ -1,15 +1,41 @@
 # TunerMap Pro — OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.5.15** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.6.0** | Professional-grade OBD2 vehicle diagnostics, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
-แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
+แอปพลิกเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.5.15
+## What's New in 3.6.0 — Pro DTC Scanner Upgrade
 
-- **Battery Tester Active Logging & Background Support** — Fixed the battery tester by keeping its control buttons enabled during active logging. Resolved active driver mapping by introducing `getActiveDriver()` in `MainActivity` which accesses the active driver from either `MainActivity` (for in-process logging) or `LoggerService` (for background logging). The battery tester now successfully reads live/direct adapter voltages in both configurations.
-- **Android 14+ Background FGS Bluetooth Permission Compliance** — Updated `ensureTransportPermissions()` to always request Bluetooth permissions when `backgroundLoggingCheckbox` is checked. This guarantees the app holds the required permissions for the service type `connectedDevice` before calling `startForegroundService()`, preventing Android 14+ startup security exceptions even when using Simulation or WiFi transport modes.
+Major upgrade bringing the DTC scanner to professional diagnostic scanner level:
+
+### Scan Reliability
+- **Protocol Probe** — Probes each protocol bus before scanning, skips dead buses
+- **Retry with Backoff** — Mode 03/07/0A retry 3× with exponential backoff
+- **ISO-TP Flow Control** — Multi-frame DTC responses no longer truncated
+- **Post-Clear Verification** — Rescans after Mode 04 to confirm DTCs are actually cleared
+
+### DTC Intelligence
+- **Fixed Severity Logic** — Uses enrichment DB + proper heuristic (airbag=CRITICAL, misfire=CRITICAL)
+- **DTC → Monitor Correlation** — Maps each DTC to affected readiness monitor
+- **Drive Cycle Guidance** — Step-by-step driving instructions for incomplete monitors
+
+### 20 Brand-Specific DTC Databases (5,054 codes total)
+- Toyota/Lexus, Honda, Isuzu, Nissan, Mitsubishi, Ford/Mazda, Suzuki
+- Chevrolet, Hyundai/Kia, Volvo, BMW, Mercedes-Benz
+- BYD, GWM, NETA, AION, Deepal, MG, Tesla (Chinese EV + Tesla)
+
+### Professional Diagnostics
+- **Continuous DTC Monitoring** — Polls PID 01 every 30s, full scan only on change
+- **Per-ECU Physical Addressing** — ATSH/ATCRA for individual ECU scans
+- **Enhanced Mode Scanning** — Mode 21/22/1A/27 manufacturer-specific codes
+- **Mode 08 Bi-Directional Control** — 14 tests (EGR, EVAP, fan, fuel pump, etc.)
+- **Mode 09 In-Use Performance** — Ignition cycles, OBD trips, distance/time since clear
+- **Freeze Frame PID Query** — Discovers supported PIDs via Mode 02 PID 00
+
+### Enhanced PDF Report
+- Now includes: Readiness status, Mode 06 results, ECU module list, protocol scan results, drive cycle guidance
 
 ---
 

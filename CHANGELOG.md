@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.6.0] - 2026-07-09
+### Pro DTC Scanner Upgrade — 15 improvements for professional-grade diagnostics
+
+### Added — Scan Reliability
+- **Protocol Probe** — DTC scan now sends Mode 01 PID 00 probe before scanning each protocol bus, skipping dead buses instead of wasting time + getting false "NO DATA" results
+- **Retry with Exponential Backoff** — Mode 03/07/0A commands retry up to 3 times with backoff (200ms × attempt), matching professional scanner behavior where ECUs need multiple queries
+- **ISO-TP Flow Control** — Enables ATCFC1 before multi-frame DTC scans so ECUs returning many codes (>3 DTCs in one response) are not truncated at the first CAN frame
+- **Post-Clear Verification** — After Mode 04 (Clear DTCs), automatically rescans Mode 03 to verify all stored codes are actually gone, instead of just trusting the 44 acknowledgment
+
+### Added — DTC Code Intelligence
+- **Fixed DTC Severity Logic** — getSeverity() now uses enrichment database (per-code expert severity) + proper heuristic fallback (airbag B0xxx=CRITICAL, misfire P03xx=CRITICAL, fuel trim P01xx=CRITICAL, ABS/network=WARNING). Previous logic incorrectly marked all P0xxx as critical and all body codes as info
+- **DTC → Monitor Correlation** — New DtcMonitorCorrelation class maps DTC codes to affected readiness monitors (e.g. P0420 → Catalyst monitor, P0300 → Misfire monitor). Shown in readiness display
+- **Drive Cycle Guidance** — New DriveCycleGuide class provides step-by-step driving instructions for each incomplete readiness monitor (e.g. "Drive at 64-80 km/h for 5-8 min" for Catalyst). Shown in readiness display with estimated time per monitor
+
+### Added — Manufacturer-Specific DTC Databases (20 brands)
+- **VinBrandDetector** — Detects vehicle brand from VIN WMI (first 3 chars), covering all major Thai-market brands + Chinese EVs
+- **Dynamic Brand Database Loading** — DtcDatabase now loads brand-specific JSON database on top of generic database when VIN is read
+- **Toyota/Lexus** (182 codes incl. VVT-i, ETCS, hybrid P3190-P3305, immobilizer NATS)
+- **Honda** (197 codes incl. VTEC, A/F sensor, IMA, CVT)
+- **Isuzu** (138 codes incl. diesel DPF/DEF/SCR/NOx)
+- **Nissan** (157 codes incl. CVT, NATS, ETCS, A/F sensor)
+- **Mitsubishi** (45 codes incl. MIVEC, MUT)
+- **Ford/Mazda** (53 codes incl. MS-CAN body modules)
+- **Suzuki, Chevrolet, Hyundai/Kia, Volvo, BMW, Mercedes-Benz**
+- **BYD** (66 codes incl. HV battery, motor inverter, OBC, DC-DC, HVIL)
+- **GWM/Haval/Ora, NETA, AION, Deepal, MG** (Chinese EV manufacturer codes)
+- **Tesla** (66 codes incl. drive unit, pyrofuse, supercharger, autopilot)
+- Total: 5,054 DTC codes across 21 databases (generic + brand-specific)
+
+### Added — Enhanced Diagnostics
+- **Continuous DTC Monitoring** — LoggerService now polls Mode 01 PID 01 every 30 seconds (was full scan every 60s) for real-time MIL/DTC count detection, triggering full Mode 03/07/0A scan only when count changes
+- **Per-ECU Physical Addressing Scan** — New scanEcuDirectly() method targets individual ECUs via ATSH/ATCRA (e.g. 7E0→7E8 for ECM, 7E1→7E9 for TCM) instead of broadcast, avoiding multi-ECU response collisions
+- **Enhanced Mode Scanning** — New scanEnhancedMode() reads manufacturer-specific DTC modes beyond standard OBD2: Mode 21 (Toyota/Honda), Mode 1A (Nissan), Mode 27 (Ford). Auto-detects brand from VIN
+- **Mode 08 Bi-Directional Control** — New Mode08Controller class with 14 standard tests (EVAP purge, EGR, radiator fan, fuel pump, MIL, A/C clutch, glow plugs, etc.) with confirmation dialog (WARNING: activates physical components)
+- **Mode 09 In-Use Performance Tracking** — Reads PID 0D (ignition cycles), PID 0E (OBD trips), PID 0F (distance + engine time since clear) — the only definitive way to confirm drive cycles actually completed required monitors
+- **Freeze Frame Supported PID Query** — FreezeFrameReader now queries Mode 02 PID 00 to discover which PIDs the ECU has freeze frame data for, instead of blindly querying hardcoded PIDs
+
+### Added — UI Integration
+- **Pro Scanner Features Section** — After every DTC scan, displays 3 new action buttons: Bi-Directional Control, Enhanced Scan, Per-ECU Scan
+- **In-Use Performance Display** — Shows ignition cycles, OBD trips, distance, and engine time since last DTC clear
+- **Drive Cycle Guidance in Readiness** — Readiness tab now shows step-by-step driving instructions for each incomplete monitor
+- **DTC → Monitor Correlation in Readiness** — Shows which monitors are affected by current stored DTCs
+
+### Added — PDF Report
+- **Enhanced PDF Report** — DtcReportExporter now includes: Readiness Monitor Status, Mode 06 Test Results, ECU Module List, Protocol Bus Scan Results, Drive Cycle Guidance
+
+### Changed
+- **Version**: 3.5.15 → 3.6.0 (code 80 → 81)
+
 ## [3.5.15] - 2026-07-09
 ### Fixed
 - **Battery Tester Active Logging & Background Support** — Fixed the battery tester by keeping its control buttons enabled during active logging. Resolved active driver mapping by introducing `getActiveDriver()` in `MainActivity` which accesses the active driver from either `MainActivity` (for in-process logging) or `LoggerService` (for background logging). The battery tester now successfully reads live/direct adapter voltages in both configurations.
