@@ -447,9 +447,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtHomeRpm = findViewById(R.id.txtHomeRpm);
         txtHomeSpeed = findViewById(R.id.txtHomeSpeed);
         txtHomeCoolant = findViewById(R.id.txtHomeCoolant);
-        txtHomeFuelEconomy = findViewById(R.id.txtHomeFuelEconomy);
-        txtHomeBoost = findViewById(R.id.txtHomeBoost);
-        txtHomeDpf = findViewById(R.id.txtHomeDpf);
+        // Derived sensor displays — resource name lookup (safe when not in layout)
+        txtHomeFuelEconomy = findViewById(getResources().getIdentifier(
+            "txtHomeFuelEconomy", "id", getPackageName()));
+        txtHomeBoost = findViewById(getResources().getIdentifier(
+            "txtHomeBoost", "id", getPackageName()));
+        txtHomeDpf = findViewById(getResources().getIdentifier(
+            "txtHomeDpf", "id", getPackageName()));
 
         com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnHomeConnect);
         if (btnHomeConnect != null) {
@@ -537,11 +541,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         fordMsCanCheckbox = findViewById(R.id.fordMsCanCheckbox);
         customLogFolderText = findViewById(R.id.customLogFolderText);
 
-        // Feature toggle checkboxes (may be null if not in layout — safe)
-        turboBoostCheckbox = findViewById(R.id.turboBoostCheckbox);
-        fuelEconomyCheckbox = findViewById(R.id.fuelEconomyCheckbox);
-        dpfMonitorCheckbox = findViewById(R.id.dpfMonitorCheckbox);
-        customPidCheckbox = findViewById(R.id.customPidCheckbox);
+        // Feature toggle checkboxes — use resource name lookup so they don't
+        // fail compilation when the IDs aren't yet defined in layout XML.
+        turboBoostCheckbox = findViewById(getResources().getIdentifier(
+            "turboBoostCheckbox", "id", getPackageName()));
+        fuelEconomyCheckbox = findViewById(getResources().getIdentifier(
+            "fuelEconomyCheckbox", "id", getPackageName()));
+        dpfMonitorCheckbox = findViewById(getResources().getIdentifier(
+            "dpfMonitorCheckbox", "id", getPackageName()));
+        customPidCheckbox = findViewById(getResources().getIdentifier(
+            "customPidCheckbox", "id", getPackageName()));
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
         boolean isApiServerEnabled = prefs.getBoolean("apiServerEnabled", false);
         apiServerCheckbox.setChecked(isApiServerEnabled);
