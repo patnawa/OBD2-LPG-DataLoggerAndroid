@@ -21,6 +21,16 @@ public final class LoggerConfig {
     public int maxRetries;
     public boolean enableApiServer;
     public boolean fordMsCanEnabled;
+
+    // ── Feature toggles ──────────────────────────────────────
+    /** Compute + display turbo boost pressure (MAP - Baro) */
+    public boolean showTurboBoost = true;
+    /** Compute + display fuel consumption (km/L, L/100km) */
+    public boolean showFuelConsumption = true;
+    /** Poll DPF PIDs for diesel vehicles */
+    public boolean dpfMonitorEnabled = false;
+    /** Load user-defined custom PIDs from SharedPreferences */
+    public boolean customPidsEnabled = false;
     /** Application context — needed by WiFiDriver for ConnectivityManager
      *  to bind sockets to the WiFi network (bypasses missing route when
      *  gateway is disabled for mobile data + WiFi simultaneous use). */

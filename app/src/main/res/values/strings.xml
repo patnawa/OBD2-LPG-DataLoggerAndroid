@@ -249,4 +249,44 @@
     <string name="map_info_tune_assist_desc">The exact percentage to add (+) or subtract (-) in your gas ECU multiplier map to bring deviation to 0%.</string>
     <string name="map_info_note">Note: You must collect both Petrol and LPG data in the same cells first for comparison to work!</string>
     <string name="map_info_close">Close</string>
+
+    <!-- Derived Sensors: Fuel Economy + Turbo Boost -->
+    <string name="fuel_economy_title">Fuel Economy</string>
+    <string name="fuel_economy_kml">km/L</string>
+    <string name="fuel_economy_l100">L/100km</string>
+    <string name="turbo_boost_title">Turbo Boost</string>
+    <string name="turbo_boost_kpa">kPa</string>
+    <string name="turbo_boost_psi">psi</string>
+    <string name="dpf_title">DPF Filter</string>
+    <string name="dpf_soot">Soot</string>
+    <string name="dpf_temp">DPF Temp</string>
+    <string name="dpf_delta">Delta Press</string>
+    <string name="dpf_regen">Regen</string>
+    <string name="dpf_ash">Ash Load</string>
+    <string name="dpf_clean">Clean</string>
+    <string name="dpf_moderate">Moderate</string>
+    <string name="dpf_warning">Warning</string>
+    <string name="dpf_critical">Critical</string>
+    
+    <!-- Custom PID -->
+    <string name="custom_pid_title">Custom PID</string>
+    <string name="custom_pid_add">Add PID</string>
+    <string name="custom_pid_remove">Remove</string>
+    <string name="custom_pid_name">Name</string>
+    <string name="custom_pid_service">Mode (01/02/09)</string>
+    <string name="custom_pid_hex">PID Hex (0C, 5E)</string>
+    <string name="custom_pid_formula">Formula (A-40, (A*256+B)/4)</string>
+    <string name="custom_pid_unit">Unit (C, %, kPa)</string>
+    <string name="custom_pid_bytes">Data Bytes</string>
+    <string name="custom_pid_test">Test</string>
+    <string name="custom_pid_test_data">Enter raw hex</string>
+    <string name="custom_pid_test_result">Result: %1$s</string>
+    <string name="custom_pid_save">Save</string>
+    <string name="custom_pid_manage">Manage Custom PIDs</string>
+    
+    <!-- Feature Toggles -->
+    <string name="feature_turbo_boost">Turbo Boost Calculation</string>
+    <string name="feature_fuel_economy">Fuel Economy Calculation</string>
+    <string name="feature_dpf_monitor">DPF Monitor (Diesel)</string>
+    <string name="feature_custom_pid">Enable Custom PIDs</string>
 </resources>

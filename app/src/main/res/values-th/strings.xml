@@ -44,28 +44,22 @@
     <string name="deviation">ความเบี่ยงเบน</string>
     <string name="map_formula_hint">สูตรคำนวณ: ค่าเบี่ยงเบน (Deviation) = แก๊ส Trim - น้ำมัน Trim. ใช้เปอร์เซ็นต์นี้ปรับค่าตารางคูณในกล่องจูนแก๊สของคุณ</string>
     
-    <!-- Tuning Analyzer Context Strings -->
     <string name="analyzer_unknown">ไม่ทราบสถานะ</string>
     <string name="analyzer_no_data">ไม่มีข้อมูลเซ็นเซอร์</string>
     <string name="analyzer_lean">บางไป (LEAN)</string>
     <string name="analyzer_rich">หนาไป (RICH)</string>
     <string name="analyzer_ok">สมบูรณ์ (PERFECT)</string>
-    
     <string name="analyzer_petrol_lean">เครื่องยนต์น้ำมันทำงานบางเกินไป ตรวจสอบท่อแวคคั่มรั่วหรือเซ็นเซอร์ก่อนเริ่มจูนแก๊ส</string>
     <string name="analyzer_petrol_rich">เครื่องยนต์น้ำมันทำงานหนาเกินไป แก้ไขปัญหาเครื่องยนต์ก่อนเริ่มจูนแก๊ส</string>
     <string name="analyzer_petrol_ok">เครื่องยนต์น้ำมันทำงานสมบูรณ์ พร้อมเก็บค่า Baseline</string>
-    
     <string name="analyzer_lpg_lean">แก๊สบางไป (LEAN) กรุณาเพิ่มการจ่ายแก๊สในตารางจูนแก๊ส</string>
     <string name="analyzer_lpg_rich">แก๊สหนาไป (RICH) กรุณาลดการจ่ายแก๊สในตารางจูนแก๊ส</string>
     <string name="analyzer_lpg_ok">การจ่ายแก๊สสมบูรณ์ ใกล้เคียงกับ Baseline ของน้ำมันเดิม</string>
-    
     <string name="status_perfect_translated">สมบูรณ์ (PERFECT)</string>
     <string name="status_lean_translated">บางไป (LEAN)</string>
     <string name="status_rich_translated">หนาไป (RICH)</string>
-    
     <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nสถานะ: %3$s\nคำแนะนำ: %4$s</string>
 
-    <!-- DTC -->
     <string name="read_dtc">อ่านโค้ด DTC</string>
     <string name="clear_dtc">ลบโค้ด DTC</string>
     <string name="read_vin">อ่านเลขตัวถัง VIN</string>
@@ -73,12 +67,10 @@
     <string name="no_dtcs">ไม่พบรหัสปัญหา (DTC)</string>
     <string name="dtc_count">พบปัญหา: %1$d</string>
 
-    <!-- Performance -->
     <string name="perf_arm">เตรียมจับเวลา 0-100</string>
     <string name="perf_reset">รีเซ็ต</string>
     <string name="perf_brake">จับเวลาเบรก</string>
 
-    <!-- Service -->
     <string name="prompt_language">ภาษา / Language</string>
     <string name="background_logging">ทำงานพื้นหลัง</string>
     <string name="keep_screen_on">เปิดหน้าจอค้างไว้</string>
@@ -86,7 +78,6 @@
     <string name="default_log_folder">Downloads/TunerMapPro (ค่าเริ่มต้น)</string>
     <string name="select_folder">เลือก</string>
 
-    <!-- Home Menu -->
     <string name="home_title">TunerMap Pro</string>
     <string name="home_subtitle">กรุณาเลือกฟังก์ชันการทำงานที่ต้องการ:</string>
     <string name="home_greeting">ยินดีต้อนรับ</string>
@@ -115,7 +106,7 @@
     <string name="dialog_select_folder_msg">กรุณาเลือกโฟลเดอร์สำหรับจัดเก็บและเรียกดูไฟล์บันทึกข้อมูล OBD2</string>
     <string name="dialog_select_folder_btn">เลือกโฟลเดอร์</string>
     <string name="gauge_peaks_header">ค่าสูงสุด-ต่ำสุดในรอบการบันทึก (Min • Max)</string>
-    <!-- Battery Tester -->
+    
     <string name="battery_title">แบตเตอรี่ &amp; ระบบชาร์จ</string>
     <string name="battery_subtitle">ตรวจวิเคราะห์แบตเตอรี่ 12V มืออาชีพผ่าน OBD2 PID 0x42</string>
     <string name="battery_live_graph">กราฟแรงดันเรียลไทม์</string>
@@ -152,16 +143,7 @@
     <string name="battery_chemistry_calcium">แคลเซียม</string>
     <string name="battery_chemistry_lifepo4">LiFePO4</string>
 
-    <!-- Battery Test Buttons -->
-    
-    <!-- Battery Charge Thresholds -->
-    <string name="battery_charge_thresholds">"เกณฑ์การชาร์จ:
-• 14.4–14.7V: ชาร์จปกติ (เครื่องยนต์ทำงาน)
-• 12.6–12.8V: แบตเต็ม (หยุดเครื่องยนต์)
-• 12.4V: ประจุ 75%%
-• 12.2V หรือต่ำกว่า: แบตอ่อน ต้องชาร์จทันที"</string>
-
-    <!-- Battery Wizard Steps -->
+    <string name="battery_charge_thresholds">"เกณฑ์การชาร์จ:\n• 14.4–14.7V: ชาร์จปกติ (เครื่องยนต์ทำงาน)\n• 12.6–12.8V: แบตเต็ม (หยุดเครื่องยนต์)\n• 12.4V: ประจุ 75%%\n• 12.2V หรือต่ำกว่า: แบตอ่อน ต้องชาร์จทันที"</string>
     <string name="battery_not_connected">ไม่ได้เชื่อมต่อ กรุณาเริ่มบันทึกข้อมูลก่อน</string>
     <string name="battery_failed_read_voltage">ไม่สามารถอ่านค่าแรงดันได้</string>
     <string name="battery_resting_reading">กำลังอ่านค่าแรงดันขณะดับเครื่อง (ตรวจสอบให้แน่ใจว่าดับเครื่องยนต์อยู่)...\nประเภทที่เลือก: %1$s</string>
@@ -211,7 +193,6 @@
     <string name="home_mod_records_title">ประวัติการบันทึกข้อมูล</string>
     <string name="home_mod_records_desc">จัดการและเปิดดูไฟล์บันทึก CSV/JSONL</string>
 
-    <!-- Map Tab localizations -->
     <string name="map_formula_logic_title">สูตรและหลักการจูน</string>
     <string name="map_color_legend_title">คำอธิบายสีตาราง</string>
     <string name="map_legend_perfect" formatted="false">±5% (สมบูรณ์ดี)</string>
@@ -225,7 +206,6 @@
     <string name="scale_slightly_lean">บางเล็กน้อย</string>
     <string name="scale_very_lean">บางมาก (Lean)</string>
 
-    <!-- Map Info Dialog -->
     <string name="map_info_color_legend_header">คำอธิบายสีตาราง</string>
     <string name="map_info_legend_perfect">สมบูรณ์ดี (±5%) • การจ่ายเชื้อเพลิงสมบูรณ์ดี</string>
     <string name="map_info_legend_slightly_rich" formatted="false">หนาเล็กน้อย (-5% ถึง -10%) • มีการฉีดเชื้อเพลิงหนาเล็กน้อย</string>
@@ -244,4 +224,42 @@
     <string name="map_info_tune_assist_desc">เปอร์เซ็นต์ที่ต้องนำไปบวก (+) หรือลบ (-) ในตารางจูนแก๊ส (Multiplier Map) เพื่อดึงค่าเบี่ยงเบนกลับมาเป็น 0% (เทียบเท่าจูนน้ำมันเดิม)</string>
     <string name="map_info_note">* หมายเหตุ: ต้องทำการวิ่งเก็บข้อมูลทั้งโหมดน้ำมัน (Petrol) และโหมดแก๊ส (LPG) ในช่วงรอบเครื่องยนต์ (RPM) และภาระโหลดเดียวกันให้ครบถ้วนก่อน ระบบจึงจะสามารถวิเคราะห์และเปรียบเทียบแสดงค่าส่วนต่างออกมาได้</string>
     <string name="map_info_close">ปิด</string>
+
+    <!-- Derived Sensors -->
+    <string name="fuel_economy_title">อัตราสิ้นเปลือง</string>
+    <string name="fuel_economy_kml">km/L</string>
+    <string name="fuel_economy_l100">L/100km</string>
+    <string name="turbo_boost_title">บูสต์เทอร์โบ</string>
+    <string name="turbo_boost_kpa">kPa</string>
+    <string name="turbo_boost_psi">PSI</string>
+    <string name="dpf_title">DPF กรองเขม่า</string>
+    <string name="dpf_soot">เขม่า</string>
+    <string name="dpf_temp">อุณหภูมิ DPF</string>
+    <string name="dpf_delta">แรงดันต่าง</string>
+    <string name="dpf_regen">Regen</string>
+    <string name="dpf_ash">เถ้าสะสม</string>
+    <string name="dpf_clean">ปกติ</string>
+    <string name="dpf_moderate">ปานกลาง</string>
+    <string name="dpf_warning">เตือน</string>
+    <string name="dpf_critical">วิกฤต</string>
+    
+    <string name="custom_pid_title">Custom PID</string>
+    <string name="custom_pid_add">เพิ่ม PID</string>
+    <string name="custom_pid_remove">ลบ</string>
+    <string name="custom_pid_name">ชื่อ</string>
+    <string name="custom_pid_service">Mode (01/02/09)</string>
+    <string name="custom_pid_hex">PID Hex (0C, 5E)</string>
+    <string name="custom_pid_formula">สูตร (A-40, (A*256+B)/4)</string>
+    <string name="custom_pid_unit">หน่วย (°C, %, kPa)</string>
+    <string name="custom_pid_bytes">Data Bytes</string>
+    <string name="custom_pid_test">ทดสอบ</string>
+    <string name="custom_pid_test_data">ป้อน raw hex</string>
+    <string name="custom_pid_test_result">ผลลัพธ์: %1$s</string>
+    <string name="custom_pid_save">บันทึก</string>
+    <string name="custom_pid_manage">จัดการ Custom PID</string>
+    
+    <string name="feature_turbo_boost">คำนวณบูสต์เทอร์โบ</string>
+    <string name="feature_fuel_economy">คำนวณอัตราสิ้นเปลือง</string>
+    <string name="feature_dpf_monitor">ตรวจสอบ DPF (ดีเซล)</string>
+    <string name="feature_custom_pid">เปิดใช้ Custom PID</string>
 </resources>

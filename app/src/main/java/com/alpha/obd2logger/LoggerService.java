@@ -272,7 +272,12 @@ public final class LoggerService extends Service {
         }
 
         // --- Auto-detect supported PIDs ---
-        List<PIDDefinition> allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgCritical() : PIDCatalogue.getAll();
+        List<PIDDefinition> allPids;
+        if (config.customPidsEnabled) {
+            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgCritical() : PIDCatalogue.getAllWithCustom(this);
+        } else {
+            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgCritical() : PIDCatalogue.getAll();
+        }
         // Always make a mutable copy — PIDCatalogue returns unmodifiable lists,
         // and removeAll() in the logging loop would throw UnsupportedOperationException
         // if PID detection fails and we end up using the original list.
@@ -398,12 +403,13 @@ public final class LoggerService extends Service {
                         Map<String, Double> batch = driver.queryPidBatch(finalPids);
                         List<SensorSample> samples = new ArrayList<>();
                         List<PIDDefinition> toRemove = new ArrayList<>();
-                        
+
+                        // ── Raw PID samples ──────────────────────
                         for (PIDDefinition pid : finalPids) {
                             Double value = batch.get(pid.getName());
                             samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
                                     value == null ? "err" : "ok"));
-                            
+
                             if (value == null) {
                                 int fails = consecutiveFailures.getOrDefault(pid.key(), 0) + 1;
                                 consecutiveFailures.put(pid.key(), fails);
@@ -412,6 +418,57 @@ public final class LoggerService extends Service {
                                 }
                             } else {
                                 consecutiveFailures.put(pid.key(), 0);
+                            }
+                        }
+
+                        // ── Derived sensors ──────────────────────
+                        // Look up raw values from batch by PID name
+                        Double mafValue = batch.get("MAF Air Flow");
+                        Double speedValue = batch.get("Vehicle Speed");
+                        Double mapValue = batch.get("Intake Manifold Pressure");
+                        Double baroValue = batch.get("Barometric Pressure");
+                        Double dpfSoot = batch.get("DPF Soot Load");
+                        Double dpfTemp = batch.get("DPF Temperature");
+                        Double dpfDelta = batch.get("DPF Delta Pressure");
+                        Double dpfRegen = batch.get("DPF Regen Status");
+                        Double dpfAsh = batch.get("DPF Ash Load");
+
+                        // Fuel Consumption
+                        if (config.showFuelConsumption && mafValue != null && speedValue != null) {
+                            Double kml = DerivedSensors.fuelConsumptionKmL(mafValue, speedValue, config.fuelMode);
+                            if (kml != null) {
+                                samples.add(new SensorSample("derived_fuel_kmL", "Fuel Economy", kml, "km/L", "ok"));
+                                Double l100 = DerivedSensors.fuelConsumptionL100km(mafValue, speedValue, config.fuelMode);
+                                if (l100 != null) {
+                                    samples.add(new SensorSample("derived_fuel_l100", "Fuel Economy", l100, "L/100km", "ok"));
+                                }
+                            }
+                        }
+
+                        // Turbo Boost
+                        if (config.showTurboBoost && mapValue != null) {
+                            Double boostKpa = DerivedSensors.boostPressureKpa(mapValue, baroValue);
+                            if (boostKpa != null) {
+                                samples.add(new SensorSample("derived_boost_kpa", "Turbo Boost", boostKpa, "kPa", "ok"));
+                                Double boostPsi = DerivedSensors.boostPressurePsi(mapValue, baroValue);
+                                if (boostPsi != null) {
+                                    samples.add(new SensorSample("derived_boost_psi", "Turbo Boost", boostPsi, "psi", "ok"));
+                                }
+                            }
+                        }
+
+                        // DPF Status (derived interpretations)
+                        if (config.dpfMonitorEnabled) {
+                            if (dpfSoot != null) {
+                                String dpfHealth = DerivedSensors.dpfHealthStatus(dpfSoot, dpfAsh);
+                                samples.add(new SensorSample("derived_dpf_health", "DPF Health", 
+                                    "Clean".equals(dpfHealth) ? 1.0 : "Moderate".equals(dpfHealth) ? 2.0 
+                                    : "Warning".equals(dpfHealth) ? 3.0 : 4.0, "status", "ok"));
+                            }
+                            if (dpfRegen != null) {
+                                String regen = DerivedSensors.dpfRegenStatus(dpfRegen);
+                                double regenCode = "Regen Active".equals(regen) ? 1.0 : 0.0;
+                                samples.add(new SensorSample("derived_dpf_regen", "DPF Regen", regenCode, "active=" + regen, "ok"));
                             }
                         }
                         

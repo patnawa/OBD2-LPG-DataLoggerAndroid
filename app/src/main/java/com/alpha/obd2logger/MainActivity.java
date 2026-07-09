@@ -71,6 +71,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // --- UI: Header ---
     private TextView headerStatus, headerVin, headerFuelMode, headerApiStatus;
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
+    private TextView txtHomeFuelEconomy, txtHomeBoost, txtHomeDpf;
     private View headerStatusDot, headerApiDivider;
     private android.widget.ImageButton btnSettings;
     private android.widget.ImageButton btnGoHome;
@@ -80,6 +81,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private EditText wifiIpInput, wifiPortInput, baudInput, intervalInput;
     private TextView bluetoothHintText;
     private CheckBox lpgOnlyCheckbox, backgroundLoggingCheckbox, keepScreenOnCheckbox, apiServerCheckbox, fordMsCanCheckbox;
+    private CheckBox turboBoostCheckbox, fuelEconomyCheckbox, dpfMonitorCheckbox, customPidCheckbox;
     private TextView apiServerIpText;
     private TextView customLogFolderText;
     private Button btnSelectLogFolder;
@@ -445,6 +447,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtHomeRpm = findViewById(R.id.txtHomeRpm);
         txtHomeSpeed = findViewById(R.id.txtHomeSpeed);
         txtHomeCoolant = findViewById(R.id.txtHomeCoolant);
+        txtHomeFuelEconomy = findViewById(R.id.txtHomeFuelEconomy);
+        txtHomeBoost = findViewById(R.id.txtHomeBoost);
+        txtHomeDpf = findViewById(R.id.txtHomeDpf);
 
         com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnHomeConnect);
         if (btnHomeConnect != null) {
@@ -531,6 +536,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         apiServerIpText = findViewById(R.id.apiServerIpText);
         fordMsCanCheckbox = findViewById(R.id.fordMsCanCheckbox);
         customLogFolderText = findViewById(R.id.customLogFolderText);
+
+        // Feature toggle checkboxes (may be null if not in layout — safe)
+        turboBoostCheckbox = findViewById(R.id.turboBoostCheckbox);
+        fuelEconomyCheckbox = findViewById(R.id.fuelEconomyCheckbox);
+        dpfMonitorCheckbox = findViewById(R.id.dpfMonitorCheckbox);
+        customPidCheckbox = findViewById(R.id.customPidCheckbox);
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
         boolean isApiServerEnabled = prefs.getBoolean("apiServerEnabled", false);
         apiServerCheckbox.setChecked(isApiServerEnabled);
@@ -2731,6 +2742,26 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (txtHomeCoolant != null) {
             txtHomeCoolant.setText(coolant != null ? String.format(Locale.US, "%.0f °C", coolant) : "---");
         }
+
+        // ── Derived sensors: Fuel Economy + Turbo Boost ──────
+        Double fuelKmL = valueByKey(record, "derived_fuel_kmL");
+        Double boostPsi = valueByKey(record, "derived_boost_psi");
+        Double dpfSoot = valueByKey(record, "01_7A");
+
+        if (txtHomeFuelEconomy != null) {
+            txtHomeFuelEconomy.setText(fuelKmL != null ? String.format(Locale.US, "%.1f km/L", fuelKmL) : "---");
+        }
+        if (txtHomeBoost != null) {
+            txtHomeBoost.setText(boostPsi != null ? String.format(Locale.US, "%.1f psi", boostPsi) : "---");
+        }
+        if (txtHomeDpf != null) {
+            if (dpfSoot != null) {
+                String health = DerivedSensors.dpfHealthStatus(dpfSoot, null);
+                txtHomeDpf.setText(String.format(Locale.US, "DPF: %.0f%% %s", dpfSoot, health));
+            } else {
+                txtHomeDpf.setText("DPF: ---");
+            }
+        }
     }
 
     /**
@@ -4415,6 +4446,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         config.lpgOnlyMode = lpgOnlyCheckbox.isChecked();
         config.enableApiServer = apiServerCheckbox.isChecked();
         config.fordMsCanEnabled = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
+        config.showTurboBoost = turboBoostCheckbox == null || turboBoostCheckbox.isChecked();
+        config.showFuelConsumption = fuelEconomyCheckbox == null || fuelEconomyCheckbox.isChecked();
+        config.dpfMonitorEnabled = dpfMonitorCheckbox != null && dpfMonitorCheckbox.isChecked();
+        config.customPidsEnabled = customPidCheckbox != null && customPidCheckbox.isChecked();
         return config;
     }
 
@@ -4961,6 +4996,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         ed.putBoolean("pref_lpg_only", lpgOnlyCheckbox != null && lpgOnlyCheckbox.isChecked());
         ed.putBoolean("pref_api_server", apiServerCheckbox != null && apiServerCheckbox.isChecked());
         ed.putBoolean("pref_ford_ms_can", fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked());
+        ed.putBoolean("pref_turbo_boost", turboBoostCheckbox != null && turboBoostCheckbox.isChecked());
+        ed.putBoolean("pref_fuel_economy", fuelEconomyCheckbox != null && fuelEconomyCheckbox.isChecked());
+        ed.putBoolean("pref_dpf_monitor", dpfMonitorCheckbox != null && dpfMonitorCheckbox.isChecked());
+        ed.putBoolean("pref_custom_pid", customPidCheckbox != null && customPidCheckbox.isChecked());
         ed.apply();
     }
 
@@ -5004,6 +5043,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         if (fordMsCanCheckbox != null) {
             fordMsCanCheckbox.setChecked(prefs.getBoolean("pref_ford_ms_can", false));
+        }
+        if (turboBoostCheckbox != null) {
+            turboBoostCheckbox.setChecked(prefs.getBoolean("pref_turbo_boost", true));
+        }
+        if (fuelEconomyCheckbox != null) {
+            fuelEconomyCheckbox.setChecked(prefs.getBoolean("pref_fuel_economy", true));
+        }
+        if (dpfMonitorCheckbox != null) {
+            dpfMonitorCheckbox.setChecked(prefs.getBoolean("pref_dpf_monitor", false));
+        }
+        if (customPidCheckbox != null) {
+            customPidCheckbox.setChecked(prefs.getBoolean("pref_custom_pid", false));
         }
     }
 

@@ -106,6 +106,11 @@ public final class DriverFactory {
         target.connectionTimeoutMs = source.connectionTimeoutMs;
         target.maxRetries = source.maxRetries;
         target.enableApiServer = source.enableApiServer;
+        target.fordMsCanEnabled = source.fordMsCanEnabled;
+        target.showTurboBoost = source.showTurboBoost;
+        target.showFuelConsumption = source.showFuelConsumption;
+        target.dpfMonitorEnabled = source.dpfMonitorEnabled;
+        target.customPidsEnabled = source.customPidsEnabled;
         target.context = source.context;
         return target;
     }

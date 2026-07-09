@@ -1,5 +1,7 @@
 package com.alpha.obd2logger;
 
+import android.content.Context;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,6 +14,19 @@ public final class PIDCatalogue {
 
     public static List<PIDDefinition> getAll() {
         return ALL;
+    }
+
+    /**
+     * Return an unmodifiable list with the built-in catalogue plus any
+     * user-defined custom PIDs loaded from SharedPreferences.
+     */
+    public static List<PIDDefinition> getAllWithCustom(Context context) {
+        if (context == null) return ALL;
+        List<PIDDefinition> custom = CustomPidManager.load(context);
+        if (custom.isEmpty()) return ALL;
+        List<PIDDefinition> merged = new ArrayList<>(ALL);
+        merged.addAll(custom);
+        return Collections.unmodifiableList(merged);
     }
 
     public static List<PIDDefinition> getLpgCritical() {
@@ -78,7 +93,15 @@ public final class PIDCatalogue {
         list.add(new PIDDefinition("Intake Manifold Pressure", "01", "0B", "kPa", "A", 0, 255, true, 1, true));
         list.add(new PIDDefinition("Fuel Pressure", "01", "0A", "kPa", "A*3", 0, 765, false, 1, false));
         list.add(new PIDDefinition("Fuel Rail Pressure", "01", "23", "kPa", "(A*256+B)*10", 0, 655350, false, 2, false));
-        list.add(new PIDDefinition("Barometric Pressure", "01", "33", "kPa", "A", 0, 255, false, 1, false));
+        // lpgCritical=true: needed for turbo boost calculation (MAP - Baro)
+        list.add(new PIDDefinition("Barometric Pressure", "01", "33", "kPa", "A", 0, 255, true, 1, false));
+
+        // --- DPF (Diesel Particulate Filter) — Thai-market diesel vehicles ---
+        list.add(new PIDDefinition("DPF Soot Load", "01", "7A", "%", "A*100/255", 0, 100, false, 1, false));
+        list.add(new PIDDefinition("DPF Temperature", "01", "7B", "°C", "(A*256+B)/10-40", -40, 6513.5, false, 2, false));
+        list.add(new PIDDefinition("DPF Delta Pressure", "01", "85", "kPa", "(A*256+B)*0.01", 0, 655.35, false, 2, false));
+        list.add(new PIDDefinition("DPF Regen Status", "01", "8C", "", "A", 0, 255, false, 1, false));
+        list.add(new PIDDefinition("DPF Ash Load", "01", "8B", "g", "A*100/255", 0, 100, false, 1, false));
 
         // --- Timing & fuel ---
         list.add(new PIDDefinition("Timing Advance", "01", "0E", "deg", "A/2-64", -64, 63.5, true, 1, false));
