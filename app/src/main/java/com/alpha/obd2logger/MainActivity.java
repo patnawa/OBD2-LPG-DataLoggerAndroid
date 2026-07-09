@@ -3919,6 +3919,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
                     displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
                     updateDtcBadge(stored.size(), pending.size(), permanent.size());
+                    displayProFeatures();
                 });
             } finally {
                 if (!wasPaused) {
@@ -4384,6 +4385,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
                     displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
                     updateDtcBadge(stored.size(), pending.size(), permanent.size());
+                    displayProFeatures();
                 });
             } finally {
                 if (!wasPaused) {
@@ -4804,8 +4806,301 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             colCount++;
         }
 
+        // ── Drive Cycle Guidance for incomplete monitors ──
+        List<DriveCycleGuide.DriveCycleStep> steps = DriveCycleGuide.getGuidance(rm);
+        if (!steps.isEmpty()) {
+            TextView guideHeader = new TextView(this);
+            guideHeader.setText("🚗 Drive Cycle Guidance (" + steps.size() + " incomplete)");
+            guideHeader.setTextColor(getColorCompat(R.color.warning));
+            guideHeader.setTextSize(13);
+            guideHeader.setPadding(0, 16, 0, 6);
+            guideHeader.setTypeface(null, android.graphics.Typeface.BOLD);
+            readinessContainer.addView(guideHeader);
+
+            for (DriveCycleGuide.DriveCycleStep step : steps) {
+                TextView stepView = new TextView(this);
+                stepView.setText("  ● " + step.monitorName + " (~" + step.estimatedMinutes + " min):\n    " + step.instruction);
+                stepView.setTextColor(getColorCompat(R.color.text));
+                stepView.setTextSize(11);
+                stepView.setPadding(16, 4, 8, 4);
+                readinessContainer.addView(stepView);
+            }
+        }
+
+        // ── DTC → Monitor correlation ──
+        if (!lastStoredDtcs.isEmpty()) {
+            String correlation = DtcMonitorCorrelation.describeAffectedMonitors(lastStoredDtcs);
+            TextView corrView = new TextView(this);
+            corrView.setText("🔗 " + correlation);
+            corrView.setTextColor(getColorCompat(R.color.muted));
+            corrView.setTextSize(11);
+            corrView.setPadding(0, 12, 0, 8);
+            readinessContainer.addView(corrView);
+        }
+
         dtcStatusText.setText("Readiness check complete.");
         dtcStatusText.setTextColor(getColorCompat(R.color.muted));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Pro Scanner Features UI
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Display pro scanner features section after DTC scan results:
+     * - In-use performance tracking (Mode 09 PID 0D/0E/0F)
+     * - Bi-directional control button (Mode 08)
+     * - Enhanced mode scan button (Mode 21/22)
+     * - Per-ECU physical addressing scan button
+     */
+    private void displayProFeatures() {
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) return;
+
+        // ── Pro Features header ──
+        TextView proHeader = new TextView(this);
+        proHeader.setText("🔧 Pro Scanner Features");
+        proHeader.setTextColor(getColorCompat(R.color.accent));
+        proHeader.setTextSize(14);
+        proHeader.setPadding(0, 16, 0, 8);
+        proHeader.setTypeface(null, android.graphics.Typeface.BOLD);
+        dtcListContainer.addView(proHeader);
+
+        // ── In-Use Performance Tracking ──
+        dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
+        dtcExecutor.submit(() -> {
+            try {
+                Mode09Reader.InUsePerformance perf = Mode09Reader.readInUsePerformance(activeDriver);
+                runOnUiThread(() -> {
+                    if (perf.ignitionCycles >= 0 || perf.obdTripCount >= 0) {
+                        TextView perfView = new TextView(this);
+                        perfView.setText("📊 In-Use Performance Since Clear:\n"
+                            + "  Ignitions: " + (perf.ignitionCycles >= 0 ? perf.ignitionCycles : "N/A") + "\n"
+                            + "  OBD Trips: " + (perf.obdTripCount >= 0 ? perf.obdTripCount : "N/A") + "\n"
+                            + "  Distance: " + (perf.distanceSinceClearKm >= 0 ? perf.distanceSinceClearKm + " km" : "N/A") + "\n"
+                            + "  Engine Time: " + (perf.timeSinceClearMin >= 0 ? perf.timeSinceClearMin + " min" : "N/A"));
+                        perfView.setTextColor(getColorCompat(R.color.text));
+                        perfView.setTextSize(11);
+                        perfView.setPadding(16, 8, 8, 8);
+                        perfView.setBackgroundResource(R.color.surface2);
+                        LinearLayout.LayoutParams perfLp = new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                        perfLp.bottomMargin = 6;
+                        perfView.setLayoutParams(perfLp);
+                        dtcListContainer.addView(perfView);
+                    }
+                });
+            } catch (Exception e) {
+                android.util.Log.w("MainActivity", "In-use performance read failed", e);
+            }
+        });
+
+        // ── Bi-Directional Control (Mode 08) button ──
+        Button btnMode08 = new Button(this);
+        btnMode08.setText("🎮 Bi-Directional Control (Mode 08)");
+        btnMode08.setTextSize(12);
+        btnMode08.setOnClickListener(v -> showMode08Dialog());
+        LinearLayout.LayoutParams m08Lp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        m08Lp.bottomMargin = 8;
+        m08Lp.topMargin = 4;
+        btnMode08.setLayoutParams(m08Lp);
+        dtcListContainer.addView(btnMode08);
+
+        // ── Enhanced Mode Scan button ──
+        Button btnEnhanced = new Button(this);
+        btnEnhanced.setText("🔍 Enhanced Scan (Manufacturer Codes)");
+        btnEnhanced.setTextSize(12);
+        btnEnhanced.setOnClickListener(v -> runEnhancedScan());
+        LinearLayout.LayoutParams enhLp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        enhLp.bottomMargin = 8;
+        btnEnhanced.setLayoutParams(enhLp);
+        dtcListContainer.addView(btnEnhanced);
+
+        // ── Per-ECU Physical Addressing Scan button ──
+        Button btnEcuScan = new Button(this);
+        btnEcuScan.setText("📡 Per-ECU Scan (Physical Addressing)");
+        btnEcuScan.setTextSize(12);
+        btnEcuScan.setOnClickListener(v -> runPerEcuScan());
+        LinearLayout.LayoutParams ecuLp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        ecuLp.bottomMargin = 8;
+        btnEcuScan.setLayoutParams(ecuLp);
+        dtcListContainer.addView(btnEcuScan);
+    }
+
+    /**
+     * Show bi-directional control dialog for Mode 08 tests.
+     */
+    private void showMode08Dialog() {
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
+            Toast.makeText(this, "Not connected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] testNames = new String[Mode08Controller.STANDARD_TESTS.size()];
+        String[] testIds = new String[Mode08Controller.STANDARD_TESTS.size()];
+        int i = 0;
+        for (Map.Entry<String, Mode08Controller.TestId> entry : Mode08Controller.STANDARD_TESTS.entrySet()) {
+            testNames[i] = entry.getValue().name + " (TID " + entry.getKey() + ")";
+            testIds[i] = entry.getKey();
+            i++;
+        }
+
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("🎮 Bi-Directional Control (Mode 08)\n⚠ Some tests activate physical components")
+            .setItems(testNames, (dialog, which) -> {
+                String tid = testIds[which];
+                String testName = Mode08Controller.getTestName(tid);
+                String testDesc = Mode08Controller.getTestDescription(tid);
+
+                new android.app.AlertDialog.Builder(this)
+                    .setTitle("Run: " + testName)
+                    .setMessage(testDesc + "\n\nProceed?")
+                    .setPositiveButton("Run Test", (d2, w2) -> {
+                        dtcExecutor.submit(() -> {
+                            boolean ok = Mode08Controller.runTest(activeDriver, tid);
+                            runOnUiThread(() -> {
+                                Toast.makeText(this,
+                                    ok ? "✅ " + testName + " — acknowledged" : "❌ " + testName + " — not supported or failed",
+                                    Toast.LENGTH_LONG).show();
+                            });
+                        });
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+            })
+            .setNeutralButton("Cancel All Tests", (dialog, which) -> {
+                dtcExecutor.submit(() -> {
+                    Mode08Controller.cancelAllTests(activeDriver);
+                    runOnUiThread(() -> Toast.makeText(this, "All tests cancelled", Toast.LENGTH_SHORT).show());
+                });
+            })
+            .setNegativeButton("Close", null)
+            .show();
+    }
+
+    /**
+     * Run enhanced (manufacturer-specific) mode scan.
+     * Detects brand from VIN and runs appropriate enhanced modes.
+     */
+    private void runEnhancedScan() {
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
+            Toast.makeText(this, "Not connected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String vin = headerVin.getText().toString().replace("VIN: ", "").trim();
+        VinBrandDetector.Brand brand = VinBrandDetector.detect(vin);
+        String brandName = VinBrandDetector.getBrandName(brand);
+
+        Toast.makeText(this, "Enhanced scan: " + brandName + "...", Toast.LENGTH_SHORT).show();
+        dtcExecutor.submit(() -> {
+            List<DtcCode> enhanced = DtcReader.scanEnhancedForBrand(activeDriver,
+                brandName.equalsIgnoreCase("Unknown") ? null : brandName.toLowerCase());
+
+            runOnUiThread(() -> {
+                if (enhanced.isEmpty()) {
+                    TextView tv = new TextView(this);
+                    tv.setText("🔍 Enhanced scan: No manufacturer-specific codes found.\n(Not all vehicles/adapters support enhanced modes.)");
+                    tv.setTextColor(getColorCompat(R.color.muted));
+                    tv.setTextSize(11);
+                    tv.setPadding(16, 8, 8, 8);
+                    dtcListContainer.addView(tv);
+                } else {
+                    TextView tv = new TextView(this);
+                    tv.setText("🔍 Enhanced Scan Results (" + enhanced.size() + " codes):");
+                    tv.setTextColor(getColorCompat(R.color.accent));
+                    tv.setTextSize(13);
+                    tv.setTypeface(null, android.graphics.Typeface.BOLD);
+                    tv.setPadding(0, 12, 0, 6);
+                    dtcListContainer.addView(tv);
+                    for (DtcCode c : enhanced) {
+                        TextView codeView = new TextView(this);
+                        codeView.setText("  ● " + c.getCode() + " — " + c.getDescription());
+                        codeView.setTextColor(getColorCompat(R.color.danger));
+                        codeView.setTextSize(11);
+                        codeView.setPadding(16, 2, 8, 2);
+                        dtcListContainer.addView(codeView);
+                    }
+                }
+            });
+        });
+    }
+
+    /**
+     * Run per-ECU physical addressing scan.
+     * Scans each known ECU individually using ATSH/ATCRA.
+     */
+    private void runPerEcuScan() {
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
+            Toast.makeText(this, "Not connected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Toast.makeText(this, "Per-ECU scan: querying individual modules...", Toast.LENGTH_SHORT).show();
+        dtcExecutor.submit(() -> {
+            List<DtcCode> allCodes = new ArrayList<>();
+            List<String> scannedEcus = new ArrayList<>();
+
+            for (Map.Entry<String, String> entry : DtcReader.ECU_TX_RX_PAIRS.entrySet()) {
+                String tx = entry.getKey();
+                String rx = entry.getValue();
+                List<DtcCode> codes = DtcReader.scanEcuDirectly(activeDriver, tx, rx);
+                if (!codes.isEmpty()) {
+                    scannedEcus.add(tx + "→" + rx + ": " + codes.size() + " DTCs");
+                    allCodes.addAll(codes);
+                }
+            }
+
+            runOnUiThread(() -> {
+                TextView header = new TextView(this);
+                header.setText("📡 Per-ECU Scan Results");
+                header.setTextColor(getColorCompat(R.color.accent));
+                header.setTextSize(13);
+                header.setTypeface(null, android.graphics.Typeface.BOLD);
+                header.setPadding(0, 12, 0, 6);
+                dtcListContainer.addView(header);
+
+                if (scannedEcus.isEmpty()) {
+                    TextView tv = new TextView(this);
+                    tv.setText("  No DTCs found from individual ECU scans.\n  (Some modules may not respond to physical addressing.)");
+                    tv.setTextColor(getColorCompat(R.color.muted));
+                    tv.setTextSize(11);
+                    tv.setPadding(16, 4, 8, 8);
+                    dtcListContainer.addView(tv);
+                } else {
+                    for (String s : scannedEcus) {
+                        TextView tv = new TextView(this);
+                        tv.setText("  ● " + s);
+                        tv.setTextColor(getColorCompat(R.color.text));
+                        tv.setTextSize(11);
+                        tv.setPadding(16, 2, 8, 2);
+                        dtcListContainer.addView(tv);
+                    }
+                    if (!allCodes.isEmpty()) {
+                        TextView codesHeader = new TextView(this);
+                        codesHeader.setText("  Additional DTCs from per-ECU scan (" + allCodes.size() + "):");
+                        codesHeader.setTextColor(getColorCompat(R.color.warning));
+                        codesHeader.setTextSize(11);
+                        codesHeader.setPadding(0, 8, 0, 4);
+                        dtcListContainer.addView(codesHeader);
+                        for (DtcCode c : allCodes) {
+                            TextView tv = new TextView(this);
+                            tv.setText("    " + c.getCode() + " — " + c.getDescription());
+                            tv.setTextColor(getColorCompat(R.color.danger));
+                            tv.setTextSize(11);
+                            tv.setPadding(16, 1, 8, 1);
+                            dtcListContainer.addView(tv);
+                        }
+                    }
+                }
+            });
+        });
     }
 
     // --- Config ---
