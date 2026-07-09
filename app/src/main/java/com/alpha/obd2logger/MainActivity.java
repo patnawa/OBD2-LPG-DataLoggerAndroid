@@ -641,6 +641,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 FuelMode mode = position == 0 ? FuelMode.LPG : FuelMode.PETROL;
                 applyFuelTheme(mode);
+                getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putInt("pref_fuel_position", position).apply();
                 // Propagate fuel mode change to the running logger so
                 // subsequent records route to the correct map layer.
                 LoggerService svc = LoggerService.getInstance();
@@ -5214,7 +5215,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
         android.content.SharedPreferences.Editor ed = prefs.edit();
         ed.putInt("pref_transport_position", transportSpinner != null ? transportSpinner.getSelectedItemPosition() : 0);
-        ed.putInt("pref_fuel_position", fuelSpinner != null ? fuelSpinner.getSelectedItemPosition() : 0);
+        ed.putInt("pref_fuel_position", fuelSpinner != null ? fuelSpinner.getSelectedItemPosition() : 1);
         ed.putInt("pref_obd_protocol_position", obdProtocolSpinner != null ? obdProtocolSpinner.getSelectedItemPosition() : 0);
         ed.putString("pref_wifi_ip", wifiIpInput != null ? wifiIpInput.getText().toString().trim() : "192.168.0.10");
         ed.putString("pref_wifi_port", wifiPortInput != null ? wifiPortInput.getText().toString().trim() : "35000");
@@ -5239,7 +5240,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
         if (fuelSpinner != null) {
-            int pos = prefs.getInt("pref_fuel_position", 0);
+            int pos = prefs.getInt("pref_fuel_position", 1);
             if (pos >= 0 && pos < fuelSpinner.getAdapter().getCount()) {
                 fuelSpinner.setSelection(pos);
             }

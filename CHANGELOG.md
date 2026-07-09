@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.11] - 2026-07-09
+### Fixed
+- **Startup Fuel Mode Default & Persistence** — Changed the default startup fuel mode to **Petrol** (instead of LPG/CNG) for new installs or clean preference runs. Added instant selection saving in the `fuelSpinner` listener so that any user fuel selection is persisted immediately to `SharedPreferences` and reliably remembered even if the app closes or restarts.
+
 ## [3.5.10] - 2026-07-09
 ### Fixed
 - **UI Settings and Diagnostic Button Interference During Logging** — Added dynamic UI disablement (via `setConfigUiEnabled()`) which disables settings input spinners/checkboxes, alternative OBD2 commands (DTC diagnostics: read/clear DTCs, read VIN, check readiness), and battery tester buttons during active logging. This prevents users from altering parameters mid-session and avoids adapter command collisions.
