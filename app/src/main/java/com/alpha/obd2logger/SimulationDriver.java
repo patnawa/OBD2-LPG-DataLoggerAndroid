@@ -201,7 +201,7 @@ public final class SimulationDriver extends BaseDriver {
         }
         switch (command) {
             case "03":   return "43 02 01 71 03 00";
-            case "07":   return "41 01 00 07";
+            case "07":   return "47 01 00 07 00 00";
             case "0A":   return "4A 01 01 71";
             case "04":   return "44";
             case "0101": return "41 01 82 07 65 04";

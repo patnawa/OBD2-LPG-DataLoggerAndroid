@@ -118,6 +118,26 @@ public class ReadinessMonitorTest {
         assertTrue(noise.getMonitors().isEmpty());
     }
 
+    @Test
+    public void testParseWithCANHeaders() {
+        String response = "7E8 06 41 01 00 07 EF 00";
+        ReadinessMonitor rm = ReadinessMonitor.parse(response);
+        assertFalse(rm.isMilOn());
+        assertEquals(0, rm.getDtcCount());
+        assertFalse(rm.isDiesel());
+        assertTrue(rm.isAllReady());
+    }
+
+    @Test
+    public void testParseWithFrameIndexes() {
+        String response = "0: 41 01 00 07 EF 00";
+        ReadinessMonitor rm = ReadinessMonitor.parse(response);
+        assertFalse(rm.isMilOn());
+        assertEquals(0, rm.getDtcCount());
+        assertFalse(rm.isDiesel());
+        assertTrue(rm.isAllReady());
+    }
+
     private ReadinessMonitor.MonitorStatus findMonitor(List<ReadinessMonitor.MonitorStatus> list, String name) {
         for (ReadinessMonitor.MonitorStatus s : list) {
             if (s.name.equalsIgnoreCase(name)) {

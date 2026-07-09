@@ -573,6 +573,9 @@ public final class DtcReader {
             // Parse CAN ID — first token
             int ecuId;
             try {
+                if (tokens[0].length() < 3) {
+                    throw new NumberFormatException("Too short for CAN ID header");
+                }
                 ecuId = Integer.parseInt(tokens[0], 16);
             } catch (NumberFormatException e) {
                 // Not a CAN header line — try legacy parse

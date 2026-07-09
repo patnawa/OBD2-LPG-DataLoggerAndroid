@@ -2390,6 +2390,55 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             }
                         }
 
+                        // ── Derived sensors ──────────────────────
+                        // Look up raw values from batch by PID name
+                        Double mafValue = batch.get("MAF Air Flow");
+                        Double speedValue = batch.get("Vehicle Speed");
+                        Double mapValue = batch.get("Intake Manifold Pressure");
+                        Double baroValue = batch.get("Barometric Pressure");
+                        Double dpfSoot = batch.get("DPF Soot Load");
+                        Double dpfAsh = batch.get("DPF Ash Load");
+                        Double dpfRegen = batch.get("DPF Regen Status");
+
+                        // Fuel Consumption
+                        if (config.showFuelConsumption && mafValue != null && speedValue != null) {
+                            Double kml = DerivedSensors.fuelConsumptionKmL(mafValue, speedValue, config.fuelMode);
+                            if (kml != null) {
+                                samples.add(new SensorSample("derived_fuel_kmL", "Fuel Economy", kml, "km/L", "ok"));
+                                Double l100 = DerivedSensors.fuelConsumptionL100km(mafValue, speedValue, config.fuelMode);
+                                if (l100 != null) {
+                                    samples.add(new SensorSample("derived_fuel_l100", "Fuel Economy", l100, "L/100km", "ok"));
+                                }
+                            }
+                        }
+
+                        // Turbo Boost
+                        if (config.showTurboBoost && mapValue != null) {
+                            Double boostKpa = DerivedSensors.boostPressureKpa(mapValue, baroValue);
+                            if (boostKpa != null) {
+                                samples.add(new SensorSample("derived_boost_kpa", "Turbo Boost", boostKpa, "kPa", "ok"));
+                                Double boostPsi = DerivedSensors.boostPressurePsi(mapValue, baroValue);
+                                if (boostPsi != null) {
+                                    samples.add(new SensorSample("derived_boost_psi", "Turbo Boost", boostPsi, "psi", "ok"));
+                                }
+                            }
+                        }
+
+                        // DPF Status (derived interpretations)
+                        if (config.dpfMonitorEnabled) {
+                            if (dpfSoot != null) {
+                                String dpfHealth = DerivedSensors.dpfHealthStatus(dpfSoot, dpfAsh);
+                                samples.add(new SensorSample("derived_dpf_health", "DPF Health", 
+                                    "Clean".equals(dpfHealth) ? 1.0 : "Moderate".equals(dpfHealth) ? 2.0 
+                                    : "Warning".equals(dpfHealth) ? 3.0 : 4.0, "status", "ok"));
+                            }
+                            if (dpfRegen != null) {
+                                String regen = DerivedSensors.dpfRegenStatus(dpfRegen);
+                                double regenCode = "Regen Active".equals(regen) ? 1.0 : 0.0;
+                                samples.add(new SensorSample("derived_dpf_regen", "DPF Regen", regenCode, "active=" + regen, "ok"));
+                            }
+                        }
+
                         DataRecord record = new DataRecord(
                                 iso.format(new Date()),
                                 (SystemClock.elapsedRealtime() - started) / 1000.0,

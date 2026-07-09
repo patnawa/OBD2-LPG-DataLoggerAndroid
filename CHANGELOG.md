@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.1] - 2026-07-09
+### Fixed
+- **DTC Non-Header Parsing Bug** — Enforced 3-character minimum check on CAN ID tokens to prevent 2-character mode response headers from corrupting trouble codes when headers are disabled.
+- **In-Process Telemetry Derived Sensors** — Added real-time derived sensor computations (Fuel Economy, Turbo Boost, DPF Health) to the foreground/in-process polling loop so the home page updates correctly.
+- **Multi-Frame VIN Parsing Bug** — Integrated robust line-by-line normalization to strip CAN ID headers, PCI frame descriptors, and frame indexes so that multi-frame VIN queries do not decode as corrupted characters.
+- **Mode 09 Cal-ID & CVN Parsing Bug** — Implemented the same line-by-line cleaning mechanism in `Mode09Reader` to resolve character corruption on multi-frame Cal-ID and CVN responses.
+- **Simulation Driver Mode 07 Pending DTC Response Typo** — Fixed typo in Simulated Mode 07 response string from `41 01 00 07` to `47 01 00 07 00 00`.
+
 ## [3.5.0] - 2026-07-09
 ### Added
 - **Fuel Consumption (km/L)** — real-time from MAF + Speed, auto AFR/density per fuel mode (14.7/737 petrol, 15.5/510 LPG). Also outputs L/100km. Null-safe at idle.

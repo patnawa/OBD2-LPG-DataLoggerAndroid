@@ -72,15 +72,9 @@ public final class Mode09Reader {
 
         // Normalize
         String hex = response.replace("\r", "\n").replace("\r\n", "\n");
-        hex = hex.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "");
-
         StringBuilder hexBuf = new StringBuilder();
         for (String line : hex.split("\\n")) {
-            String clean = line.trim();
-            if (clean.isEmpty() || clean.matches("(?i)NODATA|NO DATA")) continue;
-            int colonIdx = clean.indexOf(':');
-            if (colonIdx >= 0) clean = clean.substring(colonIdx + 1);
-            hexBuf.append(clean.replaceAll("[^0-9A-Fa-f]", "").toUpperCase());
+            hexBuf.append(cleanMode09Line(line));
         }
 
         String allHex = hexBuf.toString();
@@ -130,15 +124,9 @@ public final class Mode09Reader {
         if (response == null || response.isEmpty()) return entries;
 
         String hex = response.replace("\r", "\n").replace("\r\n", "\n");
-        hex = hex.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "");
-
         StringBuilder hexBuf = new StringBuilder();
         for (String line : hex.split("\\n")) {
-            String clean = line.trim();
-            if (clean.isEmpty() || clean.matches("(?i)NODATA|NO DATA")) continue;
-            int colonIdx = clean.indexOf(':');
-            if (colonIdx >= 0) clean = clean.substring(colonIdx + 1);
-            hexBuf.append(clean.replaceAll("[^0-9A-Fa-f]", "").toUpperCase());
+            hexBuf.append(cleanMode09Line(line));
         }
 
         String allHex = hexBuf.toString();
@@ -206,5 +194,51 @@ public final class Mode09Reader {
         public String toString() {
             return "ECU " + ecuIndex + ": " + cvn;
         }
+    }
+
+    private static String cleanMode09Line(String line) {
+        String trimmed = line.trim().toUpperCase();
+        if (trimmed.isEmpty()) return "";
+
+        // 1. Remove status and diagnostics messages
+        if (trimmed.contains("SEARCHING") || trimmed.contains("BUS") || trimmed.contains("ERR") || trimmed.contains("STOPPED") || trimmed.contains("NODATA") || trimmed.contains("NO DATA")) {
+            return "";
+        }
+
+        // 2. Remove line headers like "0:", "1:", "0A:" from consecutive ELM327 lines
+        trimmed = trimmed.replaceAll("^[0-9A-F]+:\\s*", "");
+
+        // 3. Remove CAN IDs and PCI bytes with spaces
+        // Check for 11-bit CAN ID (e.g. "7E8 ")
+        if (trimmed.matches("^[0-9A-F]{3}\\s+.*")) {
+            trimmed = trimmed.substring(4); // strip "7E8 "
+            // Strip PCI frame headers:
+            if (trimmed.matches("^10\\s+[0-9A-F]{2}\\s+.*")) {
+                trimmed = trimmed.replaceAll("^10\\s+[0-9A-F]{2}\\s*", ""); // First frame "10 14 "
+            } else if (trimmed.matches("^(0[0-9A-F]|2[0-9A-F])\\s+.*")) {
+                trimmed = trimmed.replaceAll("^(0[0-9A-F]|2[0-9A-F])\\s*", ""); // Consecutive/Single frame "21 "
+            }
+        }
+        // Check for 29-bit CAN ID (e.g. "18DAF110 ")
+        else if (trimmed.matches("^[0-9A-F]{8}\\s+.*")) {
+            trimmed = trimmed.substring(9); // strip "18DAF110 "
+            // Strip PCI frame headers:
+            if (trimmed.matches("^10\\s+[0-9A-F]{2}\\s+.*")) {
+                trimmed = trimmed.replaceAll("^10\\s+[0-9A-F]{2}\\s*", "");
+            } else if (trimmed.matches("^(0[0-9A-F]|2[0-9A-F])\\s+.*")) {
+                trimmed = trimmed.replaceAll("^(0[0-9A-F]|2[0-9A-F])\\s*", "");
+            }
+        }
+
+        // 4. Remove CAN IDs and PCI bytes without spaces (Format B)
+        // Strip 11-bit CAN ID (7E8) + PCI byte (1014, 21, 03)
+        trimmed = trimmed.replaceAll("^7E[8-F]10[0-9A-F]{2}", "");
+        trimmed = trimmed.replaceAll("^7E[8-F][0-2][0-9A-F]", "");
+        // Strip 29-bit CAN ID (18DAF1xx) + PCI byte (1014, 21, 03)
+        trimmed = trimmed.replaceAll("^18DAF1[0-9A-F]{2}10[0-9A-F]{2}", "");
+        trimmed = trimmed.replaceAll("^18DAF1[0-9A-F]{2}[0-2][0-9A-F]", "");
+
+        // 5. Remove any non-hex characters
+        return trimmed.replaceAll("[^0-9A-Fa-f]", "");
     }
 }

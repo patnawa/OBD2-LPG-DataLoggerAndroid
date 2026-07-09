@@ -42,19 +42,16 @@ public final class VinReader {
             return null;
         }
 
-        // Normalise: strip spaces, non-hex noise
-        String hex = response.replace("\r\n", "\n").replace('\r', '\n');
-        hex = hex.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "");
-        hex = hex.replaceAll("[^0-9A-Fa-f]", "");
-        hex = hex.toUpperCase();
+        String[] lines = response.replace("\r\n", "\n").replace('\r', '\n').split("\n");
+        StringBuilder sb = new StringBuilder();
+        for (String line : lines) {
+            sb.append(cleanVinLine(line));
+        }
 
+        String hex = sb.toString().toUpperCase();
         if (hex.length() < 10) {
             return null;
         }
-
-        // The response contains 49 02 01 followed by ASCII hex bytes.
-        // In multi-frame, we see: 490201 <17 hex bytes>
-        // ELM327 with ATSP auto + headers off usually concatenates all frames.
 
         // Find "4902" header
         int idx = hex.indexOf("4902");
@@ -98,5 +95,51 @@ public final class VinReader {
             return result;
         }
         return null;
+    }
+
+    private static String cleanVinLine(String line) {
+        String trimmed = line.trim().toUpperCase();
+        if (trimmed.isEmpty()) return "";
+
+        // 1. Remove status and diagnostics messages
+        if (trimmed.contains("SEARCHING") || trimmed.contains("BUS") || trimmed.contains("ERR") || trimmed.contains("STOPPED") || trimmed.contains("NODATA") || trimmed.contains("NO DATA")) {
+            return "";
+        }
+
+        // 2. Remove line headers like "0:", "1:", "0A:" from consecutive ELM327 lines
+        trimmed = trimmed.replaceAll("^[0-9A-F]+:\\s*", "");
+
+        // 3. Remove CAN IDs and PCI bytes with spaces
+        // Check for 11-bit CAN ID (e.g. "7E8 ")
+        if (trimmed.matches("^[0-9A-F]{3}\\s+.*")) {
+            trimmed = trimmed.substring(4); // strip "7E8 "
+            // Strip PCI frame headers:
+            if (trimmed.matches("^10\\s+[0-9A-F]{2}\\s+.*")) {
+                trimmed = trimmed.replaceAll("^10\\s+[0-9A-F]{2}\\s*", ""); // First frame "10 14 "
+            } else if (trimmed.matches("^(0[0-9A-F]|2[0-9A-F])\\s+.*")) {
+                trimmed = trimmed.replaceAll("^(0[0-9A-F]|2[0-9A-F])\\s*", ""); // Consecutive/Single frame "21 "
+            }
+        }
+        // Check for 29-bit CAN ID (e.g. "18DAF110 ")
+        else if (trimmed.matches("^[0-9A-F]{8}\\s+.*")) {
+            trimmed = trimmed.substring(9); // strip "18DAF110 "
+            // Strip PCI frame headers:
+            if (trimmed.matches("^10\\s+[0-9A-F]{2}\\s+.*")) {
+                trimmed = trimmed.replaceAll("^10\\s+[0-9A-F]{2}\\s*", "");
+            } else if (trimmed.matches("^(0[0-9A-F]|2[0-9A-F])\\s+.*")) {
+                trimmed = trimmed.replaceAll("^(0[0-9A-F]|2[0-9A-F])\\s*", "");
+            }
+        }
+
+        // 4. Remove CAN IDs and PCI bytes without spaces (Format B)
+        // Strip 11-bit CAN ID (7E8) + PCI byte (1014, 21, 03)
+        trimmed = trimmed.replaceAll("^7E[8-F]10[0-9A-F]{2}", "");
+        trimmed = trimmed.replaceAll("^7E[8-F][0-2][0-9A-F]", "");
+        // Strip 29-bit CAN ID (18DAF1xx) + PCI byte (1014, 21, 03)
+        trimmed = trimmed.replaceAll("^18DAF1[0-9A-F]{2}10[0-9A-F]{2}", "");
+        trimmed = trimmed.replaceAll("^18DAF1[0-9A-F]{2}[0-2][0-9A-F]", "");
+
+        // 5. Remove any non-hex characters
+        return trimmed.replaceAll("[^0-9A-Fa-f]", "");
     }
 }
