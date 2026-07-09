@@ -125,7 +125,10 @@ public final class LogReplayParser {
             String ls = cell(parts, c.loopStatusIdx);
             return !ls.equalsIgnoreCase("Open");
         }
-        return true;
+        // Neither column present — loop state is genuinely unknown. Previously this
+        // defaulted to CLOSED (true), plotting open-loop samples into the tuning map.
+        // Default to OPEN (false) so unknown rows are skipped rather than assumed good.
+        return false;
     }
 
     /**

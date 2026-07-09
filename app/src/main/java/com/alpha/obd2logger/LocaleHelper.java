@@ -75,21 +75,26 @@ public class LocaleHelper {
 
     private static Context updateResources(Context context, String language) {
         Locale locale = new Locale(language);
-        Locale.setDefault(locale);
-
-        Configuration configuration = new Configuration(context.getResources().getConfiguration());
+        // On API >= 24 the scoped createConfigurationContext (below) is sufficient and
+        // we deliberately do NOT call Locale.setDefault() — that mutates the whole
+        // process and lets one activity's locale clobber another's. Scoping via the
+        // returned context keeps locales isolated per activity.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            Configuration configuration = new Configuration(context.getResources().getConfiguration());
             configuration.setLocale(locale);
             LocaleList localeList = new LocaleList(locale);
-            LocaleList.setDefault(localeList);
+            localeList.setDefault(localeList);
             configuration.setLocales(localeList);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
                 configuration.setLayoutDirection(locale);
             }
-            context.getResources().updateConfiguration(configuration, context.getResources().getDisplayMetrics());
             return context.createConfigurationContext(configuration);
         } else {
+            Configuration configuration = new Configuration(context.getResources().getConfiguration());
             configuration.setLocale(locale);
+            // Pre-N there is no per-context scoping, so setDefault is required for
+            // non-context-aware code paths — but only here, as a legacy fallback.
+            Locale.setDefault(locale);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
                 configuration.setLayoutDirection(locale);
             }
@@ -101,6 +106,8 @@ public class LocaleHelper {
     @SuppressWarnings("deprecation")
     private static Context updateResourcesLegacy(Context context, String language) {
         Locale locale = new Locale(language);
+        // Pre-N legacy path: setDefault is required because there is no per-context
+        // locale scoping. On API >= 24 use updateResources() instead.
         Locale.setDefault(locale);
 
         Resources resources = context.getResources();

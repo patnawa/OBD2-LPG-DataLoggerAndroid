@@ -274,9 +274,9 @@ public final class LoggerService extends Service {
         // --- Auto-detect supported PIDs ---
         List<PIDDefinition> allPids;
         if (config.customPidsEnabled) {
-            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgCritical() : PIDCatalogue.getAllWithCustom(this);
+            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgPollSet() : PIDCatalogue.getAllWithCustom(this);
         } else {
-            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgCritical() : PIDCatalogue.getAll();
+            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgPollSet() : PIDCatalogue.getAll();
         }
         // Always make a mutable copy — PIDCatalogue returns unmodifiable lists,
         // and removeAll() in the logging loop would throw UnsupportedOperationException
@@ -491,7 +491,13 @@ public final class LoggerService extends Service {
                         writer.writeRecord(record);
                         recordCount++;
                         publishRecord(record, recordCount);
-                        
+
+                        // Low-voltage watchdog: a weak alternator / battery causes lean
+                        // misfires that masquerade as fuel-trim problems — especially on
+                        // LPG. Warn once per session (transient dips ignored) when module
+                        // voltage sags below the charging floor.
+                        checkVoltageWatchdog(record);
+
                         if (apiServer != null) {
                             apiServer.setLatestData(record, true);
                         }
@@ -576,6 +582,30 @@ public final class LoggerService extends Service {
         LoggerCallback cb = getCallback();
         if (cb != null) {
             mainHandler.post(() -> cb.onRecord(record, count));
+        }
+    }
+
+    // Once-per-session latch so the low-voltage warning fires only once (not every tick).
+    private boolean voltageWarned = false;
+
+    /**
+     * Warn when Control Module Voltage sags below the LPG charging floor. A weak
+     * alternator / battery causes lean misfires that look like a fuel-trim problem,
+     * so surfacing it early saves the user from chasing the wrong issue. Voltage is
+     * read from the record's samples (key "01_42", which is lpgCritical=true and is
+     * always polled), so no extra query is needed.
+     */
+    private void checkVoltageWatchdog(DataRecord record) {
+        if (!activeConfig.lpgOnlyMode || voltageWarned) return;
+        Double volts = null;
+        for (SensorSample s : record.getSamples()) {
+            if ("01_42".equals(s.getPidKey())) { volts = s.getValue(); break; }
+        }
+        // 13.0 V is a conservative "not charging well" floor for an LPG-running vehicle.
+        if (volts != null && volts < 13.0) {
+            voltageWarned = true;
+            notifyStatus("⚠ Low voltage " + Math.round(volts * 10.0) / 10.0
+                    + "V — check alternator/battery (causes lean misfire on LPG)", true);
         }
     }
 

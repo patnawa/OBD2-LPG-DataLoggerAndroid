@@ -2261,7 +2261,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         DataWriter writer = null;
         int completed = 0;
         long started = SystemClock.elapsedRealtime();
-        List<PIDDefinition> allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgCritical() : PIDCatalogue.getAll();
+        List<PIDDefinition> allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgPollSet() : PIDCatalogue.getAll();
         List<PIDDefinition> pids = new ArrayList<>(allPids);
         boolean detectedFromLive = false;
 

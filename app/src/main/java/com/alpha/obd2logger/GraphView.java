@@ -113,32 +113,32 @@ public final class GraphView extends View {
     /**
      * Add a new data point. Old points beyond MAX_POINTS are dropped.
      */
-    public void pushValue(float value) {
-        dataPoints.addLast(value);
-        while (dataPoints.size() > MAX_POINTS) {
-            dataPoints.removeFirst();
-        }
+    public synchronized void pushValue(float value) {
+         dataPoints.addLast(value);
+         while (dataPoints.size() > MAX_POINTS) {
+             dataPoints.removeFirst();
+         }
 
-        if (autoScale && !dataPoints.isEmpty()) {
-            float dataMin = Float.MAX_VALUE;
-            float dataMax = -Float.MAX_VALUE;
-            for (float v : dataPoints) {
-                if (v < dataMin) dataMin = v;
-                if (v > dataMax) dataMax = v;
-            }
-            float padding = (dataMax - dataMin) * 0.15f;
-            if (padding < 1) padding = 1;
-            this.min = dataMin - padding;
-            this.max = dataMax + padding;
-        }
+         if (autoScale && !dataPoints.isEmpty()) {
+             float dataMin = Float.MAX_VALUE;
+             float dataMax = -Float.MAX_VALUE;
+             for (float v : dataPoints) {
+                 if (v < dataMin) dataMin = v;
+                 if (v > dataMax) dataMax = v;
+             }
+             float padding = (dataMax - dataMin) * 0.15f;
+             if (padding < 1) padding = 1;
+             this.min = dataMin - padding;
+             this.max = dataMax + padding;
+         }
 
-        invalidate();
-    }
+         invalidate();
+     }
 
-    public void clear() {
-        dataPoints.clear();
-        invalidate();
-    }
+     public synchronized void clear() {
+         dataPoints.clear();
+         invalidate();
+     }
 
     @Override
     protected void onDraw(Canvas canvas) {

@@ -10,8 +10,8 @@ android {
         applicationId 'com.alpha.obd2logger'
         minSdk 23
         targetSdk 35
-        versionCode 66
-        versionName '3.5.1'
+        versionCode 67
+        versionName '3.5.2'
     }
 
     buildTypes {
@@ -48,4 +48,6 @@ dependencies {
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20240303'
+    testImplementation 'androidx.test:core:1.6.1'
+    testImplementation 'org.robolectric:robolectric:4.12.2'
 }

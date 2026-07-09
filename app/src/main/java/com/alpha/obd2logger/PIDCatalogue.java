@@ -40,6 +40,45 @@ public final class PIDCatalogue {
     }
 
     /**
+     * The actual set of PIDs to poll in LPG-only mode.
+     *
+     * The old behaviour (getLpgCritical) polled only flags marked lpgCritical=true,
+     * which silently dropped Vehicle Speed, Throttle Position and other PIDs that the
+     * dashboard, derived sensors (fuel economy needs Vehicle Speed + MAF) and the live
+     * fuel map depend on. This builds the poll set as:
+     *     lpgCritical ∪ dashboard ∪ every PID a derived sensor reads.
+     * so lpgOnly mode stays lean but never starves a feature the UI/logging relies on.
+     */
+    public static List<PIDDefinition> getLpgPollSet() {
+        List<PIDDefinition> poll = new ArrayList<>();
+        for (PIDDefinition pid : ALL) {
+            if (pid.isLpgCritical() || pid.isDashboard()) {
+                poll.add(pid);
+            }
+        }
+        // Derived-sensor dependencies (name-based, kept in sync with DerivedSensors):
+        //   Fuel Economy  -> MAF Air Flow, Vehicle Speed
+        //   Turbo Boost   -> Intake Manifold Pressure, Barometric Pressure
+        //   Fuel Trim map -> (uses raw PIDs already in catalogue)
+        addByName(poll, "MAF Air Flow");
+        addByName(poll, "Vehicle Speed");
+        addByName(poll, "Intake Manifold Pressure");
+        addByName(poll, "Barometric Pressure");
+        // Throttle Position / Coolant are dashboard-critical for tuning readiness.
+        addByName(poll, "Throttle Position");
+        return Collections.unmodifiableList(poll);
+    }
+
+    private static void addByName(List<PIDDefinition> list, String name) {
+        for (PIDDefinition pid : ALL) {
+            if (pid.getName().equals(name) && !list.contains(pid)) {
+                list.add(pid);
+                return;
+            }
+        }
+    }
+
+    /**
      * Return PIDs suitable for the dashboard gauges.
      */
     public static List<PIDDefinition> getDashboard() {

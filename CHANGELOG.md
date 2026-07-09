@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.2] - 2026-07-09
+### Fixed
+- **LPG-only mode silently dropped Vehicle Speed / Throttle (HIGH)** — `lpgOnlyMode` polled only `getLpgCritical()`, which excluded Vehicle Speed (needed for Fuel Economy) and Throttle Position. Fuel Economy now stays blank in LPG-only mode. Added `PIDCatalogue.getLpgPollSet()` = `lpgCritical ∪ dashboard ∪ derived-sensor dependencies`, so the lean mode never starves a feature the UI/log relies on. Wired into LoggerService + MainActivity.
+- **Derived sensors not saved to the log (HIGH)** — Fuel Economy (km/L, L/100km), Turbo Boost (kPa, psi) and DPF stats were shown live but never written to CSV/JSONL because the writer only iterated the poll-PID columns. DataWriter now builds its columns from a keyed set (`pidKey`) that includes every derived sensor, so each gets its own column (previously the two "Fuel Economy" / two "Turbo Boost" samples silently overwrote each other by display name).
+- **LPGAnalyzer fabricated a verdict on missing trim (MEDIUM)** — a null STFT/LTFT was treated as 0.0, producing a confident OK/Lean/Rich on partial data. Now reports UNKNOWN. Core logic extracted to a Context-free `analyzeFuelTrim(stft, ltft, mode)` returning a `TrimVerdict` enum (testable on plain JVM).
+- **LogReplayParser assumed closed loop when loop state unknown (LOW)** — `isClosedLoop()` defaulted to CLOSED when no loop column existed, plotting open-loop rows into the tuning map. Now defaults to OPEN (skipped).
+- **LocaleHelper mutated process-wide default locale (LOW)** — `Locale.setDefault()` was called on API ≥ 24 where the scoped `createConfigurationContext` is sufficient; removed from the N+ path so one activity's locale can't clobber another's.
+- **GraphView data race (LOW)** — `pushValue()`/`clear()` now `synchronized` so a future background feeder can't corrupt the deque / min-max during `onDraw`.
+### Added
+- **Session summary JSON** — DataWriter now also emits `<session>_summary.json` on close with per-column min/avg/max plus integrated distance (km) and fuel used (L) from the L/100km stream — no need to re-parse the whole CSV.
+- **LPG low-voltage watchdog** — LoggerService warns once per session (status bar + notification) when Control Module Voltage sags below 13.0 V in LPG mode, since a weak alternator/battery causes lean misfires that masquerade as fuel-trim problems.
+- **Unit tests** — `AuditImprovementsTest` (poll set, analyzer verdicts, replay fallback, DerivedSensors math) + `DataWriterTest` (Robolectric; verifies derived columns are persisted with distinct keys). Added `androidx.test:core` + `org.robolectric:robolectric` test deps.
+- **Version**: 3.5.1 → 3.5.2 (code 66 → 67)
+
 ## [3.5.1] - 2026-07-09
 ### Fixed
 - **DTC Non-Header Parsing Bug** — Enforced 3-character minimum check on CAN ID tokens to prevent 2-character mode response headers from corrupting trouble codes when headers are disabled.
