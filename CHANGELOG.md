@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.3] - 2026-07-09
+### Fixed
+- **Background logging crash (regression in 3.5.2)** — `LoggerService.activeConfig` was never assigned (always null), so the new low-voltage watchdog NPE'd on the first background record and killed the logging session. Now set at the top of `runLogger`, with a null-guard in `checkVoltageWatchdog()` and the periodic DTC-scan lambda so a missed assignment can never crash the worker thread again. In-process logging was unaffected (MainActivity used its own local config), which is why only background logging crashed.
+
 ## [3.5.2] - 2026-07-09
 ### Fixed
 - **LPG-only mode silently dropped Vehicle Speed / Throttle (HIGH)** — `lpgOnlyMode` polled only `getLpgCritical()`, which excluded Vehicle Speed (needed for Fuel Economy) and Throttle Position. Fuel Economy now stays blank in LPG-only mode. Added `PIDCatalogue.getLpgPollSet()` = `lpgCritical ∪ dashboard ∪ derived-sensor dependencies`, so the lean mode never starves a feature the UI/log relies on. Wired into LoggerService + MainActivity.

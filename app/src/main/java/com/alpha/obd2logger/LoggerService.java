@@ -168,6 +168,12 @@ public final class LoggerService extends Service {
     }
 
     private void runLogger(LoggerConfig config) {
+        // The service keeps config in a field so the periodic DTC scan and the
+        // low-voltage watchdog (which run on other threads) can read it without
+        // passing it through. Previously this was never assigned, so activeConfig
+        // stayed null and checkVoltageWatchdog() / the DTC scan NPE'd on the first
+        // background record — killing the logging session.
+        activeConfig = config;
         String fuelPrefix = config.fuelMode != null ? config.fuelMode.name() + "_" : "";
         String simPrefix = (config.transportMode == TransportMode.SIM) ? "Sim_" : "";
         String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
@@ -364,7 +370,7 @@ public final class LoggerService extends Service {
                                 de.submit(() -> {
                                     try {
                                         DtcReader.DtcScanResult sr = DtcReader.readAllDtcs(
-                                            driver, activeConfig.fordMsCanEnabled);
+                                            driver, activeConfig != null && activeConfig.fordMsCanEnabled);
                                         List<DtcCode> stored = sr.storedDtcs;
                                         List<DtcCode> pending = sr.pendingDtcs;
                                         List<DtcCode> permanent = sr.permanentDtcs;
@@ -596,7 +602,8 @@ public final class LoggerService extends Service {
      * always polled), so no extra query is needed.
      */
     private void checkVoltageWatchdog(DataRecord record) {
-        if (!activeConfig.lpgOnlyMode || voltageWarned) return;
+        LoggerConfig cfg = activeConfig;
+        if (cfg == null || !cfg.lpgOnlyMode || voltageWarned) return;
         Double volts = null;
         for (SensorSample s : record.getSamples()) {
             if ("01_42".equals(s.getPidKey())) { volts = s.getValue(); break; }
