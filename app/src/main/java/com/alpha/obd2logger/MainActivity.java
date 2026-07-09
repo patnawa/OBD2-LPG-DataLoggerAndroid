@@ -135,6 +135,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private com.google.android.material.card.MaterialCardView sessionStatusDotCard;
     private android.view.animation.Animation pulseAnimation;
     private long loggingStartTime = 0;
+    private final android.os.Handler watchdogHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable connectionWatchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (running) {
+                stopLogging();
+                setFabState(false);
+                setConfigUiEnabled(true);
+                setStatus("Connection timed out. If using background service, check autostart/battery settings.", R.color.danger);
+            }
+        }
+    };
     private LinearLayout readingsContainer;
 
     private com.google.android.material.button.MaterialButton fabLog;
@@ -2173,6 +2185,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
 
         setConfigUiEnabled(false);
+        watchdogHandler.removeCallbacks(connectionWatchdog);
+        watchdogHandler.postDelayed(connectionWatchdog, 20000);
 
         if (backgroundLoggingCheckbox.isChecked()) {
             startBackgroundLogging(config);
@@ -2230,6 +2244,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void stopLogging() {
         running = false;
+        watchdogHandler.removeCallbacks(connectionWatchdog);
         pendingBackgroundConfig = null; // cancel any deferred (permission-gated) start
         // Don't call currentDriver.disconnect() from the main thread — the
         // logger thread performs disconnect() in its finally block. Calling it
@@ -2254,6 +2269,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         headerStatus.setText("Disconnected");
         updateStatusStripConnection(0, "Disconnected");
         updateSessionStatus(false);
+        setConfigUiEnabled(true);
     }
 
     private void runLogger(LoggerConfig config) {
@@ -2614,6 +2630,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     @Override
     public void onRecord(DataRecord record, int count) {
         if (isFinishing() || isDestroyed()) return;
+        watchdogHandler.removeCallbacks(connectionWatchdog);
         runOnUiThread(() -> {
             if (isFinishing() || isDestroyed()) return;
             if (countText != null) countText.setText("Records: " + count);
@@ -2706,6 +2723,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     @Override
     public void onStopped(int totalRecords) {
         running = false;
+        watchdogHandler.removeCallbacks(connectionWatchdog);
         runOnUiThread(() -> {
             if (fabLog != null) {
                 setFabState(false);

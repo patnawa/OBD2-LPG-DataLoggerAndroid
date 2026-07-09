@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.14] - 2026-07-09
+### Fixed
+- **Connection Timeout Watchdog** — Implemented a 20-second connection timeout watchdog in `MainActivity` that auto-stops logging, resets states, and releases the UI if starting background logging is silently blocked by the OS (autostart/battery limits) or if the adapter connection hangs.
+- **Manual Stop UI Lock Release** — Fixed a bug where stopping logging manually via the FAB or Connect button left all UI settings inputs (spinners, text inputs, checkboxes) disabled because the callback was cleared before the UI release routine was invoked. Now, `stopLogging()` immediately releases the UI input locks.
+
 ## [3.5.13] - 2026-07-09
 ### Fixed
 - **Asynchronous Service Startup Race Condition** — Fixed a key race condition where an old logger thread's `finally` block would asynchronously post `onStopped()` back to the activity *after* a new session had already started, causing the UI to false-reset to "Stopped" and locking the user out of the connection.
