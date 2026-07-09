@@ -190,6 +190,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private static final int PERMISSION_REQUEST_CODE = 1001;
     private static final int NOTIFICATION_PERMISSION_CODE = 1002;
+    private LoggerConfig pendingBackgroundConfig = null;
 
     private androidx.activity.result.ActivityResultLauncher<Intent> folderPickerLauncher;
 
@@ -2166,6 +2167,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void startBackgroundLogging(LoggerConfig config) {
+        // On Android 13+ (API 33) a foreground service needs the runtime
+        // POST_NOTIFICATIONS permission before startForeground() is called,
+        // otherwise startForeground() throws SecurityException on the system
+        // binder thread and the whole app crashes. Gate on it and defer the
+        // actual start until the user grants it.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+            pendingBackgroundConfig = config;
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    NOTIFICATION_PERMISSION_CODE);
+            Toast.makeText(this, "Grant notification permission to enable background logging",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        actuallyStartBackgroundLogging(config);
+    }
+
+    private void actuallyStartBackgroundLogging(LoggerConfig config) {
         LoggerService.setCallback(this);
         LoggerService.setPendingConfig(config);
         Intent intent = new Intent(this, LoggerService.class);
@@ -5240,6 +5260,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NOTIFICATION_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (pendingBackgroundConfig != null) {
+                    LoggerConfig cfg = pendingBackgroundConfig;
+                    pendingBackgroundConfig = null;
+                    actuallyStartBackgroundLogging(cfg);
+                }
+            } else {
+                Toast.makeText(this, "Notification permission denied — background logging off",
+                        Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+
         if (requestCode == PERMISSION_REQUEST_CODE) {
             boolean allGranted = true;
             for (int result : grantResults) {

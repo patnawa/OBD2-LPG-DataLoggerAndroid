@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.5] - 2026-07-09
+### Fixed
+- **Background logging crash on Android 13+ (Android 16)** — `startForeground()` requires the runtime `POST_NOTIFICATIONS` permission. If it wasn't granted, `startForeground()` threw `SecurityException` on the system binder thread and killed the whole app the moment background logging started (the service worker thread's own try/catch does not cover `onStartCommand`). Fix: `startBackgroundLogging` now gates on `POST_NOTIFICATIONS` (API ≥ 33) and defers the `startForegroundService` call until the user grants it (resumed in `onRequestPermissionsResult`). Also hardened `LoggerService.onStartCommand` so a foreground-service startup failure degrades to a clean stop with an error instead of crashing.
+
 ## [3.5.4] - 2026-07-09
 ### Fixed
 - **DataWriter MediaStore fallback** — on API ≥ Q, if `MediaStore.Downloads.insert` returns null (some emulators / restricted-storage profiles), `createDownloadTarget` previously threw and logging died on the first record. Now falls back to a direct file under `Download/<TunerMapPro>` instead of throwing. (Found while standing up the regression test below.)
