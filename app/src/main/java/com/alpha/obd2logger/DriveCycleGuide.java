@@ -42,12 +42,12 @@ public final class DriveCycleGuide {
         if (readiness == null) return steps;
 
         for (ReadinessMonitor.MonitorStatus m : readiness.getMonitors()) {
-            if (!m.isAvailable() || m.isComplete()) continue;
+            if (!m.available || m.complete) continue;
 
-            String instruction = getInstruction(m.getName(), readiness.isDiesel());
+            String instruction = getInstruction(m.name, readiness.isDiesel());
             if (instruction != null) {
-                int minutes = getEstimatedMinutes(m.getName());
-                steps.add(new DriveCycleStep(m.getName(), instruction, minutes));
+                int minutes = getEstimatedMinutes(m.name);
+                steps.add(new DriveCycleStep(m.name, instruction, minutes));
             }
         }
         return steps;

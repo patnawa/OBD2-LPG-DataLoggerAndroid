@@ -157,8 +157,8 @@ public final class DtcReportExporter {
                 + "  |  Fuel: " + (readiness.isDiesel() ? "Diesel" : "Gasoline"), 40, y, paint);
             y += 18;
             for (ReadinessMonitor.MonitorStatus m : readiness.getMonitors()) {
-                String status = m.isAvailable() ? (m.isComplete() ? "Complete" : "INCOMPLETE") : "N/A";
-                canvas.drawText("  " + m.getName() + ": " + status, 40, y, paint);
+                String status = m.available ? (m.complete ? "Complete" : "INCOMPLETE") : "N/A";
+                canvas.drawText("  " + m.name + ": " + status, 40, y, paint);
                 y += 14;
             }
             y += 10;
@@ -171,7 +171,7 @@ public final class DtcReportExporter {
             for (Mode06Result r : mode06Results) {
                 String passFail = r.isPassed() ? "PASS" : "FAIL";
                 canvas.drawText("  MID " + String.format("%02X", r.getObdMid())
-                    + " TID " + String.format("%02X", r.getTestId())
+                    + " TID " + String.format("%02X", r.getTid())
                     + " UASID " + String.format("%02X", r.getUasId())
                     + ": " + r.getFormattedValue() + " " + r.getUnit()
                     + " (min:" + r.getFormattedMin() + " max:" + r.getFormattedMax() + ") "

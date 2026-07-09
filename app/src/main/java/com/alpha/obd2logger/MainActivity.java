@@ -4166,6 +4166,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         // Gather all diagnostic data for the full report
         ReadinessMonitor readiness = null;
+        BaseDriver activeDriver = getActiveDriver();
         if (activeDriver != null && activeDriver.isConnected()) {
             readiness = ReadinessMonitor.read(activeDriver);
         }
