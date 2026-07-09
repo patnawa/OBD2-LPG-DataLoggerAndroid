@@ -55,6 +55,127 @@ public final class Mode09Reader {
         return parseCvns(response);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  In-Use Performance Tracking (Mode 09 PID 0D-0F)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * In-Use Performance Tracking data.
+     * These counters tell you how many times each readiness monitor
+     * has run and completed since DTCs were last cleared.
+     *
+     * This is the ONLY definitive way to confirm that drive cycles
+     * have actually completed the required monitors — the readiness
+     * status (PID 01) only shows current state, not history.
+     */
+    public static final class InUsePerformance {
+        public final int ignitionCycles;       // PID 0D: total ignitions since clear
+        public final int obdTripCount;          // PID 0E: trips with complete driving cycle
+        public final int distanceSinceClearKm;  // PID 0F (part 1): distance in km
+        public final int timeSinceClearMin;     // PID 0F (part 2): engine run time in min
+
+        public InUsePerformance(int ignitionCycles, int obdTripCount,
+                               int distanceSinceClearKm, int timeSinceClearMin) {
+            this.ignitionCycles = ignitionCycles;
+            this.obdTripCount = obdTripCount;
+            this.distanceSinceClearKm = distanceSinceClearKm;
+            this.timeSinceClearMin = timeSinceClearMin;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(java.util.Locale.US,
+                "Ignitions: %d, OBD Trips: %d, Distance: %d km, Engine Time: %d min",
+                ignitionCycles, obdTripCount, distanceSinceClearKm, timeSinceClearMin);
+        }
+    }
+
+    /**
+     * Read Mode 09 PID 0D — Ignition cycle counter since DTCs cleared.
+     * Counts total number of engine starts since the last Mode 04 clear.
+     */
+    public static int readIgnitionCycleCounter(BaseDriver driver) {
+        if (driver == null || !driver.isConnected()) return -1;
+        String response = driver.sendCommandRaw("090D");
+        return parseSingleValue(response, "490D");
+    }
+
+    /**
+     * Read Mode 09 PID 0E — OBD trip count (completed drive cycles).
+     * A "trip" = engine start → drive → engine off with specific conditions met.
+     */
+    public static int readObdTripCount(BaseDriver driver) {
+        if (driver == null || !driver.isConnected()) return -1;
+        String response = driver.sendCommandRaw("090E");
+        return parseSingleValue(response, "490E");
+    }
+
+    /**
+     * Read Mode 09 PID 0F — Distance traveled and engine run time since DTC clear.
+     * Returns a 2-value array: [0] = distance in km, [1] = time in minutes.
+     * Some vehicles return only distance; others return both.
+     */
+    public static int[] readDistanceAndTimeSinceClear(BaseDriver driver) {
+        int[] result = new int[]{-1, -1};
+        if (driver == null || !driver.isConnected()) return result;
+        String response = driver.sendCommandRaw("090F");
+        if (response == null || response.isEmpty()) return result;
+
+        String hex = response.replace("\r", "\n").replace("\r\n", "\n");
+        StringBuilder hexBuf = new StringBuilder();
+        for (String line : hex.split("\n")) {
+            hexBuf.append(cleanMode09Line(line));
+        }
+        String allHex = hexBuf.toString();
+        int idx = allHex.indexOf("490F");
+        if (idx < 0) return result;
+
+        String data = allHex.substring(idx + 4);
+        try {
+            // First 2 bytes = distance in km (16-bit unsigned)
+            if (data.length() >= 4) {
+                result[0] = Integer.parseInt(data.substring(0, 4), 16);
+            }
+            // Next 2 bytes = time in minutes (16-bit unsigned)
+            if (data.length() >= 8) {
+                result[1] = Integer.parseInt(data.substring(4, 8), 16);
+            }
+        } catch (NumberFormatException ignored) {}
+        return result;
+    }
+
+    /**
+     * Read all in-use performance tracking data at once.
+     */
+    public static InUsePerformance readInUsePerformance(BaseDriver driver) {
+        int ignitions = readIgnitionCycleCounter(driver);
+        int trips = readObdTripCount(driver);
+        int[] distTime = readDistanceAndTimeSinceClear(driver);
+        return new InUsePerformance(ignitions, trips, distTime[0], distTime[1]);
+    }
+
+    /**
+     * Parse a single 2-byte value from Mode 09 response.
+     */
+    private static int parseSingleValue(String response, String header) {
+        if (response == null || response.isEmpty()) return -1;
+        String hex = response.replace("\r", "\n").replace("\r\n", "\n");
+        StringBuilder hexBuf = new StringBuilder();
+        for (String line : hex.split("\n")) {
+            hexBuf.append(cleanMode09Line(line));
+        }
+        String allHex = hexBuf.toString();
+        int idx = allHex.indexOf(header);
+        if (idx < 0) return -1;
+        String data = allHex.substring(idx + header.length());
+        if (data.length() < 4) return -1;
+        try {
+            return Integer.parseInt(data.substring(0, 4), 16);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
     /**
      * Parse Mode 09 PID 02 (Cal-ID) response.
      *

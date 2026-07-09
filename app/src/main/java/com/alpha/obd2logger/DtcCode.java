@@ -33,15 +33,49 @@ public final class DtcCode {
         if (code == null || code.isEmpty()) {
             return Severity.INFO;
         }
+        // 1) Prefer enrichment database (has per-code severity from experts)
+        try {
+            DtcEnrichment.EnrichmentData enrichment = DtcEnrichment.lookup(code);
+            if (enrichment != null) {
+                String sev = enrichment.getSeverity();
+                if (sev != null) {
+                    switch (sev.toLowerCase(Locale.US)) {
+                        case "critical": return Severity.CRITICAL;
+                        case "warning":  return Severity.WARNING;
+                        case "info":     return Severity.INFO;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // Enrichment may not be initialised yet — fall through to heuristic
+        }
+
+        // 2) Heuristic fallback based on code prefix and known critical patterns
         char prefix = code.charAt(0);
-        char second = code.length() > 1 ? code.charAt(1) : ' ';
-        if (prefix == 'P' && second == '0') {
-            return Severity.CRITICAL;
-        } else if (prefix == 'B') {
-            return Severity.INFO;
-        } else {
+        // Airbag / restraint codes are always critical regardless of enrichment
+        if (prefix == 'B' && code.length() >= 2) {
+            // B0xxx, B00xx = SRS/airbag → critical; other B = warning
+            char second = code.charAt(1);
+            if (second == '0') return Severity.CRITICAL;
             return Severity.WARNING;
         }
+        // Network codes can strand the vehicle
+        if (prefix == 'U') return Severity.WARNING;
+        // Chassis codes (ABS, brakes, steering) = warning at minimum
+        if (prefix == 'C') return Severity.WARNING;
+        // Powertrain: misfire, fuel system, catalytic = critical; others = warning
+        if (prefix == 'P' && code.length() >= 4) {
+            String num = code.substring(1, 4);
+            if (num.startsWith("03") || num.startsWith("01")   // misfire, fuel trim
+                || num.startsWith("02")                        // fuel/air metering
+                || num.startsWith("04")                        // EGR/aux emission
+                || num.startsWith("05")                        // idle/speed
+                || num.startsWith("06")) {                     // computer
+                return Severity.CRITICAL;
+            }
+            return Severity.WARNING;
+        }
+        return Severity.INFO;
     }
 
     @Override

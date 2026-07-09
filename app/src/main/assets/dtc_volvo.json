@@ -1,0 +1,16 @@
+{
+  "P1100": "MAF Sensor Circuit (Volvo)",
+  "P1120": "Throttle Position Sensor Circuit (Volvo)",
+  "P1130": "O2 Sensor Heater Circuit (Volvo)",
+  "P1200": "Fuel Pump Relay Circuit (Volvo)",
+  "P1300": "Ignition Control Circuit (Volvo)",
+  "P1330": "CMP Sensor Circuit (Volvo)",
+  "P1400": "EGR System Circuit (Volvo)",
+  "P1450": "EVAP System Purge Valve (Volvo)",
+  "P1500": "VSS Circuit (Volvo)",
+  "P1600": "ECM Internal Circuit (Volvo)",
+  "P1610": "Immobilizer System (Volvo)",
+  "P1700": "A/T System (Volvo Geartronic)",
+  "P2500": "Charging System Low Voltage (Volvo)",
+  "P2463": "DPF Soot Accumulation (Volvo Diesel)"
+}

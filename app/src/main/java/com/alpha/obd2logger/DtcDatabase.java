@@ -12,23 +12,67 @@ import java.util.Map;
 
 /**
  * Loads and queries the OBD2 DTC offline description database.
+ * Supports both the generic database (dtc_database.json) and
+ * manufacturer-specific databases (dtc_toyota.json, dtc_honda.json, etc.)
+ * loaded dynamically based on detected VIN brand.
  */
 public final class DtcDatabase {
     private static final String TAG = "DtcDatabase";
-    private static final Map<String, String> cache = new HashMap<>();
+    private static final Map<String, String> genericCache = new HashMap<>();
+    private static final Map<String, String> brandCache = new HashMap<>();
     private static boolean initialized = false;
+    private static VinBrandDetector.Brand currentBrand = null;
 
     private DtcDatabase() {
     }
 
     /**
-     * Load the JSON DTC database from assets. Call during application/activity startup.
+     * Load the generic DTC database from assets.
+     * Call during application/activity startup.
      */
     public static synchronized void init(Context context) {
         if (initialized) return;
+        loadDatabase(context, "dtc_database.json", genericCache);
+        initialized = true;
+    }
+
+    /**
+     * Load a manufacturer-specific DTC database based on detected VIN brand.
+     * This is called after VIN is read. Brand-specific codes (P1xxx, P3xxx)
+     * are merged on top of the generic database.
+     *
+     * @param context  app context
+     * @param vin      vehicle VIN (used to detect brand)
+     * @return the detected brand name, or null if unknown
+     */
+    public static synchronized String initForVin(Context context, String vin) {
+        if (!initialized) init(context);
+        if (vin == null || vin.isEmpty()) return null;
+
+        VinBrandDetector.Brand brand = VinBrandDetector.detect(vin);
+        if (brand == currentBrand) {
+            return VinBrandDetector.getBrandName(brand);
+        }
+
+        // Clear previous brand cache
+        brandCache.clear();
+
+        String assetFile = VinBrandDetector.getDtcDatabaseAsset(brand);
+        if (assetFile != null) {
+            loadDatabase(context, assetFile, brandCache);
+        }
+        currentBrand = brand;
+        String brandName = VinBrandDetector.getBrandName(brand);
+        if (!brandCache.isEmpty()) {
+            Log.i(TAG, "Loaded " + brandCache.size() + " brand-specific codes for " + brandName);
+        }
+        return brandName;
+    }
+
+    private static void loadDatabase(Context context, String assetFile, Map<String, String> cache) {
         try {
             AssetManager am = context.getAssets();
-            InputStream is = am.open("dtc_database.json");
+            InputStream is = am.open(assetFile);
             int size = is.available();
             byte[] buffer = new byte[size];
             is.read(buffer);
@@ -40,18 +84,23 @@ public final class DtcDatabase {
                 String key = keys.next();
                 cache.put(key.toUpperCase(), json.getString(key));
             }
-            initialized = true;
-            Log.i(TAG, "DtcDatabase loaded " + cache.size() + " codes successfully");
+            Log.i(TAG, "Loaded " + cache.size() + " codes from " + assetFile);
         } catch (Exception e) {
-            Log.e(TAG, "Failed to load DTC database from assets", e);
+            Log.w(TAG, "Could not load " + assetFile + ": " + e.getMessage());
         }
     }
 
     /**
-     * Retrieve the description for a DTC code, or null if not found.
+     * Retrieve the description for a DTC code.
+     * Checks brand-specific database first, then falls back to generic.
      */
     public static String lookup(String code) {
         if (code == null) return null;
-        return cache.get(code.toUpperCase());
+        String upper = code.toUpperCase();
+        // Brand-specific first (P1xxx, P3xxx are usually manufacturer-specific)
+        String result = brandCache.get(upper);
+        if (result != null) return result;
+        // Generic fallback
+        return genericCache.get(upper);
     }
 }

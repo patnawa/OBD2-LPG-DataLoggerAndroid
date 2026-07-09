@@ -1,0 +1,18 @@
+{
+  "P1100": "MAF Sensor Circuit (Chevrolet Thailand)",
+  "P1110": "IAT Sensor Circuit (Chevrolet)",
+  "P1120": "TPS Circuit (Chevrolet)",
+  "P1130": "O2 Sensor Heater Circuit (Chevrolet)",
+  "P1200": "Fuel Pump Relay Circuit (Chevrolet)",
+  "P1300": "Ignition Control Circuit (Chevrolet)",
+  "P1330": "CKP/CMP Correlation (Chevrolet)",
+  "P1400": "EGR System Circuit (Chevrolet)",
+  "P1450": "EVAP System Purge Valve (Chevrolet)",
+  "P1500": "VSS Circuit (Chevrolet)",
+  "P1600": "ECM Internal Circuit (Chevrolet)",
+  "P1610": "Immobilizer System (Chevrolet)",
+  "P1630": "Alternator Control Circuit (Chevrolet)",
+  "P1700": "A/T System Circuit (Chevrolet)",
+  "P2500": "Charging System Low (Chevrolet)",
+  "P0500": "VSS Circuit Malfunction (Chevrolet)"
+}

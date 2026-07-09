@@ -1,0 +1,17 @@
+{
+  "P1100": "MAF Sensor Circuit (BMW)",
+  "P1120": "Throttle Position Sensor Circuit (BMW)",
+  "P1130": "O2 Sensor Heater Circuit (BMW)",
+  "P1140": "VVT System Circuit (BMW VANOS)",
+  "P1200": "Fuel Pump Relay Circuit (BMW)",
+  "P1300": "Ignition Control Circuit (BMW)",
+  "P1330": "CMP Sensor Circuit (BMW)",
+  "P1400": "EGR System Circuit (BMW)",
+  "P1450": "EVAP System Purge Valve (BMW)",
+  "P1500": "VSS Circuit (BMW)",
+  "P1600": "ECM Internal Circuit (BMW DME)",
+  "P1610": "Immobilizer System (BMW EWS)",
+  "P1700": "A/T System (BMW)",
+  "P2500": "Charging System Low Voltage (BMW)",
+  "P2463": "DPF Soot Accumulation (BMW Diesel)"
+}

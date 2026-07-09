@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Reads Freeze Frame (Mode 02) data for key engine parameters.
@@ -64,6 +66,9 @@ public final class FreezeFrameReader {
     /**
      * Read freeze frame data for a specific frame number (0-7).
      * Frame 0 is the most recent; each stored DTC has its own frame.
+     *
+     * v2: Queries Mode 02 PID 00 first to find supported freeze frame PIDs,
+     * then reads only those PIDs. Falls back to hardcoded list if query fails.
      */
     public static FreezeFrameData readFreezeFrameForFrame(BaseDriver driver, int frameNumber) {
         if (driver == null || !driver.isConnected()) {
@@ -72,19 +77,36 @@ public final class FreezeFrameReader {
 
         Map<String, Double> values = new HashMap<>();
 
-        // Read core PIDs first
-        for (String pidHex : CORE_PIDS) {
-            Double value = readFreezeFramePid(driver, pidHex, frameNumber);
-            if (value != null) {
-                values.put(pidHex, value);
+        // ── Query supported PIDs in freeze frame (Mode 02 PID 00) ──
+        // This tells us which PIDs the ECU actually has freeze frame data for,
+        // instead of blindly querying hardcoded PIDs that may be unsupported.
+        Set<String> supportedPids = querySupportedFreezeFramePids(driver, frameNumber);
+
+        if (supportedPids != null && !supportedPids.isEmpty()) {
+            // Read only supported PIDs
+            for (String pidHex : supportedPids) {
+                Double value = readFreezeFramePid(driver, pidHex, frameNumber);
+                if (value != null) {
+                    values.put(pidHex, value);
+                }
+            }
+        } else {
+            // Fallback: read hardcoded core PIDs
+            for (String pidHex : CORE_PIDS) {
+                Double value = readFreezeFramePid(driver, pidHex, frameNumber);
+                if (value != null) {
+                    values.put(pidHex, value);
+                }
             }
         }
 
-        // Try extended PIDs — don't fail if unsupported
+        // Always try extended PIDs — don't fail if unsupported
         for (String pidHex : EXTENDED_PIDS) {
-            Double value = readFreezeFramePid(driver, pidHex, frameNumber);
-            if (value != null) {
-                values.put(pidHex, value);
+            if (!values.containsKey(pidHex)) {
+                Double value = readFreezeFramePid(driver, pidHex, frameNumber);
+                if (value != null) {
+                    values.put(pidHex, value);
+                }
             }
         }
 
@@ -162,6 +184,46 @@ public final class FreezeFrameReader {
         }
 
         return entries;
+    }
+
+    /**
+     * Query which PIDs are supported in freeze frame (Mode 02 PID 00).
+     * Returns a bitmap where each bit = one PID is supported.
+     *
+     * Response format: 42 00 [4 bytes bitmap]
+     *   Bit 0 = PID 01 supported, bit 1 = PID 02, ..., bit 31 = PID 20
+     *
+     * @return set of supported PID hex strings (e.g. {"04","05","0B","0C","0D"}),
+     *         or null if query failed
+     */
+    private static Set<String> querySupportedFreezeFramePids(BaseDriver driver, int frameNumber) {
+        try {
+            String cmd = "0200" + String.format(java.util.Locale.US, "%02X", frameNumber);
+            String response = driver.sendCommandRaw(cmd);
+            if (response == null || response.isEmpty()) return null;
+
+            String hex = response.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
+            int idx = hex.indexOf("4200");
+            if (idx < 0) return null;
+
+            String bitmapHex = hex.substring(idx + 4);
+            if (bitmapHex.length() < 8) return null;
+
+            Set<String> pids = new TreeSet<>();
+            // Parse 4 bytes (32 bits) of PID support bitmap
+            for (int byteIdx = 0; byteIdx < 4 && byteIdx * 2 + 2 <= bitmapHex.length(); byteIdx++) {
+                int bits = Integer.parseInt(bitmapHex.substring(byteIdx * 2, byteIdx * 2 + 2), 16);
+                for (int bit = 0; bit < 8; bit++) {
+                    if ((bits & (1 << (7 - bit))) != 0) {
+                        int pidNum = byteIdx * 8 + bit + 1;
+                        pids.add(String.format("%02X", pidNum));
+                    }
+                }
+            }
+            return pids;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**

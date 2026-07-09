@@ -57,6 +57,17 @@ public final class Mode06Result {
     public String getUnit() { return unit; }
     public boolean isPassed() { return passed; }
 
+    /** Formatted value with unit for display, e.g. "0.45 V" */
+    public String getFormattedValue() {
+        return String.format(java.util.Locale.US, "%.2f", scaledValue);
+    }
+    public String getFormattedMin() {
+        return String.format(java.util.Locale.US, "%.2f", scaledMin);
+    }
+    public String getFormattedMax() {
+        return String.format(java.util.Locale.US, "%.2f", scaledMax);
+    }
+
     /**
      * Human-readable monitor name from OBDMID.
      */

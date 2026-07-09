@@ -2826,6 +2826,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             // ── Auto-detect diesel: enable DPF + Deep Scan on first run ──
             if (vin != null && !vin.isEmpty() && !vin.equals("UNKNOWN")) {
+                // Load brand-specific DTC database based on VIN
+                String brandName = DtcDatabase.initForVin(this, vin);
+                if (brandName != null && !"Unknown".equals(brandName)) {
+                    Toast.makeText(this, "Brand: " + brandName, Toast.LENGTH_SHORT).show();
+                }
+
                 android.content.SharedPreferences p = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
                 boolean alreadySet = p.getBoolean("pref_auto_detect_done", false);
                 if (!alreadySet && isDieselVin(vin)) {
@@ -2930,6 +2936,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // Module info from last auto-scan
     private volatile List<DtcReader.ModuleInfo> lastAutoScanModules = null;
     private volatile List<DtcReader.ProtocolScanStatus> lastAutoScanProtocolStatuses = null;
+    private volatile List<Mode06Result> lastMode06Results = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     @Override
     public void onNewDtcDetected(List<DtcCode> newCodes) {
@@ -3868,6 +3875,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 
                 // Read Mode 06 — on-board monitor test results
                 List<Mode06Result> mode06Results = Mode06Reader.readDiagnostic(activeDriver);
+                lastMode06Results.clear();
+                lastMode06Results.addAll(mode06Results);
                 
                 // Read per-DTC freeze frames
                 List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames = FreezeFrameReader.readAllFreezeFrames(activeDriver);
@@ -4155,7 +4164,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (vin.isEmpty()) {
             vin = "UNKNOWN_VIN";
         }
-        File pdfFile = DtcReportExporter.exportReportToPdf(this, vin, lastStoredDtcs, lastPendingDtcs, lastPermanentDtcs, lastFreezeFrame);
+        // Gather all diagnostic data for the full report
+        ReadinessMonitor readiness = null;
+        if (activeDriver != null && activeDriver.isConnected()) {
+            readiness = ReadinessMonitor.read(activeDriver);
+        }
+        List<Mode06Result> mode06 = lastMode06Results;
+        List<DtcReader.ModuleInfo> modules = lastAutoScanModules;
+        List<DtcReader.ProtocolScanStatus> protocols = lastAutoScanProtocolStatuses;
+        String driveCycleGuide = readiness != null ? DriveCycleGuide.getSummary(readiness) : null;
+
+        File pdfFile = DtcReportExporter.exportReportToPdf(this, vin,
+            lastStoredDtcs, lastPendingDtcs, lastPermanentDtcs, lastFreezeFrame,
+            readiness, mode06, modules, protocols, driveCycleGuide);
         if (pdfFile == null) {
             Toast.makeText(this, "Failed to generate PDF report.", Toast.LENGTH_SHORT).show();
             return;

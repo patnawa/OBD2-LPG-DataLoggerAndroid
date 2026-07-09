@@ -28,6 +28,27 @@ public final class DtcReportExporter {
      * @return the generated File reference, or null on error
      */
     public static File exportReportToPdf(Context context, String vin, List<DtcCode> stored, List<DtcCode> pending, List<DtcCode> permanent, FreezeFrameData freezeFrame) {
+        return exportReportToPdf(context, vin, stored, pending, permanent, freezeFrame,
+            null, null, null, null, null);
+    }
+
+    /**
+     * Full diagnostic report with all available data sections.
+     *
+     * @param readiness       Readiness monitor status (Mode 01 PID 01)
+     * @param mode06Results   Mode 06 test results
+     * @param modules         ECU module list from scan
+     * @param protocolStatuses Protocol bus scan results
+     * @param driveCycleGuide Drive cycle guidance text (for incomplete monitors)
+     */
+    public static File exportReportToPdf(Context context, String vin,
+            List<DtcCode> stored, List<DtcCode> pending, List<DtcCode> permanent,
+            FreezeFrameData freezeFrame,
+            ReadinessMonitor readiness,
+            List<Mode06Result> mode06Results,
+            List<DtcReader.ModuleInfo> modules,
+            List<DtcReader.ProtocolScanStatus> protocolStatuses,
+            String driveCycleGuide) {
         PdfDocument document = new PdfDocument();
         // Standard A4 dimensions at 72 DPI: 595 x 842 points
         PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
@@ -125,6 +146,80 @@ public final class DtcReportExporter {
                     y += 18;
                 }
             }
+        }
+
+        // ── Readiness Monitor Status ──
+        if (readiness != null) {
+            canvas.drawText("Emission Readiness Monitor Status", 40, y, sectionHeaderPaint);
+            y += 20;
+            String milStr = readiness.isMilOn() ? "ON" : "OFF";
+            canvas.drawText("  MIL Status: " + milStr + "  |  DTC Count: " + readiness.getDtcCount()
+                + "  |  Fuel: " + (readiness.isDiesel() ? "Diesel" : "Gasoline"), 40, y, paint);
+            y += 18;
+            for (ReadinessMonitor.MonitorStatus m : readiness.getMonitors()) {
+                String status = m.isAvailable() ? (m.isComplete() ? "Complete" : "INCOMPLETE") : "N/A";
+                canvas.drawText("  " + m.getName() + ": " + status, 40, y, paint);
+                y += 14;
+            }
+            y += 10;
+        }
+
+        // ── Mode 06 Test Results ──
+        if (mode06Results != null && !mode06Results.isEmpty()) {
+            canvas.drawText("Mode 06 On-Board Monitor Test Results (" + mode06Results.size() + ")", 40, y, sectionHeaderPaint);
+            y += 20;
+            for (Mode06Result r : mode06Results) {
+                String passFail = r.isPassed() ? "PASS" : "FAIL";
+                canvas.drawText("  MID " + String.format("%02X", r.getObdMid())
+                    + " TID " + String.format("%02X", r.getTestId())
+                    + " UASID " + String.format("%02X", r.getUasId())
+                    + ": " + r.getFormattedValue() + " " + r.getUnit()
+                    + " (min:" + r.getFormattedMin() + " max:" + r.getFormattedMax() + ") "
+                    + passFail, 40, y, paint);
+                y += 14;
+            }
+            y += 10;
+        }
+
+        // ── ECU Module List ──
+        if (modules != null && !modules.isEmpty()) {
+            canvas.drawText("Detected ECU Modules (" + modules.size() + ")", 40, y, sectionHeaderPaint);
+            y += 20;
+            for (DtcReader.ModuleInfo mod : modules) {
+                canvas.drawText("  " + mod.canId + " " + mod.moduleName
+                    + " [" + mod.protocolLabel + "]"
+                    + " Stored:" + mod.storedDtcCount
+                    + " Pending:" + mod.pendingDtcCount
+                    + " Permanent:" + mod.permanentDtcCount, 40, y, paint);
+                y += 14;
+            }
+            y += 10;
+        }
+
+        // ── Protocol Bus Scan Results ──
+        if (protocolStatuses != null && !protocolStatuses.isEmpty()) {
+            canvas.drawText("Protocol Bus Scan Results (" + protocolStatuses.size() + ")", 40, y, sectionHeaderPaint);
+            y += 20;
+            for (DtcReader.ProtocolScanStatus ps : protocolStatuses) {
+                String status = ps.responded ? "RESPONDED" : "No response";
+                canvas.drawText("  " + ps.bus.label + ": " + status
+                    + "  Modules:" + ps.modulesFound
+                    + "  DTCs:" + ps.totalDtcCount, 40, y, paint);
+                y += 14;
+            }
+            y += 10;
+        }
+
+        // ── Drive Cycle Guidance ──
+        if (driveCycleGuide != null && !driveCycleGuide.isEmpty()) {
+            canvas.drawText("Drive Cycle Guidance", 40, y, sectionHeaderPaint);
+            y += 20;
+            for (String line : driveCycleGuide.split("\n")) {
+                if (y > 780) break;
+                canvas.drawText("  " + line, 40, y, paint);
+                y += 12;
+            }
+            y += 10;
         }
 
         // Footer note

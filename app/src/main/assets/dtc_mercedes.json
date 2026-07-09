@@ -1,0 +1,16 @@
+{
+  "P1100": "MAF Sensor Circuit (Mercedes-Benz)",
+  "P1120": "Throttle Position Sensor Circuit (Mercedes-Benz)",
+  "P1130": "O2 Sensor Heater Circuit (Mercedes-Benz)",
+  "P1200": "Fuel Pump Relay Circuit (Mercedes-Benz)",
+  "P1300": "Ignition Control Circuit (Mercedes-Benz)",
+  "P1330": "CMP Sensor Circuit (Mercedes-Benz)",
+  "P1400": "EGR System Circuit (Mercedes-Benz)",
+  "P1450": "EVAP System Purge Valve (Mercedes-Benz)",
+  "P1500": "VSS Circuit (Mercedes-Benz)",
+  "P1600": "ECM Internal Circuit (Mercedes-Benz ME)",
+  "P1610": "Immobilizer System (Mercedes-Benz DAS)",
+  "P1700": "A/T System (Mercedes-Benz 7G)",
+  "P2500": "Charging System Low Voltage (Mercedes-Benz)",
+  "P2463": "DPF Soot Accumulation (Mercedes-Benz Diesel)"
+}

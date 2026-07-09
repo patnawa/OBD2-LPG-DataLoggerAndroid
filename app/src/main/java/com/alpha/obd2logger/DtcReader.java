@@ -463,14 +463,30 @@ public final class DtcReader {
             try { Thread.sleep(100); } catch (InterruptedException ignored) {}
         }
 
+        // ── ISO-TP flow control: enable auto flow control for multi-frame responses ──
+        // Without this, ECUs that return many DTCs in a single multi-frame response
+        // will be truncated at the first frame (7 bytes = ~3 DTCs max).
+        driver.sendCommandRaw("ATCFC1");
+        try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+
+        // ── Protocol probe: send 0100 to check if any ECU is alive on this bus ──
+        // This avoids false "NO DATA" results from a bus that has no ECU at all.
+        String probe = sendWithRetry(driver, "0100", 2, 150);
+        if (!isValidResponse(probe)) {
+            // No ECU responded on this protocol — skip DTC scan entirely
+            driver.sendCommandRaw("ATCFC0");
+            return new BusScanResult(stored, pending, permanent, moduleBuilders.isEmpty()
+                ? new ArrayList<>() : new ArrayList<>(), false);
+        }
+
         // Enable headers to see CAN IDs
         driver.sendCommandRaw("ATH1");
         try { Thread.sleep(50); } catch (InterruptedException ignored) {}
 
         try {
-            // Mode 03 — Stored DTCs
-            String raw03 = driver.sendCommandRaw("03");
-            if (raw03 != null && !raw03.isEmpty()) {
+            // Mode 03 — Stored DTCs (retry up to 3 times with backoff)
+            String raw03 = sendWithRetry(driver, "03", 3, 200);
+            if (isValidResponse(raw03)) {
                 ScanLineResult slr = parseWithModuleHeaders(raw03, "43", bus.label);
                 stored.addAll(slr.codes);
                 for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
@@ -483,8 +499,8 @@ public final class DtcReader {
             }
 
             // Mode 07 — Pending DTCs
-            String raw07 = driver.sendCommandRaw("07");
-            if (raw07 != null && !raw07.isEmpty()) {
+            String raw07 = sendWithRetry(driver, "07", 3, 200);
+            if (isValidResponse(raw07)) {
                 ScanLineResult slr = parseWithModuleHeaders(raw07, "47", bus.label);
                 pending.addAll(slr.codes);
                 for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
@@ -496,8 +512,8 @@ public final class DtcReader {
             }
 
             // Mode 0A — Permanent DTCs
-            String raw0A = driver.sendCommandRaw("0A");
-            if (raw0A != null && !raw0A.isEmpty()) {
+            String raw0A = sendWithRetry(driver, "0A", 3, 200);
+            if (isValidResponse(raw0A)) {
                 ScanLineResult slr = parseWithModuleHeaders(raw0A, "4A", bus.label);
                 permanent.addAll(slr.codes);
                 for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
@@ -509,11 +525,12 @@ public final class DtcReader {
             }
 
             // A bus "responded" even if we just got "NO DATA" back (means it connected)
-            // Check if any response came back at all (raw03 non-null means bus exists)
             if (raw03 != null) anyResponse = true;
 
         } finally {
             driver.sendCommandRaw("ATH0");
+            // Restore flow control to default (off — let ELM327 handle normally)
+            driver.sendCommandRaw("ATCFC0");
         }
 
         // Build module list
@@ -691,9 +708,27 @@ public final class DtcReader {
 
     public static boolean clearDtcs(BaseDriver driver) {
         if (driver == null || !driver.isConnected()) return false;
+        // Send Mode 04 (Clear DTCs)
         String response = driver.sendCommandRaw("04");
         if (response == null || response.isEmpty()) return false;
-        return response.replaceAll("[^0-9A-Fa-f]", "").contains("44");
+        boolean acked = response.replaceAll("[^0-9A-Fa-f]", "").contains("44");
+        if (!acked) return false;
+
+        // Wait for ECU to process the clear command
+        try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+
+        // ── Post-clear verification: rescan Mode 03 to confirm all DTCs are gone ──
+        // Professional scanners verify the clear actually worked by rescanning.
+        String rescan = sendWithRetry(driver, "03", 2, 200);
+        if (isValidResponse(rescan)) {
+            List<DtcCode> remaining = parseDtcResponse(rescan, "43");
+            // Permanent DTCs (Mode 0A) cannot be cleared by Mode 04 — they only
+            // clear themselves after the condition no longer exists for N drive
+            // cycles. So we only verify that stored DTCs are cleared.
+            return remaining.isEmpty();
+        }
+        // If rescan failed (no response), trust the 44 ack
+        return true;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -705,5 +740,204 @@ public final class DtcReader {
             if (c.getCode() != null && c.getCode().equals(code.getCode())) return true;
         }
         return false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Retry & Validation Helpers
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Check if an OBD2 response is valid (non-empty, not NO DATA, not ERROR).
+     */
+    static boolean isValidResponse(String response) {
+        if (response == null || response.isEmpty()) return false;
+        String clean = response.trim().toUpperCase();
+        if (clean.contains("NODATA") || clean.contains("NO DATA")) return false;
+        if (clean.contains("ERROR") || clean.contains("UNABLE")) return false;
+        if (clean.contains("?")) return false;  // ELM327 unknown command
+        // Must contain at least some hex data
+        return clean.replaceAll("[^0-9A-Fa-f]", "").length() >= 2;
+    }
+
+    /**
+     * Send an OBD2 command with retry and exponential backoff.
+     * Many ECUs don't respond immediately, especially on the first query after
+     * a protocol switch. Professional scanners retry 2-3 times.
+     *
+     * @param command    OBD2 command (e.g. "03", "07", "0A")
+     * @param maxRetries number of attempts (1 = no retry, 3 = recommended)
+     * @param baseDelay  base delay between retries in ms (actual = baseDelay * attempt)
+     * @return best response, or empty string if all retries failed
+     */
+    static String sendWithRetry(BaseDriver driver, String command, int maxRetries, int baseDelay) {
+        String bestResponse = "";
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                String response = driver.sendCommandRaw(command);
+                if (isValidResponse(response)) {
+                    return response;
+                }
+                // Keep last non-null response for debugging
+                if (response != null && !response.isEmpty()) {
+                    bestResponse = response;
+                }
+            } catch (Exception e) {
+                android.util.Log.w("DtcReader", "Retry " + (attempt + 1) + "/" + maxRetries
+                    + " for " + command + " failed: " + e.getMessage());
+            }
+            if (attempt < maxRetries - 1) {
+                try { Thread.sleep(baseDelay * (attempt + 1)); } catch (InterruptedException ignored) {
+                    break;  // interrupted = shutdown requested
+                }
+            }
+        }
+        return bestResponse;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Per-ECU Physical Addressing Scan
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Known ECU transmit/receive header pairs for physical addressing.
+     * Used by scanWithPhysicalAddressing() to query each ECU individually
+     * instead of relying on functional (broadcast) addressing.
+     *
+     * Key = TX header (ATSH), Value = RX filter (ATCRA)
+     */
+    static final java.util.Map<String, String> ECU_TX_RX_PAIRS = new LinkedHashMap<>();
+    static {
+        // Toyota / generic HS-CAN
+        ECU_TX_RX_PAIRS.put("7E0", "7E8");  // ECM
+        ECU_TX_RX_PAIRS.put("7E1", "7E9");  // TCM
+        ECU_TX_RX_PAIRS.put("7E2", "7EA");  // ABS
+        ECU_TX_RX_PAIRS.put("7E3", "7EB");  // SRS
+        // Honda
+        ECU_TX_RX_PAIRS.put("7C0", "7C8");  // PGM-FI
+        // Mitsubishi
+        ECU_TX_RX_PAIRS.put("611", "619");  // Engine Diesel
+    }
+
+    /**
+     * Scan a specific ECU by setting its TX header and RX filter,
+     * then querying Mode 03/07/0A. This avoids collisions when multiple
+     * ECUs respond simultaneously on functional addressing.
+     *
+     * @param txHeader 3 or 8 hex chars (e.g. "7E0" or "18DA00F1")
+     * @param rxFilter 3 or 8 hex chars (e.g. "7E8")
+     * @return DTCs from this specific ECU, or empty if not responding
+     */
+    public static List<DtcCode> scanEcuDirectly(BaseDriver driver, String txHeader, String rxFilter) {
+        List<DtcCode> codes = new ArrayList<>();
+        if (driver == null || !driver.isConnected()) return codes;
+
+        // Save current header/filter state
+        driver.sendCommandRaw("ATSH" + txHeader);
+        try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+        driver.sendCommandRaw("ATCRA" + rxFilter);
+        try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+
+        try {
+            // Mode 03
+            String raw03 = sendWithRetry(driver, "03", 2, 150);
+            if (isValidResponse(raw03)) {
+                codes.addAll(parseDtcResponse(raw03, "43"));
+            }
+            // Mode 07
+            String raw07 = sendWithRetry(driver, "07", 2, 150);
+            if (isValidResponse(raw07)) {
+                codes.addAll(parseDtcResponse(raw07, "47"));
+            }
+            // Mode 0A
+            String raw0A = sendWithRetry(driver, "0A", 2, 150);
+            if (isValidResponse(raw0A)) {
+                codes.addAll(parseDtcResponse(raw0A, "4A"));
+            }
+        } finally {
+            // Reset to defaults
+            driver.sendCommandRaw("ATCRA000");
+            driver.sendCommandRaw("ATSH000");  // auto header
+        }
+        return codes;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Enhanced / Manufacturer-Specific Mode Scanning
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Scan enhanced (manufacturer-specific) DTC modes.
+     * These are beyond the standard OBD2 Mode 03/07/0A and capture
+     * codes that the standard modes don't expose (body, chassis, network).
+     *
+     * WARNING: Not all ELM327 clones support these. If the adapter returns
+     * "?" or "ERROR", the mode is unsupported and results will be empty.
+     *
+     * Supported enhanced modes by manufacturer:
+     *   Toyota: Mode 21 (enhanced DTCs), Mode 22 (extended PID query)
+     *   Honda:  Mode 21 (enhanced DTCs)
+     *   Nissan: Mode 1A (enhanced DTCs)
+     *   Ford:   Mode 27 (manufacturer-specific)
+     *
+     * @param modeHex 2-hex-digit mode (e.g. "21", "22", "1A", "27")
+     * @param responseHeader expected response mode header (e.g. "61", "62", "5A", "67")
+     * @return list of DTCs from enhanced mode, or empty if unsupported
+     */
+    public static List<DtcCode> scanEnhancedMode(BaseDriver driver, String modeHex, String responseHeader) {
+        List<DtcCode> codes = new ArrayList<>();
+        if (driver == null || !driver.isConnected()) return codes;
+
+        String command = modeHex;
+        String response = sendWithRetry(driver, command, 2, 200);
+        if (!isValidResponse(response)) return codes;
+
+        // Parse: enhanced mode responses are similar to Mode 03
+        // Format: [responseHeader] [count] [DTC1_hi] [DTC1_lo] [DTC2_hi] [DTC2_lo] ...
+        String hex = response.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
+        int idx = hex.indexOf(responseHeader);
+        if (idx < 0) return codes;
+
+        // Skip response header + count byte
+        int pos = idx + responseHeader.length();
+        if (pos + 2 <= hex.length()) pos += 2;  // skip count byte
+
+        while (pos + 4 <= hex.length()) {
+            int byteA = Integer.parseInt(hex.substring(pos, pos + 2), 16);
+            int byteB = Integer.parseInt(hex.substring(pos + 2, pos + 4), 16);
+            if (byteA != 0x00 || byteB != 0x00) {
+                codes.add(DtcCode.fromHexBytes(byteA, byteB));
+            }
+            pos += 4;
+        }
+        return codes;
+    }
+
+    /**
+     * Scan all known enhanced modes for a given manufacturer.
+     * @param brand "toyota", "honda", "nissan", "ford", or null for all
+     */
+    public static List<DtcCode> scanEnhancedForBrand(BaseDriver driver, String brand) {
+        List<DtcCode> all = new ArrayList<>();
+        if (driver == null || !driver.isConnected()) return all;
+
+        if (brand == null || brand.equalsIgnoreCase("toyota")) {
+            all.addAll(scanEnhancedMode(driver, "21", "61"));
+        }
+        if (brand == null || brand.equalsIgnoreCase("honda")) {
+            all.addAll(scanEnhancedMode(driver, "21", "61"));
+        }
+        if (brand == null || brand.equalsIgnoreCase("nissan")) {
+            all.addAll(scanEnhancedMode(driver, "1A", "5A"));
+        }
+        if (brand == null || brand.equalsIgnoreCase("ford")) {
+            all.addAll(scanEnhancedMode(driver, "27", "67"));
+        }
+        // Deduplicate
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        List<DtcCode> deduped = new ArrayList<>();
+        for (DtcCode c : all) {
+            if (seen.add(c.getCode())) deduped.add(c);
+        }
+        return deduped;
     }
 }

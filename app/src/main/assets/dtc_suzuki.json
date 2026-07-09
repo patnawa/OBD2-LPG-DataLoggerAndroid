@@ -1,0 +1,18 @@
+{
+  "P1100": "MAF Sensor Circuit Intermittent (Suzuki)",
+  "P1101": "MAF Sensor Circuit Range/Performance (Suzuki)",
+  "P1120": "Throttle Position Sensor Circuit (Suzuki)",
+  "P1130": "A/F Sensor 1 Circuit (Suzuki)",
+  "P1200": "Fuel Pump Relay Circuit (Suzuki)",
+  "P1300": "Ignition Signal Circuit (Suzuki)",
+  "P1330": "CMP Sensor Circuit (Suzuki)",
+  "P1340": "VVT System Circuit (Suzuki VVT)",
+  "P1400": "EGR Valve Position Sensor (Suzuki)",
+  "P1450": "EVAP Canister Purge Control (Suzuki)",
+  "P1500": "Vehicle Speed Sensor Circuit (Suzuki)",
+  "P1510": "IAC Valve Circuit (Suzuki)",
+  "P1600": "ECM Internal Circuit (Suzuki)",
+  "P1610": "Immobilizer System (Suzuki)",
+  "P1700": "A/T Control System (Suzuki)",
+  "P2500": "Charging System Low Voltage (Suzuki)"
+}
