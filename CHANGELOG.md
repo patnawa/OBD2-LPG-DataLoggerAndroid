@@ -4,21 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [3.5.0] - 2026-07-09
 ### Added
-- **Fuel Consumption (km/L)** — real-time fuel economy computed from MAF Air Flow + Vehicle Speed. Formula: km/L = speed × density × AFR / (MAF × 3600). Automatically selects correct AFR (14.7 petrol / 15.5 LPG) and density (737 g/L petrol / 510 g/L LPG) based on active fuel mode. Also outputs L/100km. Null-safe: returns null at idle (speed < 2 km/h) to avoid absurd values.
-- **Turbo Boost Pressure** — computed from MAP minus Barometric Pressure, displayed in kPa and PSI. Barometric PID (0x33) is now polled (lpgCritical=true) to provide accurate atmospheric reference. Falls back to 101.325 kPa sea-level if Baro PID unavailable. Valid range: -50 to +400 kPa.
-- **DPF Status Monitor** — 5 new PIDs for diesel vehicles: Soot Load % (0x7A), DPF Temperature (0x7B), Delta Pressure (0x85), Regen Status (0x8C), Ash Load (0x8B). Derived health assessment: Clean (<40%), Moderate (<70%), Warning (<90%), Critical (>=90%). Regen status decoded: Idle/Active/Requested/Blocked. Disabled by default — enable via Settings checkbox.
-- **Custom PID Support** — `CustomPidManager` stores user-defined PIDs in SharedPreferences as JSON. Full CRUD: add, remove, clear, load, save. Formula tester for preview. Custom PIDs merge into the main PID catalogue at logging start and are polled alongside built-in PIDs.
-- **Thai UI Localization** — complete `values-th/strings.xml` with all existing + new string keys. Covers dashboard, gauges, map, DTC, battery tester, home screen, settings, derived sensors, DPF, and custom PID panels.
-- **Feature Toggle Checkboxes** — 4 new settings: Turbo Boost Calculation, Fuel Economy Calculation, DPF Monitor (Diesel), Enable Custom PIDs. Persisted via SharedPreferences + restored on resume.
+- **Fuel Consumption (km/L)** — real-time from MAF + Speed, auto AFR/density per fuel mode (14.7/737 petrol, 15.5/510 LPG). Also outputs L/100km. Null-safe at idle.
+- **Turbo Boost Pressure** — MAP minus Barometric, displayed in kPa + PSI. Barometric PID (0x33) polled automatically. Sea-level fallback if unavailable.
+- **DPF Status Monitor** — 5 PIDs for diesel: Soot Load (0x7A), Temperature (0x7B), Delta Pressure (0x85), Regen Status (0x8C), Ash Load (0x8B). Health: Clean/Moderate/Warning/Critical.
+- **Custom PID Support** — JSON persistence in SharedPreferences. Full CRUD + formula tester. Merge into catalogue at logging start.
+- **Thai UI Localization** — Complete `values-th/strings.xml` for all panels.
+- **Auto-detect diesel** — VIN WMI heuristic (MPA/MNB/MMB/MR0) enables DPF + Deep Scan on first connect. One-time only.
+- **Instant-save checkboxes** — All 5 feature toggles save on toggle, not just onPause. Survives force-kill.
+- **2x4 telemetry grid** — Clean balanced layout: RPM/Speed/Coolant/Voltage + Fuel/Boost/DPF/DTC count.
+- **DTC badge on dashboard** — Shows stored+pending count with red/green color.
 
 ### Changed
-- **`DerivedSensors` utility class** — centralised computation of fuel economy, turbo boost, DPF health, and regen status. No side effects; pure functions that take raw sensor values and return derived values.
-- **`PIDCatalogue`** — added `getAllWithCustom(Context)` to merge built-in + custom PIDs. Barometric Pressure (0x33) changed from `lpgCritical=false` to `true` to ensure it's always polled for boost calculation.
-- **`LoggerConfig`** — added 4 feature flags: `showTurboBoost` (default true), `showFuelConsumption` (default true), `dpfMonitorEnabled` (default false), `customPidsEnabled` (default false).
-- **`LoggerService`** — after each PID batch query, computes derived sensors (fuel economy, turbo boost, DPF status) and appends them as `SensorSample` entries with pidKey `derived_*`. Custom PIDs loaded when `customPidsEnabled=true`.
-- **`DriverFactory.copyConfig()`** — propagates new feature flags to cloned configs.
-- **`MainActivity`** — `updateStatusStrip()` now displays fuel economy (km/L), turbo boost (psi), and DPF health on the home screen. All feature toggles persisted in `saveConfigPrefs`/`restoreConfigPrefs`. Null-safe layout bindings — won't crash if views not in layout yet.
-- **Version bump**: v3.4.30 → v3.5.0 (versionCode 64 → 65)
+- **`DerivedSensors`** — Centralized computation (fuel, boost, DPF health, regen status).
+- **`CustomPidManager`** — User-defined PID storage.
+- **`PIDCatalogue`** — `getAllWithCustom()`, Baro `lpgCritical=true`, +5 DPF PIDs.
+- **`LoggerService`** — Derived sensors appended after each batch. Custom PID merge.
+- **`LoggerConfig`** — 4 feature flags (turbo/fuel/dpf/custom).
+- **`SimulationDriver`** — DPF PID simulations (15% soot, 250°C, 0.5kPa, idle regen, 5g ash).
+- **Version**: 3.4.30 → 3.5.0 (code 64 → 65)
 
 ## [3.4.30] - 2026-07-08
 ### Added

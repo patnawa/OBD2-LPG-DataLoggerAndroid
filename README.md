@@ -1,14 +1,21 @@
-# TunerMap Pro >> OBD2 Petrol/LPG/CNG Data Logger Android
+# TunerMap Pro — OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.4.27** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.5.0** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.4.27
+## What's New in 3.5.0
 
-- **Fuel map debounce now sliding-window** — v3.4.26's strict consecutive-ticks filter dropped valid data when RPM jittered across 500-step cell boundaries. Now uses 4-sample ring buffer — accepts cells that reappear in the window, tolerating brief excursions without resetting.
+- **Fuel Consumption (km/L + L/100km)** — real-time from MAF + Speed, auto AFR/density per fuel mode. Null-safe at idle.
+- **Turbo Boost (kPa + psi)** — MAP minus Barometric, auto-polled, sea-level fallback.
+- **DPF Monitor** — 5 diesel PIDs (Soot/Temp/Delta/Regen/Ash) + health assessment. Auto-detect from VIN.
+- **Custom PIDs** — JSON storage, CRUD, formula tester. Merge into catalogue.
+- **Thai UI** — complete `values-th/strings.xml`.
+- **Instant-save toggles** — all checkboxes save on toggle, survive force-kill.
+- **2x4 telemetry grid** — RPM/Speed/Coolant/Voltage + Fuel/Boost/DPF/DTC.
+- **DTC badge** on dashboard with red/green counter.
 
 ---
 
@@ -19,14 +26,15 @@ This app connects to your vehicle's OBD2 port via ELM327-compatible adapters (vL
 ## Key Features
 
 ### Data Logging
-- **40+ OBD2 PIDs**: Engine RPM, Vehicle Speed, Engine Load, Coolant Temp, Intake Air Temp, MAF, MAP, Fuel Pressure, Barometric Pressure, Throttle Position, Timing Advance, STFT/LTFT (Bank 1 & 2), O2 Sensors (B1S1-B2S4 voltage + STFT), Lambda (wideband), Control Module Voltage, Absolute Load, Fuel Level, Fuel Type, Ethanol %, EVAP Pressure, Run Time, Distance counters, and more
+- **45+ OBD2 PIDs**: Engine RPM, Vehicle Speed, Engine Load, Coolant Temp, Intake Air Temp, MAF, MAP, Fuel Pressure, Barometric Pressure, Throttle Position, Timing Advance, STFT/LTFT (Bank 1 & 2), O2 Sensors (B1S1-B2S4 voltage + STFT), Lambda (wideband), Control Module Voltage, Absolute Load, Fuel Level, Fuel Type, Ethanol %, EVAP Pressure, Run Time, Distance counters, DPF Soot/Temp/Delta/Regen/Ash, and more
+- **Derived sensors**: Fuel Economy (km/L, L/100km), Turbo Boost (kPa, psi), DPF Health (Clean/Moderate/Warning/Critical), DPF Regen Status
 - **Dual format logging**: CSV (RFC-4180 quoted) + JSONL (one JSON object per line)
 - **Custom log folder**: Save logs anywhere via Android Storage Access Framework (SAF) — Downloads, SD card, USB, Google Drive
 - **Fuel-mode prefixed filenames**: e.g. `PETROL_20260630_120000_obd2.csv`, `LPG_20260630_130000_obd2.csv`
 - **Background foreground service**: Logging continues when screen is off or app is minimised (PARTIAL_WAKE_LOCK)
 - **PID auto-detection**: Queries SAE J1979 PID availability bitmaps (0x00, 0x20, 0x40) to poll only supported PIDs — 30-50% faster cycles
 - **VIN-based fallback**: If live detection fails, decodes brand/year from VIN WMI + model year code to estimate supported PIDs
-- **Config persistence**: Transport mode, WiFi IP/port, baud, interval, fuel mode, protocol, LPG-only, API server — all restored on reopen
+- **Config persistence**: All settings restored on reopen; checkboxes save instantly (no onPause required)
 
 ### LPG/CNG Tune Assist
 - **Live Fuel Map**: 2D grid (T.inj ms × RPM) with color-coded STFT+LTFT averages — red (rich) to blue (lean), green (perfect)
@@ -49,6 +57,7 @@ This calculates the net fuel trim difference between running on gas and the petr
 - **Goal**: Adjust the LPG map until the Deviation is close to **0%** across all cells.
 
 ### Live Dashboard
+- **2x4 telemetry grid**: RPM | Speed | Coolant | Voltage + Fuel (km/L) | Boost (psi) | DPF | DTC count
 - **4 customizable gauges**: Professional analog gauges with tapered needle, arc number labels, smooth animation, peak value indicator, 3D hub cap, per-gauge color themes (RPM=red, Speed=cyan, Temp=amber, Load=green), and warning zones
 - **4 dashboard value cards**: Long-press to swap which PID each card shows
 - **5 real-time graphs**: Rolling line charts with auto-scaling, fill area, and current-value indicators
@@ -57,61 +66,44 @@ This calculates the net fuel trim difference between running on gas and the petr
 
 ### Diagnostics
 - **DTC scanning**: Read stored (Mode 03), pending (Mode 07), and permanent (Mode 0A) Diagnostic Trouble Codes with descriptions
+- **Multi-protocol deep scan**: 7 protocol buses — HS-CAN, MS-CAN (Ford/Mazda), CAN 29-bit (Isuzu), CAN 250k, KWP2000 (older Toyota), ISO 9141-2 (older Honda/Nissan), J1850 VPW (older Isuzu)
+- **ECU database**: 40+ CAN IDs mapped to human-readable module names — Toyota, Honda, Mazda, Isuzu, Nissan, Mitsubishi, Ford
 - **Mode 06 Monitor Test Results**: Read actual test values, min/max thresholds, and pass/fail for all monitors (Catalyst, O2, EGR, EVAP, Misfire)
 - **Per-DTC Freeze Frames**: Individual freeze frame snapshot for each stored DTC with 10 PIDs
 - **DTC Enrichment**: 157 codes with probable causes, repair suggestions, emissions flags, and drive cycles to clear
 - **Scan Comparison**: Shows NEW and CLEARED codes vs previous scan
 - **Clear DTCs**: Send Mode 04 to clear codes and reset MIL
-- **VIN reader**: Read 17-character VIN via Mode 09 PID 02 (multi-frame ISO-TP)
+- **VIN reader**: Read 17-character VIN via Mode 09 PID 02 (multi-frame ISO-TP) — auto-detects diesel vehicles
 - **ECU Calibration**: Read Cal-ID and CVN via Mode 09 for emissions compliance
-- **Readiness monitors**: Check emission inspection readiness — Misfire, Fuel System, Components, Catalyst, Heated Catalyst, EVAP, Secondary Air, EGR, Particulate Filter, NOx/SOR, O2 Sensor, O2 Heater
+- **Readiness monitors**: Check emission inspection readiness — 12 monitors including Particulate Filter
 
-### Battery & Charging System Tester (NEW in v3.3.0)
-Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Voltage) or AT RV fallback. 11 automated tests with pass/fail/warn severity, overall health grade (A+ to F), and Battery Life estimation:
-- **ระบบเลือกช่องสัญญาณแรงดันไฟอัจฉริยะ (Smart Voltage Acquisition with AT RV Fallback)**:
-  - อ่านแรงดันไฟฟ้าหลักผ่าน OBD2 PID `01 42` (Control Module Voltage) จากกล่อง ECU โดยตรง
-  - **ระบบสำรองอัตโนมัติ (Fallback)**: ในกรณีที่เป็นรถยนต์รุ่นเก่า (เช่น รถก่อนปี 2008) ที่กล่อง ECU ไม่รองรับรหัส PID `01 42` แอปพลิเคชันจะสลับไปส่งคำสั่งตรงเข้าฮาร์ดแวร์อะแดปเตอร์ ELM327 ด้วยคำสั่ง **`AT RV`** ทันที เพื่ออ่านค่าแรงดันไฟฟ้าทางกายภาพ (Analog Voltage) จาก Pin 16 ของพอร์ต OBD2 (ซึ่งเชื่อมกับแบตเตอรี่รถยนต์โดยตรง) ทำให้มั่นใจได้ว่าระบบสามารถแสดงผลค่าแรงดันไฟได้สำเร็จกับรถยนต์ทุกรุ่น 100%
-- **State of Charge (SoC)**: Open-circuit voltage → SoC% lookup (flooded lead-acid, 25°C)
-- **State of Health (SOH)**: Multi-factor degradation estimate (resting voltage + cranking voltage + recovery + charge acceptance)
-- **Battery Life Estimate**: Remaining months based on SOH, battery type (Flooded/AGM), age, and tropical climate factor
-- **Alternator Voltage**: Regulated output check at idle (13.8-14.7V spec)
-- **Voltage Drop Test**: No-load vs full-load (headlights + blower + AC + defroster) comparison
-- **Voltage Recovery**: How fast voltage returns after load dump (internal resistance indicator)
-- **Cranking Voltage**: Minimum battery voltage during engine crank (fast 80ms sampling for 5 seconds)
-- **Ripple / Diode Health**: AC ripple detection via 20-sample burst (bad diode detection)
-- **Parasitic Drain Estimate**: Voltage decay rate when engine off
-- **Charging Efficiency**: Voltage stability across RPM range (idle vs high RPM)
-- **Live Voltage Monitor**: Real-time scrolling graph with threshold bands (crank/rest/alternator/overcharge zones)
-- **Battery type selector**: Flooded (Standard), AGM, EFB, Gel, Calcium, LiFePO4 — with chemistry-aware voltage thresholds
-- **Full Diagnostic**: One-tap comprehensive report with weighted overall score
+### Battery & Charging System Tester
+Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Voltage) or AT RV fallback. 11 automated tests with pass/fail/warn severity, overall health grade (A+ to F), and Battery Life estimation. Chemistry-aware: Flooded, AGM, EFB, Gel, Calcium, LiFePO4.
 
 ### Adapter Support
-- **vLinker FS USB** (MIC3322): USB CDC, firmware-specific optimizations (ATAT1, ATST32, ATAL, 6-PID chunks, 250ms interval)
-- **vLinker MC WiFi** (MIC3313): TCP, pre-buffering optimizations (ATAT2, ATST1A, ATAL, 6-PID chunks, 300ms interval)
-- **vLinker MC BT** (MIC3313): Bluetooth SPP, conservative timing (ATAT1, ATST23, ATAL, 4-PID chunks, 500ms interval)
-- **Generic ELM327**: WiFi/BLE/BT SPP/USB — conservative 4-PID chunks, 100ms timeout, 500ms interval
+- **vLinker FS USB** (MIC3322): USB CDC, firmware-specific optimizations (ATAT1, ATST32, ATAL, 6-PID chunks)
+- **vLinker MC WiFi** (MIC3313): TCP, pre-buffering optimizations (ATAT2, ATST1A, ATAL, 6-PID chunks)
+- **vLinker MC BT** (MIC3313): Bluetooth SPP, conservative timing (ATAT1, ATST23, ATAL, 4-PID chunks)
+- **Generic ELM327**: WiFi/BLE/BT SPP/USB — conservative 4-PID chunks
 - **Auto-connect**: Tries USB → WiFi → selected BT device → all paired BT devices → simulation fallback
-- **Multi-PID batch polling**: Sends up to 6 PIDs per ELM327 command; individual retry for failed PIDs
+- **Multi-PID batch polling**: Sends up to 6 PIDs per ELM327 command
 - **USB serial**: Supports CH340, CP2102, FTDI, Prolific via usb-serial-for-android v3.7.3
 
 ### AI Agent Integration
 - **HTTP API server** (NanoHTTPD on port 8080): Enable in Settings to expose live data as JSON
-  - `GET /api/ping` — ping server, returns uptime and timestamp
-  - `GET /api/status` — connection status, fuel mode, VIN
-  - `GET /api/data` — latest sensor data (all PIDs with values and units)
-  - `GET /api/map?min_hits=N` — binned 2D Fuel Map (Petrol, LPG, Deviation, Tune Assist); filters cells by minimum hits `N` (default `1`)
-  - `DELETE /api/map` — clear/reset in-memory map data
-  - `GET /api/map/summary` — aggregate calibration metrics, max deviation coordinates, and tuning recommendation text
-  - `GET /api/map/export` — download the current map correction grid directly as a CSV file
-  - `POST /api/map/import` — import and override the map session data via a JSON payload
-- **CORS enabled**: Web-based AI agents, MCP clients, and laptops can fetch and modify data directly
-- **Zero polling impact**: API server runs on separate thread; doesn't slow OBD2 polling
+  - `GET /api/ping` — heartbeat
+  - `GET /api/data` — all sensor values with units
+  - `GET /api/map` — binned Fuel Map with min_hits filter
+  - `POST /api/map/import` — import map session JSON
+  - `GET /api/map/export` — download correction CSV
+- **CORS enabled**: Web AI agents and MCP clients can fetch directly
+- **Zero polling impact**: Separate thread, no OBD2 slowdown
 
 ### UI/UX
-- **5 tabs**: Dashboard, Gauges, Fuel Map, DTC, History (with Settings panel)
-- **Global Multi-Language**: Support for 16 options including English, Thai (ภาษาไทย), Spanish (Español), Portuguese (Português), German (Deutsch), French (Français), Italian (Italiano), Russian (Русский), Hindi (हिन्दी), Arabic (العربية), Indonesian (Bahasa Indonesia), Vietnamese (Tiếng Việt), Japanese (日本語), Korean (한국어), Chinese (中文), and System Default auto-detection
-- **Day/Night theme**: System default, Light, or Dark mode with a quick-access theme toggle button (sun/moon) on the top app bar
-- **Keep screen on**: Prevents screen sleep while app is foregrounded (default on, toggleable)
+- **6 tabs**: Dashboard, Gauges, Fuel Map, DTC, Battery, History (with Settings panel)
+- **Multi-language**: Thai (ภาษาไทย) + English + System Default
+- **Day/Night theme**: System default, Light, or Dark mode with quick-toggle
+- **Keep screen on**: Prevents screen sleep while app is foregrounded
 - **Dynamic PID selection**: Long-press any gauge/card/graph to choose which PID it displays
 - **History browser**: Browse, open, share, delete, and compare past log files
 
@@ -125,10 +117,7 @@ export ANDROID_HOME="/c/Users/Alpha/Android/Sdk"
 ./gradlew clean testDebugUnitTest assembleDebug
 ```
 
-Debug APK output:
-```
-app/build/outputs/apk/debug/app-debug.apk (~5.8 MB)
-```
+Debug APK output: `app/build/outputs/apk/debug/app-debug.apk (~6.5 MB)`
 
 ## Runtime Notes
 
@@ -138,6 +127,8 @@ app/build/outputs/apk/debug/app-debug.apk (~5.8 MB)
 - **Background logging**: Enable in Settings to use foreground service (survives screen off / app switch).
 - **Keep screen on**: Enabled by default. Toggle in Settings.
 - **API server**: Enable in Settings to allow AI Agents to read live data on `http://<phone-ip>:8080/api/data`.
+- **DPF Monitor**: Auto-enabled for diesel vehicles on first VIN read. Toggle in Settings to disable.
+- **Custom PIDs**: Enable in Settings, then add via SharedPreferences or API.
 - **Custom log folder**: Use Settings → "Select Log Folder" to choose a SAF-accessible directory.
 
 ## Tech Stack
@@ -153,9 +144,11 @@ app/build/outputs/apk/debug/app-debug.apk (~5.8 MB)
 
 ```
 app/src/main/java/com/alpha/obd2logger/
-├── PIDCatalogue.java       # 40+ PID definitions (SAE J1979)
+├── PIDCatalogue.java       # 45+ PID definitions (SAE J1979 + DPF + custom merge)
 ├── PIDDefinition.java       # PID data class (name, service, hex, formula, dataBytes)
 ├── PIDParser.java           # Formula evaluator + multi-PID response parser
+├── DerivedSensors.java      # Fuel economy, turbo boost, DPF health computation
+├── CustomPidManager.java    # User-defined PID storage (JSON in SharedPreferences)
 ├── ElmDriver.java           # ELM327 AT command init, multi-PID batch query
 ├── BaseDriver.java          # Abstract driver base
 ├── WiFiDriver.java          # WiFi TCP socket transport
@@ -174,12 +167,12 @@ app/src/main/java/com/alpha/obd2logger/
 ├── SensorSample.java        # Single PID sample data class
 ├── FuelMapView.java         # 2D fuel map grid view (RPM × MAP)
 ├── GraphView.java           # Real-time line graph
-├── GaugeView.java           # Professional analog gauge (tapered needle, labels, animation)
+├── GaugeView.java           # Professional analog gauge
 ├── LPGAnalyzer.java         # STFT+LTFT analysis (LEAN/RICH/OK)
 ├── FuelTrimResult.java      # Analysis result data class
 ├── PidAvailabilityChecker.java  # SAE J1979 PID bitmap queries
 ├── BrandYearProfile.java    # VIN-based brand/year PID profile fallback
-├── DtcReader.java           # Mode 03/07/0A DTC reader
+├── DtcReader.java           # Mode 03/07/0A DTC reader + multi-protocol deep scan
 ├── DtcCode.java             # DTC code parser (SAE J2010)
 ├── DtcEnrichment.java       # DTC enrichment DB (causes, fixes, emissions)
 ├── DtcComparison.java       # Scan comparison (new/cleared/persisting)
@@ -191,7 +184,7 @@ app/src/main/java/com/alpha/obd2logger/
 ├── Mode09Reader.java        # Cal-ID and CVN reader
 ├── ReadinessMonitor.java    # Mode 01 PID 01 readiness parser
 ├── VinReader.java           # Mode 09 PID 02 VIN reader
-├── BatteryTester.java      # Professional 12V battery + charging system tester
+├── BatteryTester.java       # Professional 12V battery + charging system tester
 ├── ApiServer.java           # NanoHTTPD REST API server
 ├── LoggerConfig.java        # Configuration data class
 ├── ObdProtocol.java         # OBD protocol enum (ATSP values)
@@ -202,23 +195,7 @@ app/src/main/java/com/alpha/obd2logger/
 
 ## Changelog
 
-See [CHANGELOG.md](./CHANGELOG.md) for the full release history. Recent highlights:
-
-### v3.4.25 — Battery status chemistry-aware
-- Live voltage monitor badge uses selected battery type's thresholds (AGM at 13.5 V now correctly shows undercharge)
-
-### v3.4.24 — Config persistence
-- Transport, WiFi, fuel, protocol, API server settings survive app restarts
-
-### v3.4.23 — Background crash + fuel map RPM fix
-- No more NPE when logging in background and activity destroyed
-- Fuel map RPM binning changed to floor-based — matches tachometer
-
-### v3.4.22 — ELM327 init fail-fast
-- `initializeElm327()` now returns false on dead adapter instead of silent fake "connected"
-
-### v3.4.21 — WiFi routing fix
-- `Network.bindSocket()` bypasses missing route when gateway disabled (mobile data + WiFi simultaneous)
+See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
 
 ## License
 
