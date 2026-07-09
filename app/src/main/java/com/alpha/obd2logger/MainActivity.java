@@ -139,10 +139,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private final Runnable connectionWatchdog = new Runnable() {
         @Override
         public void run() {
-            if (running) {
+            if (running || isConnecting) {
+                isConnecting = false;
                 stopLogging();
                 setFabState(false);
                 setConfigUiEnabled(true);
+                updateStatusStripConnection(0, "Connection timed out");
+                if (headerStatus != null) {
+                    headerStatus.setText("Connection timed out");
+                }
                 setStatus("Connection timed out. If using background service, check autostart/battery settings.", R.color.danger);
             }
         }
@@ -223,6 +228,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private boolean pendingStartLoggingAfterFolderSelect = false;
     private static volatile boolean isConnecting = false;
     private static volatile boolean pendingStartLoggingAfterPermission = false;
+    public static volatile boolean isPaused = false;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -271,8 +277,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 updateCustomFolderText(uri);
                                 if (pendingStartLoggingAfterFolderSelect) {
                                     pendingStartLoggingAfterFolderSelect = false;
-                                    startLogging();
-                                    setFabState(true);
+                                    if (startLogging()) {
+                                        setFabState(true);
+                                    }
                                 }
                             }
                         } else {
@@ -376,8 +383,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 int count = service.getRecordCount();
                 countText.setText("Records: " + count);
                 setStatus("Background logging active...", R.color.accent);
-                headerStatus.setText("Logging...");
                 if (activeConfig != null) updateStatusStripConnection(2, "Connected " + activeConfig.transportMode.getValue());
+                headerStatus.setText("Logging...");
             }
 
             if (fuelMapView != null) {
@@ -512,8 +519,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     if (!ensureLogFolderSelected(true)) {
                         return;
                     }
-                    startLogging();
-                    setFabState(true);
+                    if (startLogging()) {
+                        setFabState(true);
+                    }
                 }
             });
         }
@@ -665,8 +673,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (!ensureLogFolderSelected(true)) {
                     return;
                 }
-                startLogging();
-                setFabState(true);
+                if (startLogging()) {
+                    setFabState(true);
+                }
             }
         });
         
@@ -2144,8 +2153,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     // --- Logging ---
 
-    private void startLogging() {
-        if (!ensureTransportPermissions()) return;
+    private boolean startLogging() {
+        if (!ensureTransportPermissions()) return false;
         isConnecting = true;
 
         LoggerConfig config = readConfigFromUi();
@@ -2159,11 +2168,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     PendingIntent pi = PendingIntent.getBroadcast(this, 0, new Intent("com.alpha.obd2logger.USB_PERMISSION"), PendingIntent.FLAG_IMMUTABLE);
                     manager.requestPermission(driver.getDevice(), pi);
                     setStatus("Requesting USB permission...", R.color.warning);
-                    return;
+                    return true;
                 }
             } else if (config.transportMode == TransportMode.USB) {
+                isConnecting = false;
                 setStatus("No USB Serial device found. Please plug in vLinker.", R.color.danger);
-                return;
+                return false;
             }
         }
 
@@ -2213,6 +2223,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         } else {
             startInProcessLogging(config);
         }
+        return true;
     }
 
     private void startInProcessLogging(LoggerConfig config) {
@@ -2257,8 +2268,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             android.util.Log.e("MainActivity", "Failed to start foreground service", e);
             isConnecting = false;
             running = false;
+            watchdogHandler.removeCallbacks(connectionWatchdog);
             setFabState(false);
             setConfigUiEnabled(true);
+            updateStatusStripConnection(0, "Service failed");
+            if (headerStatus != null) headerStatus.setText("Service failed");
             setStatus("FGS failed: " + e.getMessage(), R.color.danger);
         }
     }
@@ -2459,6 +2473,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     }
 
                     while (running) {
+                        if (isPaused) {
+                            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+                            continue;
+                        }
                         Map<String, Double> batch = driver.queryPidBatch(finalPids);
                         List<SensorSample> samples = new ArrayList<>();
                         List<PIDDefinition> toRemove = new ArrayList<>();
@@ -2663,6 +2681,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         watchdogHandler.removeCallbacks(connectionWatchdog);
         runOnUiThread(() -> {
             if (isFinishing() || isDestroyed()) return;
+            if (fabLog != null && running) {
+                setFabState(true);
+            }
+            LoggerService service = LoggerService.getInstance();
+            LoggerConfig cfg = (service != null && service.getConfig() != null) ? service.getConfig() : activeInProcessConfig;
+            String modeStr = (cfg != null && cfg.transportMode != null) ? cfg.transportMode.getValue() : "OBD2";
+            updateStatusStripConnection(2, "Connected " + modeStr);
+            if (headerStatus != null) {
+                headerStatus.setText("Logging...");
+            }
             if (countText != null) countText.setText("Records: " + count);
             updateDashboard(record);
             updateGraphs(record);
@@ -2747,7 +2775,30 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     @Override
     public void onStatus(String status, boolean isError) {
-        runOnUiThread(() -> setStatus(status, isError ? R.color.danger : R.color.accent));
+        runOnUiThread(() -> {
+            setStatus(status, isError ? R.color.danger : R.color.accent);
+            if (!isError && status != null && (status.contains("Connected") || status.contains("Logging in background") || status.contains("Logging active") || status.contains("Logging resumed") || status.contains("running simulation"))) {
+                isConnecting = false;
+                watchdogHandler.removeCallbacks(connectionWatchdog);
+                if (fabLog != null) {
+                    setFabState(true);
+                }
+                LoggerService service = LoggerService.getInstance();
+                LoggerConfig cfg = (service != null && service.getConfig() != null) ? service.getConfig() : activeInProcessConfig;
+                String modeStr = (cfg != null && cfg.transportMode != null) ? cfg.transportMode.getValue() : "OBD2";
+                updateStatusStripConnection(2, "Connected " + modeStr);
+                if (headerStatus != null) {
+                    headerStatus.setText("Logging...");
+                }
+            } else if (isError && status != null && status.contains("Connection failed")) {
+                isConnecting = false;
+                watchdogHandler.removeCallbacks(connectionWatchdog);
+                updateStatusStripConnection(0, "Connection failed");
+                if (headerStatus != null) {
+                    headerStatus.setText("Connection failed");
+                }
+            }
+        });
     }
 
     @Override
@@ -3211,33 +3262,44 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
      * Read PID 0x42 voltage from the driver. Returns -1 on failure.
      */
     private double readBatteryVoltage() {
-        BaseDriver activeDriver = getActiveDriver();
-        if (activeDriver == null || !activeDriver.isConnected()) return -1;
-        try {
-            Double v = activeDriver.queryPid(PIDDefinition.findByKey("01_42"));
-            if (v != null && v > 0) {
-                return v;
-            }
-        } catch (Exception e) {
-            // ignore and fallback
+        boolean wasPaused = isPaused;
+        if (!wasPaused) {
+            isPaused = true;
+            try { Thread.sleep(300); } catch (InterruptedException ignored) {}
         }
-        
-        // Fallback: Query direct ELM327 analog voltage using command "AT RV"
         try {
-            String raw = activeDriver.sendCommandRaw("AT RV");
-            if (raw != null && !raw.isEmpty()) {
-                String clean = raw.replaceAll("[^0-9.]", "");
-                if (!clean.isEmpty()) {
-                    double val = Double.parseDouble(clean);
-                    if (val > 0 && val < 30) {
-                        return val;
+            BaseDriver activeDriver = getActiveDriver();
+            if (activeDriver == null || !activeDriver.isConnected()) return -1;
+            try {
+                Double v = activeDriver.queryPid(PIDDefinition.findByKey("01_42"));
+                if (v != null && v > 0) {
+                    return v;
+                }
+            } catch (Exception e) {
+                // ignore and fallback
+            }
+            
+            // Fallback: Query direct ELM327 analog voltage using command "AT RV"
+            try {
+                String raw = activeDriver.sendCommandRaw("AT RV");
+                if (raw != null && !raw.isEmpty()) {
+                    String clean = raw.replaceAll("[^0-9.]", "");
+                    if (!clean.isEmpty()) {
+                        double val = Double.parseDouble(clean);
+                        if (val > 0 && val < 30) {
+                            return val;
+                        }
                     }
                 }
+            } catch (Exception e) {
+                // ignore
             }
-        } catch (Exception e) {
-            // ignore
+            return -1;
+        } finally {
+            if (!wasPaused) {
+                isPaused = false;
+            }
         }
-        return -1;
     }
 
     /**
@@ -3780,7 +3842,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // --- DTC / VIN / Readiness ---
 
     private void readDtcs() {
-        if (currentDriver == null || !currentDriver.isConnected()) {
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
             dtcStatusText.setText("Not connected. Start logging first.");
             dtcStatusText.setTextColor(getColorCompat(R.color.danger));
             return;
@@ -3791,57 +3854,68 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
-            boolean msCan = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
-            DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcs(currentDriver, msCan);
-            List<DtcCode> stored = scanResult.storedDtcs;
-            List<DtcCode> pending = scanResult.pendingDtcs;
-            List<DtcCode> permanent = scanResult.permanentDtcs;
-            
-            // Read Mode 06 — on-board monitor test results
-            List<Mode06Result> mode06Results = Mode06Reader.readDiagnostic(currentDriver);
-            
-            // Read per-DTC freeze frames
-            List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames = FreezeFrameReader.readAllFreezeFrames(currentDriver);
-            
-            // Read Mode 09 — Cal-ID and CVN
-            List<Mode09Reader.CalIdEntry> calIds = Mode09Reader.readCalIds(currentDriver);
-            List<Mode09Reader.CvnEntry> cvns = Mode09Reader.readCvns(currentDriver);
-            
-            FreezeFrameData ffData = null;
-            if (!stored.isEmpty() || !pending.isEmpty()) {
-                ffData = FreezeFrameReader.readFreezeFrame(currentDriver);
+            boolean wasPaused = isPaused;
+            if (!wasPaused) {
+                isPaused = true;
+                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
             }
-            lastFreezeFrame = ffData;
-            
-            // Scan comparison — compare with previous scan
-            if (dtcHistoryDb == null) {
-                dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
+            try {
+                boolean msCan = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
+                DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcs(activeDriver, msCan);
+                List<DtcCode> stored = scanResult.storedDtcs;
+                List<DtcCode> pending = scanResult.pendingDtcs;
+                List<DtcCode> permanent = scanResult.permanentDtcs;
+                
+                // Read Mode 06 — on-board monitor test results
+                List<Mode06Result> mode06Results = Mode06Reader.readDiagnostic(activeDriver);
+                
+                // Read per-DTC freeze frames
+                List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames = FreezeFrameReader.readAllFreezeFrames(activeDriver);
+                
+                // Read Mode 09 — Cal-ID and CVN
+                List<Mode09Reader.CalIdEntry> calIds = Mode09Reader.readCalIds(activeDriver);
+                List<Mode09Reader.CvnEntry> cvns = Mode09Reader.readCvns(activeDriver);
+                
+                FreezeFrameData ffData = null;
+                if (!stored.isEmpty() || !pending.isEmpty()) {
+                    ffData = FreezeFrameReader.readFreezeFrame(activeDriver);
+                }
+                lastFreezeFrame = ffData;
+                
+                // Scan comparison — compare with previous scan
+                if (dtcHistoryDb == null) {
+                    dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
+                }
+                String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
+                if (vinStr.isEmpty()) vinStr = "UNKNOWN_VIN";
+                List<DtcHistoryDb.DtcHistoryRecord> history = dtcHistoryDb.getHistory(vinStr);
+                DtcComparison comparison = DtcComparison.compareWithHistory(history, stored, pending);
+                
+                lastStoredDtcs.clear();
+                lastStoredDtcs.addAll(stored);
+                lastPendingDtcs.clear();
+                lastPendingDtcs.addAll(pending);
+                
+                LoggerService.lastStoredDtcs.clear();
+                LoggerService.lastStoredDtcs.addAll(stored);
+                LoggerService.lastPendingDtcs.clear();
+                LoggerService.lastPendingDtcs.addAll(pending);
+                LoggerService.lastPermanentDtcs.clear();
+                LoggerService.lastPermanentDtcs.addAll(permanent);
+                
+                String ffJson = ffData != null ? ffData.toJsonObject().toString() : null;
+                dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
+                
+                runOnUiThread(() -> {
+                    displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
+                    displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
+                    updateDtcBadge(stored.size(), pending.size(), permanent.size());
+                });
+            } finally {
+                if (!wasPaused) {
+                    isPaused = false;
+                }
             }
-            String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
-            if (vinStr.isEmpty()) vinStr = "UNKNOWN_VIN";
-            List<DtcHistoryDb.DtcHistoryRecord> history = dtcHistoryDb.getHistory(vinStr);
-            DtcComparison comparison = DtcComparison.compareWithHistory(history, stored, pending);
-            
-            lastStoredDtcs.clear();
-            lastStoredDtcs.addAll(stored);
-            lastPendingDtcs.clear();
-            lastPendingDtcs.addAll(pending);
-            
-            LoggerService.lastStoredDtcs.clear();
-            LoggerService.lastStoredDtcs.addAll(stored);
-            LoggerService.lastPendingDtcs.clear();
-            LoggerService.lastPendingDtcs.addAll(pending);
-            LoggerService.lastPermanentDtcs.clear();
-            LoggerService.lastPermanentDtcs.addAll(permanent);
-            
-            String ffJson = ffData != null ? ffData.toJsonObject().toString() : null;
-            dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
-            
-            runOnUiThread(() -> {
-                displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
-                displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
-                updateDtcBadge(stored.size(), pending.size(), permanent.size());
-            });
         });
     }
 
@@ -4231,7 +4305,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
      * Triggered by long-press on the Read DTCs button.
      */
     private void readDtcsDeep() {
-        if (currentDriver == null || !currentDriver.isConnected()) {
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
             dtcStatusText.setText("Not connected. Start logging first.");
             dtcStatusText.setTextColor(getColorCompat(R.color.danger));
             return;
@@ -4244,44 +4319,55 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         final boolean msCan = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
-            DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcsDeep(currentDriver, msCan);
-            List<DtcCode> stored = scanResult.storedDtcs;
-            List<DtcCode> pending = scanResult.pendingDtcs;
-            List<DtcCode> permanent = scanResult.permanentDtcs;
-
-            // Read Mode 06
-            List<Mode06Result> mode06Results = Mode06Reader.readDiagnostic(currentDriver);
-            List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames = FreezeFrameReader.readAllFreezeFrames(currentDriver);
-            List<Mode09Reader.CalIdEntry> calIds = Mode09Reader.readCalIds(currentDriver);
-            List<Mode09Reader.CvnEntry> cvns = Mode09Reader.readCvns(currentDriver);
-
-            FreezeFrameData ffData = null;
-            if (!stored.isEmpty() || !pending.isEmpty()) {
-                ffData = FreezeFrameReader.readFreezeFrame(currentDriver);
+            boolean wasPaused = isPaused;
+            if (!wasPaused) {
+                isPaused = true;
+                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
             }
+            try {
+                DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcsDeep(activeDriver, msCan);
+                List<DtcCode> stored = scanResult.storedDtcs;
+                List<DtcCode> pending = scanResult.pendingDtcs;
+                List<DtcCode> permanent = scanResult.permanentDtcs;
 
-            // Scan comparison
-            if (dtcHistoryDb == null) dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
-            String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
-            if (vinStr.isEmpty()) vinStr = "UNKNOWN_VIN";
-            DtcComparison comparison = DtcComparison.compareWithHistory(
-                dtcHistoryDb.getHistory(vinStr), stored, pending);
+                // Read Mode 06
+                List<Mode06Result> mode06Results = Mode06Reader.readDiagnostic(activeDriver);
+                List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames = FreezeFrameReader.readAllFreezeFrames(activeDriver);
+                List<Mode09Reader.CalIdEntry> calIds = Mode09Reader.readCalIds(activeDriver);
+                List<Mode09Reader.CvnEntry> cvns = Mode09Reader.readCvns(activeDriver);
 
-            lastStoredDtcs.clear(); lastStoredDtcs.addAll(stored);
-            lastPendingDtcs.clear(); lastPendingDtcs.addAll(pending);
-            lastPermanentDtcs.clear(); lastPermanentDtcs.addAll(permanent);
-            LoggerService.lastStoredDtcs.clear(); LoggerService.lastStoredDtcs.addAll(stored);
-            LoggerService.lastPendingDtcs.clear(); LoggerService.lastPendingDtcs.addAll(pending);
-            LoggerService.lastPermanentDtcs.clear(); LoggerService.lastPermanentDtcs.addAll(permanent);
+                FreezeFrameData ffData = null;
+                if (!stored.isEmpty() || !pending.isEmpty()) {
+                    ffData = FreezeFrameReader.readFreezeFrame(activeDriver);
+                }
 
-            String ffJson = ffData != null ? ffData.toJsonObject().toString() : null;
-            dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
+                // Scan comparison
+                if (dtcHistoryDb == null) dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
+                String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
+                if (vinStr.isEmpty()) vinStr = "UNKNOWN_VIN";
+                DtcComparison comparison = DtcComparison.compareWithHistory(
+                    dtcHistoryDb.getHistory(vinStr), stored, pending);
 
-            runOnUiThread(() -> {
-                displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
-                displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
-                updateDtcBadge(stored.size(), pending.size(), permanent.size());
-            });
+                lastStoredDtcs.clear(); lastStoredDtcs.addAll(stored);
+                lastPendingDtcs.clear(); lastPendingDtcs.addAll(pending);
+                lastPermanentDtcs.clear(); lastPermanentDtcs.addAll(permanent);
+                LoggerService.lastStoredDtcs.clear(); LoggerService.lastStoredDtcs.addAll(stored);
+                LoggerService.lastPendingDtcs.clear(); LoggerService.lastPendingDtcs.addAll(pending);
+                LoggerService.lastPermanentDtcs.clear(); LoggerService.lastPermanentDtcs.addAll(permanent);
+
+                String ffJson = ffData != null ? ffData.toJsonObject().toString() : null;
+                dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
+
+                runOnUiThread(() -> {
+                    displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
+                    displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
+                    updateDtcBadge(stored.size(), pending.size(), permanent.size());
+                });
+            } finally {
+                if (!wasPaused) {
+                    isPaused = false;
+                }
+            }
         });
     }
 
@@ -4545,33 +4631,45 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void clearDtcs() {
-        if (currentDriver == null || !currentDriver.isConnected()) {
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
             dtcStatusText.setText("Not connected. Start logging first.");
             return;
         }
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
-            boolean success = DtcReader.clearDtcs(currentDriver);
-            if (success) {
-                lastStoredDtcs.clear();
-                lastPendingDtcs.clear();
-                lastPermanentDtcs.clear();
-                lastFreezeFrame = null;
-                LoggerService.lastStoredDtcs.clear();
-                LoggerService.lastPendingDtcs.clear();
-                LoggerService.lastPermanentDtcs.clear();
+            boolean wasPaused = isPaused;
+            if (!wasPaused) {
+                isPaused = true;
+                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
             }
-            runOnUiThread(() -> {
+            try {
+                boolean success = DtcReader.clearDtcs(activeDriver);
                 if (success) {
-                    dtcStatusText.setText("DTCs cleared. MIL should reset after next drive cycle.");
-                    dtcStatusText.setTextColor(getColorCompat(R.color.accent));
-                    dtcListContainer.removeAllViews();
-                    updateDtcBadge(0, 0, 0);
-                } else {
-                    dtcStatusText.setText("Failed to clear DTCs.");
-                    dtcStatusText.setTextColor(getColorCompat(R.color.danger));
+                    lastStoredDtcs.clear();
+                    lastPendingDtcs.clear();
+                    lastPermanentDtcs.clear();
+                    lastFreezeFrame = null;
+                    LoggerService.lastStoredDtcs.clear();
+                    LoggerService.lastPendingDtcs.clear();
+                    LoggerService.lastPermanentDtcs.clear();
                 }
-            });
+                runOnUiThread(() -> {
+                    if (success) {
+                        dtcStatusText.setText("DTCs cleared. MIL should reset after next drive cycle.");
+                        dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+                        dtcListContainer.removeAllViews();
+                        updateDtcBadge(0, 0, 0);
+                    } else {
+                        dtcStatusText.setText("Failed to clear DTCs.");
+                        dtcStatusText.setTextColor(getColorCompat(R.color.danger));
+                    }
+                });
+            } finally {
+                if (!wasPaused) {
+                    isPaused = false;
+                }
+            }
         });
     }
 
@@ -4722,10 +4820,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
 
-        if (btnReadDtc != null) btnReadDtc.setEnabled(enabled);
-        if (btnClearDtc != null) btnClearDtc.setEnabled(enabled);
-        if (btnReadVin != null) btnReadVin.setEnabled(enabled);
-        if (btnReadiness != null) btnReadiness.setEnabled(enabled);
+        if (btnReadDtc != null) btnReadDtc.setEnabled(true);
+        if (btnClearDtc != null) btnClearDtc.setEnabled(true);
+        if (btnReadVin != null) btnReadVin.setEnabled(true);
+        if (btnReadiness != null) btnReadiness.setEnabled(true);
 
         if (btnBatteryResting != null) btnBatteryResting.setEnabled(true);
         if (btnBatteryAlternator != null) btnBatteryAlternator.setEnabled(true);
@@ -5315,9 +5413,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
         if (fuelSpinner != null) {
-            int pos = prefs.getInt("pref_fuel_position", 1);
-            if (pos >= 0 && pos < fuelSpinner.getAdapter().getCount()) {
-                fuelSpinner.setSelection(pos);
+            if (running) {
+                LoggerService svc = LoggerService.getInstance();
+                LoggerConfig cfg = (svc != null && svc.getConfig() != null) ? svc.getConfig() : activeInProcessConfig;
+                if (cfg != null && cfg.fuelMode != null) {
+                    fuelSpinner.setSelection(cfg.fuelMode == FuelMode.LPG ? 0 : 1);
+                } else {
+                    int pos = prefs.getInt("pref_fuel_position", 1);
+                    if (pos >= 0 && pos < fuelSpinner.getAdapter().getCount()) {
+                        fuelSpinner.setSelection(pos);
+                    }
+                }
+            } else {
+                fuelSpinner.setSelection(1); // Always default Start Fuel Type to Petrol
             }
         }
         if (obdProtocolSpinner != null) {
@@ -5396,6 +5504,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 batteryTypeSpinner.setText(batteryTypes[0], false);
             }
         }
+        syncLoggerState();
     }
 
     @Override
@@ -5434,10 +5543,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 }
             } else {
                 pendingBackgroundConfig = null;
+                isConnecting = false;
                 running = false;
+                watchdogHandler.removeCallbacks(connectionWatchdog);
                 runOnUiThread(() -> {
                     setFabState(false);
                     setConfigUiEnabled(true);
+                    updateStatusStripConnection(0, "Permission denied");
+                    if (headerStatus != null) headerStatus.setText("Disconnected");
                     Toast.makeText(this, "Notification permission denied — background logging off",
                             Toast.LENGTH_LONG).show();
                 });
@@ -5458,17 +5571,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (pendingStartLoggingAfterPermission) {
                     pendingStartLoggingAfterPermission = false;
                     new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                        startLogging();
-                        setFabState(true);
+                        if (startLogging()) {
+                            setFabState(true);
+                        }
                     }, 300);
                 }
             } else {
                 pendingStartLoggingAfterPermission = false;
                 isConnecting = false;
                 running = false;
+                watchdogHandler.removeCallbacks(connectionWatchdog);
                 runOnUiThread(() -> {
                     setFabState(false);
                     setConfigUiEnabled(true);
+                    updateStatusStripConnection(0, "Permission denied");
+                    if (headerStatus != null) headerStatus.setText("Disconnected");
                 });
                 Toast.makeText(this, "Bluetooth permission denied. Simulation/WiFi still work.",
                         Toast.LENGTH_LONG).show();

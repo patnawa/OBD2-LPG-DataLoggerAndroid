@@ -436,6 +436,8 @@ public final class LoggerService extends Service {
                             if (de != null && !de.isShutdown()) {
                                 final BaseDriver finalDriverForDtcLoop = localDriver;
                                 de.submit(() -> {
+                                    MainActivity.isPaused = true;
+                                    try { Thread.sleep(300); } catch (InterruptedException ignored) {}
                                     try {
                                         DtcReader.DtcScanResult sr = DtcReader.readAllDtcs(
                                             finalDriverForDtcLoop, activeConfig != null && activeConfig.fordMsCanEnabled);
@@ -470,9 +472,15 @@ public final class LoggerService extends Service {
                                         }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Background periodic DTC scan failed", e);
+                                    } finally {
+                                        MainActivity.isPaused = false;
                                     }
                                 });
                             }
+                        }
+                        if (MainActivity.isPaused) {
+                            try { Thread.sleep(200); } catch (InterruptedException e) { break; }
+                            continue;
                         }
                         Map<String, Double> batch = localDriver.queryPidBatch(finalPids);
                         List<SensorSample> samples = new ArrayList<>();
