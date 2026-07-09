@@ -221,6 +221,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private androidx.activity.result.ActivityResultLauncher<Intent> folderPickerLauncher;
     private boolean pendingStartLoggingAfterFolderSelect = false;
+    private static volatile boolean isConnecting = false;
+    private static volatile boolean pendingStartLoggingAfterPermission = false;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -506,6 +508,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     stopLogging();
                     setFabState(false);
                 } else {
+                    if (isConnecting) return;
                     if (!ensureLogFolderSelected(true)) {
                         return;
                     }
@@ -658,6 +661,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 stopLogging();
                 setFabState(false);
             } else {
+                if (isConnecting) return;
                 if (!ensureLogFolderSelected(true)) {
                     return;
                 }
@@ -2142,6 +2146,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void startLogging() {
         if (!ensureTransportPermissions()) return;
+        isConnecting = true;
 
         LoggerConfig config = readConfigFromUi();
 
@@ -2250,6 +2255,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         } catch (Exception e) {
             android.util.Log.e("MainActivity", "Failed to start foreground service", e);
+            isConnecting = false;
             running = false;
             setFabState(false);
             setConfigUiEnabled(true);
@@ -2258,6 +2264,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void stopLogging() {
+        isConnecting = false;
         running = false;
         watchdogHandler.removeCallbacks(connectionWatchdog);
         pendingBackgroundConfig = null; // cancel any deferred (permission-gated) start
@@ -2300,6 +2307,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
                 if (active != null) {
+                    active.isConnecting = false;
+                    active.running = false;
                     active.setStatus("Connection failed. Check settings and adapter.", R.color.danger);
                     active.headerStatus.setText("Connection failed");
                     active.updateStatusStripConnection(0, "Connection failed");
@@ -2320,7 +2329,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         } else {
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
-                if (active != null) active.setStatus("Connected. Logging started.", R.color.accent);
+                if (active != null) {
+                    active.isConnecting = false;
+                    active.setStatus("Connected. Logging started.", R.color.accent);
+                }
             });
         }
         runOnActiveActivity(() -> {
@@ -2629,6 +2641,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
                 if (active != null) {
+                    active.isConnecting = false;
+                    active.running = false;
                     if (active.fabLog != null) {
                         active.setFabState(false);
                     }
@@ -2645,6 +2659,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     @Override
     public void onRecord(DataRecord record, int count) {
         if (isFinishing() || isDestroyed()) return;
+        isConnecting = false;
         watchdogHandler.removeCallbacks(connectionWatchdog);
         runOnUiThread(() -> {
             if (isFinishing() || isDestroyed()) return;
@@ -2737,6 +2752,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     @Override
     public void onStopped(int totalRecords) {
+        isConnecting = false;
         running = false;
         watchdogHandler.removeCallbacks(connectionWatchdog);
         runOnUiThread(() -> {
@@ -5191,8 +5207,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private boolean ensureTransportPermissions() {
         int pos = transportSpinner.getSelectedItemPosition();
-        if (backgroundLoggingCheckbox.isChecked() || pos == 2 || pos == 3 || pos == 4) {
-            return ensureBluetoothPermissions();
+        if (pos == 2 || pos == 3 || pos == 5) {
+            boolean has = ensureBluetoothPermissions();
+            if (!has) {
+                pendingStartLoggingAfterPermission = true;
+            }
+            return has;
         }
         return true;
     }
@@ -5435,7 +5455,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             if (allGranted) {
                 refreshBluetoothDevices();
+                if (pendingStartLoggingAfterPermission) {
+                    pendingStartLoggingAfterPermission = false;
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        startLogging();
+                        setFabState(true);
+                    }, 300);
+                }
             } else {
+                pendingStartLoggingAfterPermission = false;
+                isConnecting = false;
+                running = false;
+                runOnUiThread(() -> {
+                    setFabState(false);
+                    setConfigUiEnabled(true);
+                });
                 Toast.makeText(this, "Bluetooth permission denied. Simulation/WiFi still work.",
                         Toast.LENGTH_LONG).show();
             }
