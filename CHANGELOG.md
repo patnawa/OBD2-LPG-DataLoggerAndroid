@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.8] - 2026-07-09
+### Fixed
+- **Startup language wrong / app doesn't remember language setting** — `LocaleHelper` wrote the language choice to TWO stores: a custom `OBD2Prefs` key AND `AppCompatDelegate.setApplicationLocales()`. On Android 13+ (API 33, incl. Android 16) `AppCompatActivity` applies AppCompat's own store in `attachBaseContext`, overriding the manual `createConfigurationContext` wrap, so the effective language was whatever AppCompat had — which silently diverged from `OBD2Prefs`. That caused the wrong language at startup and the choice not being remembered. Now AppCompat's application-locale store is the single source of truth (it persists correctly across restarts on every API level AppCompat supports); the conflicting `OBD2Prefs` dual-write is removed and the old value is migrated once so existing users keep their setting. Works on Android 6 (API 23) through 16 (API 36).
+
 ## [3.5.7] - 2026-07-09
 ### Fixed
 - **Background logging stuck on "Connecting…" / can't start** — two defects:

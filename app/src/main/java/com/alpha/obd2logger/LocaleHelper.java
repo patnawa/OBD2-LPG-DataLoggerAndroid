@@ -10,26 +10,71 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.os.LocaleListCompat;
 import java.util.Locale;
 
+/**
+ * Per-app language handling for Android 6 (API 23) through 16 (API 36+).
+ *
+ * Single source of truth: androidx.appcompat's Application Locales.
+ * AppCompatDelegate.setApplicationLocales()/getApplicationLocales() persist the
+ * user's choice across process restarts on EVERY supported API level (AppCompat
+ * stores it internally), and on API 33+ AppCompatActivity applies those locales
+ * in attachBaseContext — overriding any manual context wrapping. So we use
+ * AppCompat's store exclusively and do NOT keep a second, conflicting copy in
+ * our own OBD2Prefs (the old dual-write caused the language to reset to the
+ * wrong value at startup / not be remembered on Android 13+).
+ *
+ * On API < 33 AppCompat also applies the stored locales, but we additionally
+ * wrap the context via createConfigurationContext as a belt-and-suspenders
+ * guarantee (idempotent with AppCompat's apply).
+ */
 public class LocaleHelper {
 
     public static final String LANG_SYSTEM = "default";
     public static final String LANG_ENGLISH = "en";
     public static final String LANG_THAI = "th";
-    private static final String SELECTED_LANGUAGE = "Locale.Helper.Selected.Language";
+
+    // Legacy key kept ONLY for one-time migration of an existing user setting.
+    private static final String LEGACY_SELECTED_LANGUAGE = "Locale.Helper.Selected.Language";
 
     public static Context onAttach(Context context) {
-        String lang = getPersistedData(context, LANG_SYSTEM);
-        return wrapContext(context, lang);
+        // On API 33+ AppCompatActivity/AppCompatDelegate applies the application
+        // locales from its own store during attachBaseContext (after this call),
+        // so we must not wrap here — AppCompat is authoritative and would override
+        // any manual wrap anyway. Migrate a legacy OBD2Prefs value first so the
+        // user's old choice is preserved.
+        migrateLegacyPreference(context);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            return context;
+        }
+        // Pre-N: AppCompat applies stored locales too, but manually wrap to be safe.
+        return wrapContext(context, resolveLanguage(context));
     }
 
     public static String getLanguage(Context context) {
-        return getPersistedData(context, LANG_SYSTEM);
+        return getPersistedLanguage(context);
     }
 
     public static Context setLocale(Context context, String language) {
-        persist(context, language);
+        applyLanguage(language);
+        // Re-wrap for the calling context on pre-N (post-N relies on AppCompat store).
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            return wrapContext(context, language);
+        }
+        return context;
+    }
 
-        // Update AndroidX AppCompat application locales
+    // ---- internals ----
+
+    private static String resolveLanguage(Context context) {
+        LocaleListCompat appLocales = AppCompatDelegate.getApplicationLocales();
+        if (appLocales.isEmpty()) {
+            return LANG_SYSTEM;
+        }
+        String tag = appLocales.toLanguageTags().split(",")[0];
+        return (tag == null || tag.isEmpty()) ? LANG_SYSTEM : tag;
+    }
+
+    private static void applyLanguage(String language) {
         try {
             if (LANG_SYSTEM.equals(language)) {
                 AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList());
@@ -39,10 +84,29 @@ public class LocaleHelper {
         } catch (Throwable t) {
             t.printStackTrace();
         }
-
-        return wrapContext(context, language);
     }
 
+    private static String getPersistedLanguage(Context context) {
+        // Source of truth is AppCompat's application locale store.
+        return resolveLanguage(context);
+    }
+
+    private static void migrateLegacyPreference(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("OBD2Prefs", Context.MODE_PRIVATE);
+        if (!prefs.contains(LEGACY_SELECTED_LANGUAGE)) {
+            return; // nothing to migrate
+        }
+        String legacy = prefs.getString(LEGACY_SELECTED_LANGUAGE, LANG_SYSTEM);
+        // Only migrate if AppCompat has no explicit choice yet (avoid clobbering).
+        if (AppCompatDelegate.getApplicationLocales().isEmpty() && legacy != null
+                && !legacy.equals(LANG_SYSTEM)) {
+            applyLanguage(legacy);
+        }
+        // Clear the legacy key so we never read it again.
+        prefs.edit().remove(LEGACY_SELECTED_LANGUAGE).apply();
+    }
+
+    @SuppressWarnings("deprecation")
     private static Context wrapContext(Context context, String language) {
         String resolveLang = language;
         if (LANG_SYSTEM.equals(language)) {
@@ -55,30 +119,7 @@ public class LocaleHelper {
             resolveLang = sysLocale.getLanguage();
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            return updateResources(context, resolveLang);
-        }
-        return updateResourcesLegacy(context, resolveLang);
-    }
-
-    private static String getPersistedData(Context context, String defaultLanguage) {
-        SharedPreferences preferences = context.getSharedPreferences("OBD2Prefs", Context.MODE_PRIVATE);
-        return preferences.getString(SELECTED_LANGUAGE, defaultLanguage);
-    }
-
-    private static void persist(Context context, String language) {
-        SharedPreferences preferences = context.getSharedPreferences("OBD2Prefs", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putString(SELECTED_LANGUAGE, language);
-        editor.apply();
-    }
-
-    private static Context updateResources(Context context, String language) {
-        Locale locale = new Locale(language);
-        // On API >= 24 the scoped createConfigurationContext (below) is sufficient and
-        // we deliberately do NOT call Locale.setDefault() — that mutates the whole
-        // process and lets one activity's locale clobber another's. Scoping via the
-        // returned context keeps locales isolated per activity.
+        Locale locale = new Locale(resolveLang);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             Configuration configuration = new Configuration(context.getResources().getConfiguration());
             configuration.setLocale(locale);
@@ -92,8 +133,6 @@ public class LocaleHelper {
         } else {
             Configuration configuration = new Configuration(context.getResources().getConfiguration());
             configuration.setLocale(locale);
-            // Pre-N there is no per-context scoping, so setDefault is required for
-            // non-context-aware code paths — but only here, as a legacy fallback.
             Locale.setDefault(locale);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
                 configuration.setLayoutDirection(locale);
@@ -101,24 +140,5 @@ public class LocaleHelper {
             context.getResources().updateConfiguration(configuration, context.getResources().getDisplayMetrics());
             return context;
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    private static Context updateResourcesLegacy(Context context, String language) {
-        Locale locale = new Locale(language);
-        // Pre-N legacy path: setDefault is required because there is no per-context
-        // locale scoping. On API >= 24 use updateResources() instead.
-        Locale.setDefault(locale);
-
-        Resources resources = context.getResources();
-        Configuration configuration = new Configuration(resources.getConfiguration());
-        configuration.locale = locale;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            configuration.setLayoutDirection(locale);
-        }
-
-        resources.updateConfiguration(configuration, resources.getDisplayMetrics());
-
-        return context;
     }
 }
