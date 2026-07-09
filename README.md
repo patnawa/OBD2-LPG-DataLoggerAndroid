@@ -1,14 +1,14 @@
 # TunerMap Pro — OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.5.11** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.5.12** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.5.11
+## What's New in 3.5.12
 
-- **Startup Fuel Mode Default & Persistence** — Changed the default startup fuel mode to **Petrol** (instead of LPG/CNG) for new installs or clean preference runs. Added instant selection saving in the `fuelSpinner` listener so that any user fuel selection is persisted immediately to `SharedPreferences` and reliably remembered even if the app closes or restarts.
+- **Background Logging Start Crash / Connection Failure Race Condition** — Moved the battery optimization exemption request dialog launcher out of the start logging sequence and into the `backgroundLoggingCheckbox` click toggle listener. This prevents the system settings dialog from pausing the activity during service startup, which would trigger background start restrictions and cause the service promotion (`startForeground()`) to fail or crash on Android 14+.
 
 ---
 

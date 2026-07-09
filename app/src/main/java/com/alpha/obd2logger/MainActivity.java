@@ -587,6 +587,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fordMsCanCheckbox.setOnCheckedChangeListener((btn, checked) ->
                 prefs.edit().putBoolean("pref_ford_ms_can", checked).apply());
         }
+        if (backgroundLoggingCheckbox != null) {
+            backgroundLoggingCheckbox.setOnCheckedChangeListener((btn, checked) -> {
+                if (checked) {
+                    requestBatteryOptimizationExemption();
+                }
+            });
+        }
         boolean isApiServerEnabled = prefs.getBoolean("apiServerEnabled", false);
         apiServerCheckbox.setChecked(isApiServerEnabled);
         
@@ -2128,10 +2135,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
 
-        // Request battery optimization exemption if background logging is enabled
-        if (backgroundLoggingCheckbox.isChecked()) {
-            requestBatteryOptimizationExemption();
-        }
+
         loggingStartTime = SystemClock.elapsedRealtime();
         updateSessionStatus(true);
         clearReadings();

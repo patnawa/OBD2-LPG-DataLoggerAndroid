@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.12] - 2026-07-09
+### Fixed
+- **Background Logging Start Crash / Connection Failure Race Condition** — Moved the battery optimization exemption request dialog launcher out of the start logging sequence and into the `backgroundLoggingCheckbox` click toggle listener. This prevents the system settings dialog from pausing the activity during service startup, which would trigger background start restrictions and cause the service promotion (`startForeground()`) to fail or crash on Android 14+.
+
 ## [3.5.11] - 2026-07-09
 ### Fixed
 - **Startup Fuel Mode Default & Persistence** — Changed the default startup fuel mode to **Petrol** (instead of LPG/CNG) for new installs or clean preference runs. Added instant selection saving in the `fuelSpinner` listener so that any user fuel selection is persisted immediately to `SharedPreferences` and reliably remembered even if the app closes or restarts.
