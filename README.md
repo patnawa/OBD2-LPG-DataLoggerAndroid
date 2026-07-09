@@ -1,14 +1,17 @@
 # TunerMap Pro — OBD2 Petrol/LPG/CNG Data Logger Android
 
-**Version 3.5.12** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.5.13** | Native Android app for OBD2 vehicle data logging, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.5.12
+## What's New in 3.5.13
 
-- **Background Logging Start Crash / Connection Failure Race Condition** — Moved the battery optimization exemption request dialog launcher out of the start logging sequence and into the `backgroundLoggingCheckbox` click toggle listener. This prevents the system settings dialog from pausing the activity during service startup, which would trigger background start restrictions and cause the service promotion (`startForeground()`) to fail or crash on Android 14+.
+- **Asynchronous Service Startup Race Condition** — Fixed a key race condition where an old logger thread's `finally` block would asynchronously post `onStopped()` back to the activity *after* a new session had already started, causing the UI to false-reset to "Stopped" and locking the user out of the connection.
+- **Thread-Safety & Local Variable Isolation** — Refactored the core background logging service loop to use local, thread-bound variables (`localDriver`, `localWriter`, `localApiServer`) and session tokens. This prevents overlapping background runs from clashing on shared instance resources.
+- **Driver Context Lifecycle Initialization** — Ensured that `DriverFactory.setAppContext()` is initialized in `LoggerService.onCreate()` so that the driver context remains valid if the process is restarted by the OS.
+- **Robust FGS Start Error Handling & Post-Delay** — Added a safety try-catch around `startForegroundService()` and introduced a 300ms delay after permission dialog dismissal to prevent foreground service start background restrictions.
 
 ---
 

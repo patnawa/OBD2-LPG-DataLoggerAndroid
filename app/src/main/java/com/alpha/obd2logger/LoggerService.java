@@ -42,6 +42,7 @@ public final class LoggerService extends Service {
     /** Static holder — config is set before startService, read by the service thread. */
     private static volatile LoggerConfig pendingConfig;
     private static volatile WeakReference<LoggerCallback> callbackRef;
+    private static volatile long currentSessionToken = 0;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private LoggerCallback getCallback() {
@@ -118,6 +119,7 @@ public final class LoggerService extends Service {
     public void onCreate() {
         super.onCreate();
         instance = this;
+        DriverFactory.setAppContext(this.getApplicationContext());
         createNotificationChannel();
     }
 
@@ -147,6 +149,9 @@ public final class LoggerService extends Service {
         }
         pendingConfig = null;
 
+        long sessionToken = System.currentTimeMillis();
+        currentSessionToken = sessionToken;
+
         // A throw here runs on the system's binder thread and takes down the WHOLE
         // app (the service worker thread's own try/catch does not cover onStartCommand).
         // Guard every step so a foreground-service startup failure degrades to a
@@ -172,11 +177,11 @@ public final class LoggerService extends Service {
         } catch (Exception e) {
             Log.w(TAG, "acquireWakeLock failed", e);
         }
-        startLogging(config);
+        startLogging(config, sessionToken);
         return START_STICKY;
     }
 
-    private void startLogging(LoggerConfig config) {
+    private void startLogging(LoggerConfig config, long sessionToken) {
         // Guard against double-start: if a previous logging session is still
         // running (e.g. START intent received twice), shut it down first so we
         // don't orphan the old executor thread or race on driver/writer fields.
@@ -187,34 +192,34 @@ public final class LoggerService extends Service {
         recordCount = 0;
         executor = Executors.newSingleThreadExecutor();
         dtcExecutor = Executors.newSingleThreadExecutor();
-        executor.submit(() -> runLogger(config));
+        executor.submit(() -> runLogger(config, sessionToken));
     }
 
-    private void runLogger(LoggerConfig config) {
-        // The service keeps config in a field so the periodic DTC scan and the
-        // low-voltage watchdog (which run on other threads) can read it without
-        // passing it through. Previously this was never assigned, so activeConfig
-        // stayed null and checkVoltageWatchdog() / the DTC scan NPE'd on the first
-        // background record — killing the logging session.
-        activeConfig = config;
+    private void runLogger(LoggerConfig config, long sessionToken) {
+        if (currentSessionToken == sessionToken) {
+            activeConfig = config;
+        }
         String fuelPrefix = config.fuelMode != null ? config.fuelMode.name() + "_" : "";
         String simPrefix = (config.transportMode == TransportMode.SIM) ? "Sim_" : "";
         String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
         String sessionId = simPrefix + fuelPrefix + timeStr;
         
-        driver = DriverFactory.create(config);
+        BaseDriver localDriver = DriverFactory.create(config);
+        if (currentSessionToken == sessionToken) {
+            driver = localDriver;
+        }
 
         // connect() can hang on some adapters/Android versions (e.g. a Bluetooth
         // socket that never completes). Bound it with a timeout so a dead adapter
         // reports "Connection failed" instead of freezing on "Connecting…" forever.
         java.util.concurrent.Future<Boolean> connectTask =
-                Executors.newSingleThreadExecutor().submit(() -> !driver.isConnected() && driver.connect());
+                Executors.newSingleThreadExecutor().submit(() -> !localDriver.isConnected() && localDriver.connect());
         boolean connectedResult;
         try {
             connectedResult = connectTask.get(15, java.util.concurrent.TimeUnit.SECONDS);
         } catch (java.util.concurrent.TimeoutException e) {
             connectTask.cancel(true);
-            try { driver.disconnect(); } catch (Throwable ignored) {}
+            try { localDriver.disconnect(); } catch (Throwable ignored) {}
             connectedResult = false;
             Log.w(TAG, "driver.connect() timed out after 15s");
         } catch (Exception e) {
@@ -223,12 +228,17 @@ public final class LoggerService extends Service {
         }
 
         if (!connectedResult) {
-            running = false;
-            notifyStatus("Connection failed. Check adapter and settings.", true);
-            notifyStopped();
-            releaseWakeLock();
-            stopForeground(true);
-            stopSelf();
+            if (currentSessionToken == sessionToken) {
+                running = false;
+                driver = null;
+                notifyStatus("Connection failed. Check adapter and settings.", true);
+                notifyStopped();
+                releaseWakeLock();
+                stopForeground(true);
+                stopSelf();
+            } else {
+                try { localDriver.disconnect(); } catch (Throwable ignored) {}
+            }
             return;
         }
 
@@ -266,10 +276,11 @@ public final class LoggerService extends Service {
                 }
         }
         
+        ApiServer localApiServer = null;
         if (config.enableApiServer) {
             try {
-                apiServer = new ApiServer(8080);
-                apiServer.setDtcProvider(new ApiServer.DtcProvider() {
+                localApiServer = new ApiServer(8080);
+                localApiServer.setDtcProvider(new ApiServer.DtcProvider() {
                     @Override
                     public java.util.List<DtcCode> getStoredDtcs() {
                         return lastStoredDtcs;
@@ -289,7 +300,10 @@ public final class LoggerService extends Service {
                         return false;
                     }
                 });
-                apiServer.start();
+                localApiServer.start();
+                if (currentSessionToken == sessionToken) {
+                    apiServer = localApiServer;
+                }
                 Log.i(TAG, "ApiServer started on port 8080");
             } catch (Exception e) {
                 Log.e(TAG, "Failed to start ApiServer", e);
@@ -298,7 +312,8 @@ public final class LoggerService extends Service {
 
         // --- Auto-scan DTCs (module-aware, supports Ford MS-CAN) ---
         try {
-            DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcs(driver, config.fordMsCanEnabled);
+            final BaseDriver finalDriverForDtc = localDriver;
+            DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcs(finalDriverForDtc, config.fordMsCanEnabled);
             
             lastStoredDtcs.clear();
             lastStoredDtcs.addAll(scanResult.storedDtcs);
@@ -332,14 +347,14 @@ public final class LoggerService extends Service {
         List<PIDDefinition> pids = new ArrayList<>(allPids);
         boolean detectedFromLive = false;
 
-        if (driver instanceof SimulationDriver) {
+        if (localDriver instanceof SimulationDriver) {
             // Simulation: use the simulated profile for realism
-            List<String> supportedHex = PidAvailabilityChecker.querySupportedPids(driver);
+            List<String> supportedHex = PidAvailabilityChecker.querySupportedPids(localDriver);
             if (supportedHex != null) {
                 pids = PidAvailabilityChecker.filterCatalogue(supportedHex, allPids);
                 detectedFromLive = true;
             }
-        } else if (driver instanceof ElmDriver) {
+        } else if (localDriver instanceof ElmDriver) {
             // Real adapter: query the vehicle for supported PIDs
             List<String> supportedHex = getCachedPids(config.vin);
             if (supportedHex != null && !supportedHex.isEmpty()) {
@@ -348,7 +363,7 @@ public final class LoggerService extends Service {
                 Log.i(TAG, "Cached PIDs loaded for VIN " + config.vin + ": " + pids.size() + " PIDs");
             } else {
                 notifyStatus("Detecting supported PIDs...", false);
-                supportedHex = PidAvailabilityChecker.querySupportedPids(driver);
+                supportedHex = PidAvailabilityChecker.querySupportedPids(localDriver);
 
                 if (supportedHex != null && !supportedHex.isEmpty()) {
                     pids = PidAvailabilityChecker.filterCatalogue(supportedHex, allPids);
@@ -382,8 +397,14 @@ public final class LoggerService extends Service {
         long started = android.os.SystemClock.elapsedRealtime();
         final java.util.Map<String, Integer> consecutiveFailures = new java.util.HashMap<>();
 
+        DataWriter localWriter = null;
+        int localRecordCount = 0;
+
         try {
-            writer = new DataWriter(this, sessionId, finalPids, config.vin);
+            localWriter = new DataWriter(this, sessionId, finalPids, config.vin);
+            if (currentSessionToken == sessionToken) {
+                writer = localWriter;
+            }
             updateNotification("Logging: 0 records", 0);
             long lastDtcCheckMs = android.os.SystemClock.elapsedRealtime();
             int retryCount = 0;
@@ -409,10 +430,11 @@ public final class LoggerService extends Service {
                             lastDtcCheckMs = nowMs;
                             ExecutorService de = dtcExecutor;
                             if (de != null && !de.isShutdown()) {
+                                final BaseDriver finalDriverForDtcLoop = localDriver;
                                 de.submit(() -> {
                                     try {
                                         DtcReader.DtcScanResult sr = DtcReader.readAllDtcs(
-                                            driver, activeConfig != null && activeConfig.fordMsCanEnabled);
+                                            finalDriverForDtcLoop, activeConfig != null && activeConfig.fordMsCanEnabled);
                                         List<DtcCode> stored = sr.storedDtcs;
                                         List<DtcCode> pending = sr.pendingDtcs;
                                         List<DtcCode> permanent = sr.permanentDtcs;
@@ -448,7 +470,7 @@ public final class LoggerService extends Service {
                                 });
                             }
                         }
-                        Map<String, Double> batch = driver.queryPidBatch(finalPids);
+                        Map<String, Double> batch = localDriver.queryPidBatch(finalPids);
                         List<SensorSample> samples = new ArrayList<>();
                         List<PIDDefinition> toRemove = new ArrayList<>();
 
@@ -536,9 +558,12 @@ public final class LoggerService extends Service {
                                 samples
                         );
 
-                        writer.writeRecord(record);
-                        recordCount++;
-                        publishRecord(record, recordCount);
+                        localWriter.writeRecord(record);
+                        localRecordCount++;
+                        if (currentSessionToken == sessionToken) {
+                            recordCount = localRecordCount;
+                        }
+                        publishRecord(record, localRecordCount);
 
                         // Low-voltage watchdog: a weak alternator / battery causes lean
                         // misfires that masquerade as fuel-trim problems — especially on
@@ -546,12 +571,12 @@ public final class LoggerService extends Service {
                         // voltage sags below the charging floor.
                         checkVoltageWatchdog(record);
 
-                        if (apiServer != null) {
-                            apiServer.setLatestData(record, true);
+                        if (localApiServer != null) {
+                            localApiServer.setLatestData(record, true);
                         }
 
-                        if (recordCount % 10 == 0) {
-                            updateNotification("Logging: " + recordCount + " records", recordCount);
+                        if (localRecordCount % 10 == 0) {
+                            updateNotification("Logging: " + localRecordCount + " records", localRecordCount);
                         }
 
                         try {
@@ -567,7 +592,7 @@ public final class LoggerService extends Service {
                     if (!running || e instanceof InterruptedException) {
                         break;
                     }
-                    if (driver != null) driver.disconnect();
+                    if (localDriver != null) localDriver.disconnect();
                     retryCount++;
                     if (retryCount > maxRetries) {
                         running = false;
@@ -589,22 +614,30 @@ public final class LoggerService extends Service {
             }
         } finally {
             try {
-                if (writer != null) writer.close();
+                if (localWriter != null) localWriter.close();
             } catch (Exception ignored) {
             }
-            if (apiServer != null) {
-                apiServer.stop();
-                apiServer = null;
+            if (localApiServer != null) {
+                try { localApiServer.stop(); } catch (Exception ignored) {}
             }
-            if (driver != null) driver.disconnect();
+            if (localDriver != null) {
+                try { localDriver.disconnect(); } catch (Exception ignored) {}
+            }
             releaseWakeLock();
-            stopForeground(true);
-            stopSelf();
 
-            final int total = recordCount;
-            LoggerCallback cb = getCallback();
-            if (cb != null) {
-                mainHandler.post(() -> cb.onStopped(total));
+            if (currentSessionToken == sessionToken) {
+                writer = null;
+                apiServer = null;
+                driver = null;
+
+                stopForeground(true);
+                stopSelf();
+
+                final int total = localRecordCount;
+                LoggerCallback cb = getCallback();
+                if (cb != null) {
+                    mainHandler.post(() -> cb.onStopped(total));
+                }
             }
         }
     }

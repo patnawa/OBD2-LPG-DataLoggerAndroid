@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.13] - 2026-07-09
+### Fixed
+- **Asynchronous Service Startup Race Condition** — Fixed a key race condition where an old logger thread's `finally` block would asynchronously post `onStopped()` back to the activity *after* a new session had already started, causing the UI to false-reset to "Stopped" and locking the user out of the connection.
+- **Thread-Safety & Local Variable Isolation** — Refactored the core background logging service loop to use local, thread-bound variables (`localDriver`, `localWriter`, `localApiServer`) and session tokens. This prevents overlapping background runs from clashing on shared instance resources.
+- **Driver Context Lifecycle Initialization** — Ensured that `DriverFactory.setAppContext()` is initialized in `LoggerService.onCreate()` so that the driver context remains valid if the process is restarted by the OS.
+- **Robust FGS Start Error Handling & Post-Delay** — Added a safety try-catch around `startForegroundService()` and introduced a 300ms delay after permission dialog dismissal to prevent foreground service start background restrictions.
+
 ## [3.5.12] - 2026-07-09
 ### Fixed
 - **Background Logging Start Crash / Connection Failure Race Condition** — Moved the battery optimization exemption request dialog launcher out of the start logging sequence and into the `backgroundLoggingCheckbox` click toggle listener. This prevents the system settings dialog from pausing the activity during service startup, which would trigger background start restrictions and cause the service promotion (`startForeground()`) to fail or crash on Android 14+.

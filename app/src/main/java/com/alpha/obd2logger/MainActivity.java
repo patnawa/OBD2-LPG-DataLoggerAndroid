@@ -2213,10 +2213,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         LoggerService.setPendingConfig(config);
         Intent intent = new Intent(this, LoggerService.class);
         intent.setAction(LoggerService.ACTION_START);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent);
-        } else {
-            startService(intent);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent);
+            } else {
+                startService(intent);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Failed to start foreground service", e);
+            running = false;
+            setFabState(false);
+            setConfigUiEnabled(true);
+            setStatus("FGS failed: " + e.getMessage(), R.color.danger);
         }
     }
 
@@ -5357,7 +5365,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (pendingBackgroundConfig != null) {
                     LoggerConfig cfg = pendingBackgroundConfig;
                     pendingBackgroundConfig = null;
-                    actuallyStartBackgroundLogging(cfg);
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        actuallyStartBackgroundLogging(cfg);
+                    }, 300);
                 }
             } else {
                 pendingBackgroundConfig = null;
