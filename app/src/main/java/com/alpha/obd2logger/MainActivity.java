@@ -156,8 +156,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private LinearLayout readingsContainer;
     private com.google.android.material.button.MaterialButton btnFilterPids;
     private TextView txtFilterStatus;
-    // PID filter for Live Readings tab — null = show all, non-empty = show only listed keys
+    // PID filter for Live Readings tab — null = show all (no filter), non-null = filter mode
     private java.util.Set<String> visiblePidsFilter = null;
+    // When true, user has actively selected specific PIDs to show
+    private boolean pidFilterActive = false;
     // Default: hide derived sensors (derived_*) in live readings
     private boolean hideDerivedSensors = true;
 
@@ -967,11 +969,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         for (int i=0; i<5; i++) prefGraphPids[i] = prefs.getString("graph_" + i, prefGraphPids[i]);
         // Load PID filter for Live Readings
         hideDerivedSensors = prefs.getBoolean("pref_hide_derived", true);
+        pidFilterActive = prefs.getBoolean("pref_pid_filter_active", false);
         java.util.Set<String> savedFilter = prefs.getStringSet("pref_pid_filter", null);
         if (savedFilter != null && !savedFilter.isEmpty()) {
             visiblePidsFilter = new java.util.HashSet<>(savedFilter);
         } else {
             visiblePidsFilter = new java.util.HashSet<>();
+            pidFilterActive = false;
         }
         updateFilterStatusText();
         
@@ -2679,7 +2683,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
                         // ── Air Density (Banks iDash AAD/MAD/BAD) ──────────────
                         if (config.showAirDensity && airDensityMonitor != null) {
-                            airDensityMonitor.refreshWeatherSync();
+                            // Weather refresh is handled by cache TTL internally (10 min).
+                            // Do NOT call refreshWeatherSync() here — it blocks the logger
+                            // thread on slow networks and causes connection timeouts.
                             airDensityMonitor.onObdBatch(batch);
                             AirDensityMonitor.AirDensityResult dr = airDensityMonitor.compute();
                             if (dr != null) {
@@ -5566,6 +5572,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (visiblePidsFilter == null) {
             visiblePidsFilter = new java.util.HashSet<>();
         }
+        final boolean wasActive = pidFilterActive;
         final java.util.Set<String> filterSet = visiblePidsFilter;
 
         // Adapter
@@ -5631,7 +5638,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         showAllBtn.setOnClickListener(v -> {
             filterSet.clear();
-            filterSet.addAll(allKeys);
+            pidFilterActive = false;
             adapter.notifyDataSetChanged();
             updateFilterStatusText();
         });
@@ -5645,9 +5652,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // Save filter on dismiss
         dialog.setOnDismissListener(d -> {
+            // Activate filter only if user selected specific PIDs
+            pidFilterActive = !filterSet.isEmpty();
             getSharedPreferences("OBD2Prefs", MODE_PRIVATE)
                 .edit()
                 .putStringSet("pref_pid_filter", filterSet)
+                .putBoolean("pref_pid_filter_active", pidFilterActive)
                 .apply();
             updateFilterStatusText();
             clearReadings();
@@ -5659,11 +5669,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void updateFilterStatusText() {
         if (txtFilterStatus == null) return;
-        int total = visiblePidsFilter != null ? visiblePidsFilter.size() : 0;
-        if (total == 0) {
-            txtFilterStatus.setText(hideDerivedSensors ? "Showing raw PIDs (derived hidden)" : "Showing all PIDs");
+        if (pidFilterActive && visiblePidsFilter != null && !visiblePidsFilter.isEmpty()) {
+            txtFilterStatus.setText(visiblePidsFilter.size() + " PIDs selected (filter active)");
         } else {
-            txtFilterStatus.setText(total + " PIDs selected");
+            txtFilterStatus.setText(hideDerivedSensors ? "Showing raw PIDs (derived hidden)" : "Showing all PIDs");
         }
     }
 
@@ -5729,7 +5738,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void renderReadings(DataRecord record) {
         updateGridContainer(readingsContainer, readingRowCache, readingStatusCache, record, false);
-        updateGridContainer(gaugeReadingsContainer, gaugeRowCache, gaugeStatusCache, record, true);
+        // gaugeReadingsContainer is redundant with the Logs tab readings.
+        // It duplicates the same PID data and causes UI lag on slow devices.
+        // Only update if the container is visible (user chose to show it).
+        if (gaugeReadingsContainer != null && gaugeReadingsContainer.getVisibility() == View.VISIBLE) {
+            updateGridContainer(gaugeReadingsContainer, gaugeRowCache, gaugeStatusCache, record, true);
+        }
     }
 
     private void updateGridContainer(LinearLayout container, java.util.Map<String, TextView> rowCache, java.util.Map<String, TextView> statusCache, DataRecord record, boolean isGauge) {
@@ -5738,9 +5752,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         int visibleCount = 0;
         for (SensorSample sample : record.getSamples()) {
             String pidKey = sample.getPidKey();
-            if (visiblePidsFilter != null && !visiblePidsFilter.isEmpty()) {
-                if (!visiblePidsFilter.contains(pidKey)) continue;
-            } else if (hideDerivedSensors && pidKey != null && pidKey.startsWith("derived_")) {
+            if (pidFilterActive && visiblePidsFilter != null && !visiblePidsFilter.contains(pidKey)) {
+                continue;
+            } else if (!pidFilterActive && hideDerivedSensors && pidKey != null && pidKey.startsWith("derived_")) {
                 continue;
             }
             visibleCount++;
@@ -5760,9 +5774,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             String pidKey = sample.getPidKey();
 
             // ── PID Filter: skip samples the user didn't select ──
-            if (visiblePidsFilter != null && !visiblePidsFilter.isEmpty()) {
-                if (!visiblePidsFilter.contains(pidKey)) continue;
-            } else if (hideDerivedSensors && pidKey != null && pidKey.startsWith("derived_")) {
+            if (pidFilterActive && visiblePidsFilter != null && !visiblePidsFilter.contains(pidKey)) {
+                continue;
+            } else if (!pidFilterActive && hideDerivedSensors && pidKey != null && pidKey.startsWith("derived_")) {
                 continue;
             }
 

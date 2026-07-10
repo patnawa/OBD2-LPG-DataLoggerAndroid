@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.3] - 2026-07-10
+### Fixed
+- **Logger stops randomly / connection timeout** — `airDensityMonitor.refreshWeatherSync()` was called every 0.5s inside the logging loop. On slow networks or no GPS, this blocked the logger thread, causing connection timeout and auto-stop. Now weather refresh only happens at init (cached 10 min internally via TTL). Affects both in-process and background LoggerService
+- **PID Filter not working** — `visiblePidsFilter` initialized as empty Set caused ALL PIDs to be filtered out (nothing displayed). Fixed: null/empty = show all, filter only active when user explicitly selects PIDs. Added `pidFilterActive` flag + saved to SharedPreferences
+- **Redundant gauge readings** — `gaugeReadingsContainer` in Gauges tab duplicated the same PID data as Live Readings in Logs tab, causing double UI load. Now only updates if the container is visible
+
 ## [3.7.2] - 2026-07-10
 ### Added
 - **Air Density Dashboard Panel** — Dedicated UI panel in Dashboard tab showing all 12 air density values in a symmetric 4x3 grid: AAD/MAD/BAD, Density%/Density Alt/SAE CF, OMD/Comp Eff/IC Eff, VE/PDI/Grains. Panel auto-shows when Air Density is enabled in Settings, hides when disabled. Weather info (RH, temp, baro) shown in panel header

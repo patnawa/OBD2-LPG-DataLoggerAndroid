@@ -612,9 +612,9 @@ public final class LoggerService extends Service {
                         //   - Weather API humidity (not available via OBD2)
                         //   - Falls back gracefully if any input is missing
                         if (config.showAirDensity && airDensityMonitor != null) {
-                            // Periodically refresh weather (every ~10 min via cache TTL)
-                            airDensityMonitor.refreshWeatherSync();
-
+                            // Weather refresh is handled by cache TTL internally (10 min).
+                            // Do NOT call refreshWeatherSync() here every iteration — it
+                            // blocks the logger thread on slow networks and causes timeouts.
                             // Feed latest OBD2 values
                             airDensityMonitor.onObdBatch(batch);
 
