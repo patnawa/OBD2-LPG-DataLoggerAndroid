@@ -5794,36 +5794,45 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void showAirDensityCenterDialog() {
-        if (airDensityCenterDialog != null && airDensityCenterDialog.isShowing()) {
-            airDensityCenterDialog.dismiss();
-        }
-        airDensityCenterDialog = new android.app.Dialog(this, android.R.style.Theme_DeviceDefault_Light_NoActionBar);
-        airDensityCenterDialog.setContentView(R.layout.dialog_air_density_center);
-        if (airDensityCenterDialog.getWindow() != null) {
-            airDensityCenterDialog.getWindow().setLayout(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT
-            );
-        }
+        try {
+            if (airDensityCenterDialog != null && airDensityCenterDialog.isShowing()) {
+                airDensityCenterDialog.dismiss();
+            }
+            airDensityCenterDialog = new android.app.Dialog(this, R.style.AppTheme);
+            airDensityCenterDialog.setContentView(R.layout.dialog_air_density_center);
+            if (airDensityCenterDialog.getWindow() != null) {
+                airDensityCenterDialog.getWindow().setLayout(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                );
+            }
 
-        View btnClose = airDensityCenterDialog.findViewById(R.id.btnCloseAirDensityDialog);
-        View btnCloseBottom = airDensityCenterDialog.findViewById(R.id.btnDialogCloseAirDensity);
-        View btnRefreshWeather = airDensityCenterDialog.findViewById(R.id.btnDialogRefreshWeather);
+            View btnClose = airDensityCenterDialog.findViewById(R.id.btnCloseAirDensityDialog);
+            View btnCloseBottom = airDensityCenterDialog.findViewById(R.id.btnDialogCloseAirDensity);
+            View btnRefreshWeather = airDensityCenterDialog.findViewById(R.id.btnDialogRefreshWeather);
 
-        if (btnClose != null) btnClose.setOnClickListener(v -> airDensityCenterDialog.dismiss());
-        if (btnCloseBottom != null) btnCloseBottom.setOnClickListener(v -> airDensityCenterDialog.dismiss());
-        if (btnRefreshWeather != null) {
-            btnRefreshWeather.setOnClickListener(v -> {
-                if (airDensityMonitor == null) {
-                    airDensityMonitor = new AirDensityMonitor(this);
-                }
-                airDensityMonitor.refreshWeather();
-                updateAirDensityCenterDialogUi();
-            });
+            if (btnClose != null) btnClose.setOnClickListener(v -> airDensityCenterDialog.dismiss());
+            if (btnCloseBottom != null) btnCloseBottom.setOnClickListener(v -> airDensityCenterDialog.dismiss());
+            if (btnRefreshWeather != null) {
+                btnRefreshWeather.setOnClickListener(v -> {
+                    try {
+                        if (airDensityMonitor == null) {
+                            airDensityMonitor = new AirDensityMonitor(this);
+                        }
+                        airDensityMonitor.refreshWeather();
+                        updateAirDensityCenterDialogUi();
+                    } catch (Exception e) {
+                        android.util.Log.e("AirDensityCenter", "Refresh error", e);
+                    }
+                });
+            }
+
+            airDensityCenterDialog.show();
+            updateAirDensityCenterDialogUi();
+        } catch (Exception e) {
+            android.util.Log.e("AirDensityCenter", "Failed to open Air Density Center dialog", e);
+            android.widget.Toast.makeText(this, "Could not open Air Density Center: " + e.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
         }
-
-        updateAirDensityCenterDialogUi();
-        airDensityCenterDialog.show();
     }
 
     private void updateAirDensityCenterDialogUi() {

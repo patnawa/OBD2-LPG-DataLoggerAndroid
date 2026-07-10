@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.5] - 2026-07-10
+### Fixed
+- **App Crash Fixed when opening Air Density Center UI** — Fixed a crash caused by inflating Material 3 components (`MaterialCardView` and `MaterialButton`) inside the system `Theme_DeviceDefault_Light_NoActionBar` dialog theme. Updated `showAirDensityCenterDialog()` to use `R.style.AppTheme` (descendant of Material3 DayNight NoActionBar), ordered `show()` before UI updates so dialog views populate reliably, and added safe exception handling.
+
 ## [3.7.4] - 2026-07-10
 ### Added
 - **Separate Dedicated Air Density UI Center Accessible on Front Page** — Created a standalone full-screen Air Density UI dialog (`dialog_air_density_center.xml`) showcasing all 12 Air Density metrics (AAD, MAD, BAD, Density %, SAE J1349 CF, Density Altitude, Volumetric Efficiency, Compressor Efficiency, Intercooler Effectiveness, Power Density Index, Water Vapor Grains) with live weather summary and manual refresh. Easily accessible directly from the front page via the new top-bar Air Density button (`btnHeaderAirDensity`) or the "OPEN SEPARATE UI" button on the dashboard Air Density card.
