@@ -110,6 +110,7 @@ public final class DriverFactory {
         target.showTurboBoost = source.showTurboBoost;
         target.showFuelConsumption = source.showFuelConsumption;
         target.dpfMonitorEnabled = source.dpfMonitorEnabled;
+        target.showAirDensity = source.showAirDensity;
         target.customPidsEnabled = source.customPidsEnabled;
         target.context = source.context;
         return target;

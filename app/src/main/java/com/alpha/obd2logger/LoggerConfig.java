@@ -29,6 +29,8 @@ public final class LoggerConfig {
     public boolean showFuelConsumption = true;
     /** Poll DPF PIDs for diesel vehicles */
     public boolean dpfMonitorEnabled = false;
+    /** Compute + display air density (AAD/MAD/BAD) — Banks iDash style */
+    public boolean showAirDensity = true;
     /** Load user-defined custom PIDs from SharedPreferences */
     public boolean customPidsEnabled = false;
     /** Application context — needed by WiFiDriver for ConnectivityManager

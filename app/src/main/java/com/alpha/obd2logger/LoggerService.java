@@ -88,6 +88,9 @@ public final class LoggerService extends Service {
     
     private ApiServer apiServer;
 
+    /** Air density monitor — merges OBD2 + weather API for AAD/MAD/BAD */
+    private AirDensityMonitor airDensityMonitor;
+
     public static final java.util.List<DtcCode> lastStoredDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
     public static final java.util.List<DtcCode> lastPendingDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
     public static final java.util.List<DtcCode> lastPermanentDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
@@ -323,6 +326,16 @@ public final class LoggerService extends Service {
             } catch (Exception e) {
                 Log.e(TAG, "Failed to start ApiServer", e);
             }
+        }
+
+        // --- Initialize Air Density Monitor (Banks iDash style AAD/MAD/BAD) ---
+        if (config.showAirDensity) {
+            airDensityMonitor = new AirDensityMonitor(this);
+            // Sync fetch — LoggerService runs on background thread so this is safe.
+            // The initial fetch populates humidity (not available via OBD2) before
+            // the first logging loop iteration, so the first record has AAD/MAD/BAD.
+            airDensityMonitor.refreshWeatherSync();
+            Log.i(TAG, "AirDensityMonitor initialized");
         }
 
         // --- Auto-scan DTCs (module-aware, supports Ford MS-CAN) ---
@@ -584,6 +597,54 @@ public final class LoggerService extends Service {
                                 String regen = DerivedSensors.dpfRegenStatus(dpfRegen);
                                 double regenCode = "Regen Active".equals(regen) ? 1.0 : 0.0;
                                 samples.add(new SensorSample("derived_dpf_regen", "DPF Regen", regenCode, "active=" + regen, "ok"));
+                            }
+                        }
+
+                        // ── Air Density (Banks iDash AAD/MAD/BAD) ──────────────
+                        // Computes ambient/manifold/boost air density using:
+                        //   - OBD2 PIDs (baro, ambient temp, MAP, IAT)
+                        //   - Weather API humidity (not available via OBD2)
+                        //   - Falls back gracefully if any input is missing
+                        if (config.showAirDensity && airDensityMonitor != null) {
+                            // Periodically refresh weather (every ~10 min via cache TTL)
+                            airDensityMonitor.refreshWeatherSync();
+
+                            // Feed latest OBD2 values
+                            airDensityMonitor.onObdBatch(batch);
+
+                            AirDensityMonitor.AirDensityResult dr = airDensityMonitor.compute();
+                            if (dr != null) {
+                                if (dr.aad != null) {
+                                    samples.add(new SensorSample("derived_aad", "Ambient Air Density",
+                                            dr.aad, "lbs/1000ft3", "ok"));
+                                }
+                                if (dr.mad != null) {
+                                    samples.add(new SensorSample("derived_mad", "Manifold Air Density",
+                                            dr.mad, "lbs/1000ft3", "ok"));
+                                }
+                                if (dr.bad != null) {
+                                    samples.add(new SensorSample("derived_bad", "Boost Air Density",
+                                            dr.bad, "lbs/1000ft3", "ok"));
+                                }
+                                if (dr.densityPercent != null) {
+                                    samples.add(new SensorSample("derived_density_pct", "Air Density %",
+                                            dr.densityPercent, "%", "ok"));
+                                }
+                                if (dr.densityAltitudeFt != null) {
+                                    samples.add(new SensorSample("derived_density_alt", "Density Altitude",
+                                            (double) dr.densityAltitudeFt, "ft", "ok"));
+                                }
+                                if (dr.saeJ1349CF != null) {
+                                    samples.add(new SensorSample("derived_sae_cf", "SAE J1349 CF",
+                                            dr.saeJ1349CF, "", "ok"));
+                                }
+                                if (dr.grainsH2O != null) {
+                                    samples.add(new SensorSample("derived_grains", "Grains H2O",
+                                            dr.grainsH2O, "grains/lb", "ok"));
+                                }
+                                // Always log humidity source value for traceability
+                                samples.add(new SensorSample("derived_humidity", "Relative Humidity",
+                                        dr.humidity, "%", "ok"));
                             }
                         }
                         
