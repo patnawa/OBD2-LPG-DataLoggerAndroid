@@ -1,10 +1,27 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.8.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.8.1** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
-แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมือนต่อ AI Agent ผ่าน REST API
+แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมื่อนต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.8.1 — Fuel Map, Log Replay, VIN Folders, Persistence & API Enhancements
+
+### Fixed
+- **Fuel Map Y-Axis (T.inj → MAP kPa)** — Was using a non-linear injection-time conversion instead of actual MAP sensor values, causing data to land in wrong cells. Now uses MAP kPa directly.
+- **Compare Map From Log File** — CSV files without loop-state columns were silently dropping all rows. Fixed default to match live path behavior.
+- **Logs Not in VIN Folder (Background Mode)** — VIN was never read because `"UNKNOWN"` default wasn't treated as unset. Now creates per-VIN subfolders correctly.
+- **Fuel Mode & BT Device Reset on Stop** — Selections now persist across stop/start cycles via SharedPreferences.
+- **API Sensor Data Loss** — Duplicate sensor names were overwriting each other in JSON. Now keyed by `pidKey` with full `{pidKey, name, value, unit, status}` objects.
+
+### Added
+- **`GET /api/agent`** — Aggregate endpoint for AI Agents: status + sensors + map summary + DTCs in one call.
+- **DTC Severity** — API now reports CRITICAL/WARNING/INFO per DTC code.
+- **Session Metadata in API** — vehicleBrand, VIN, record count, adapter connection, transport mode, session duration.
+
+### Changed
+- **"LIVE SESSION METRICS" → "RECORDING STATUS"** — Clearer label so you know it shows live recording duration, record count, and update rate.
 
 ## What's New in 3.8.0 — Logger Random Stop (Comprehensive Fix)
 

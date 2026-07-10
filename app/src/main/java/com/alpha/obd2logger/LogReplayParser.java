@@ -125,10 +125,13 @@ public final class LogReplayParser {
             String ls = cell(parts, c.loopStatusIdx);
             return !ls.equalsIgnoreCase("Open");
         }
-        // Neither column present — loop state is genuinely unknown. Previously this
-        // defaulted to CLOSED (true), plotting open-loop samples into the tuning map.
-        // Default to OPEN (false) so unknown rows are skipped rather than assumed good.
-        return false;
+        // Neither column present — loop state is genuinely unknown. Default
+        // to CLOSED (true) so data still plots, matching the live logging
+        // path (MainActivity.java defaults isClosedLoop=true when PID 03
+        // is absent). Previously this was false, which skipped ALL rows in
+        // logs without loop-state columns, making the compare/replay feature
+        // appear broken ("No valid tuning points found").
+        return true;
     }
 
     /**

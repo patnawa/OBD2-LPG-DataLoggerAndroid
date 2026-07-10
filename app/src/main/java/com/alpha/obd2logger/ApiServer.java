@@ -22,6 +22,11 @@ public class ApiServer extends NanoHTTPD {
 
     private volatile DataRecord latestData;
     private volatile boolean isLogging;
+    private volatile boolean adapterConnected;
+    private volatile String transportMode;
+    private volatile String vehicleBrand;
+    private volatile int recordCount;
+    private volatile long sessionStartMs;
     
     public interface DtcProvider {
         java.util.List<DtcCode> getStoredDtcs();
@@ -102,25 +107,31 @@ public class ApiServer extends NanoHTTPD {
             obj.put("elapsed", Math.round(record.getElapsedS() * 1000.0) / 1000.0);
             obj.put("fuel", record.getFuelMode());
             obj.put("vin", record.getVin() != null ? record.getVin() : "");
+            obj.put("vehicleBrand", record.getVehicleBrand() != null ? record.getVehicleBrand() : "");
 
+            // Use pidKey as the JSON key to avoid collisions (multiple
+            // samples share the same display name — e.g. "Fuel Economy").
             JSONObject sensors = new JSONObject();
             for (SensorSample s : record.getSamples()) {
-                if (s.getValue() != null) {
-                    sensors.put(s.getName(), Math.round(s.getValue() * 100.0) / 100.0);
-                }
+                JSONObject sensorObj = new JSONObject();
+                sensorObj.put("name", s.getName());
+                sensorObj.put("value", s.getValue());
+                sensorObj.put("unit", s.getUnit());
+                sensorObj.put("status", s.getStatus());
+                sensors.put(s.getPidKey(), sensorObj);
             }
             obj.put("sensors", sensors);
         } catch (JSONException ignored) {}
         return obj.toString();
     }
 
-    // Fuel Map Constants matching FuelMapView
+    // Fuel Map Constants matching FuelMapView (MAP kPa bins)
     private static final int RPM_MIN = 500;
     private static final int RPM_MAX = 6500;
     private static final int RPM_STEP = 500;
     
-    private static final float[] T_INJ_BINS = {
-        2.0f, 2.5f, 3.0f, 3.5f, 4.0f, 4.5f, 6.0f, 8.0f, 10.0f, 12.0f, 14.0f, 16.0f, 18.0f
+    private static final float[] MAP_BINS = {
+        10f, 20f, 30f, 40f, 50f, 60f, 70f, 80f, 90f, 100f, 120f, 150f, 200f, 250f
     };
 
     // Thread-safe map tracking
@@ -172,9 +183,32 @@ public class ApiServer extends NanoHTTPD {
         this.latestData = data;
         this.isLogging = isLogging;
         if (data != null) {
+            if (recordCount == 0 || sessionStartMs == 0) {
+                sessionStartMs = System.currentTimeMillis();
+            }
+            recordCount++;
             updateLiveMap(data);
             broadcastSse(data);
         }
+    }
+
+    public void setAdapterConnected(boolean connected) {
+        this.adapterConnected = connected;
+    }
+
+    public void setTransportMode(String mode) {
+        this.transportMode = mode;
+    }
+
+    public void setVehicleBrand(String brand) {
+        this.vehicleBrand = brand;
+    }
+
+    public void resetSession() {
+        recordCount = 0;
+        sessionStartMs = 0;
+        petrolMap.clear();
+        lpgMap.clear();
     }
 
     private void updateLiveMap(DataRecord record) {
@@ -211,11 +245,11 @@ public class ApiServer extends NanoHTTPD {
             int rpmCell = (int) (Math.round(rpm / RPM_STEP) * RPM_STEP);
             rpmCell = Math.max(RPM_MIN, Math.min(RPM_MAX, rpmCell));
 
-            double tinj = mapLoadToTinj(loadAxis);
-            int tinjIdx = findClosestBinIndex(tinj, T_INJ_BINS);
-            float tinjBinValue = T_INJ_BINS[tinjIdx];
+            // Use MAP (kPa) directly — no T.inj conversion.
+            int mapIdx = findClosestBinIndex(loadAxis, MAP_BINS);
+            float mapBinValue = MAP_BINS[mapIdx];
 
-            String key = rpmCell + "_" + String.format(Locale.US, "%.2f", tinjBinValue);
+            String key = rpmCell + "_" + String.format(Locale.US, "%.2f", mapBinValue);
             
             boolean isLpg = FuelMode.fromString(record.getFuelMode()).isGaseous();
             Map<String, MapTrimData> targetMap = isLpg ? lpgMap : petrolMap;
@@ -234,16 +268,6 @@ public class ApiServer extends NanoHTTPD {
             if (sample.getPidKey().equals(key)) return sample.getValue();
         }
         return null;
-    }
-
-    private static float mapLoadToTinj(double loadOrMap) {
-        if (loadOrMap <= 20) return 2.0f;
-        if (loadOrMap >= 100) {
-            double ratio = (loadOrMap - 100) / 60.0;
-            return (float) Math.min(18.0, 12.0 + ratio * 6.0);
-        }
-        double ratio = (loadOrMap - 20) / 80.0;
-        return (float) (2.0 + ratio * 10.0);
     }
 
     private static int findClosestBinIndex(double value, float[] bins) {
@@ -286,6 +310,8 @@ public class ApiServer extends NanoHTTPD {
                 response = handleGetDtc();
             } else if ("/api/stream".equals(uri) || "/api/events".equals(uri)) {
                 response = handleSseStream(session);
+            } else if ("/api/agent".equals(uri)) {
+                response = handleAgent();
             } else {
                 response = newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found");
             }
@@ -350,15 +376,33 @@ public class ApiServer extends NanoHTTPD {
         
         JSONObject obj = new JSONObject();
         try {
+            // Session metadata
             obj.put("timestamp", latestData.getTimestamp());
             obj.put("elapsedS", latestData.getElapsedS());
             obj.put("fuelMode", latestData.getFuelMode());
-            
-            JSONObject sensors = new JSONObject();
-            for (SensorSample s : latestData.getSamples()) {
-                sensors.put(s.getName(), s.getValue());
+            obj.put("vehicleBrand", latestData.getVehicleBrand() != null ? latestData.getVehicleBrand() : "");
+            obj.put("vin", latestData.getVin() != null ? latestData.getVin() : "");
+            obj.put("recordCount", recordCount);
+            obj.put("adapterConnected", adapterConnected);
+            obj.put("transportMode", transportMode != null ? transportMode : "UNKNOWN");
+            if (sessionStartMs > 0) {
+                obj.put("sessionDurationMs", System.currentTimeMillis() - sessionStartMs);
             }
-            obj.put("sensors", sensors);
+            
+            // Detailed sensors: array of objects with pidKey, name, value, unit, status.
+            // Previous version used name as key — duplicates (multiple "Fuel Economy",
+            // "Turbo Boost") silently overwrote each other, losing derived sensor data.
+            JSONArray sensorsArr = new JSONArray();
+            for (SensorSample s : latestData.getSamples()) {
+                JSONObject sensorObj = new JSONObject();
+                sensorObj.put("pidKey", s.getPidKey());
+                sensorObj.put("name", s.getName());
+                sensorObj.put("value", s.getValue());
+                sensorObj.put("unit", s.getUnit());
+                sensorObj.put("status", s.getStatus());
+                sensorsArr.put(sensorObj);
+            }
+            obj.put("sensors", sensorsArr);
             
         } catch (JSONException e) {
             e.printStackTrace();
@@ -384,11 +428,11 @@ public class ApiServer extends NanoHTTPD {
             }
             obj.put("rpmBins", rpmArray);
 
-            JSONArray tinjArray = new JSONArray();
-            for (float bin : T_INJ_BINS) {
-                tinjArray.put(bin);
+            JSONArray mapArray = new JSONArray();
+            for (float bin : MAP_BINS) {
+                mapArray.put(bin);
             }
-            obj.put("tinjBins", tinjArray);
+            obj.put("mapBins", mapArray);
 
             JSONObject petrolJson = new JSONObject();
             for (Map.Entry<String, MapTrimData> entry : petrolMap.entrySet()) {
@@ -502,7 +546,7 @@ public class ApiServer extends NanoHTTPD {
         StringBuilder sb = new StringBuilder();
         
         int rpmCount = (RPM_MAX - RPM_MIN) / RPM_STEP + 1;
-        int tinjCount = T_INJ_BINS.length;
+        int mapCount = MAP_BINS.length;
         
         // Header row
         sb.append("T.inj \\ RPM");
@@ -513,13 +557,13 @@ public class ApiServer extends NanoHTTPD {
         sb.append("\n");
         
         // Rows
-        for (int r = 0; r < tinjCount; r++) {
-            float tinjValue = T_INJ_BINS[r];
-            sb.append(String.format(Locale.US, "%.2f", tinjValue));
+        for (int r = 0; r < mapCount; r++) {
+            float mapValue = MAP_BINS[r];
+            sb.append(String.format(Locale.US, "%.2f", mapValue));
             
             for (int c = 0; c < rpmCount; c++) {
                 int rpmValue = RPM_MIN + (c * RPM_STEP);
-                String key = rpmValue + "_" + String.format(Locale.US, "%.2f", tinjValue);
+                String key = rpmValue + "_" + String.format(Locale.US, "%.2f", mapValue);
                 MapTrimData petrol = petrolMap.get(key);
                 MapTrimData lpg = lpgMap.get(key);
                 
@@ -659,20 +703,22 @@ public class ApiServer extends NanoHTTPD {
                 java.util.List<DtcCode> stored = dtcProvider.getStoredDtcs();
                 if (stored != null) {
                     for (DtcCode dtc : stored) {
-                        JSONObject dtcObj = new JSONObject();
-                        dtcObj.put("code", dtc.getCode());
-                        dtcObj.put("description", dtc.getDescription());
-                        storedArr.put(dtcObj);
-                    }
+                            JSONObject dtcObj = new JSONObject();
+                            dtcObj.put("code", dtc.getCode());
+                            dtcObj.put("description", dtc.getDescription());
+                            dtcObj.put("severity", dtc.getSeverity() != null ? dtc.getSeverity().name() : "UNKNOWN");
+                            storedArr.put(dtcObj);
+                        }
                 }
                 java.util.List<DtcCode> pending = dtcProvider.getPendingDtcs();
                 if (pending != null) {
                     for (DtcCode dtc : pending) {
-                        JSONObject dtcObj = new JSONObject();
-                        dtcObj.put("code", dtc.getCode());
-                        dtcObj.put("description", dtc.getDescription());
-                        pendingArr.put(dtcObj);
-                    }
+                            JSONObject dtcObj = new JSONObject();
+                            dtcObj.put("code", dtc.getCode());
+                            dtcObj.put("description", dtc.getDescription());
+                            dtcObj.put("severity", dtc.getSeverity() != null ? dtc.getSeverity().name() : "UNKNOWN");
+                            pendingArr.put(dtcObj);
+                        }
                 }
             }
             obj.put("stored", storedArr);
@@ -693,6 +739,118 @@ public class ApiServer extends NanoHTTPD {
         try {
             obj.put("success", success);
             obj.put("message", success ? "Clear DTC command triggered" : "DTC provider unavailable");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return newFixedLengthResponse(Response.Status.OK, "application/json", obj.toString());
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Aggregate /api/agent — everything an AI Agent needs in one call
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * GET /api/agent — returns a complete snapshot for AI Agent integration:
+     *   - Connection & session metadata
+     *   - Latest sensor data (detailed, keyed by pidKey)
+     *   - Fuel map summary
+     *   - DTC codes with severity
+     * This avoids the need for multiple round-trips.
+     */
+    private Response handleAgent() {
+        JSONObject obj = new JSONObject();
+        try {
+            // ── Status & session ──
+            JSONObject status = new JSONObject();
+            status.put("logging", isLogging);
+            status.put("adapterConnected", adapterConnected);
+            status.put("transportMode", transportMode != null ? transportMode : "UNKNOWN");
+            status.put("recordCount", recordCount);
+            if (sessionStartMs > 0) {
+                status.put("sessionDurationMs", System.currentTimeMillis() - sessionStartMs);
+            }
+            if (latestData != null) {
+                status.put("fuelMode", latestData.getFuelMode());
+                status.put("vin", latestData.getVin() != null ? latestData.getVin() : "");
+                status.put("vehicleBrand", latestData.getVehicleBrand() != null ? latestData.getVehicleBrand() : "");
+                status.put("timestamp", latestData.getTimestamp());
+                status.put("elapsedS", latestData.getElapsedS());
+            }
+            obj.put("status", status);
+
+            // ── Sensors (detailed array, keyed by pidKey) ──
+            if (latestData != null) {
+                JSONArray sensorsArr = new JSONArray();
+                for (SensorSample s : latestData.getSamples()) {
+                    JSONObject sensorObj = new JSONObject();
+                    sensorObj.put("pidKey", s.getPidKey());
+                    sensorObj.put("name", s.getName());
+                    sensorObj.put("value", s.getValue());
+                    sensorObj.put("unit", s.getUnit());
+                    sensorObj.put("status", s.getStatus());
+                    sensorsArr.put(sensorObj);
+                }
+                obj.put("sensors", sensorsArr);
+            }
+
+            // ── Fuel map summary ──
+            JSONObject mapSummary = new JSONObject();
+            int petrolCount = petrolMap.size();
+            int lpgCount = lpgMap.size();
+            double sumAbsDev = 0;
+            int commonCells = 0;
+            double maxDev = 0;
+            String maxDevCell = "None";
+            for (String key : petrolMap.keySet()) {
+                if (lpgMap.containsKey(key)) {
+                    MapTrimData pData = petrolMap.get(key);
+                    MapTrimData lData = lpgMap.get(key);
+                    if (pData != null && lData != null) {
+                        double dev = lData.getAverage() - pData.getAverage();
+                        sumAbsDev += Math.abs(dev);
+                        commonCells++;
+                        if (Math.abs(dev) > Math.abs(maxDev)) {
+                            maxDev = dev;
+                            maxDevCell = key;
+                        }
+                    }
+                }
+            }
+            mapSummary.put("petrolCellsCount", petrolCount);
+            mapSummary.put("lpgCellsCount", lpgCount);
+            mapSummary.put("overlappingCellsCount", commonCells);
+            mapSummary.put("averageAbsoluteDeviation", commonCells == 0 ? 0 : sumAbsDev / commonCells);
+            mapSummary.put("maxDeviationValue", maxDev);
+            mapSummary.put("maxDeviationCell", maxDevCell);
+            obj.put("mapSummary", mapSummary);
+
+            // ── DTC codes with severity ──
+            if (dtcProvider != null) {
+                JSONArray dtcArr = new JSONArray();
+                java.util.List<DtcCode> stored = dtcProvider.getStoredDtcs();
+                if (stored != null) {
+                    for (DtcCode dtc : stored) {
+                        JSONObject dtcObj = new JSONObject();
+                        dtcObj.put("code", dtc.getCode());
+                        dtcObj.put("description", dtc.getDescription());
+                        dtcObj.put("severity", dtc.getSeverity() != null ? dtc.getSeverity().name() : "UNKNOWN");
+                        dtcObj.put("type", "stored");
+                        dtcArr.put(dtcObj);
+                    }
+                }
+                java.util.List<DtcCode> pending = dtcProvider.getPendingDtcs();
+                if (pending != null) {
+                    for (DtcCode dtc : pending) {
+                        JSONObject dtcObj = new JSONObject();
+                        dtcObj.put("code", dtc.getCode());
+                        dtcObj.put("description", dtc.getDescription());
+                        dtcObj.put("severity", dtc.getSeverity() != null ? dtc.getSeverity().name() : "UNKNOWN");
+                        dtcObj.put("type", "pending");
+                        dtcArr.put(dtcObj);
+                    }
+                }
+                obj.put("dtcs", dtcArr);
+            }
         } catch (JSONException e) {
             e.printStackTrace();
         }

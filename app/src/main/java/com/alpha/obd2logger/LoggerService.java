@@ -283,7 +283,11 @@ public final class LoggerService extends Service {
             mainHandler.post(() -> cbCheck.onAdapterCheckResult(isStd, details));
         }
 
-        if (config.vin == null || config.vin.isEmpty()) {
+        // Read VIN if not already known. The config default is "UNKNOWN"
+        // (not null/empty), so we must treat that as unset too — otherwise
+        // the VIN is never read and logs are saved without a VIN subfolder.
+        if (config.vin == null || config.vin.isEmpty()
+                || "UNKNOWN".equalsIgnoreCase(config.vin)) {
             String vin = VinReader.readVin(localDriver);
                 if (vin != null) {
                     config.vin = vin;
@@ -319,6 +323,10 @@ public final class LoggerService extends Service {
                     }
                 });
                 localApiServer.start();
+                localApiServer.setTransportMode(config.transportMode != null ? config.transportMode.getValue() : "UNKNOWN");
+                localApiServer.setAdapterConnected(true);
+                localApiServer.setVehicleBrand(config.vehicleBrand);
+                localApiServer.resetSession();
                 if (currentSessionToken == sessionToken) {
                     apiServer = localApiServer;
                 }
@@ -467,6 +475,7 @@ public final class LoggerService extends Service {
                         }
                         retryCount = 0;
                         notifyStatus("Connected. Logging resumed.", false);
+                        if (localApiServer != null) localApiServer.setAdapterConnected(true);
                     }
 
                     while (running) {
@@ -808,10 +817,12 @@ public final class LoggerService extends Service {
                     }
                     if (retryCount > 3 && localDriver != null) {
                         localDriver.disconnect();
+                        if (localApiServer != null) localApiServer.setAdapterConnected(false);
                     }
                     if (retryCount > maxRetries) {
                         running = false;
                         notifyStatus("Logger disconnected permanently: " + e.getMessage(), true);
+                        if (localApiServer != null) localApiServer.setAdapterConnected(false);
                         break;
                     }
                     try {

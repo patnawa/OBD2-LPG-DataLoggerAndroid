@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.8.1] - 2026-07-10
+### Fixed
+- **Fuel Map Y-Axis Wrong (T.inj → MAP kPa)** — The fuel map grid Y-axis was using a non-linear "injection time" (T.inj) conversion of MAP, not the actual MAP (kPa) value. Data was placed in wrong cells because the `mapLoadToTinj()` function distorted the sensor readings. Changed to use MAP (kPa) directly with bins: 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 150, 200, 250. Now data matches what the tuner sees on the gauge.
+- **Compare Map From Log File Not Working** — `LogReplayParser.isClosedLoop()` defaulted to `false` for CSV files without a fuel system status or `loop_status` column, skipping ALL rows and showing "No valid tuning points found." Changed default to `true` (matching the live logging path) so all rows plot when loop state is unknown.
+- **Logs Not Saved in VIN Subfolder (Background Mode)** — `LoggerService` guarded VIN reading with `config.vin == null || isEmpty()` but the config default is `"UNKNOWN"` (not null/empty), so the real VIN was never read in background logging mode. Logs always went to the root folder instead of per-VIN subfolders. Fixed by treating `"UNKNOWN"` as unset.
+- **Fuel Mode Resets to Petrol on Disconnect/Stop** — `restoreConfigPrefs()` forced `fuelSpinner.setSelection(PETROL)` when `!running`, ignoring the saved `pref_fuel_position`. Now always restores from SharedPreferences. Also removed the hard-coded `setSelection(2)` in `setupListeners()` that fired the listener and overwrote the saved value before restore ran.
+- **Bluetooth Device Selection Resets on Disconnect/Stop** — `refreshBluetoothDevices()` always set `setSelection(0)`, discarding the user's pick. Now saves the selected device MAC to SharedPreferences and restores it on refresh. Added `OnItemSelectedListener` to persist on every change.
+- **API Sensor Key Collision (Data Loss)** — `GET /api/data` and SSE used sensor display name as JSON key. Multiple sensors share names ("Fuel Economy", "Turbo Boost") → `JSONObject.put` silently overwrote earlier values, losing air density and derived sensor data. Changed to use `pidKey` (e.g. `"01_0C"`, `"derived_aad"`) as key, and emit an array of `{pidKey, name, value, unit, status}` objects.
+- **API Missing Session Metadata & Connection Status** — `/api/data` now includes `vehicleBrand`, `vin`, `recordCount`, `adapterConnected`, `transportMode`, `sessionDurationMs`. `/api/status` includes adapter connection state. New `setAdapterConnected()`, `setTransportMode()`, `resetSession()` methods wired from LoggerService.
+
+### Added
+- **`GET /api/agent` Endpoint** — Aggregate endpoint returning everything an AI Agent needs in one HTTP call: session status, detailed sensor data (pidKey/name/value/unit/status), fuel map summary, and DTC codes with severity. Eliminates the need for multiple round-trips.
+- **DTC Severity in API** — `GET /api/dtc` and `/api/agent` now include `severity` (CRITICAL/WARNING/INFO) for each DTC code, computed via `DtcCode.getSeverity()`.
+
+### Changed
+- **"LIVE SESSION METRICS" → "RECORDING STATUS"** — Renamed the confusing session metrics card label to "RECORDING STATUS (Duration • Records • Rate)" so its purpose is clear at a glance.
+
 ## [3.8.0] - 2026-07-10
 ### Fixed — Logger Random Stop (Comprehensive Fix)
 - **'NO DATA' Treated as Fatal — False PID Blacklisting** — The ELM327 response `"NO DATA"` (a normal response meaning "ECU has no value for this PID right now") was in the `FATAL_RESPONSE_MARKERS` list. This caused PIDs returning `NO DATA` at idle/startup (RPM=0, speed=0, fuel trims in open loop) to be permanently blacklisted after only 3 consecutive failures, depleting the PID list until the batch was empty. Removed `"NO DATA"` and `"STOPPED"` from fatal markers — they are now treated as normal null results.

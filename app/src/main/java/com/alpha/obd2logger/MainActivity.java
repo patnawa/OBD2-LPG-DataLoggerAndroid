@@ -761,7 +761,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
-        fuelSpinner.setSelection(2); // Default to Petrol (position 2) on startup
+        // Fuel mode selection is restored from SharedPreferences in restoreConfigPrefs() —
+        // do NOT hardcode setSelection here as it fires the listener and overwrites the saved value.
+
+        // ── Bluetooth device selection persistence ──
+        if (bluetoothDeviceSpinner != null) {
+            bluetoothDeviceSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
+                    if (position >= 0 && position < bluetoothDevices.size()) {
+                        getSharedPreferences("OBD2Prefs", MODE_PRIVATE)
+                                .edit()
+                                .putString("pref_bt_device_addr", bluetoothDevices.get(position).getAddress())
+                                .apply();
+                    }
+                }
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
+        }
 
         // ── Live PID Filter button ──
         if (btnFilterPids != null) {
@@ -6457,7 +6475,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 android.R.layout.simple_spinner_item, labels);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         bluetoothDeviceSpinner.setAdapter(spinnerAdapter);
-        bluetoothDeviceSpinner.setSelection(0);
+        // Restore previously selected device from SharedPreferences instead
+        // of always defaulting to index 0.
+        String savedAddr = getSharedPreferences("OBD2Prefs", MODE_PRIVATE)
+                .getString("pref_bt_device_addr", null);
+        int restoreIdx = 0;
+        if (savedAddr != null) {
+            for (int i = 0; i < bluetoothDevices.size(); i++) {
+                if (savedAddr.equals(bluetoothDevices.get(i).getAddress())) {
+                    restoreIdx = i;
+                    break;
+                }
+            }
+        }
+        bluetoothDeviceSpinner.setSelection(restoreIdx);
         bluetoothHintText.setText(labels.size() + " paired device(s) found.");
     }
 
@@ -6574,7 +6605,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
         android.content.SharedPreferences.Editor ed = prefs.edit();
         ed.putInt("pref_transport_position", transportSpinner != null ? transportSpinner.getSelectedItemPosition() : 0);
-        ed.putInt("pref_fuel_position", fuelSpinner != null ? fuelSpinner.getSelectedItemPosition() : 1);
+        ed.putInt("pref_fuel_position", fuelSpinner != null ? fuelSpinner.getSelectedItemPosition() : 2);
+        // Save selected Bluetooth device MAC address
+        BluetoothDevice selBt = selectedBluetoothDevice();
+        if (selBt != null) {
+            ed.putString("pref_bt_device_addr", selBt.getAddress());
+        }
         ed.putInt("pref_obd_protocol_position", obdProtocolSpinner != null ? obdProtocolSpinner.getSelectedItemPosition() : 0);
         ed.putString("pref_wifi_ip", wifiIpInput != null ? wifiIpInput.getText().toString().trim() : "192.168.0.10");
         ed.putString("pref_wifi_port", wifiPortInput != null ? wifiPortInput.getText().toString().trim() : "35000");
@@ -6606,13 +6642,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (cfg != null && cfg.fuelMode != null) {
                     fuelSpinner.setSelection(fuelModeToPosition(cfg.fuelMode));
                 } else {
-                    int pos = prefs.getInt("pref_fuel_position", 1);
+                    int pos = prefs.getInt("pref_fuel_position", 2); // default Petrol
                     if (pos >= 0 && pos < fuelSpinner.getAdapter().getCount()) {
                         fuelSpinner.setSelection(pos);
                     }
                 }
             } else {
-                fuelSpinner.setSelection(fuelModeToPosition(FuelMode.PETROL)); // Always default Start Fuel Type to Petrol
+                // Always restore from saved preference — do NOT force PETROL.
+                // The user's last selection persists across stop/restart cycles.
+                int pos = prefs.getInt("pref_fuel_position", 2); // default Petrol
+                if (pos >= 0 && pos < fuelSpinner.getAdapter().getCount()) {
+                    fuelSpinner.setSelection(pos);
+                }
             }
         }
         if (obdProtocolSpinner != null) {
