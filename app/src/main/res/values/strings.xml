@@ -289,4 +289,5 @@
     <string name="feature_fuel_economy">Fuel Economy Calculation</string>
     <string name="feature_dpf_monitor">DPF Monitor (Diesel)</string>
     <string name="feature_custom_pid">Enable Custom PIDs</string>
+    <string name="feature_air_density">Air Density (AAD/MAD/BAD)</string>
 </resources>

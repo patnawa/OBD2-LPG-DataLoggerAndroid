@@ -83,6 +83,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView bluetoothHintText;
     private CheckBox lpgOnlyCheckbox, backgroundLoggingCheckbox, keepScreenOnCheckbox, apiServerCheckbox, fordMsCanCheckbox;
     private CheckBox turboBoostCheckbox, fuelEconomyCheckbox, dpfMonitorCheckbox, customPidCheckbox;
+    private CheckBox airDensityCheckbox;
     private TextView apiServerIpText;
     private TextView customLogFolderText;
     private Button btnSelectLogFolder;
@@ -156,6 +157,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private com.google.android.material.button.MaterialButton fabLog;
     private FuelMapView fuelMapView;
+    private AirDensityMonitor airDensityMonitor;
 
     // --- UI: History tab ---
     private View panelHistory;
@@ -601,6 +603,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         fuelEconomyCheckbox = findViewById(R.id.fuelEconomyCheckbox);
         dpfMonitorCheckbox = findViewById(R.id.dpfMonitorCheckbox);
         customPidCheckbox = findViewById(R.id.customPidCheckbox);
+        airDensityCheckbox = findViewById(R.id.airDensityCheckbox);
 
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
 
@@ -688,6 +691,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 FuelMode mode = fuelPositionToMode(position);
                 applyFuelTheme(mode);
+                // Update header fuel mode badge
+                if (headerFuelMode != null) {
+                    headerFuelMode.setText(mode.name());
+                }
                 getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putInt("pref_fuel_position", position).apply();
                 // Propagate fuel mode change to the running logger so
                 // subsequent records route to the correct map layer.
@@ -699,12 +706,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (activeInProcessConfig != null) {
                     activeInProcessConfig.fuelMode = mode;
                 }
+                // Update fuel map mode to match
+                if (fuelMapView != null) {
+                    fuelMapView.setMapMode(mode.isGaseous()
+                            ? FuelMapView.MapMode.LPG : FuelMapView.MapMode.PETROL);
+                    com.google.android.material.button.MaterialButtonToggleGroup mapModeToggle = findViewById(R.id.mapModeToggle);
+                    if (mapModeToggle != null) {
+                        mapModeToggle.check(mode.isGaseous() ? R.id.btnMapLpg : R.id.btnMapPetrol);
+                    }
+                }
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
-        fuelSpinner.setSelection(1); // Default to Petrol on startup
+        fuelSpinner.setSelection(2); // Default to Petrol (position 2) on startup
         statusText = findViewById(R.id.statusText);
         countText = findViewById(R.id.countText);
         
@@ -2496,6 +2512,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 }
             });
 
+            // Initialize Air Density Monitor for in-process logging
+            if (config.showAirDensity) {
+                try {
+                    airDensityMonitor = new AirDensityMonitor(this);
+                    airDensityMonitor.refreshWeatherSync();
+                    Log.i("OBD2Logger", "AirDensityMonitor initialized (in-process)");
+                } catch (Exception e) {
+                    Log.w("OBD2Logger", "AirDensityMonitor init failed — using defaults", e);
+                }
+            }
+
             int retryCount = 0;
             int maxRetries = 3;
 
@@ -2604,6 +2631,117 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 String regen = DerivedSensors.dpfRegenStatus(dpfRegen);
                                 double regenCode = "Regen Active".equals(regen) ? 1.0 : 0.0;
                                 samples.add(new SensorSample("derived_dpf_regen", "DPF Regen", regenCode, "active=" + regen, "ok"));
+                            }
+                        }
+
+                        // ── Air Density (Banks iDash AAD/MAD/BAD) ──────────────
+                        if (config.showAirDensity && airDensityMonitor != null) {
+                            airDensityMonitor.refreshWeatherSync();
+                            airDensityMonitor.onObdBatch(batch);
+                            AirDensityMonitor.AirDensityResult dr = airDensityMonitor.compute();
+                            if (dr != null) {
+                                if (dr.aad != null) {
+                                    samples.add(new SensorSample("derived_aad", "Ambient Air Density",
+                                            dr.aad, "lbs/1000ft3", "ok"));
+                                }
+                                if (dr.mad != null) {
+                                    samples.add(new SensorSample("derived_mad", "Manifold Air Density",
+                                            dr.mad, "lbs/1000ft3", "ok"));
+                                }
+                                if (dr.bad != null) {
+                                    samples.add(new SensorSample("derived_bad", "Boost Air Density",
+                                            dr.bad, "lbs/1000ft3", "ok"));
+                                }
+                                if (dr.densityPercent != null) {
+                                    samples.add(new SensorSample("derived_density_pct", "Air Density %",
+                                            dr.densityPercent, "%", "ok"));
+                                }
+                                if (dr.densityAltitudeFt != null) {
+                                    samples.add(new SensorSample("derived_density_alt", "Density Altitude",
+                                            (double) dr.densityAltitudeFt, "ft", "ok"));
+                                }
+                                if (dr.saeJ1349CF != null) {
+                                    samples.add(new SensorSample("derived_sae_cf", "SAE J1349 CF",
+                                            dr.saeJ1349CF, "", "ok"));
+                                }
+                                if (dr.grainsH2O != null) {
+                                    samples.add(new SensorSample("derived_grains", "Grains H2O",
+                                            dr.grainsH2O, "grains/lb", "ok"));
+                                }
+                                samples.add(new SensorSample("derived_humidity", "Relative Humidity",
+                                        dr.humidity, "%", "ok"));
+
+                                // Advanced Air Density (10 formulas beyond Banks)
+                                Double rpmValue = batch.get("Engine RPM");
+                                Double lambdaValue = batch.get("Lambda (B1S1)");
+                                if (lambdaValue == null) lambdaValue = batch.get("Wideband Lambda (B1S1)");
+
+                                AdvancedAirDensity.AdvancedResult ar =
+                                        airDensityMonitor.computeAdvanced(
+                                            mafValue, rpmValue, lambdaValue,
+                                            config.fuelMode,
+                                            config.engineDisplacementCC,
+                                            config.ratedRPM);
+                                if (ar != null) {
+                                    if (ar.omdLbs != null) {
+                                        samples.add(new SensorSample("derived_omd", "Oxygen Mass Density",
+                                                ar.omdLbs, "lbs/1000ft3", "ok"));
+                                    }
+                                    if (ar.compressorEff != null) {
+                                        samples.add(new SensorSample("derived_compressor_eff",
+                                                "Compressor Efficiency", ar.compressorEff, "%", "ok"));
+                                    }
+                                    if (ar.intercoolerEff != null) {
+                                        samples.add(new SensorSample("derived_intercooler_eff",
+                                                "Intercooler Effectiveness", ar.intercoolerEff, "%", "ok"));
+                                    }
+                                    if (ar.vePct != null) {
+                                        samples.add(new SensorSample("derived_ve",
+                                                "Volumetric Efficiency", ar.vePct, "%", "ok"));
+                                    }
+                                    if (ar.dcafr != null) {
+                                        samples.add(new SensorSample("derived_dcafr",
+                                                "Density-Corrected AFR", ar.dcafr, "", "ok"));
+                                    }
+                                    if (ar.tmfGs != null) {
+                                        samples.add(new SensorSample("derived_tmf",
+                                                "Theoretical Mass Flow", ar.tmfGs, "g/s", "ok"));
+                                    }
+                                    if (ar.mafDeviationPct != null) {
+                                        samples.add(new SensorSample("derived_maf_dev",
+                                                "MAF Deviation", ar.mafDeviationPct, "%", "ok"));
+                                    }
+                                    if (ar.lvdFraction != null) {
+                                        samples.add(new SensorSample("derived_lvd",
+                                                "Vapor Displacement", ar.lvdFraction, "fraction", "ok"));
+                                    }
+                                    if (ar.effectiveDensityKgM3 != null) {
+                                        samples.add(new SensorSample("derived_eff_density",
+                                                "Effective Air Density", ar.effectiveDensityKgM3,
+                                                "kg/m3", "ok"));
+                                    }
+                                    if (ar.eccDeltaT != null) {
+                                        samples.add(new SensorSample("derived_ecc_dt",
+                                                "Evap Cooling DeltaT", ar.eccDeltaT, "C", "ok"));
+                                    }
+                                    if (ar.eccCorrectedMAD != null) {
+                                        samples.add(new SensorSample("derived_ecc_mad",
+                                                "Evap-Corrected MAD", ar.eccCorrectedMAD,
+                                                "lbs/1000ft3", "ok"));
+                                    }
+                                    if (ar.pdi != null) {
+                                        samples.add(new SensorSample("derived_pdi",
+                                                "Power Density Index", ar.pdi, "", "ok"));
+                                    }
+                                    if (ar.saeJ607CF != null) {
+                                        samples.add(new SensorSample("derived_sae_j607",
+                                                "SAE J607 CF", ar.saeJ607CF, "", "ok"));
+                                    }
+                                    if (ar.saeCFDelta != null) {
+                                        samples.add(new SensorSample("derived_sae_cf_delta",
+                                                "SAE CF Delta", ar.saeCFDelta, "", "ok"));
+                                    }
+                                }
                             }
                         }
 
@@ -5178,10 +5316,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         config.showFuelConsumption = fuelEconomyCheckbox == null || fuelEconomyCheckbox.isChecked();
         config.dpfMonitorEnabled = dpfMonitorCheckbox != null && dpfMonitorCheckbox.isChecked();
         config.customPidsEnabled = customPidCheckbox != null && customPidCheckbox.isChecked();
+        config.showAirDensity = airDensityCheckbox == null || airDensityCheckbox.isChecked();
         return config;
     }
 
     private void setConfigUiEnabled(boolean enabled) {
+        if (fuelSpinner != null) fuelSpinner.setEnabled(enabled);
         if (transportSpinner != null) transportSpinner.setEnabled(enabled);
         if (obdProtocolSpinner != null) obdProtocolSpinner.setEnabled(enabled);
         if (wifiIpInput != null) wifiIpInput.setEnabled(enabled);
@@ -5196,6 +5336,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (fuelEconomyCheckbox != null) fuelEconomyCheckbox.setEnabled(enabled);
         if (dpfMonitorCheckbox != null) dpfMonitorCheckbox.setEnabled(enabled);
         if (customPidCheckbox != null) customPidCheckbox.setEnabled(enabled);
+        if (airDensityCheckbox != null) airDensityCheckbox.setEnabled(enabled);
         if (btnSelectLogFolder != null) btnSelectLogFolder.setEnabled(enabled);
         
         if (bluetoothDeviceSpinner != null) {
@@ -5796,6 +5937,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         ed.putBoolean("pref_fuel_economy", fuelEconomyCheckbox != null && fuelEconomyCheckbox.isChecked());
         ed.putBoolean("pref_dpf_monitor", dpfMonitorCheckbox != null && dpfMonitorCheckbox.isChecked());
         ed.putBoolean("pref_custom_pid", customPidCheckbox != null && customPidCheckbox.isChecked());
+        ed.putBoolean("pref_air_density", airDensityCheckbox != null && airDensityCheckbox.isChecked());
         ed.apply();
     }
 
@@ -5852,6 +5994,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         if (turboBoostCheckbox != null) {
             turboBoostCheckbox.setChecked(prefs.getBoolean("pref_turbo_boost", true));
+        if (airDensityCheckbox != null) airDensityCheckbox.setChecked(prefs.getBoolean("pref_air_density", true));
         }
         if (fuelEconomyCheckbox != null) {
             fuelEconomyCheckbox.setChecked(prefs.getBoolean("pref_fuel_economy", true));

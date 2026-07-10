@@ -262,4 +262,5 @@
     <string name="feature_fuel_economy">คำนวณอัตราสิ้นเปลือง</string>
     <string name="feature_dpf_monitor">ตรวจสอบ DPF (ดีเซล)</string>
     <string name="feature_custom_pid">เปิดใช้ Custom PID</string>
+    <string name="feature_air_density">ความหนาแน่นอากาศ (AAD/MAD/BAD)</string>
 </resources>
