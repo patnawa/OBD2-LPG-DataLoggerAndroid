@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.1] - 2026-07-10
+### Added
+- **PID Filter for Live Readings** — New "Filter PIDs" button in Logs tab with bottom sheet dialog. User can select which PIDs to display via checkbox list with search. Reduces UI load on slow/cheap OBD2 adapters where 50+ PID cards (raw + 22 derived air density) caused lag and freezes
+- **Derived Sensors Hidden by Default** — AAD/MAD/BAD, compressor efficiency, intercooler effectiveness, etc. are hidden by default in Live Readings. Toggle button to show/hide derived sensors. Filter persists in SharedPreferences
+- **Air Density Checkbox in Settings** — New toggle in Settings UI to enable/disable Air Density (AAD/MAD/BAD) calculation. Was computed automatically before but had no UI toggle
+- **Air Density in In-Process Mode** — Air density computation (AirDensityMonitor) now works in both in-process and background service logging modes. Previously only ran in background LoggerService
+
+### Fixed
+- **Fuel Mode Switch Bug** — `fuelSpinner` was NOT disabled during logging, so user could change fuel mid-session. The running logger thread used a local config copy — the change had no effect, and the UI showed a different fuel than what was actually being logged. Now `fuelSpinner` is properly disabled by `setConfigUiEnabled(false)` during logging
+- **Default Fuel Selection** — Was `setSelection(1)` which maps to NGV (not Petrol!). Fixed to `setSelection(2)` = Petrol. Header fuel mode badge and fuel map mode now update on fuel selection change
+
 ## [3.7.0] - 2026-07-10
 ### Air Density System + Multi-Fuel Support — Banks iDash style + beyond
 

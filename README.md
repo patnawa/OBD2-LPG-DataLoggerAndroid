@@ -1,10 +1,26 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.7.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.7.1** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมือนต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.7.1 — PID Filter + Bug Fixes
+
+### PID Filter for Live Readings
+- New "Filter PIDs" button in Logs tab — select which PIDs to display
+- Derived sensors (AAD/MAD/BAD, etc.) hidden by default — toggle to show
+- Reduces UI lag on slow/cheap OBD2 adapters (50+ cards → only what you need)
+- Filter persists across sessions
+
+### Air Density UI Toggle
+- New checkbox in Settings to enable/disable Air Density calculation
+- Air density now works in both in-process and background logging modes
+
+### Bug Fixes
+- Fuel mode spinner now properly disabled during logging (was changeable but had no effect)
+- Default fuel selection fixed (was NGV, now correctly Petrol)
 
 ## What's New in 3.7.0 — Air Density System + Multi-Fuel Support
 
