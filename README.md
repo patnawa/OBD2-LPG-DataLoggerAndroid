@@ -1,10 +1,20 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.7.9** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.8.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมือนต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.8.0 — Logger Random Stop (Comprehensive Fix)
+
+### Fixed (6 root causes addressed)
+1. **'NO DATA' false fatal** — Removed `NO DATA`/`STOPPED` from ELM327 fatal response markers. These are normal "no value right now" responses, not connection failures. Previously caused permanent PID blacklisting.
+2. **Watchdog false kill** — In-process connection watchdog now cancels on successful `connect()` instead of waiting for the first record. Timeout raised 20s → 45s.
+3. **Stale connection detection** — Added liveness tracking: 5 consecutive empty responses now mark the connection as dead, triggering automatic reconnect.
+4. **Stuck `isPaused`** — Diagnostic pause flag now resets in `stopLogging()` and `onDestroy()`.
+5. **Core PID protection** — RPM/Speed/Coolant/MAP/Load PIDs can no longer be blacklisted. Minimum 3-PID floor enforced.
+6. **Reconnect timeout** — Reconnect `connect()` now bounded to 30s. Initial connect raised 15s → 30s.
 
 ## What's New in 3.7.9 — AeroDensity Intelligence Rebrand & UI Fixes
 

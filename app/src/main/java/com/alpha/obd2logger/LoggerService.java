@@ -234,12 +234,12 @@ public final class LoggerService extends Service {
                 Executors.newSingleThreadExecutor().submit(() -> localDriver.isConnected() || localDriver.connect());
         boolean connectedResult;
         try {
-            connectedResult = connectTask.get(15, java.util.concurrent.TimeUnit.SECONDS);
+            connectedResult = connectTask.get(30, java.util.concurrent.TimeUnit.SECONDS);
         } catch (java.util.concurrent.TimeoutException e) {
             connectTask.cancel(true);
             try { localDriver.disconnect(); } catch (Throwable ignored) {}
             connectedResult = false;
-            Log.w(TAG, "driver.connect() timed out after 15s");
+            Log.w(TAG, "driver.connect() timed out after 30s");
         } catch (Exception e) {
             connectTask.cancel(true);
             connectedResult = false;
@@ -451,7 +451,18 @@ public final class LoggerService extends Service {
                             final int finalRetry = retryCount;
                             notifyStatus("Connection lost. Reconnecting (" + finalRetry + "/" + maxRetries + ")...", false);
                         }
-                        if (!localDriver.connect()) {
+                        // Wrap reconnect in a timeout so a hanging connect()
+                        // call doesn't stall the loop forever.
+                        java.util.concurrent.Future<Boolean> reconnectTask =
+                            Executors.newSingleThreadExecutor().submit(() -> localDriver.connect());
+                        boolean reconnected;
+                        try {
+                            reconnected = reconnectTask.get(30, java.util.concurrent.TimeUnit.SECONDS);
+                        } catch (Exception te) {
+                            reconnectTask.cancel(true);
+                            reconnected = false;
+                        }
+                        if (!reconnected) {
                             throw new java.io.IOException("Reconnection failed");
                         }
                         retryCount = 0;
@@ -709,9 +720,27 @@ public final class LoggerService extends Service {
                         }
                         
                         if (!toRemove.isEmpty()) {
-                            finalPids.removeAll(toRemove);
-                            for (PIDDefinition p : toRemove) {
-                                Log.w(TAG, "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
+                            // Never remove ALL PIDs — keep at least a minimum set
+                            // so the logger always has something to poll. Also
+                            // never blacklist core PIDs (RPM, Speed, etc.) that
+                            // are essential for derived sensor calculations.
+                            if (finalPids.size() - toRemove.size() < 3) {
+                                toRemove.clear();
+                            } else {
+                                toRemove.removeIf(p -> {
+                                    String key = p.key();
+                                    return key.contains("0100") || key.contains("010C") // RPM
+                                        || key.contains("010D") // Speed
+                                        || key.contains("0105") // Coolant
+                                        || key.contains("0104") // Load
+                                        || key.contains("010B"); // MAP
+                                });
+                            }
+                            if (!toRemove.isEmpty()) {
+                                finalPids.removeAll(toRemove);
+                                for (PIDDefinition p : toRemove) {
+                                    Log.w(TAG, "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
+                                }
                             }
                         }
 

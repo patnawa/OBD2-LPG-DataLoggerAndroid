@@ -2352,7 +2352,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         setConfigUiEnabled(false);
         watchdogHandler.removeCallbacks(connectionWatchdog);
-        watchdogHandler.postDelayed(connectionWatchdog, 20000);
+        watchdogHandler.postDelayed(connectionWatchdog, 45000);
 
         if (backgroundLoggingCheckbox.isChecked()) {
             startBackgroundLogging(config);
@@ -2416,6 +2416,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void stopLogging() {
         isConnecting = false;
         running = false;
+        isPaused = false; // Clear any stuck pause from diagnostic features
         watchdogHandler.removeCallbacks(connectionWatchdog);
         pendingBackgroundConfig = null; // cancel any deferred (permission-gated) start
         // Don't call currentDriver.disconnect() from the main thread — the
@@ -2482,6 +2483,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (active != null) {
                     active.isConnecting = false;
                     active.setStatus("Connected. Logging started.", R.color.accent);
+                    // Cancel the connection watchdog now that connect succeeded.
+                    // Without this, the 20s watchdog fires during slow VIN/DTC
+                    // initialization and kills the logger prematurely.
+                    active.watchdogHandler.removeCallbacks(active.connectionWatchdog);
                 }
             });
         }
@@ -2645,9 +2650,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         }
 
                         if (!toRemove.isEmpty()) {
-                            finalPids.removeAll(toRemove);
-                            for (PIDDefinition p : toRemove) {
-                                Log.w("OBD2Logger", "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
+                            // Never remove ALL PIDs — keep at least a minimum set
+                            // so the logger always has something to poll. Also
+                            // never blacklist core PIDs (RPM, Speed, etc.) that
+                            // are essential for derived sensor calculations.
+                            if (finalPids.size() - toRemove.size() < 3) {
+                                toRemove.clear();
+                            } else {
+                                toRemove.removeIf(p -> {
+                                    String key = p.key();
+                                    return key.contains("0100") || key.contains("010C") // RPM
+                                        || key.contains("010D") // Speed
+                                        || key.contains("0105") // Coolant
+                                        || key.contains("0104") // Load
+                                        || key.contains("010B"); // MAP
+                                });
+                            }
+                            if (!toRemove.isEmpty()) {
+                                finalPids.removeAll(toRemove);
+                                for (PIDDefinition p : toRemove) {
+                                    Log.w("OBD2Logger", "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
+                                }
                             }
                         }
 
@@ -6683,6 +6706,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     @Override
     protected void onDestroy() {
+        isPaused = false; // Clear any stuck pause from diagnostic features
         ExecutorService dtc = dtcExecutor;
         if (dtc != null) {
             dtc.shutdownNow();

@@ -97,6 +97,7 @@ public final class WiFiDriver extends ElmDriver {
             outputStream = socket.getOutputStream();
             connected = initializeElm327();
             if (connected) {
+                resetLiveness();
                 // Init succeeded — tighten per-read timeout so a dead adapter
                 // doesn't freeze the whole loop, but still long enough for
                 // multi-frame responses (VIN, DTC list, Mode 06).
@@ -182,7 +183,9 @@ public final class WiFiDriver extends ElmDriver {
                     break;
                 }
             }
-            return response.toString();
+            String result = response.toString();
+            trackResponseLiveness(result);
+            return result;
         } catch (IOException e) {
             android.util.Log.w("WiFiDriver", "sendCommand '" + command + "' failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             return "";

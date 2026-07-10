@@ -7,10 +7,12 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class ElmDriver extends BaseDriver {
+    // These markers indicate a genuine adapter/protocol failure that
+    // should trigger reconnection logic. "NO DATA" and "STOPPED" are
+    // deliberately excluded — they are normal ELM327 responses meaning
+    // "ECU has no value for this PID right now", NOT a connection error.
     private static final String[] FATAL_RESPONSE_MARKERS = {
             "UNABLE TO CONNECT",
-            "NO DATA",
-            "STOPPED",
             "CAN ERROR",
             "BUFFER FULL",
             "BUFFER SMALL", // vLinker uses "BUFFER SMALL" instead of "BUFFER FULL"

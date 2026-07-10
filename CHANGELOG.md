@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.8.0] - 2026-07-10
+### Fixed — Logger Random Stop (Comprehensive Fix)
+- **'NO DATA' Treated as Fatal — False PID Blacklisting** — The ELM327 response `"NO DATA"` (a normal response meaning "ECU has no value for this PID right now") was in the `FATAL_RESPONSE_MARKERS` list. This caused PIDs returning `NO DATA` at idle/startup (RPM=0, speed=0, fuel trims in open loop) to be permanently blacklisted after only 3 consecutive failures, depleting the PID list until the batch was empty. Removed `"NO DATA"` and `"STOPPED"` from fatal markers — they are now treated as normal null results.
+- **In-Process Connection Watchdog Falsely Killing Logger** — The 20-second watchdog (in-process mode) was only canceled by `LoggerService` callbacks, which never fire in in-process mode. So if connect + VIN read + DTC scan + PID detection took >20s (common on slow clones), the watchdog killed the logger mid-connect. Now cancels the watchdog immediately when `driver.connect()` succeeds. Timeout also raised from 20s → 45s.
+- **Stale `isConnected()` Flag — Dead Socket Never Detected** — `BaseDriver.isConnected()` returned a stale `true` when the Bluetooth/WiFi socket silently died (BT radio interference, adapter sleep, half-open TCP). The logger's reconnect logic never triggered. Added `trackResponseLiveness()` in `BaseDriver`: after 5 consecutive empty/null responses, `connected` is set to `false`, forcing the reconnect path. Implemented in `SerialDriver` (Bluetooth) and `WiFiDriver`.
+- **`isPaused` Stuck True — Diagnostic Features Freeze Logger** — The static `isPaused` flag could get stuck `true` if a diagnostic thread (DTC scan, battery test) was interrupted mid-operation, silently freezing the logger loop. Now explicitly reset to `false` in `stopLogging()` and `onDestroy()`.
+- **Core PIDs Permanently Blacklisted** — Runtime PID blacklisting could remove essential PIDs (RPM, Speed, Coolant, MAP, Load) and even deplete the list to zero. Now protects core PIDs from blacklisting and enforces a minimum floor of 3 PIDs.
+- **Reconnect `connect()` Could Hang Forever** — The reconnect path inside the logging loop called `driver.connect()` directly with no timeout, stalling the loop indefinitely on a dead adapter. Now wrapped in a `Future.get(30s)` timeout. Initial connect timeout also raised from 15s → 30s.
+
 ## [3.7.9] - 2026-07-10
 ### Fixed
 - **Air Density Dialog Top Cut Off** — The full-screen dialog's content started at the screen edge, hidden behind the status bar. Added window insets padding so content starts below the status bar properly.

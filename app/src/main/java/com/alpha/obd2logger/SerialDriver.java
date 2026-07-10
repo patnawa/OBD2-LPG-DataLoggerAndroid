@@ -76,7 +76,9 @@ public final class SerialDriver extends ElmDriver {
             inputStream = socket.getInputStream();
             outputStream = socket.getOutputStream();
             connected = initializeElm327();
-            if (!connected) {
+            if (connected) {
+                resetLiveness();
+            } else {
                 disconnect();
             }
             return connected;
@@ -150,7 +152,11 @@ public final class SerialDriver extends ElmDriver {
                     break;
                 }
             }
-            return response.toString();
+            String result = response.toString();
+            // Track liveness: consecutive empty responses mean the BT
+            // socket is half-open and needs reconnecting.
+            trackResponseLiveness(result);
+            return result;
         } catch (IOException ignored) {
             return "";
         } finally {
