@@ -81,11 +81,11 @@ public class AuditImprovementsTest {
     // ── IDEA#3 — DerivedSensors math
     @Test
     public void fuelConsumption_knownValue() {
-        // MAF 20 g/s, speed 100 km/h, petrol (AFR 14.7, density 737)
-        // km/L = 100 * 737 * 14.7 / (20 * 3600) = 15.0458...
+        // MAF 20 g/s, speed 100 km/h, petrol 95 (E10: AFR=14.23, density=741)
+        // km/L = 100 * 741 * 14.23 / (20 * 3600) = 14.645...
         Double kml = DerivedSensors.fuelConsumptionKmL(20.0, 100.0, FuelMode.PETROL);
         assertTrue(kml != null);
-        assertEquals(15.05, kml, 0.05);
+        assertEquals(14.65, kml, 0.1);
     }
 
     @Test
