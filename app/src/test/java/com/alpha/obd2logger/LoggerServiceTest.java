@@ -66,6 +66,7 @@ public class LoggerServiceTest {
         config.context = app;
         config.vin = "TESTVIN";
         config.enableApiServer = false;
+        config.showAirDensity = false; // disable weather API fetch in unit tests
 
         final AtomicInteger recordCount = new AtomicInteger(0);
         final AtomicReference<String> errorStatus = new AtomicReference<>();

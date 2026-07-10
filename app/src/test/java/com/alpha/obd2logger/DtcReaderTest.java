@@ -28,8 +28,14 @@ public class DtcReaderTest {
 
             @Override
             public String sendCommandRaw(String command) {
+                // Protocol probe — must return a valid response so scanSingleBus
+                // proceeds to the DTC scan. "41" = Mode 01 response prefix.
+                if ("0100".equals(command)) {
+                    return "41 04 00 00 00 00"; // PIDs 01-20 supported
+                }
+                // Mode 03 — Stored DTCs
                 if ("03".equals(command)) {
-                    // Standard response format: mode 43, 2 DTCs: P0171 (01 71) and P0300 (03 00)
+                    // Standard response: mode 43, 2 DTCs: P0171 (01 71) and P0300 (03 00)
                     return "43 02 01 71 03 00";
                 }
                 return "";

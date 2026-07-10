@@ -1,10 +1,42 @@
-# TunerMap Pro — OBD2 Petrol/LPG/CNG Data Logger Android
+# TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.6.0** | Professional-grade OBD2 vehicle diagnostics, LPG/CNG/Petrol tuning analysis, and AI Agent integration.
+**Version 3.7.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
-แอปพลิกเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์การจูนแก๊ส LPG/CNG และเชื่อมต่อกับ AI Agent ผ่าน REST API
+แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมือนต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.7.0 — Air Density System + Multi-Fuel Support
+
+### Banks iDash Style Air Density (AAD/MAD/BAD)
+- **Live Weather API** — Open-Meteo (free, no key) fetches humidity, temperature, pressure, wind via GPS. Cached 10 min
+- **AAD (Ambient Air Density)** — Air density around vehicle in lbs/1000ft³ (SAE J1349 standard = 72.2)
+- **MAD (Manifold Air Density)** — Air density in intake manifold
+- **BAD (Boost Air Density)** = MAD - AAD — density gain from forced induction
+- **Density Altitude**, **SAE J1349/J607 Correction Factors**, **Grains H2O**
+
+### 10 Advanced Formulas Beyond Banks iDash
+1. **OMD** — Oxygen Mass Density (true combustible O2, not just total air)
+2. **CE** — Compressor Efficiency (turbo health, 65-78% normal)
+3. **IC-EFF** — Intercooler Effectiveness (<60% = upgrade needed)
+4. **VE** — Volumetric Efficiency (cross-validates MAF sensor)
+5. **DCAFR** — Density-Corrected AFR (humidity-corrected mixture)
+6. **TMF** — Theoretical Mass Flow (independent MAF cross-check)
+7. **LVD** — LPG/CNG Vapor Displacement (critical for gaseous fuel)
+8. **ECC** — Evaporative Cooling Correction (charge cooling from fuel evap)
+9. **PDI** — Power Density Index (single number tracking power)
+10. **Dynamic SAE CF** — J1349 + J607 with delta comparison
+
+### Multi-Fuel Support — All 8 Thai Fuel Types
+- **Gasohol 91 (E10)**, **Gasohol 95 (E10)**, **E20**, **E85**
+- **LPG**, **NGV/CNG**
+- **Diesel B7**, **Diesel B20**
+- Each fuel has correct AFR, density, LHV, ethanol%, thermal efficiency
+- 8-color UI theme per fuel type
+- Backwards-compatible with existing CSV logs ("petrol", "lpg/cng")
+
+### 22 New Derived Columns Logged to CSV/JSONL
+AAD, MAD, BAD, density%, density altitude, SAE J1349 CF, grains, humidity, OMD, compressor eff, intercooler eff, VE, DCAFR, TMF, MAF deviation, LVD, effective density, evap cooling ΔT, evap-corrected MAD, PDI, SAE J607 CF, SAE CF delta
 
 ## What's New in 3.6.0 — Pro DTC Scanner Upgrade
 

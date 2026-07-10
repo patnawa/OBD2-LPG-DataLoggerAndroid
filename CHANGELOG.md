@@ -2,6 +2,69 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.0] - 2026-07-10
+### Air Density System + Multi-Fuel Support — Banks iDash style + beyond
+
+### Added — Banks iDash Style Air Density (AAD/MAD/BAD)
+- **WeatherProvider** — Fetches live weather data from Open-Meteo API (free, no API key required). Provides relative humidity, ambient temperature, sea-level pressure, and wind speed via GPS location. Cached for 10 minutes. Critical for air density calculations since OBD2/SAE J1979 does not define a humidity PID
+- **AirDensityMonitor** — Central coordinator merging data from 3 sources in priority order: OBD2 PIDs → Android phone sensors → Weather API → defaults. Feeds latest OBD2 batch values and computes all density formulas
+- **DerivedSensors air density methods**:
+  - `airDensityKgM3()` — Ideal gas law with Magnus vapor pressure formula: ρ = (Pd/(Rd×T)) + (Pv/(Rv×T))
+  - `ambientAirDensity()` (AAD) — lbs/1000ft³ using baro PID 0x33 + ambient temp PID 0x46
+  - `manifoldAirDensity()` (MAD) — lbs/1000ft³ using MAP PID 0x0B + IAT PID 0x0F
+  - `boostAirDensity()` (BAD) = MAD - AAD — additional density from forced induction
+  - `airDensityPercent()` — compared to SAE J1349 standard (72.2 lbs/1000ft³)
+  - `densityAltitudeFt()` — density altitude using pressure/temperature/humidity
+  - `saeJ1349CorrectionFactor()` — normalizes horsepower to standard conditions
+  - `grainsH2O()` — absolute humidity in grains per lb dry air
+
+### Added — 10 Advanced Formulas Beyond Banks iDash
+- **AdvancedAirDensity.java** — All formulas support petrol, E10, E20, E85, LPG, NGV, diesel B7, diesel B20
+  1. **OMD (Oxygen Mass Density)** — Isolates combustible O2 mass (not just total air). Banks shows total density, but N2/Ar/CO2 don't combust
+  2. **CE (Compressor Efficiency)** — Isentropic vs actual temperature rise. 65-78% normal, <55% = overspeed/choke
+  3. **IC-EFF (Intercooler Effectiveness)** — 70-85% good, <60% upgrade needed
+  4. **VE (Volumetric Efficiency)** — MAF vs theoretical flow (RPM/120 for 4-stroke). Cross-validates MAF sensor
+  5. **DCAFR (Density-Corrected AFR)** — Humidity-corrected true combustion mixture
+  6. **TMF (Theoretical Mass Flow)** — Independent MAF cross-check. Detects sensor drift
+  7. **LVD (LPG/CNG Vapor Displacement)** — Critical for gaseous fuel tuning. Diesel returns 0 (DI)
+  8. **ECC (Evaporative Cooling Correction)** — Charge cooling from fuel evaporation. Diesel/NGV = 0
+  9. **PDI (Power Density Index)** — Single dimensionless number tracking engine power output
+  10. **Dynamic SAE CF** — Both J1349 and J607 correction factors with delta comparison
+
+### Added — Multi-Fuel Support (All 8 Thai Fuel Types)
+- **FuelMode enum expanded**: LPG, NGV, PETROL (95 E10), PETROL_91 (E10), E20, E85, DIESEL (B7), B20
+- **FuelProperties.java** — Central database with correct AFR, density, LHV, ethanol%, thermal efficiency per fuel:
+  - Gasohol 91/95 (E10): AFR=14.23, 10% ethanol, density=741 g/L
+  - Gasohol E20: AFR=13.75, 20% ethanol, density=745 g/L
+  - Gasohol E85: AFR=9.77, 85% ethanol, density=783 g/L
+  - LPG: AFR=15.5, gaseous, density=510 g/L, LHV_vap=370 kJ/kg
+  - NGV/CNG: AFR=17.2, gaseous, density=0.72 g/L, no evap cooling
+  - Diesel B7: AFR=14.45, DI (no fuel trim), density=833 g/L
+  - Diesel B20: AFR=14.30, DI, density=835 g/L
+- **Helper methods**: `isGaseous()`, `isDiesel()`, `hasEthanol()`, `hasFuelTrim()`, `fromString()` for backwards-compatible log replay
+- **8-color UI theme** — Each fuel type has its own color (LPG=orange, NGV=green, E20=purple, E85=pink, diesel=gray, B20=teal, G91=indigo, G95=blue)
+- **FuelMapView** — Uses `isGaseous()` for petrol/lpg map grouping instead of binary enum comparison. Diesel and E20/E85 route to petrol map side
+
+### Changed
+- **DerivedSensors** — Fuel consumption now uses FuelProperties (accurate AFR/density per fuel type). Previous code used hardcoded petrol AFR=14.7 for all fuels
+- **LPGAnalyzer** — Recommendation text uses `isGaseous()` instead of binary PETROL check
+- **LogReplayParser** — Uses `FuelMode.fromString()` for all legacy + new fuel codes
+- **ApiServer** — Uses `FuelMode.fromString().isGaseous()` for map routing
+- **LoggerConfig** — Added `showAirDensity` (default true), `engineDisplacementCC` (default 1998), `ratedRPM` (default 6000)
+- **DataWriter** — Registers 22 new derived columns in CSV/JSONL: AAD, MAD, BAD, density%, density altitude, SAE J1349 CF, grains, humidity, OMD, compressor eff, intercooler eff, VE, DCAFR, TMF, MAF deviation, LVD, effective density, evap cooling ΔT, evap-corrected MAD, PDI, SAE J607 CF, SAE CF delta
+- **LoggerService** — Computes + logs all 22 air density derived values per record. Weather API refreshes every 10 min (cached)
+
+### Fixed
+- **DtcReaderTest** — Mock driver now responds to 0100 protocol probe (scanSingleBus requires this before scanning DTCs)
+- **LoggerServiceTest** — Disables `showAirDensity` in test config to prevent WeatherProvider network calls in Robolectric
+- **AuditImprovementsTest** — Updated fuel consumption expected value for E10 petrol (AFR=14.23 vs legacy 14.7)
+- **VE formula** — Corrected to use RPM/120 (4-stroke: one intake per 2 revs) instead of MAF×2/disp×RPM/60
+
+### No Patent Conflict
+- Banks patents (US 7,254,477 + 7,593,808) cover the *display method* of air density on a gauge
+- The underlying physics (ideal gas law, Magnus formula) is public domain
+- The 10 advanced formulas are original work not found in Banks iDash
+
 ## [3.6.0] - 2026-07-09
 ### Pro DTC Scanner Upgrade — 15 improvements for professional-grade diagnostics
 
