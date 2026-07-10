@@ -330,12 +330,18 @@ public final class LoggerService extends Service {
 
         // --- Initialize Air Density Monitor (Banks iDash style AAD/MAD/BAD) ---
         if (config.showAirDensity) {
-            airDensityMonitor = new AirDensityMonitor(this);
-            // Sync fetch — LoggerService runs on background thread so this is safe.
-            // The initial fetch populates humidity (not available via OBD2) before
-            // the first logging loop iteration, so the first record has AAD/MAD/BAD.
-            airDensityMonitor.refreshWeatherSync();
-            Log.i(TAG, "AirDensityMonitor initialized");
+            try {
+                airDensityMonitor = new AirDensityMonitor(this);
+                // Sync fetch — LoggerService runs on background thread so this is safe.
+                // The initial fetch populates humidity (not available via OBD2) before
+                // the first logging loop iteration, so the first record has AAD/MAD/BAD.
+                // Wrapped in try/catch: network may be unavailable (e.g. unit tests,
+                // offline environments) — air density falls back to default 50% RH.
+                airDensityMonitor.refreshWeatherSync();
+                Log.i(TAG, "AirDensityMonitor initialized");
+            } catch (Exception e) {
+                Log.w(TAG, "AirDensityMonitor init failed (weather unavailable) — using defaults", e);
+            }
         }
 
         // --- Auto-scan DTCs (module-aware, supports Ford MS-CAN) ---
