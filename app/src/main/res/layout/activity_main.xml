@@ -2235,6 +2235,244 @@
                         android:textColor="@color/text"
                         android:textSize="14sp" />
                 </com.google.android.material.card.MaterialCardView>
+
+                <!-- ===== AIR DENSITY PANEL ===== -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/airDensityCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:cardCornerRadius="16dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/accent">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="12dp">
+                            <View
+                                android:layout_width="4dp"
+                                android:layout_height="20dp"
+                                android:background="@color/accent"
+                                android:layout_marginEnd="8dp" />
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="AIR DENSITY (Banks iDash Style)"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:letterSpacing="0.03" />
+                            <TextView
+                                android:id="@+id/txtAirDensityWeather"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="RH: --% • --°C"
+                                android:textColor="@color/muted"
+                                android:textSize="10sp"
+                                android:singleLine="true" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:background="@drawable/bg_dtc_card"
+                                android:padding="10dp"
+                                android:layout_marginEnd="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="AAD" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtAAD" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/accent" android:textSize="20sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="lbs/1000ft³" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:background="@drawable/bg_dtc_card"
+                                android:padding="10dp"
+                                android:layout_marginStart="4dp"
+                                android:layout_marginEnd="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="MAD" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtMAD" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/accent" android:textSize="20sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="lbs/1000ft³" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:background="@drawable/bg_dtc_card"
+                                android:padding="10dp"
+                                android:layout_marginStart="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="BAD" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtBAD" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/accent" android:textSize="20sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="lbs/1000ft³" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                                android:orientation="vertical" android:gravity="center"
+                                android:background="@drawable/bg_dtc_card" android:padding="10dp" android:layout_marginEnd="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="Density %" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtDensityPct" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/primary" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="% of SAE J1349" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                                android:orientation="vertical" android:gravity="center"
+                                android:background="@drawable/bg_dtc_card" android:padding="10dp" android:layout_marginStart="4dp" android:layout_marginEnd="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="Density Alt" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtDensityAlt" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/primary" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="feet" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                                android:orientation="vertical" android:gravity="center"
+                                android:background="@drawable/bg_dtc_card" android:padding="10dp" android:layout_marginStart="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="SAE J1349 CF" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtSAECF" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/primary" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="correction factor" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                                android:orientation="vertical" android:gravity="center"
+                                android:background="@drawable/bg_dtc_card" android:padding="10dp" android:layout_marginEnd="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="OMD" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtOMD" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/text" android:textSize="16sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="O₂ Mass lbs/1000ft³" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                                android:orientation="vertical" android:gravity="center"
+                                android:background="@drawable/bg_dtc_card" android:padding="10dp" android:layout_marginStart="4dp" android:layout_marginEnd="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="Comp Eff" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtCompEff" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/text" android:textSize="16sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="% (65-78% normal)" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                                android:orientation="vertical" android:gravity="center"
+                                android:background="@drawable/bg_dtc_card" android:padding="10dp" android:layout_marginStart="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="IC Eff" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtICEff" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/text" android:textSize="16sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="% (>70% good)" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                                android:orientation="vertical" android:gravity="center"
+                                android:background="@drawable/bg_dtc_card" android:padding="10dp" android:layout_marginEnd="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="VE" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtVE" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/text" android:textSize="16sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="Volumetric Eff %" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                                android:orientation="vertical" android:gravity="center"
+                                android:background="@drawable/bg_dtc_card" android:padding="10dp" android:layout_marginStart="4dp" android:layout_marginEnd="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="PDI" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtPDI" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/text" android:textSize="16sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="Power Density Index" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                                android:orientation="vertical" android:gravity="center"
+                                android:background="@drawable/bg_dtc_card" android:padding="10dp" android:layout_marginStart="4dp">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="Grains" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/txtGrains" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="--" android:textColor="@color/text" android:textSize="16sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:text="H₂O grains/lb" android:textColor="@color/muted" android:textSize="8sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
 
             <!-- ===== GAUGES TAB ===== -->
