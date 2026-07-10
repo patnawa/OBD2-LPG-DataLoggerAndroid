@@ -660,12 +660,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             });
         }
         boolean isApiServerEnabled = prefs.getBoolean("apiServerEnabled", false);
-        apiServerCheckbox.setChecked(isApiServerEnabled);
-        
-        apiServerCheckbox.setOnCheckedChangeListener((btn, isChecked) -> {
-            prefs.edit().putBoolean("apiServerEnabled", isChecked).apply();
-            updateApiServerIpText(isChecked);
-        });
+        if (apiServerCheckbox != null) {
+            apiServerCheckbox.setChecked(isApiServerEnabled);
+            apiServerCheckbox.setOnCheckedChangeListener((btn, isChecked) -> {
+                prefs.edit().putBoolean("apiServerEnabled", isChecked).apply();
+                updateApiServerIpText(isChecked);
+            });
+        }
         updateApiServerIpText(isApiServerEnabled);
         
         btnSelectLogFolder = findViewById(R.id.btnSelectLogFolder);
@@ -2939,11 +2940,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     @Override
     public void onRecord(DataRecord record, int count) {
-        if (isFinishing() || isDestroyed()) return;
+        if (isFinishing() || isDestroyed() || record == null) return;
         isConnecting = false;
         watchdogHandler.removeCallbacks(connectionWatchdog);
         runOnUiThread(() -> {
-            if (isFinishing() || isDestroyed()) return;
+            if (isFinishing() || isDestroyed() || record == null) return;
             latestDataRecord = record;
             if (fabLog != null && running) {
                 setFabState(true);
@@ -2977,6 +2978,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void updateFuelMap(DataRecord record) {
+        if (record == null) return;
         Double rpm = valueByKey(record, "01_0C");
         Double map = valueByKey(record, "01_0B");
         Double stft = valueByKey(record, "01_06");
@@ -3412,6 +3414,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // --- Dashboard updates ---
 
     private void updateDashboard(DataRecord record) {
+        if (record == null) return;
         TextView[] values = {dashValue1, dashValue2, dashValue3, dashValue4};
         for (int i=0; i<4; i++) {
             if ("none".equalsIgnoreCase(prefDashPids[i])) {
@@ -3475,6 +3478,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void updateGraphs(DataRecord record) {
+        if (record == null) return;
         GraphView[] graphs = {graph1, graph2, graph3, graph4, graph5};
         for (int i=0; i<5; i++) {
             if ("none".equalsIgnoreCase(prefGraphPids[i])) {
@@ -3488,6 +3492,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void updateFuelTrim(DataRecord record) {
+        if (record == null) return;
         Double stft = valueByKey(record, "01_06");
         Double ltft = valueByKey(record, "01_07");
         if (stft != null) {
@@ -5946,11 +5951,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void renderReadings(DataRecord record) {
+        if (record == null) return;
         updateGridContainer(readingsContainer, readingRowCache, readingStatusCache, record, false);
     }
 
     private void updateGridContainer(LinearLayout container, java.util.Map<String, TextView> rowCache, java.util.Map<String, TextView> statusCache, DataRecord record, boolean isGauge) {
-        if (container == null) return;
+        if (container == null || record == null || record.getSamples() == null) return;
         // Count visible samples (after filtering) for child count check
         int visibleCount = 0;
         for (SensorSample sample : record.getSamples()) {
@@ -6310,15 +6316,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private Double valueByKey(DataRecord record, String key) {
+        if (record == null || record.getSamples() == null || key == null) return null;
         for (SensorSample sample : record.getSamples()) {
-            if (sample.getPidKey().equals(key)) return sample.getValue();
+            if (sample != null && key.equals(sample.getPidKey())) return sample.getValue();
         }
         return null;
     }
 
     private Double valueByName(DataRecord record, String name) {
+        if (record == null || record.getSamples() == null || name == null) return null;
         for (SensorSample sample : record.getSamples()) {
-            if (sample.getName().equals(name)) return sample.getValue();
+            if (sample != null && name.equals(sample.getName())) return sample.getValue();
         }
         return null;
     }
