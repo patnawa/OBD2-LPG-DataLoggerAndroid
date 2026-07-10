@@ -108,6 +108,10 @@ public final class AirDensityMonitor {
             return;
         }
 
+        // Guard against network access in test environments (Robolectric doesn't
+        // have real network — this would block and timeout unit tests).
+        if (context == null) return;
+
         WeatherProvider.WeatherData data = WeatherProvider.fetchSync(context);
         if (data != null) {
             weatherHumidity = data.humidity;
