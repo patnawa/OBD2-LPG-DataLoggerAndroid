@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.2] - 2026-07-10
+### Added
+- **Air Density Dashboard Panel** — Dedicated UI panel in Dashboard tab showing all 12 air density values in a symmetric 4x3 grid: AAD/MAD/BAD, Density%/Density Alt/SAE CF, OMD/Comp Eff/IC Eff, VE/PDI/Grains. Panel auto-shows when Air Density is enabled in Settings, hides when disabled. Weather info (RH, temp, baro) shown in panel header
+
 ## [3.7.1] - 2026-07-10
 ### Added
 - **PID Filter for Live Readings** — New "Filter PIDs" button in Logs tab with bottom sheet dialog. User can select which PIDs to display via checkbox list with search. Reduces UI load on slow/cheap OBD2 adapters where 50+ PID cards (raw + 22 derived air density) caused lag and freezes

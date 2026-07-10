@@ -164,6 +164,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private com.google.android.material.button.MaterialButton fabLog;
     private FuelMapView fuelMapView;
     private AirDensityMonitor airDensityMonitor;
+    // --- UI: Air Density Panel ---
+    private View airDensityCard;
+    private TextView txtAAD, txtMAD, txtBAD, txtDensityPct, txtDensityAlt, txtSAECF;
+    private TextView txtOMD, txtCompEff, txtICEff, txtVE, txtPDI, txtGrains, txtAirDensityWeather;
 
     // --- UI: History tab ---
     private View panelHistory;
@@ -691,6 +695,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dashTuningStatus = findViewById(R.id.dashTuningStatus);
         dashEctText = findViewById(R.id.dashEctText);
         dashWarmupProgress = findViewById(R.id.dashWarmupProgress);
+
+        // Air Density Panel
+        airDensityCard = findViewById(R.id.airDensityCard);
+        txtAAD = findViewById(R.id.txtAAD);
+        txtMAD = findViewById(R.id.txtMAD);
+        txtBAD = findViewById(R.id.txtBAD);
+        txtDensityPct = findViewById(R.id.txtDensityPct);
+        txtDensityAlt = findViewById(R.id.txtDensityAlt);
+        txtSAECF = findViewById(R.id.txtSAECF);
+        txtOMD = findViewById(R.id.txtOMD);
+        txtCompEff = findViewById(R.id.txtCompEff);
+        txtICEff = findViewById(R.id.txtICEff);
+        txtVE = findViewById(R.id.txtVE);
+        txtPDI = findViewById(R.id.txtPDI);
+        txtGrains = findViewById(R.id.txtGrains);
+        txtAirDensityWeather = findViewById(R.id.txtAirDensityWeather);
 
         fuelSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -2790,6 +2810,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 active.updateFuelMap(record);
                                 active.updateFuelTrim(record);
                                 active.updateTuningData(record);
+                                active.updateAirDensityPanel(record);
                                 active.renderReadings(record);
                                 active.updateStatusStrip(record);
                                 active.updateBatteryMonitor(record);
@@ -2912,6 +2933,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             updateFuelMap(record);
             updateFuelTrim(record);
             updateTuningData(record);
+            updateAirDensityPanel(record);
             renderReadings(record);
             updateLiveMetrics(count, loggingStartTime);
             updateBatteryMonitor(record);
@@ -5642,6 +5664,66 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             txtFilterStatus.setText(hideDerivedSensors ? "Showing raw PIDs (derived hidden)" : "Showing all PIDs");
         } else {
             txtFilterStatus.setText(total + " PIDs selected");
+        }
+    }
+
+    private void updateAirDensityPanel(DataRecord record) {
+        if (airDensityCard == null) return;
+
+        // Show/hide panel based on config
+        boolean showAir = (activeInProcessConfig != null && activeInProcessConfig.showAirDensity)
+                || (LoggerService.isLoggingActive() && LoggerService.getInstance() != null
+                    && LoggerService.getInstance().getConfig() != null
+                    && LoggerService.getInstance().getConfig().showAirDensity);
+        airDensityCard.setVisibility(showAir ? View.VISIBLE : View.GONE);
+        if (!showAir) return;
+
+        // Extract air density values from record samples
+        Double aad = null, mad = null, bad = null, densPct = null, densAlt = null, saeCF = null;
+        Double omd = null, compEff = null, icEff = null, ve = null, pdi = null, grains = null;
+        Double humidity = null;
+
+        for (SensorSample s : record.getSamples()) {
+            String key = s.getPidKey();
+            if (key == null) continue;
+            switch (key) {
+                case "derived_aad": aad = s.getValue(); break;
+                case "derived_mad": mad = s.getValue(); break;
+                case "derived_bad": bad = s.getValue(); break;
+                case "derived_density_pct": densPct = s.getValue(); break;
+                case "derived_density_alt": densAlt = s.getValue(); break;
+                case "derived_sae_cf": saeCF = s.getValue(); break;
+                case "derived_omd": omd = s.getValue(); break;
+                case "derived_compressor_eff": compEff = s.getValue(); break;
+                case "derived_intercooler_eff": icEff = s.getValue(); break;
+                case "derived_ve": ve = s.getValue(); break;
+                case "derived_pdi": pdi = s.getValue(); break;
+                case "derived_grains": grains = s.getValue(); break;
+                case "derived_humidity": humidity = s.getValue(); break;
+            }
+        }
+
+        if (txtAAD != null) txtAAD.setText(aad != null ? String.format(Locale.US, "%.1f", aad) : "--");
+        if (txtMAD != null) txtMAD.setText(mad != null ? String.format(Locale.US, "%.1f", mad) : "--");
+        if (txtBAD != null) txtBAD.setText(bad != null ? String.format(Locale.US, "%.1f", bad) : "--");
+        if (txtDensityPct != null) txtDensityPct.setText(densPct != null ? String.format(Locale.US, "%.0f%%", densPct) : "--");
+        if (txtDensityAlt != null) txtDensityAlt.setText(densAlt != null ? String.format(Locale.US, "%,d", Math.round(densAlt)) : "--");
+        if (txtSAECF != null) txtSAECF.setText(saeCF != null ? String.format(Locale.US, "%.3f", saeCF) : "--");
+        if (txtOMD != null) txtOMD.setText(omd != null ? String.format(Locale.US, "%.1f", omd) : "--");
+        if (txtCompEff != null) txtCompEff.setText(compEff != null ? String.format(Locale.US, "%.0f%%", compEff) : "--");
+        if (txtICEff != null) txtICEff.setText(icEff != null ? String.format(Locale.US, "%.0f%%", icEff) : "--");
+        if (txtVE != null) txtVE.setText(ve != null ? String.format(Locale.US, "%.0f%%", ve) : "--");
+        if (txtPDI != null) txtPDI.setText(pdi != null ? String.format(Locale.US, "%.2f", pdi) : "--");
+        if (txtGrains != null) txtGrains.setText(grains != null ? String.format(Locale.US, "%.0f", grains) : "--");
+
+        // Weather info in header
+        if (txtAirDensityWeather != null && humidity != null) {
+            Double baro = valueByKey(record, "01_33");
+            Double ambient = valueByKey(record, "01_46");
+            String weatherStr = String.format(Locale.US, "RH: %.0f%%", humidity);
+            if (ambient != null) weatherStr += String.format(Locale.US, " • %.0f°C", ambient);
+            if (baro != null) weatherStr += String.format(Locale.US, " • %.0fkPa", baro);
+            txtAirDensityWeather.setText(weatherStr);
         }
     }
 

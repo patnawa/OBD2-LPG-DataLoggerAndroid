@@ -1,10 +1,18 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.7.1** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.7.2** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมือนต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.7.2 — Air Density Dashboard Panel
+
+### Dedicated Air Density UI
+- New panel in Dashboard tab with symmetric 4x3 grid showing all 12 air density values
+- AAD/MAD/BAD, Density %, Density Altitude, SAE J1349 CF, OMD, Compressor Efficiency, Intercooler Effectiveness, VE, PDI, Grains H2O
+- Auto-shows/hides based on Air Density setting toggle
+- Live weather data (RH, temperature, barometric pressure) in panel header
 
 ## What's New in 3.7.1 — PID Filter + Bug Fixes
 
