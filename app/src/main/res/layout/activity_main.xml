@@ -3110,6 +3110,37 @@
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
+                    <!-- Live PID Filter Button -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnFilterPids"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:text="Filter PIDs"
+                            android:textColor="@color/accent"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            app:icon="@drawable/ic_settings"
+                            app:iconSize="16dp"
+                            app:iconTint="@color/accent"
+                            app:cornerRadius="8dp" />
+                        <TextView
+                            android:id="@+id/txtFilterStatus"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Showing all PIDs"
+                            android:textColor="@color/muted"
+                            android:textSize="11sp"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
+
                     <LinearLayout
                         android:id="@+id/readingsContainer"
                         android:layout_width="match_parent"

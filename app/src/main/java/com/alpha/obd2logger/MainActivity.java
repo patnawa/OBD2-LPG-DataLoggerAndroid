@@ -154,6 +154,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
     };
     private LinearLayout readingsContainer;
+    private com.google.android.material.button.MaterialButton btnFilterPids;
+    private TextView txtFilterStatus;
+    // PID filter for Live Readings tab — null = show all, non-empty = show only listed keys
+    private java.util.Set<String> visiblePidsFilter = null;
+    // Default: hide derived sensors (derived_*) in live readings
+    private boolean hideDerivedSensors = true;
 
     private com.google.android.material.button.MaterialButton fabLog;
     private FuelMapView fuelMapView;
@@ -721,6 +727,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             public void onNothingSelected(AdapterView<?> parent) {}
         });
         fuelSpinner.setSelection(2); // Default to Petrol (position 2) on startup
+
+        // ── Live PID Filter button ──
+        if (btnFilterPids != null) {
+            btnFilterPids.setOnClickListener(v -> showPidFilterDialog());
+        }
+
         statusText = findViewById(R.id.statusText);
         countText = findViewById(R.id.countText);
         
@@ -770,6 +782,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         sessionStatusText = findViewById(R.id.sessionStatusText);
         sessionStatusDotCard = findViewById(R.id.sessionStatusDotCard);
         readingsContainer = findViewById(R.id.readingsContainer);
+        btnFilterPids = findViewById(R.id.btnFilterPids);
+        txtFilterStatus = findViewById(R.id.txtFilterStatus);
         
         fuelMapView = findViewById(R.id.fuelMapView);
         
@@ -931,6 +945,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         for (int i=0; i<4; i++) prefGaugePids[i] = prefs.getString("gauge_" + i, prefGaugePids[i]);
         for (int i=0; i<4; i++) prefDashPids[i] = prefs.getString("dash_" + i, prefDashPids[i]);
         for (int i=0; i<5; i++) prefGraphPids[i] = prefs.getString("graph_" + i, prefGraphPids[i]);
+        // Load PID filter for Live Readings
+        hideDerivedSensors = prefs.getBoolean("pref_hide_derived", true);
+        java.util.Set<String> savedFilter = prefs.getStringSet("pref_pid_filter", null);
+        if (savedFilter != null && !savedFilter.isEmpty()) {
+            visiblePidsFilter = new java.util.HashSet<>(savedFilter);
+        } else {
+            visiblePidsFilter = new java.util.HashSet<>();
+        }
+        updateFilterStatusText();
         
         // Setup Long Click Listeners
         View[] gaugeCards = {findViewById(R.id.gaugeCard1), findViewById(R.id.gaugeCard2), findViewById(R.id.gaugeCard3), findViewById(R.id.gaugeCard4)};
@@ -5396,6 +5419,232 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private final java.util.Map<String, TextView> gaugeRowCache = new java.util.HashMap<>();
     private final java.util.Map<String, TextView> gaugeStatusCache = new java.util.HashMap<>();
 
+    private void showPidFilterDialog() {
+        com.google.android.material.bottomsheet.BottomSheetDialog dialog =
+                new com.google.android.material.bottomsheet.BottomSheetDialog(this);
+
+        android.widget.LinearLayout root = new android.widget.LinearLayout(this);
+        root.setOrientation(android.widget.LinearLayout.VERTICAL);
+        root.setBackgroundColor(getColorCompat(R.color.surface));
+        int padding = (int) (16 * getResources().getDisplayMetrics().density);
+        root.setPadding(padding, padding, padding, padding);
+
+        android.widget.TextView titleText = new android.widget.TextView(this);
+        titleText.setText("เลือก PID ที่จะแสดง / Select PIDs to Display");
+        titleText.setTextColor(getColorCompat(R.color.text));
+        titleText.setTextSize(18);
+        titleText.setTypeface(null, android.graphics.Typeface.BOLD);
+        titleText.setPadding(0, 0, 0, (int)(4 * getResources().getDisplayMetrics().density));
+        root.addView(titleText);
+
+        android.widget.TextView subTitle = new android.widget.TextView(this);
+        subTitle.setText("เลือกเฉพาะ PID ที่ต้องการเห็นในหน้า Live Readings\nช่วยลดโหลด UI เมื่อใช้อะแดปเตอร์ช้า");
+        subTitle.setTextColor(getColorCompat(R.color.muted));
+        subTitle.setTextSize(12);
+        subTitle.setPadding(0, 0, 0, (int)(8 * getResources().getDisplayMetrics().density));
+        root.addView(subTitle);
+
+        // "Show All" button
+        com.google.android.material.button.MaterialButton showAllBtn =
+                new com.google.android.material.button.MaterialButton(this);
+        showAllBtn.setText("แสดงทั้งหมด (Show All PIDs)");
+        showAllBtn.setTextColor(getColorCompat(R.color.background));
+        showAllBtn.setCornerRadius(8);
+        com.google.android.material.button.MaterialButton toggleDerivedBtn =
+                new com.google.android.material.button.MaterialButton(this);
+        toggleDerivedBtn.setText(hideDerivedSensors ? "แสดง Derived Sensors (AAD/MAD/BAD...)" : "ซ่อน Derived Sensors");
+        toggleDerivedBtn.setTextColor(getColorCompat(R.color.accent));
+        toggleDerivedBtn.setCornerRadius(8);
+        android.widget.LinearLayout btnRow = new android.widget.LinearLayout(this);
+        btnRow.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        btnRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        android.widget.LinearLayout.LayoutParams showAllLp = new android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        showAllBtn.setLayoutParams(showAllLp);
+        toggleDerivedBtn.setLayoutParams(new android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        btnRow.addView(showAllBtn);
+        btnRow.addView(toggleDerivedBtn);
+        btnRow.setPadding(0, 0, 0, (int)(12 * getResources().getDisplayMetrics().density));
+        root.addView(btnRow);
+
+        // Search bar
+        android.widget.EditText searchBar = new android.widget.EditText(this);
+        searchBar.setHint("ค้นหา PID... (Search)");
+        searchBar.setHintTextColor(getColorCompat(R.color.muted));
+        searchBar.setTextColor(getColorCompat(R.color.text));
+        android.graphics.drawable.GradientDrawable searchGd = new android.graphics.drawable.GradientDrawable();
+        searchGd.setCornerRadius(8 * getResources().getDisplayMetrics().density);
+        searchGd.setColor(getColorCompat(R.color.surface3));
+        searchBar.setBackground(searchGd);
+        searchBar.setTextSize(14);
+        searchBar.setPadding(padding, padding / 2, padding, padding / 2);
+        searchBar.setSingleLine(true);
+        android.widget.LinearLayout.LayoutParams searchParams = new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+        searchParams.setMargins(0, 0, 0, (int)(8 * getResources().getDisplayMetrics().density));
+        searchBar.setLayoutParams(searchParams);
+        root.addView(searchBar);
+
+        // Checkbox list
+        android.widget.ListView listView = new android.widget.ListView(this);
+        listView.setDivider(null);
+        listView.setDividerHeight(0);
+        listView.setSelector(android.R.color.transparent);
+        android.widget.LinearLayout.LayoutParams listParams = new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT, (int) (350 * getResources().getDisplayMetrics().density));
+        listView.setLayoutParams(listParams);
+        root.addView(listView);
+
+        // Build list of all PIDs (raw + derived)
+        java.util.List<PIDDefinition> allPids = PIDCatalogue.getAll();
+        // Also add derived sensor keys that aren't in the catalogue
+        java.util.List<String> derivedKeys = new java.util.ArrayList<>();
+        derivedKeys.add("derived_fuel_kmL");
+        derivedKeys.add("derived_fuel_l100");
+        derivedKeys.add("derived_boost_kpa");
+        derivedKeys.add("derived_boost_psi");
+        derivedKeys.add("derived_dpf_health");
+        derivedKeys.add("derived_dpf_regen");
+        derivedKeys.add("derived_aad");
+        derivedKeys.add("derived_mad");
+        derivedKeys.add("derived_bad");
+        derivedKeys.add("derived_density_pct");
+        derivedKeys.add("derived_density_alt");
+        derivedKeys.add("derived_sae_cf");
+        derivedKeys.add("derived_grains");
+        derivedKeys.add("derived_humidity");
+        derivedKeys.add("derived_omd");
+        derivedKeys.add("derived_compressor_eff");
+        derivedKeys.add("derived_intercooler_eff");
+        derivedKeys.add("derived_ve");
+        derivedKeys.add("derived_dcafr");
+        derivedKeys.add("derived_tmf");
+        derivedKeys.add("derived_maf_dev");
+        derivedKeys.add("derived_lvd");
+        derivedKeys.add("derived_eff_density");
+        derivedKeys.add("derived_ecc_dt");
+        derivedKeys.add("derived_ecc_mad");
+        derivedKeys.add("derived_pdi");
+        derivedKeys.add("derived_sae_j607");
+        derivedKeys.add("derived_sae_cf_delta");
+
+        java.util.List<String> allKeys = new java.util.ArrayList<>();
+        java.util.Map<String, String> keyToName = new java.util.HashMap<>();
+        for (PIDDefinition p : allPids) {
+            allKeys.add(p.key());
+            keyToName.put(p.key(), p.getName());
+        }
+        for (String dk : derivedKeys) {
+            if (!allKeys.contains(dk)) {
+                allKeys.add(dk);
+                keyToName.put(dk, dk.replace("derived_", "").replace("_", " ").toUpperCase());
+            }
+        }
+
+        // Current filter state
+        if (visiblePidsFilter == null) {
+            visiblePidsFilter = new java.util.HashSet<>();
+        }
+        final java.util.Set<String> filterSet = visiblePidsFilter;
+
+        // Adapter
+        class FilterAdapter extends android.widget.BaseAdapter {
+            java.util.List<String> filteredKeys = new java.util.ArrayList<>(allKeys);
+
+            void filter(String text) {
+                filteredKeys.clear();
+                if (text.isEmpty()) {
+                    filteredKeys.addAll(allKeys);
+                } else {
+                    String q = text.toLowerCase();
+                    for (String k : allKeys) {
+                        String name = keyToName.getOrDefault(k, k);
+                        if (k.toLowerCase().contains(q) || name.toLowerCase().contains(q)) {
+                            filteredKeys.add(k);
+                        }
+                    }
+                }
+                notifyDataSetChanged();
+            }
+
+            @Override public int getCount() { return filteredKeys.size(); }
+            @Override public Object getItem(int pos) { return filteredKeys.get(pos); }
+            @Override public long getItemId(int pos) { return pos; }
+
+            @Override
+            public View getView(int pos, View convertView, android.view.ViewGroup parent) {
+                String key = filteredKeys.get(pos);
+                String name = keyToName.getOrDefault(key, key);
+                boolean isDerived = key.startsWith("derived_");
+                boolean isChecked = filterSet.contains(key);
+
+                android.widget.CheckBox cb = new android.widget.CheckBox(MainActivity.this);
+                cb.setText(name + "\n  (" + key + ")");
+                cb.setTextSize(13);
+                cb.setTextColor(getColorCompat(R.color.text));
+                cb.setChecked(isChecked);
+                cb.setTag(key);
+                cb.setPadding((int)(8 * getResources().getDisplayMetrics().density), (int)(6 * getResources().getDisplayMetrics().density), 0, (int)(6 * getResources().getDisplayMetrics().density));
+                cb.setOnCheckedChangeListener((button, checked) -> {
+                    if (checked) {
+                        filterSet.add((String) button.getTag());
+                    } else {
+                        filterSet.remove((String) button.getTag());
+                    }
+                });
+                if (isDerived) {
+                    cb.setAlpha(0.7f);
+                }
+                return cb;
+            }
+        }
+
+        FilterAdapter adapter = new FilterAdapter();
+        listView.setAdapter(adapter);
+
+        searchBar.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(android.text.Editable s) { adapter.filter(s.toString()); }
+        });
+
+        showAllBtn.setOnClickListener(v -> {
+            filterSet.clear();
+            filterSet.addAll(allKeys);
+            adapter.notifyDataSetChanged();
+            updateFilterStatusText();
+        });
+
+        toggleDerivedBtn.setOnClickListener(v -> {
+            hideDerivedSensors = !hideDerivedSensors;
+            getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putBoolean("pref_hide_derived", hideDerivedSensors).apply();
+            toggleDerivedBtn.setText(hideDerivedSensors ? "แสดง Derived Sensors" : "ซ่อน Derived Sensors");
+            updateFilterStatusText();
+        });
+
+        // Save filter on dismiss
+        dialog.setOnDismissListener(d -> {
+            getSharedPreferences("OBD2Prefs", MODE_PRIVATE)
+                .edit()
+                .putStringSet("pref_pid_filter", filterSet)
+                .apply();
+            updateFilterStatusText();
+            clearReadings();
+        });
+
+        dialog.setContentView(root);
+        dialog.show();
+    }
+
+    private void updateFilterStatusText() {
+        if (txtFilterStatus == null) return;
+        int total = visiblePidsFilter != null ? visiblePidsFilter.size() : 0;
+        if (total == 0) {
+            txtFilterStatus.setText(hideDerivedSensors ? "Showing raw PIDs (derived hidden)" : "Showing all PIDs");
+        } else {
+            txtFilterStatus.setText(total + " PIDs selected");
+        }
+    }
+
     private void renderReadings(DataRecord record) {
         updateGridContainer(readingsContainer, readingRowCache, readingStatusCache, record, false);
         updateGridContainer(gaugeReadingsContainer, gaugeRowCache, gaugeStatusCache, record, true);
@@ -5403,7 +5652,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void updateGridContainer(LinearLayout container, java.util.Map<String, TextView> rowCache, java.util.Map<String, TextView> statusCache, DataRecord record, boolean isGauge) {
         if (container == null) return;
-        if (container.getChildCount() != (record.getSamples().size() + 1) / 2) {
+        // Count visible samples (after filtering) for child count check
+        int visibleCount = 0;
+        for (SensorSample sample : record.getSamples()) {
+            String pidKey = sample.getPidKey();
+            if (visiblePidsFilter != null && !visiblePidsFilter.isEmpty()) {
+                if (!visiblePidsFilter.contains(pidKey)) continue;
+            } else if (hideDerivedSensors && pidKey != null && pidKey.startsWith("derived_")) {
+                continue;
+            }
+            visibleCount++;
+        }
+        if (container.getChildCount() != (visibleCount + 1) / 2) {
             container.removeAllViews();
             rowCache.clear();
             statusCache.clear();
@@ -5416,6 +5676,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         for (SensorSample sample : record.getSamples()) {
             String pidName = sample.getName();
             String pidKey = sample.getPidKey();
+
+            // ── PID Filter: skip samples the user didn't select ──
+            if (visiblePidsFilter != null && !visiblePidsFilter.isEmpty()) {
+                if (!visiblePidsFilter.contains(pidKey)) continue;
+            } else if (hideDerivedSensors && pidKey != null && pidKey.startsWith("derived_")) {
+                continue;
+            }
+
             Double val = sample.getValue();
 
             // Track Min/Max/Avg values
