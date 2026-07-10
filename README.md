@@ -1,10 +1,21 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.7.8** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.7.9** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมือนต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.7.9 — AeroDensity Intelligence Rebrand & UI Fixes
+
+### Fixed
+- **Air Density Dialog Top Cut Off** — Content was hidden behind the status bar. Fixed with window insets padding.
+- **Toolbar Icon Re-arranged** — Air Density icon now sits directly next to the Settings icon on the right side.
+
+### Changed
+- **Removed "Banks iDash" Branding** — All user-visible references removed from the entire codebase.
+- **Renamed to "AeroDensity Intelligence"** — Dialog title, dashboard panel, settings description, and toolbar all use the new name.
+- **Dialog Icon Fixed** — Replaced mismatched speedometer icon with the correct air density icon.
 
 ## What's New in 3.7.8 — Logger Random Stop Fix
 

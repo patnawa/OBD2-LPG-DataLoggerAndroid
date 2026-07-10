@@ -243,7 +243,7 @@ public final class AirDensityMonitor {
     }
 
     /**
-     * Compute all advanced air-density values (10 formulas beyond Banks).
+     * Compute all advanced air-density values (10 formulas beyond standard).
      * Requires engine displacement + RPM + MAF + lambda from the OBD2 batch.
      *
      * @param mafGs    MAF sensor reading (g/s)

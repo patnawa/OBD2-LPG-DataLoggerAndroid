@@ -328,7 +328,7 @@ public final class LoggerService extends Service {
             }
         }
 
-        // --- Initialize Air Density Monitor (Banks iDash style AAD/MAD/BAD) ---
+        // --- Initialize Air Density Monitor (AAD/MAD/BAD) ---
         if (config.showAirDensity) {
             try {
                 airDensityMonitor = new AirDensityMonitor(this);
@@ -578,7 +578,7 @@ public final class LoggerService extends Service {
                             }
                         }
 
-                        // ── Air Density (Banks iDash AAD/MAD/BAD) ──────────────
+                        // ── Air Density (AAD/MAD/BAD) ──────────────
                         // Computes ambient/manifold/boost air density using:
                         //   - OBD2 PIDs (baro, ambient temp, MAP, IAT)
                         //   - Weather API humidity (not available via OBD2)
@@ -630,7 +630,7 @@ public final class LoggerService extends Service {
                                 samples.add(new SensorSample("derived_humidity", "Relative Humidity",
                                         dr.humidity, "%", "ok"));
 
-                                // ── Advanced Air Density (10 formulas beyond Banks) ──
+                                // ── Advanced Air Density (10 formulas beyond standard) ──
                                 Double rpmValue = batch.get("Engine RPM");
                                 Double lambdaValue = batch.get("Lambda (B1S1)");
                                 if (lambdaValue == null) lambdaValue = batch.get("Wideband Lambda (B1S1)");

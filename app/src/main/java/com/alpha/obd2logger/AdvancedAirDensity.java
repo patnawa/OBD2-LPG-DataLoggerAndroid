@@ -1,12 +1,12 @@
 package com.alpha.obd2logger;
 
 /**
- * Advanced Air Density & Engine Performance Calculations — beyond Banks iDash.
+ * Advanced Air Density & Engine Performance Calculations — beyond standard AAD/MAD/BAD.
  *
- * Banks iDash (Gale Banks Engineering, US Patents 7,254,477 + 7,593,808)
+ * standard AAD/MAD/BAD systems
  * covers *displaying* air density on a gauge. The underlying physics (ideal gas
  * law) is public domain. This class extends the concept with 10 additional
- * calculations that Banks does NOT offer, giving more accurate and actionable
+ * calculations that standard systems do not offer, giving more accurate and actionable
  * insight for petrol, diesel, LPG, and CNG/NGV engines.
  *
  * All formulas work across fuel types. Fuel-specific constants (AFR, LHV,
@@ -17,7 +17,7 @@ package com.alpha.obd2logger;
  * ─────────────────────────────────────────────────────────────────
  *
  * 1. OXYGEN MASS DENSITY (OMD) — true combustible oxygen mass
- *    Banks shows total air density, but N2/Ar/CO2 don't combust.
+ *    Standard systems show total air density, but N2/Ar/CO2 don't combust.
  *    OMD isolates the O2 fraction that actually makes power.
  *
  * 2. COMPRESSOR EFFICIENCY (CE) — turbo health in real time
@@ -43,7 +43,7 @@ package com.alpha.obd2logger;
  * 7. LPG/CNG VAPOR DISPLACEMENT (LVD) — critical for gaseous fuel!
  *    Injected fuel vapor occupies intake volume, displacing air.
  *    Effective air density = MAD × (1 - fuel_vapor_fraction).
- *    Banks doesn't handle this because they focus on diesel.
+ *    Standard systems don.t handle this as they focus on diesel.
  *
  * 8. EVAPORATIVE COOLING CORRECTION (ECC) — latent heat of vaporization
  *    Liquid/port fuel evaporating in the intake cools the charge,
@@ -55,7 +55,7 @@ package com.alpha.obd2logger;
  *    dimensionless index that tracks actual power output.
  *
  * 10. DYNAMIC SAE CORRECTION (J1349 + J607) — compare both standards
- *     Banks shows one CF; we show both and the delta, so you know
+ *     Standard systems show one CF; we show both and the delta, so you know
  *     exactly how ambient conditions affect power on each standard.
  *
  * ─────────────────────────────────────────────────────────────────
@@ -125,7 +125,7 @@ public final class AdvancedAirDensity {
     /**
      * Oxygen Mass Density — mass of O2 per unit volume available for combustion.
      *
-     * Banks shows total air density, but only ~21% of air (by volume) is O2.
+     * Standard systems show total air density, but only ~21% of air (by volume) is O2.
      * N2, Ar, CO2 pass through the engine without contributing to combustion.
      * OMD isolates the actual combustible oxygen mass.
      *

@@ -29,7 +29,7 @@ public final class LoggerConfig {
     public boolean showFuelConsumption = true;
     /** Poll DPF PIDs for diesel vehicles */
     public boolean dpfMonitorEnabled = false;
-    /** Compute + display air density (AAD/MAD/BAD) — Banks iDash style */
+    /** Compute + display air density (AAD/MAD/BAD) — AeroDensity Intelligence */
     public boolean showAirDensity = true;
     /** Engine displacement in cc — required for VE/TMF/PDI calculations */
     public int engineDisplacementCC = 1998; // default ~2.0L

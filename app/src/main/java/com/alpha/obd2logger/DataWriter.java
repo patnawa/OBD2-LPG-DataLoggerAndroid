@@ -115,7 +115,7 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("derived_boost_psi", "Turbo Boost (psi)");
         registerDerived("derived_dpf_health", "DPF Health (status)");
         registerDerived("derived_dpf_regen", "DPF Regen (active)");
-        // Air Density (Banks iDash style)
+        // Air Density (AeroDensity Intelligence)
         registerDerived("derived_aad", "Ambient Air Density (lbs/1000ft3)");
         registerDerived("derived_mad", "Manifold Air Density (lbs/1000ft3)");
         registerDerived("derived_bad", "Boost Air Density (lbs/1000ft3)");
@@ -124,7 +124,7 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("derived_sae_cf", "SAE J1349 Correction Factor");
         registerDerived("derived_grains", "Grains H2O (grains/lb)");
         registerDerived("derived_humidity", "Relative Humidity (%)");
-        // Advanced Air Density (beyond Banks iDash)
+        // Advanced Air Density (beyond standard AAD/MAD/BAD)
         registerDerived("derived_omd", "Oxygen Mass Density (lbs/1000ft3)");
         registerDerived("derived_compressor_eff", "Compressor Efficiency (%)");
         registerDerived("derived_intercooler_eff", "Intercooler Effectiveness (%)");

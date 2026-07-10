@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.9] - 2026-07-10
+### Fixed
+- **Air Density Dialog Top Cut Off** — The full-screen dialog's content started at the screen edge, hidden behind the status bar. Added window insets padding so content starts below the status bar properly.
+- **Air Density Toolbar Icon Re-arranged** — Moved the Air Density icon to sit directly next to the Settings icon (right side). New right-to-left order: Settings → AeroDensity → START/STOP → Status → Home.
+
+### Changed
+- **Removed "Banks iDash" Branding** — All user-visible references to "Banks iDash" have been removed from the UI and Java comments across the entire codebase.
+- **Renamed Air Density Center → "AeroDensity Intelligence"** — The Air Density Center dialog, dashboard panel label, settings description, and toolbar content description now use the new name "AeroDensity Intelligence".
+- **Air Density Dialog Icon Fixed** — Replaced the mismatched `ic_speed` icon in the dialog header with the correct `ic_air_density` icon.
+
 ## [3.7.8] - 2026-07-10
 ### Fixed
 - **Logger Randomly Stops — retryCount Accumulation Bug** — The `retryCount` counter in both `LoggerService.runLogger` and `MainActivity.runLogger` (in-process mode) was incremented on *any* exception during the logging loop but only reset to 0 when a reconnection occurred (when `isConnected()` returned false). During steady-state operation, the driver's `isConnected()` flag stays true even when transient errors occur (read timeouts, momentary I/O glitches, NPEs from derived-sensor computations), so the counter was never reset. Over a long drive, 11 scattered transient errors would accumulate and permanently kill the logger (`"Logger disconnected permanently"`), requiring a manual restart. Fixed by resetting `retryCount = 0` after every successful `writeRecord()`, so transient blips don't accumulate across a long session.

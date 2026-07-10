@@ -151,7 +151,7 @@ public final class DerivedSensors {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  Air Density (Banks iDash style — AAD / MAD / BAD)
+    //  Air Density (AeroDensity Intelligence — AAD / MAD / BAD)
     // ═══════════════════════════════════════════════════════════════
     //
     // Air density is the most direct measurement of oxygen molecules available
@@ -172,7 +172,7 @@ public final class DerivedSensors {
     // Saturation vapor pressure (Magnus formula):
     //   P_sat(hPa) = 6.1078 × 10^(7.5×T / (T+237.3))
     //
-    // Banks display unit: lbs/1000ft³ (typical range 0–300)
+    // AeroDensity display unit: lbs/1000ft³ (typical range 0–300)
     //   SAE J1349 standard: 14.4 psia, 77°F, 0% RH → AAD = 72.2 lbs/1000ft³
     //   SAE J607 standard: AAD = 76.4 lbs/1000ft³
     //
@@ -224,7 +224,7 @@ public final class DerivedSensors {
     }
 
     /**
-     * Compute air density in lbs/1000ft³ (Banks iDash display unit).
+     * Compute air density in lbs/1000ft³ (standard display unit).
      *
      * @param pressureKPa  Absolute pressure in kPa
      * @param tempC        Temperature in °C

@@ -2700,7 +2700,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             }
                         }
 
-                        // ── Air Density (Banks iDash AAD/MAD/BAD) ──────────────
+                        // ── Air Density (AAD/MAD/BAD) ──────────────
                         if (config.showAirDensity && airDensityMonitor != null) {
                             // Weather refresh is handled by cache TTL internally (10 min).
                             // Do NOT call refreshWeatherSync() here — it blocks the logger
@@ -2745,7 +2745,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 samples.add(new SensorSample("derived_humidity", "Relative Humidity",
                                         dr.humidity, "%", "ok"));
 
-                                // Advanced Air Density (10 formulas beyond Banks)
+                                // Advanced Air Density (10 formulas beyond standard)
                                 Double rpmValue = batch.get("Engine RPM");
                                 Double lambdaValue = batch.get("Lambda (B1S1)");
                                 if (lambdaValue == null) lambdaValue = batch.get("Wideband Lambda (B1S1)");
@@ -5836,6 +5836,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 );
             }
 
+            // Apply window insets as padding so content isn't hidden behind
+            // the status bar / navigation bar in the full-screen dialog.
+            View dialogRoot = airDensityCenterDialog.findViewById(android.R.id.content);
+            if (dialogRoot != null) {
+                dialogRoot.setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+                dialogRoot.setOnApplyWindowInsetsListener((v, insets) -> {
+                    v.setPadding(
+                        v.getPaddingLeft(),
+                        insets.getSystemWindowInsetTop(),
+                        v.getPaddingRight(),
+                        insets.getSystemWindowInsetBottom()
+                    );
+                    return insets;
+                });
+            }
+
             View btnClose = airDensityCenterDialog.findViewById(R.id.btnCloseAirDensityDialog);
             View btnCloseBottom = airDensityCenterDialog.findViewById(R.id.btnDialogCloseAirDensity);
             View btnRefreshWeather = airDensityCenterDialog.findViewById(R.id.btnDialogRefreshWeather);
@@ -5859,8 +5875,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             airDensityCenterDialog.show();
             updateAirDensityCenterDialogUi();
         } catch (Exception e) {
-            android.util.Log.e("AirDensityCenter", "Failed to open Air Density Center dialog", e);
-            android.widget.Toast.makeText(this, "Could not open Air Density Center: " + e.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
+            android.util.Log.e("AeroDensity", "Failed to open AeroDensity Intelligence dialog", e);
+            android.widget.Toast.makeText(this, "Could not open AeroDensity Intelligence: " + e.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
         }
     }
 
