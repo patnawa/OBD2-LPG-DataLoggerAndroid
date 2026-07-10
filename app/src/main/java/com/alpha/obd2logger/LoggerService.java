@@ -442,7 +442,7 @@ public final class LoggerService extends Service {
             updateNotification("Logging: 0 records", 0);
             long lastDtcCheckMs = android.os.SystemClock.elapsedRealtime();
             int retryCount = 0;
-            int maxRetries = 3;
+            int maxRetries = 10;
 
             while (running) {
                 try {
@@ -460,74 +460,46 @@ public final class LoggerService extends Service {
 
                     while (running) {
                         long nowMs = android.os.SystemClock.elapsedRealtime();
-                        // ── Continuous DTC Monitor: poll Mode 01 PID 01 every 30s ──
-                        // Instead of a full Mode 03/07/0A scan every 60s (which pauses
-                        // logging and is slow), we poll just PID 01 which returns:
-                        //   - MIL status (on/off)
-                        //   - DTC count (stored)
-                        // If the count changes, we trigger a full scan immediately.
-                        // This is how professional scanners do real-time DTC detection.
+                        // ── Continuous DTC Monitor: poll Mode 01 PID 01 synchronously every 30s ──
                         if (nowMs - lastDtcCheckMs >= 30000) {
                             lastDtcCheckMs = nowMs;
-                            ExecutorService de = dtcExecutor;
-                            if (de != null && !de.isShutdown()) {
-                                final BaseDriver finalDriverForDtcLoop = localDriver;
-                                de.submit(() -> {
-                                    MainActivity.isPaused = true;
-                                    try { Thread.sleep(300); } catch (InterruptedException ignored) {}
-                                    try {
-                                        // Quick poll: Mode 01 PID 01 (readiness + DTC count)
-                                        ReadinessMonitor readiness = ReadinessMonitor.read(finalDriverForDtcLoop);
-                                        int currentDtcCount = readiness.getDtcCount();
-                                        boolean currentMil = readiness.isMilOn();
+                            try {
+                                ReadinessMonitor readiness = ReadinessMonitor.read(localDriver);
+                                int currentDtcCount = readiness.getDtcCount();
+                                boolean currentMil = readiness.isMilOn();
+                                int prevCount = lastStoredDtcs.size();
 
-                                        // Count previous stored DTCs
-                                        int prevCount = lastStoredDtcs.size();
+                                if (currentDtcCount != prevCount || (currentMil && prevCount == 0)) {
+                                    DtcReader.DtcScanResult sr = DtcReader.readAllDtcs(
+                                        localDriver, activeConfig != null && activeConfig.fordMsCanEnabled);
+                                    List<DtcCode> stored = sr.storedDtcs;
+                                    List<DtcCode> pending = sr.pendingDtcs;
+                                    List<DtcCode> permanent = sr.permanentDtcs;
 
-                                        if (currentDtcCount != prevCount || (currentMil && prevCount == 0)) {
-                                            // DTC count changed OR MIL is on but we have no stored codes
-                                            // → trigger a full scan to get the actual codes
-                                            DtcReader.DtcScanResult sr = DtcReader.readAllDtcs(
-                                                finalDriverForDtcLoop, activeConfig != null && activeConfig.fordMsCanEnabled);
-                                            List<DtcCode> stored = sr.storedDtcs;
-                                            List<DtcCode> pending = sr.pendingDtcs;
-                                            List<DtcCode> permanent = sr.permanentDtcs;
-
-                                            // Detect new codes
-                                            List<DtcCode> newCodes = new ArrayList<>();
-                                            for (DtcCode c : stored) {
-                                                if (!lastStoredDtcs.contains(c)) {
-                                                    newCodes.add(c);
-                                                }
-                                            }
-                                            for (DtcCode c : pending) {
-                                                if (!lastPendingDtcs.contains(c)) {
-                                                    newCodes.add(c);
-                                                }
-                                            }
-
-                                            lastStoredDtcs.clear();
-                                            lastStoredDtcs.addAll(stored);
-                                            lastPendingDtcs.clear();
-                                            lastPendingDtcs.addAll(pending);
-                                            lastPermanentDtcs.clear();
-                                            lastPermanentDtcs.addAll(permanent);
-
-                                            if (!newCodes.isEmpty()) {
-                                                LoggerCallback cbDtc = getCallback();
-                                                if (cbDtc != null) {
-                                                    mainHandler.post(() -> cbDtc.onNewDtcDetected(newCodes));
-                                                }
-                                            }
-                                        }
-                                        // If count is same, no need to do a full scan —
-                                        // the quick PID 01 poll is enough to confirm no new DTCs
-                                    } catch (Exception e) {
-                                        Log.e(TAG, "Background periodic DTC monitor failed", e);
-                                    } finally {
-                                        MainActivity.isPaused = false;
+                                    List<DtcCode> newCodes = new ArrayList<>();
+                                    for (DtcCode c : stored) {
+                                        if (!lastStoredDtcs.contains(c)) newCodes.add(c);
                                     }
-                                });
+                                    for (DtcCode c : pending) {
+                                        if (!lastPendingDtcs.contains(c)) newCodes.add(c);
+                                    }
+
+                                    lastStoredDtcs.clear();
+                                    lastStoredDtcs.addAll(stored);
+                                    lastPendingDtcs.clear();
+                                    lastPendingDtcs.addAll(pending);
+                                    lastPermanentDtcs.clear();
+                                    lastPermanentDtcs.addAll(permanent);
+
+                                    if (!newCodes.isEmpty()) {
+                                        LoggerCallback cbDtc = getCallback();
+                                        if (cbDtc != null) {
+                                            mainHandler.post(() -> cbDtc.onNewDtcDetected(newCodes));
+                                        }
+                                    }
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Periodic synchronous DTC monitor failed non-fatally", e);
                             }
                         }
                         if (MainActivity.isPaused) {
@@ -776,15 +748,17 @@ public final class LoggerService extends Service {
                     if (!running || e instanceof InterruptedException) {
                         break;
                     }
-                    if (localDriver != null) localDriver.disconnect();
                     retryCount++;
+                    if (retryCount > 3 && localDriver != null) {
+                        localDriver.disconnect();
+                    }
                     if (retryCount > maxRetries) {
                         running = false;
                         notifyStatus("Logger disconnected permanently: " + e.getMessage(), true);
                         break;
                     }
                     try {
-                        Thread.sleep(3000);
+                        Thread.sleep(1000);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         break;

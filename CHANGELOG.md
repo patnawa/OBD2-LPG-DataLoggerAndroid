@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.4] - 2026-07-10
+### Added
+- **Separate Dedicated Air Density UI Center Accessible on Front Page** — Created a standalone full-screen Air Density UI dialog (`dialog_air_density_center.xml`) showcasing all 12 Air Density metrics (AAD, MAD, BAD, Density %, SAE J1349 CF, Density Altitude, Volumetric Efficiency, Compressor Efficiency, Intercooler Effectiveness, Power Density Index, Water Vapor Grains) with live weather summary and manual refresh. Easily accessible directly from the front page via the new top-bar Air Density button (`btnHeaderAirDensity`) or the "OPEN SEPARATE UI" button on the dashboard Air Density card.
+
+### Fixed
+- **Live Data Logger Random Stop Fixed** — Periodic Mode 01 PID 01 continuous DTC check previously ran asynchronously on a separate executor while the main logging loop queried PID batches concurrently on the same ELM327 socket, causing socket I/O collisions and premature connection drops. The DTC check now runs synchronously on the main logging thread between batches, `maxRetries` is increased to 10, and transient query errors retry without closing the connection prematurely.
+- **PID ID Filter in Live Data Logger Fixed** — SharedPreferences mutation of the same `Set<String>` instance prevented filter updates from saving/re-rendering properly, custom PIDs were missing from the filter list, and dismissing the filter dialog cleared readings without repopulating. Fixed by using fresh HashSet copies, including custom PIDs via `PIDCatalogue.getAllWithCustom`, and instantly re-rendering the latest recorded sample when toggling or applying PID filters.
+- **Air Density UI Panel Visibility & Setting Toggle Fixed** — Toggling the Air Density setting in Settings previously required an app restart or logging session start to take effect. Added instant toggle listener to update configurations immediately, populate the Air Density panel with live or fallback `AirDensityMonitor` calculations right away, and fixed loading of `pref_air_density`.
+- **Engine Gauges Cluster UI Lag / Duplicate Peak Telemetry Removed** — Removed the redundant "Session Peak Telemetry" (`gaugeReadingsContainer`) list from the Gauges tab (`panelGauges`). Previously, rendering 20–50+ PID cards concurrently with 4 animated dial gauges and 5 line charts on every OBD2 sample caused significant UI thread lag and frame drops. Removing this duplicate grid allows the Gauges tab to dedicate 100% of UI thread resources to smooth dial and graph animations (full telemetry remains accessible on the Live Stream / Logs tab).
+
 ## [3.7.3] - 2026-07-10
 ### Fixed
 - **Logger stops randomly / connection timeout** — `airDensityMonitor.refreshWeatherSync()` was called every 0.5s inside the logging loop. On slow networks or no GPS, this blocked the logger thread, causing connection timeout and auto-stop. Now weather refresh only happens at init (cached 10 min internally via TTL). Affects both in-process and background LoggerService

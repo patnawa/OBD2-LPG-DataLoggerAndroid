@@ -1,10 +1,21 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.7.3** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.7.4** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมือนต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.7.4 — Separate Air Density UI Center & Engine Gauges Performance Fix
+
+### Added
+- **Separate Dedicated Air Density UI Center Accessible on Front Page** — Full-screen standalone Air Density Center dialog showcasing all 12 Air Density & Engine Efficiency metrics (AAD, MAD, BAD, Density %, SAE J1349 CF, Density Altitude, VE, Compressor Efficiency, Intercooler Effectiveness, PDI, Water Vapor Grains) with live weather summary and manual refresh. Accessible instantly from the front page header bar button (`btnHeaderAirDensity`) or the dashboard Air Density card button.
+
+### Fixed & Optimized
+- **Engine Gauges Cluster Performance Optimization** — Removed redundant Session Peak Telemetry card grid from the Gauges tab (`panelGauges`), eliminating UI thread lag and frame drops during live logging sessions so animated dials and graphs render at maximum speed.
+- **Live Data Logger Random Stop Fixed** — Periodic continuous DTC checks now run synchronously on the main logging loop with increased retry resilience (`maxRetries = 10`), preventing socket I/O collisions and premature connection drops.
+- **PID ID Filter Fixed** — SharedPreferences mutation bug resolved; custom PIDs properly included via `PIDCatalogue.getAllWithCustom`, and readings instantly re-render when toggling filters.
+- **Air Density UI Toggle Fixed** — Toggling Air Density in Settings immediately updates the live dashboard panel without requiring app restart.
 
 ## What's New in 3.7.3 — Bug Fixes (Logger Stops, PID Filter)
 

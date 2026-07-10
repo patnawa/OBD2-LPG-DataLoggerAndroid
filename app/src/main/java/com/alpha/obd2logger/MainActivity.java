@@ -75,6 +75,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView stripBoost, stripFuel;
     private View headerStatusDot, headerApiDivider;
     private android.widget.ImageButton btnSettings;
+    private android.widget.ImageButton btnHeaderAirDensity;
+    private android.app.Dialog airDensityCenterDialog = null;
     private android.widget.ImageButton btnGoHome;
 
     // --- UI: Settings ---
@@ -100,7 +102,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     // --- UI: Gauges tab ---
     private GraphView graph1, graph2, graph3, graph4, graph5;
-    private LinearLayout gaugeReadingsContainer;
 
     // --- UI: DTC tab ---
     private Button btnReadDtc, btnClearDtc, btnReadVin, btnReadiness;
@@ -162,6 +163,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private boolean pidFilterActive = false;
     // Default: hide derived sensors (derived_*) in live readings
     private boolean hideDerivedSensors = true;
+    private volatile DataRecord latestDataRecord = null;
 
     private com.google.android.material.button.MaterialButton fabLog;
     private FuelMapView fuelMapView;
@@ -468,6 +470,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         headerApiDivider = findViewById(R.id.headerApiDivider);
         headerStatusDot = findViewById(R.id.headerStatusDot);
         btnSettings = findViewById(R.id.btnSettings);
+        btnHeaderAirDensity = findViewById(R.id.btnHeaderAirDensity);
         btnGoHome = findViewById(R.id.btnGoHome);
         historyListViewPetrol = findViewById(R.id.historyListViewPetrol);
         historyListViewLpg = findViewById(R.id.historyListViewLpg);
@@ -636,6 +639,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             customPidCheckbox.setOnCheckedChangeListener((btn, checked) ->
                 prefs.edit().putBoolean("pref_custom_pid", checked).apply());
         }
+        if (airDensityCheckbox != null) {
+            airDensityCheckbox.setOnCheckedChangeListener((btn, checked) -> {
+                prefs.edit().putBoolean("pref_air_density", checked).apply();
+                if (activeInProcessConfig != null) activeInProcessConfig.showAirDensity = checked;
+                LoggerService svc = LoggerService.getInstance();
+                if (svc != null && svc.getConfig() != null) svc.getConfig().showAirDensity = checked;
+                updateAirDensityPanel(latestDataRecord);
+            });
+        }
         if (fordMsCanCheckbox != null) {
             fordMsCanCheckbox.setOnCheckedChangeListener((btn, checked) ->
                 prefs.edit().putBoolean("pref_ford_ms_can", checked).apply());
@@ -786,7 +798,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         graph3 = findViewById(R.id.graph3);
         graph4 = findViewById(R.id.graph4);
         graph5 = findViewById(R.id.graph5);
-        gaugeReadingsContainer = findViewById(R.id.gaugeReadingsContainer);
 
         // DTC tab
         btnReadDtc = findViewById(R.id.btnReadDtc);
@@ -1557,6 +1568,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Header
         if (btnSettings != null) {
             btnSettings.setOnClickListener(v -> showTab(5));
+        }
+        if (btnHeaderAirDensity != null) {
+            btnHeaderAirDensity.setOnClickListener(v -> showAirDensityCenterDialog());
+        }
+        View btnOpenAirDensityFullUi = findViewById(R.id.btnOpenAirDensityFullUi);
+        if (btnOpenAirDensityFullUi != null) {
+            btnOpenAirDensityFullUi.setOnClickListener(v -> showAirDensityCenterDialog());
         }
 
         // DTC
@@ -2571,7 +2589,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
 
             int retryCount = 0;
-            int maxRetries = 3;
+            int maxRetries = 10;
 
             while (running) {
                 try {
@@ -2810,6 +2828,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         runOnActiveActivity(() -> {
                             MainActivity active = activeInstance;
                             if (active != null) {
+                                active.latestDataRecord = record;
                                 active.countText.setText("Records: " + finalCompleted);
                                 active.updateDashboard(record);
                                 active.updateGraphs(record);
@@ -2846,8 +2865,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     if (!running || e instanceof InterruptedException) {
                         break;
                     }
-                    driver.disconnect();
                     retryCount++;
+                    if (retryCount > 3 && driver != null) {
+                        driver.disconnect();
+                    }
                     if (retryCount > maxRetries) {
                         running = false;
                         runOnActiveActivity(() -> {
@@ -2861,7 +2882,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         break;
                     }
                     try {
-                        Thread.sleep(3000);
+                        Thread.sleep(1000);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         break;
@@ -2923,6 +2944,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         watchdogHandler.removeCallbacks(connectionWatchdog);
         runOnUiThread(() -> {
             if (isFinishing() || isDestroyed()) return;
+            latestDataRecord = record;
             if (fabLog != null && running) {
                 setFabState(true);
             }
@@ -5523,7 +5545,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         root.addView(listView);
 
         // Build list of all PIDs (raw + derived)
-        java.util.List<PIDDefinition> allPids = PIDCatalogue.getAll();
+        java.util.List<PIDDefinition> allPids = PIDCatalogue.getAllWithCustom(this);
         // Also add derived sensor keys that aren't in the catalogue
         java.util.List<String> derivedKeys = new java.util.ArrayList<>();
         derivedKeys.add("derived_fuel_kmL");
@@ -5573,7 +5595,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             visiblePidsFilter = new java.util.HashSet<>();
         }
         final boolean wasActive = pidFilterActive;
-        final java.util.Set<String> filterSet = visiblePidsFilter;
+        final java.util.Set<String> filterSet = new java.util.HashSet<>(visiblePidsFilter);
 
         // Adapter
         class FilterAdapter extends android.widget.BaseAdapter {
@@ -5639,8 +5661,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         showAllBtn.setOnClickListener(v -> {
             filterSet.clear();
             pidFilterActive = false;
+            visiblePidsFilter = new java.util.HashSet<>();
             adapter.notifyDataSetChanged();
             updateFilterStatusText();
+            clearReadings();
+            if (latestDataRecord != null) {
+                renderReadings(latestDataRecord);
+            }
         });
 
         toggleDerivedBtn.setOnClickListener(v -> {
@@ -5648,19 +5675,26 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putBoolean("pref_hide_derived", hideDerivedSensors).apply();
             toggleDerivedBtn.setText(hideDerivedSensors ? "แสดง Derived Sensors" : "ซ่อน Derived Sensors");
             updateFilterStatusText();
+            clearReadings();
+            if (latestDataRecord != null) {
+                renderReadings(latestDataRecord);
+            }
         });
 
         // Save filter on dismiss
         dialog.setOnDismissListener(d -> {
-            // Activate filter only if user selected specific PIDs
             pidFilterActive = !filterSet.isEmpty();
+            visiblePidsFilter = new java.util.HashSet<>(filterSet);
             getSharedPreferences("OBD2Prefs", MODE_PRIVATE)
                 .edit()
-                .putStringSet("pref_pid_filter", filterSet)
+                .putStringSet("pref_pid_filter", new java.util.HashSet<>(visiblePidsFilter))
                 .putBoolean("pref_pid_filter_active", pidFilterActive)
                 .apply();
             updateFilterStatusText();
             clearReadings();
+            if (latestDataRecord != null) {
+                renderReadings(latestDataRecord);
+            }
         });
 
         dialog.setContentView(root);
@@ -5679,11 +5713,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void updateAirDensityPanel(DataRecord record) {
         if (airDensityCard == null) return;
 
-        // Show/hide panel based on config
+        // Show/hide panel based on config or preference switch
         boolean showAir = (activeInProcessConfig != null && activeInProcessConfig.showAirDensity)
                 || (LoggerService.isLoggingActive() && LoggerService.getInstance() != null
                     && LoggerService.getInstance().getConfig() != null
-                    && LoggerService.getInstance().getConfig().showAirDensity);
+                    && LoggerService.getInstance().getConfig().showAirDensity)
+                || getSharedPreferences("OBD2Prefs", MODE_PRIVATE).getBoolean("pref_air_density", true)
+                || (airDensityCheckbox != null && airDensityCheckbox.isChecked());
         airDensityCard.setVisibility(showAir ? View.VISIBLE : View.GONE);
         if (!showAir) return;
 
@@ -5692,23 +5728,43 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         Double omd = null, compEff = null, icEff = null, ve = null, pdi = null, grains = null;
         Double humidity = null;
 
-        for (SensorSample s : record.getSamples()) {
-            String key = s.getPidKey();
-            if (key == null) continue;
-            switch (key) {
-                case "derived_aad": aad = s.getValue(); break;
-                case "derived_mad": mad = s.getValue(); break;
-                case "derived_bad": bad = s.getValue(); break;
-                case "derived_density_pct": densPct = s.getValue(); break;
-                case "derived_density_alt": densAlt = s.getValue(); break;
-                case "derived_sae_cf": saeCF = s.getValue(); break;
-                case "derived_omd": omd = s.getValue(); break;
-                case "derived_compressor_eff": compEff = s.getValue(); break;
-                case "derived_intercooler_eff": icEff = s.getValue(); break;
-                case "derived_ve": ve = s.getValue(); break;
-                case "derived_pdi": pdi = s.getValue(); break;
-                case "derived_grains": grains = s.getValue(); break;
-                case "derived_humidity": humidity = s.getValue(); break;
+        if (record != null && record.getSamples() != null) {
+            for (SensorSample s : record.getSamples()) {
+                String key = s.getPidKey();
+                if (key == null) continue;
+                switch (key) {
+                    case "derived_aad": aad = s.getValue(); break;
+                    case "derived_mad": mad = s.getValue(); break;
+                    case "derived_bad": bad = s.getValue(); break;
+                    case "derived_density_pct": densPct = s.getValue(); break;
+                    case "derived_density_alt": densAlt = s.getValue(); break;
+                    case "derived_sae_cf": saeCF = s.getValue(); break;
+                    case "derived_omd": omd = s.getValue(); break;
+                    case "derived_compressor_eff": compEff = s.getValue(); break;
+                    case "derived_intercooler_eff": icEff = s.getValue(); break;
+                    case "derived_ve": ve = s.getValue(); break;
+                    case "derived_pdi": pdi = s.getValue(); break;
+                    case "derived_grains": grains = s.getValue(); break;
+                    case "derived_humidity": humidity = s.getValue(); break;
+                }
+            }
+        }
+
+        if (aad == null) {
+            if (airDensityMonitor == null) {
+                airDensityMonitor = new AirDensityMonitor(this);
+                airDensityMonitor.refreshWeather();
+            }
+            AirDensityMonitor.AirDensityResult res = airDensityMonitor.compute();
+            if (res != null) {
+                aad = res.aad;
+                mad = res.mad;
+                bad = res.bad;
+                densPct = res.densityPercent;
+                densAlt = res.densityAltitudeFt;
+                saeCF = res.saeJ1349CF;
+                grains = res.grainsH2O;
+                humidity = res.humidity;
             }
         }
 
@@ -5734,16 +5790,154 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (baro != null) weatherStr += String.format(Locale.US, " • %.0fkPa", baro);
             txtAirDensityWeather.setText(weatherStr);
         }
+        updateAirDensityCenterDialogUi();
+    }
+
+    private void showAirDensityCenterDialog() {
+        if (airDensityCenterDialog != null && airDensityCenterDialog.isShowing()) {
+            airDensityCenterDialog.dismiss();
+        }
+        airDensityCenterDialog = new android.app.Dialog(this, android.R.style.Theme_DeviceDefault_Light_NoActionBar);
+        airDensityCenterDialog.setContentView(R.layout.dialog_air_density_center);
+        if (airDensityCenterDialog.getWindow() != null) {
+            airDensityCenterDialog.getWindow().setLayout(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT
+            );
+        }
+
+        View btnClose = airDensityCenterDialog.findViewById(R.id.btnCloseAirDensityDialog);
+        View btnCloseBottom = airDensityCenterDialog.findViewById(R.id.btnDialogCloseAirDensity);
+        View btnRefreshWeather = airDensityCenterDialog.findViewById(R.id.btnDialogRefreshWeather);
+
+        if (btnClose != null) btnClose.setOnClickListener(v -> airDensityCenterDialog.dismiss());
+        if (btnCloseBottom != null) btnCloseBottom.setOnClickListener(v -> airDensityCenterDialog.dismiss());
+        if (btnRefreshWeather != null) {
+            btnRefreshWeather.setOnClickListener(v -> {
+                if (airDensityMonitor == null) {
+                    airDensityMonitor = new AirDensityMonitor(this);
+                }
+                airDensityMonitor.refreshWeather();
+                updateAirDensityCenterDialogUi();
+            });
+        }
+
+        updateAirDensityCenterDialogUi();
+        airDensityCenterDialog.show();
+    }
+
+    private void updateAirDensityCenterDialogUi() {
+        if (airDensityCenterDialog == null || !airDensityCenterDialog.isShowing()) return;
+
+        DataRecord record = latestDataRecord;
+        Double aad = null, mad = null, bad = null, densPct = null, densAlt = null, saeCF = null;
+        Double omd = null, compEff = null, icEff = null, ve = null, pdi = null, grains = null;
+        Double humidity = null;
+
+        if (record != null && record.getSamples() != null) {
+            for (SensorSample s : record.getSamples()) {
+                String key = s.getPidKey();
+                if (key == null) continue;
+                switch (key) {
+                    case "derived_aad": aad = s.getValue(); break;
+                    case "derived_mad": mad = s.getValue(); break;
+                    case "derived_bad": bad = s.getValue(); break;
+                    case "derived_density_pct": densPct = s.getValue(); break;
+                    case "derived_density_alt": densAlt = s.getValue(); break;
+                    case "derived_sae_cf": saeCF = s.getValue(); break;
+                    case "derived_omd": omd = s.getValue(); break;
+                    case "derived_compressor_eff": compEff = s.getValue(); break;
+                    case "derived_intercooler_eff": icEff = s.getValue(); break;
+                    case "derived_ve": ve = s.getValue(); break;
+                    case "derived_pdi": pdi = s.getValue(); break;
+                    case "derived_grains": grains = s.getValue(); break;
+                    case "derived_humidity": humidity = s.getValue(); break;
+                }
+            }
+        }
+
+        if (aad == null) {
+            if (airDensityMonitor == null) {
+                airDensityMonitor = new AirDensityMonitor(this);
+                airDensityMonitor.refreshWeather();
+            }
+            AirDensityMonitor.AirDensityResult res = airDensityMonitor.compute();
+            if (res != null) {
+                aad = res.aad;
+                mad = res.mad;
+                bad = res.bad;
+                densPct = res.densityPercent;
+                densAlt = res.densityAltitudeFt;
+                saeCF = res.saeJ1349CF;
+                grains = res.grainsH2O;
+                humidity = res.humidity;
+            }
+        }
+
+        TextView txtWeatherSummary = airDensityCenterDialog.findViewById(R.id.txtDialogWeatherSummary);
+        TextView txtDialogAAD = airDensityCenterDialog.findViewById(R.id.txtDialogAAD);
+        TextView txtDialogAADPct = airDensityCenterDialog.findViewById(R.id.txtDialogAADPct);
+        TextView txtDialogMAD = airDensityCenterDialog.findViewById(R.id.txtDialogMAD);
+        TextView txtDialogMADPct = airDensityCenterDialog.findViewById(R.id.txtDialogMADPct);
+        TextView txtDialogBAD = airDensityCenterDialog.findViewById(R.id.txtDialogBAD);
+        TextView txtDialogDensityAlt = airDensityCenterDialog.findViewById(R.id.txtDialogDensityAlt);
+        TextView txtDialogSAECF = airDensityCenterDialog.findViewById(R.id.txtDialogSAECF);
+        TextView txtDialogGrains = airDensityCenterDialog.findViewById(R.id.txtDialogGrains);
+        TextView txtDialogPDI = airDensityCenterDialog.findViewById(R.id.txtDialogPDI);
+        TextView txtDialogCompEff = airDensityCenterDialog.findViewById(R.id.txtDialogCompEff);
+        TextView txtDialogICEff = airDensityCenterDialog.findViewById(R.id.txtDialogICEff);
+        TextView txtDialogVE = airDensityCenterDialog.findViewById(R.id.txtDialogVE);
+
+        if (txtWeatherSummary != null) {
+            Double baro = valueByKey(record, "01_33");
+            Double ambient = valueByKey(record, "01_46");
+            String weatherStr = (humidity != null) ? String.format(Locale.US, "RH: %.0f%%", humidity) : "RH: --%";
+            if (ambient != null) weatherStr += String.format(Locale.US, " • %.0f°C", ambient);
+            if (baro != null) weatherStr += String.format(Locale.US, " • %.0fkPa", baro);
+            txtWeatherSummary.setText(weatherStr);
+        }
+        if (txtDialogAAD != null) {
+            txtDialogAAD.setText(aad != null ? String.format(Locale.US, "%.2f", aad) : "--");
+        }
+        if (txtDialogAADPct != null) {
+            double stdDensity = 0.0765 * 1000.0;
+            double pct = (aad != null) ? (aad / stdDensity) * 100.0 : 100.0;
+            txtDialogAADPct.setText(String.format(Locale.US, "%.1f%% SAE J1349", pct));
+        }
+        if (txtDialogMAD != null) {
+            txtDialogMAD.setText(mad != null ? String.format(Locale.US, "%.2f", mad) : "--");
+        }
+        if (txtDialogMADPct != null) {
+            txtDialogMADPct.setText(densPct != null ? String.format(Locale.US, "%.1f%% SAE J1349", densPct) : "--% SAE J1349");
+        }
+        if (txtDialogBAD != null) {
+            txtDialogBAD.setText(bad != null ? String.format(Locale.US, "+%.2f", bad) : "--");
+        }
+        if (txtDialogDensityAlt != null) {
+            txtDialogDensityAlt.setText(densAlt != null ? String.format(Locale.US, "%.0f ft", densAlt) : "-- ft");
+        }
+        if (txtDialogSAECF != null) {
+            txtDialogSAECF.setText(saeCF != null ? String.format(Locale.US, "%.3f", saeCF) : "--");
+        }
+        if (txtDialogGrains != null) {
+            txtDialogGrains.setText(grains != null ? String.format(Locale.US, "%.1f", grains) : "--");
+        }
+        if (txtDialogPDI != null) {
+            txtDialogPDI.setText(pdi != null ? String.format(Locale.US, "%.1f", pdi) : "--");
+        }
+        if (txtDialogCompEff != null) {
+            txtDialogCompEff.setText(compEff != null ? String.format(Locale.US, "%.1f%%", compEff) : "--%");
+        }
+        if (txtDialogICEff != null) {
+            txtDialogICEff.setText(icEff != null ? String.format(Locale.US, "%.1f%%", icEff) : "--%");
+        }
+        if (txtDialogVE != null) {
+            txtDialogVE.setText(ve != null ? String.format(Locale.US, "%.1f%%", ve) : "--%");
+        }
     }
 
     private void renderReadings(DataRecord record) {
         updateGridContainer(readingsContainer, readingRowCache, readingStatusCache, record, false);
-        // gaugeReadingsContainer is redundant with the Logs tab readings.
-        // It duplicates the same PID data and causes UI lag on slow devices.
-        // Only update if the container is visible (user chose to show it).
-        if (gaugeReadingsContainer != null && gaugeReadingsContainer.getVisibility() == View.VISIBLE) {
-            updateGridContainer(gaugeReadingsContainer, gaugeRowCache, gaugeStatusCache, record, true);
-        }
     }
 
     private void updateGridContainer(LinearLayout container, java.util.Map<String, TextView> rowCache, java.util.Map<String, TextView> statusCache, DataRecord record, boolean isGauge) {
@@ -5759,7 +5953,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             visibleCount++;
         }
-        if (container.getChildCount() != (visibleCount + 1) / 2) {
+        boolean rebuildNeeded = (rowCache.size() != visibleCount);
+        if (!rebuildNeeded) {
+            for (SensorSample sample : record.getSamples()) {
+                String pidKey = sample.getPidKey();
+                if (pidFilterActive && visiblePidsFilter != null && !visiblePidsFilter.contains(pidKey)) {
+                    continue;
+                } else if (!pidFilterActive && hideDerivedSensors && pidKey != null && pidKey.startsWith("derived_")) {
+                    continue;
+                }
+                if (!rowCache.containsKey(sample.getName())) {
+                    rebuildNeeded = true;
+                    break;
+                }
+            }
+        }
+        if (rebuildNeeded) {
             container.removeAllViews();
             rowCache.clear();
             statusCache.clear();
@@ -5936,14 +6145,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void clearReadings() {
         if (readingsContainer != null) readingsContainer.removeAllViews();
-        if (gaugeReadingsContainer != null) gaugeReadingsContainer.removeAllViews();
         if (txtSessionDuration != null) txtSessionDuration.setText("00:00:00");
         if (txtSessionRecords != null) txtSessionRecords.setText("0");
         if (txtSessionRate != null) txtSessionRate.setText("0.0 Hz");
         readingRowCache.clear();
         readingStatusCache.clear();
-        gaugeRowCache.clear();
-        gaugeStatusCache.clear();
         pidMinValues.clear();
         pidMaxValues.clear();
         pidSumValues.clear();
@@ -6358,7 +6564,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         if (turboBoostCheckbox != null) {
             turboBoostCheckbox.setChecked(prefs.getBoolean("pref_turbo_boost", true));
-        if (airDensityCheckbox != null) airDensityCheckbox.setChecked(prefs.getBoolean("pref_air_density", true));
+        }
+        if (airDensityCheckbox != null) {
+            airDensityCheckbox.setChecked(prefs.getBoolean("pref_air_density", true));
         }
         if (fuelEconomyCheckbox != null) {
             fuelEconomyCheckbox.setChecked(prefs.getBoolean("pref_fuel_economy", true));
@@ -6369,6 +6577,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (customPidCheckbox != null) {
             customPidCheckbox.setChecked(prefs.getBoolean("pref_custom_pid", false));
         }
+        updateAirDensityPanel(latestDataRecord);
     }
 
     @Override
