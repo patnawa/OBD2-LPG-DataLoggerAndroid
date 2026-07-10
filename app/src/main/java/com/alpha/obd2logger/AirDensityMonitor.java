@@ -237,4 +237,39 @@ public final class AirDensityMonitor {
         return new AirDensityResult(aad, mad, bad, densityPct, densityAlt, saeCF, grains,
                 humidity, baroKpa, ambientTempC, mapKpa, iatTempC);
     }
+
+    /**
+     * Compute all advanced air-density values (10 formulas beyond Banks).
+     * Requires engine displacement + RPM + MAF + lambda from the OBD2 batch.
+     *
+     * @param mafGs    MAF sensor reading (g/s)
+     * @param rpm      Engine RPM
+     * @param lambda   Lambda value (from PID 0x34 or 0x44)
+     * @param fuelMode Fuel type
+     * @param displacementCC Engine displacement (cc)
+     * @param ratedRPM  Rated peak-power RPM
+     * @return AdvancedResult with all 10 calculated values
+     */
+    public AdvancedAirDensity.AdvancedResult computeAdvanced(
+            Double mafGs, Double rpm, Double lambda,
+            FuelMode fuelMode, double displacementCC, double ratedRPM) {
+
+        double humidity = getHumidity();
+        double baroKpa = getBaroKpa();
+        double ambientTempC = getAmbientTempC();
+        double mapKpa = (obdMapKpa != null) ? obdMapKpa : baroKpa;
+        double iatTempC = (obdIatTempC != null) ? obdIatTempC : ambientTempC;
+
+        // Get density in kg/m³ for advanced formulas
+        Double aadKgM3 = DerivedSensors.airDensityKgM3(baroKpa, ambientTempC, humidity);
+        Double madKgM3 = DerivedSensors.airDensityKgM3(mapKpa, iatTempC, humidity);
+
+        return AdvancedAirDensity.computeAll(
+                aadKgM3, madKgM3,
+                baroKpa, mapKpa,
+                ambientTempC, iatTempC,
+                humidity, mafGs,
+                rpm, lambda,
+                fuelMode, displacementCC, ratedRPM);
+    }
 }

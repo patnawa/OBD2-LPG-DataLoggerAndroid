@@ -124,6 +124,21 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("derived_sae_cf", "SAE J1349 Correction Factor");
         registerDerived("derived_grains", "Grains H2O (grains/lb)");
         registerDerived("derived_humidity", "Relative Humidity (%)");
+        // Advanced Air Density (beyond Banks iDash)
+        registerDerived("derived_omd", "Oxygen Mass Density (lbs/1000ft3)");
+        registerDerived("derived_compressor_eff", "Compressor Efficiency (%)");
+        registerDerived("derived_intercooler_eff", "Intercooler Effectiveness (%)");
+        registerDerived("derived_ve", "Volumetric Efficiency (%)");
+        registerDerived("derived_dcafr", "Density-Corrected AFR");
+        registerDerived("derived_tmf", "Theoretical Mass Flow (g/s)");
+        registerDerived("derived_maf_dev", "MAF Deviation (%)");
+        registerDerived("derived_lvd", "Vapor Displacement (fraction)");
+        registerDerived("derived_eff_density", "Effective Air Density (kg/m3)");
+        registerDerived("derived_ecc_dt", "Evap Cooling DeltaT (C)");
+        registerDerived("derived_ecc_mad", "Evap-Corrected MAD (lbs/1000ft3)");
+        registerDerived("derived_pdi", "Power Density Index");
+        registerDerived("derived_sae_j607", "SAE J607 Correction Factor");
+        registerDerived("derived_sae_cf_delta", "SAE CF Delta (J1349-J607)");
     }
 
     private void registerDerived(String key, String label) {

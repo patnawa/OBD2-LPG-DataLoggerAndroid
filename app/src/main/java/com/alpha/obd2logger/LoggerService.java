@@ -645,6 +645,78 @@ public final class LoggerService extends Service {
                                 // Always log humidity source value for traceability
                                 samples.add(new SensorSample("derived_humidity", "Relative Humidity",
                                         dr.humidity, "%", "ok"));
+
+                                // ── Advanced Air Density (10 formulas beyond Banks) ──
+                                Double rpmValue = batch.get("Engine RPM");
+                                Double lambdaValue = batch.get("Lambda (B1S1)");
+                                if (lambdaValue == null) lambdaValue = batch.get("Wideband Lambda (B1S1)");
+
+                                AdvancedAirDensity.AdvancedResult ar =
+                                        airDensityMonitor.computeAdvanced(
+                                            mafValue, rpmValue, lambdaValue,
+                                            config.fuelMode,
+                                            config.engineDisplacementCC,
+                                            config.ratedRPM);
+                                if (ar != null) {
+                                    if (ar.omdLbs != null) {
+                                        samples.add(new SensorSample("derived_omd", "Oxygen Mass Density",
+                                                ar.omdLbs, "lbs/1000ft3", "ok"));
+                                    }
+                                    if (ar.compressorEff != null) {
+                                        samples.add(new SensorSample("derived_compressor_eff",
+                                                "Compressor Efficiency", ar.compressorEff, "%", "ok"));
+                                    }
+                                    if (ar.intercoolerEff != null) {
+                                        samples.add(new SensorSample("derived_intercooler_eff",
+                                                "Intercooler Effectiveness", ar.intercoolerEff, "%", "ok"));
+                                    }
+                                    if (ar.vePct != null) {
+                                        samples.add(new SensorSample("derived_ve",
+                                                "Volumetric Efficiency", ar.vePct, "%", "ok"));
+                                    }
+                                    if (ar.dcafr != null) {
+                                        samples.add(new SensorSample("derived_dcafr",
+                                                "Density-Corrected AFR", ar.dcafr, "", "ok"));
+                                    }
+                                    if (ar.tmfGs != null) {
+                                        samples.add(new SensorSample("derived_tmf",
+                                                "Theoretical Mass Flow", ar.tmfGs, "g/s", "ok"));
+                                    }
+                                    if (ar.mafDeviationPct != null) {
+                                        samples.add(new SensorSample("derived_maf_dev",
+                                                "MAF Deviation", ar.mafDeviationPct, "%", "ok"));
+                                    }
+                                    if (ar.lvdFraction != null) {
+                                        samples.add(new SensorSample("derived_lvd",
+                                                "Vapor Displacement", ar.lvdFraction, "fraction", "ok"));
+                                    }
+                                    if (ar.effectiveDensityKgM3 != null) {
+                                        samples.add(new SensorSample("derived_eff_density",
+                                                "Effective Air Density", ar.effectiveDensityKgM3,
+                                                "kg/m3", "ok"));
+                                    }
+                                    if (ar.eccDeltaT != null) {
+                                        samples.add(new SensorSample("derived_ecc_dt",
+                                                "Evap Cooling DeltaT", ar.eccDeltaT, "C", "ok"));
+                                    }
+                                    if (ar.eccCorrectedMAD != null) {
+                                        samples.add(new SensorSample("derived_ecc_mad",
+                                                "Evap-Corrected MAD", ar.eccCorrectedMAD,
+                                                "lbs/1000ft3", "ok"));
+                                    }
+                                    if (ar.pdi != null) {
+                                        samples.add(new SensorSample("derived_pdi",
+                                                "Power Density Index", ar.pdi, "", "ok"));
+                                    }
+                                    if (ar.saeJ607CF != null) {
+                                        samples.add(new SensorSample("derived_sae_j607",
+                                                "SAE J607 CF", ar.saeJ607CF, "", "ok"));
+                                    }
+                                    if (ar.saeCFDelta != null) {
+                                        samples.add(new SensorSample("derived_sae_cf_delta",
+                                                "SAE CF Delta", ar.saeCFDelta, "", "ok"));
+                                    }
+                                }
                             }
                         }
                         

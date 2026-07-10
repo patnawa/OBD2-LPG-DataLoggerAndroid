@@ -31,6 +31,10 @@ public final class LoggerConfig {
     public boolean dpfMonitorEnabled = false;
     /** Compute + display air density (AAD/MAD/BAD) — Banks iDash style */
     public boolean showAirDensity = true;
+    /** Engine displacement in cc — required for VE/TMF/PDI calculations */
+    public int engineDisplacementCC = 1998; // default ~2.0L
+    /** Rated peak-power RPM — used for Power Density Index normalization */
+    public int ratedRPM = 6000;
     /** Load user-defined custom PIDs from SharedPreferences */
     public boolean customPidsEnabled = false;
     /** Application context — needed by WiFiDriver for ConnectivityManager
