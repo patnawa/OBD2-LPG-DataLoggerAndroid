@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Dedicated app logo for the Home hero header.
+  Uses a 72x72 viewport (no adaptive-icon safe-zone padding) so the
+  gauge+car artwork fills the ImageView instead of floating in empty space.
+  ic_launcher_foreground uses 108dp viewport with ~18% padding for the
+  adaptive icon mask — fine on the launcher, but wrong for an inline ImageView.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="72dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+
+    <!-- Soft glow -->
+    <path
+        android:fillColor="#38BDF8"
+        android:fillAlpha="0.18"
+        android:pathData="M36,12m-21,0a21,21 0,1 1,42 0a21,21 0,1 1,-42 0" />
+    <path
+        android:fillColor="#A7F3D0"
+        android:fillAlpha="0.14"
+        android:pathData="M48,48m-16,0a16,16 0,1 1,32 0a16,16 0,1 1,-32 0" />
+
+    <!-- Gauge arc -->
+    <path
+        android:strokeColor="#E0F2FE"
+        android:strokeWidth="3.3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M17,45a19,19 0,0 1,38 0" />
+    <path
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="3.3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M20,43a16,16 0,0 1,32 0" />
+
+    <!-- Gauge ticks -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M23,31L26,28M30,26L31.5,30M36,25L36,29M42,26L40.5,30M49,31L46,28" />
+
+    <!-- Needle -->
+    <path
+        android:strokeColor="#FBBF24"
+        android:strokeWidth="2.3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M36,45L46,30" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M36,45m-2.7,0a2.7,2.7 0,1 1,5.4 0a2.7,2.7 0,1 1,-5.4 0" />
+
+    <!-- Compact car silhouette -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M19,52L23,45L28,41H44L49,45L53,52H49L47,48H25L23,52Z" />
+    <path
+        android:fillColor="#A7F3D0"
+        android:pathData="M28,42L32,37H40L44,42Z" />
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M26.5,52.5m-2.3,0a2.3,2.3 0,1 1,4.6 0a2.3,2.3 0,1 1,-4.6 0M45.5,52.5m-2.3,0a2.3,2.3 0,1 1,4.6 0a2.3,2.3 0,1 1,-4.6 0" />
+
+    <!-- OBD plug accent -->
+    <path
+        android:fillColor="#22D3EE"
+        android:pathData="M55,16h5.4v9.3h-5.4z" />
+    <path
+        android:strokeColor="#22D3EE"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M57.7,25.3v4.7M55,30h5.4" />
+</vector>

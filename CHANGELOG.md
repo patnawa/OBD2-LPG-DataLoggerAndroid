@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.7] - 2026-07-10
+### Fixed
+- **Toolbar Button Overlap (START/STOP + Air Density)** — `btnHeaderAirDensity` in `activity_main.xml` was anchored `layout_toStartOf="@id/btnSettings"`, the same anchor as the `fabLog` START/STOP button, causing both views to stack at the same position in the `RelativeLayout`. The Air Density icon overlapped the START/STOP button making both unreliable to tap. Fixed by chaining `btnHeaderAirDensity` to `layout_toStartOf="@id/fabLog"` so the right-to-left order reads: Settings → START/STOP → Air Density → Status → Home.
+- **Wrong Icon for Air Density Button** — The `btnHeaderAirDensity` toolbar button (opens Air Density Center) was using `@drawable/ic_speed` (a speedometer/gauge icon). Replaced with a new dedicated `ic_air_density.xml` wind/air-flow icon (three flowing curves) that matches the feature's purpose.
+- **Weird Hero Logo on Home Screen** — The Home "TUNER CONTROL PANEL" hero header `ImageView` used `@drawable/ic_launcher_foreground`, a 108dp-viewport vector designed for the adaptive icon system (~18% safe-zone padding). Rendered inside a plain 56dp `ImageView`, the gauge/car/OBD artwork occupied only ~55% of the view, appearing tiny and off-center. Created a dedicated `ic_app_logo.xml` (72dp viewport, no safe-zone padding) so the artwork fills the `ImageView` correctly. The launcher icon is untouched.
+- **Startup NullPointerException on null DataRecord** (from 3.7.6) — `valueByKey()` dereferenced `latestDataRecord` which could be null at startup. Added null guards to `onRecord`, `updateDashboard`, and `updateFuelMap`.
+
 ## [3.7.5] - 2026-07-10
 ### Fixed
 - **App Crash Fixed when opening Air Density Center UI** — Fixed a crash caused by inflating Material 3 components (`MaterialCardView` and `MaterialButton`) inside the system `Theme_DeviceDefault_Light_NoActionBar` dialog theme. Updated `showAirDensityCenterDialog()` to use `R.style.AppTheme` (descendant of Material3 DayNight NoActionBar), ordered `show()` before UI updates so dialog views populate reliably, and added safe exception handling.

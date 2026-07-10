@@ -1,10 +1,18 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.7.5** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.7.7** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมือนต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.7.7 — Toolbar Overlap, Icon & Logo Fixes
+
+### Fixed
+- **Toolbar Button Overlap (START/STOP + Air Density)** — `btnHeaderAirDensity` was anchored to `btnSettings` (same anchor as `fabLog`), so the Air Density icon overlapped the START/STOP button. Fixed by chaining it to `layout_toStartOf="@id/fabLog"` so the right-to-left order is: Settings → START/STOP → Air Density → Status → Home.
+- **Wrong Air Density Button Icon** — Replaced the mismatched `ic_speed` (speedometer) icon with a new dedicated `ic_air_density.xml` wind/air-flow icon matching the Air Density Center feature.
+- **Weird Hero Logo on Home Screen** — The Home hero `ImageView` used `ic_launcher_foreground` (108dp adaptive-icon viewport with safe-zone padding), making the artwork tiny and off-center. Created a dedicated `ic_app_logo.xml` (72dp viewport) so the gauge/car/OBD logo fills the view properly.
+- **Startup NullPointerException** — Added null guards to `valueByKey`, `onRecord`, `updateDashboard`, and `updateFuelMap` for when `latestDataRecord` is null at startup.
 
 ## What's New in 3.7.5 — Air Density Center UI Crash Fix
 
