@@ -99,25 +99,24 @@ public final class AdvancedAirDensity {
     private static final double CO2_FRACTION = 0.0004;
 
     // ── Fuel-specific constants ───────────────────────────────
-    /** Stoichiometric AFR by fuel type */
+    // All fuel constants now sourced from FuelProperties.get(fuelMode).
+    // This ensures E20, E85, Diesel B20, NGV etc. all get correct values.
+
+    /** Get stoich AFR from FuelProperties */
     private static double stoichAFR(FuelMode fuel) {
-        if (fuel == FuelMode.LPG)  return 15.5;  // LPG propane/butane mix
-        return 14.7; // PETROL default
+        return FuelProperties.get(fuel).stoichAFR;
     }
-    /** Latent heat of vaporization, kJ/kg (LPG has slightly higher than petrol) */
+    /** Get latent heat of vaporization from FuelProperties */
     private static double lhvVaporization(FuelMode fuel) {
-        if (fuel == FuelMode.LPG)  return 370.0;
-        return 350.0; // PETROL
+        return FuelProperties.get(fuel).lhvVapKJkg;
     }
-    /** Fuel density, g/L */
+    /** Get fuel density from FuelProperties */
     private static double fuelDensity(FuelMode fuel) {
-        if (fuel == FuelMode.LPG)  return 510.0;
-        return 737.0; // PETROL
+        return FuelProperties.get(fuel).densityGL;
     }
-    /** Typical brake thermal efficiency by fuel (approximate) */
+    /** Get typical brake thermal efficiency from FuelProperties */
     private static double thermalEfficiency(FuelMode fuel) {
-        if (fuel == FuelMode.LPG)  return 0.30;
-        return 0.28; // PETROL
+        return FuelProperties.get(fuel).thermalEff;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -402,8 +401,13 @@ public final class AdvancedAirDensity {
      */
     public static Double vaporDisplacementFraction(Double mafGs, FuelMode fuel, Double lambda) {
         if (mafGs == null || mafGs <= 0 || lambda == null || lambda <= 0) return null;
-        // Both LPG and PETROL have manifold/port fuel injection → vapor displacement applies
-        // Diesel uses direct injection (no manifold fuel), but FuelMode doesn't include diesel
+
+        // Diesel (B7, B20): direct injection — no fuel vapor in manifold
+        if (fuel.isDiesel()) return 0.0;
+
+        // NGV/CNG: injected as gas → significant displacement, but LHV_vap = 0 (already gas)
+        // LPG vapor injection: same as gaseous
+        // Petrol/E20/E85: port injection → liquid evaporates in port (small displacement)
 
         double afr = lambda * stoichAFR(fuel);
         double fuelGs = mafGs / afr;

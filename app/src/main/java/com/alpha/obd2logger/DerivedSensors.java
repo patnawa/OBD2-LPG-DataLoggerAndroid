@@ -15,16 +15,10 @@ package com.alpha.obd2logger;
 public final class DerivedSensors {
 
     // ── Fuel constants ──────────────────────────────────────────
-    /** Petrol density (g/L) at 15°C */
-    private static final double PETROL_DENSITY_GL = 737.0;
-    /** LPG density (g/L) at 15°C (propane/butane mix) */
-    private static final double LPG_DENSITY_GL = 510.0;
-    /** CNG density (g/L) compressed — approximate */
-    private static final double CNG_DENSITY_GL = 0.72; // g/L at STP — not meaningful for mass-flow calc
-    /** Stoichiometric air-fuel ratio for petrol */
-    private static final double AFR_PETROL = 14.7;
-    /** Stoichiometric air-fuel ratio for LPG (propane/butane) */
-    private static final double AFR_LPG = 15.5;
+    // Now sourced from FuelProperties for multi-fuel support.
+    // Legacy constants kept for backwards compatibility with any
+    // external references, but all internal calculations use
+    // FuelProperties.get(fuelMode) for accuracy.
 
     /** Sea-level atmospheric pressure (kPa) — fallback when Baro PID unavailable */
     private static final double SEA_LEVEL_PRESSURE_KPA = 101.325;
@@ -56,21 +50,15 @@ public final class DerivedSensors {
         if (mafGs <= 0) return null;
         if (speedKmh < 2.0) return null; // avoid divide-by-zero / absurd values at idle
 
-        double afr;
-        double density;
-        if (fuelMode == FuelMode.LPG) {
-            afr = AFR_LPG;
-            density = LPG_DENSITY_GL;
-        } else {
-            afr = AFR_PETROL;
-            density = PETROL_DENSITY_GL;
-        }
+        FuelProperties.Props props = FuelProperties.get(fuelMode);
+        double afr = props.stoichAFR;
+        double density = props.densityGL;
 
         // km/L = speed * density * AFR / (MAF * 3600)
         double kml = (speedKmh * density * afr) / (mafGs * 3600.0);
 
-        // Sanity check: reasonable range is 2–30 km/L
-        if (kml < 1.0 || kml > 50.0) return null;
+        // Sanity check: reasonable range is 2–30 km/L (diesel can be higher)
+        if (kml < 1.0 || kml > 60.0) return null;
         return Math.round(kml * 100.0) / 100.0;
     }
 

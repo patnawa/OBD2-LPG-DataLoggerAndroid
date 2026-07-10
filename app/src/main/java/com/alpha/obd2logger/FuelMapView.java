@@ -198,7 +198,7 @@ public class FuelMapView extends View {
         currentTinjCell = tinjBinValue;
 
         String key = rpmCell + "_" + String.format(Locale.US, "%.2f", tinjBinValue);
-        Map<String, TrimData> targetData = (fuelMode == FuelMode.PETROL) ? petrolData : lpgData;
+        Map<String, TrimData> targetData = !fuelMode.isGaseous() ? petrolData : lpgData;
         TrimData data = targetData.get(key);
         if (data == null) {
             data = new TrimData();
@@ -229,10 +229,10 @@ public class FuelMapView extends View {
      * re-run of the same fuel starts fresh while the comparison fuel survives.
      */
     public void clearData(FuelMode fuelMode) {
-        if (fuelMode == FuelMode.PETROL) {
-            petrolData.clear();
-        } else {
+        if (fuelMode.isGaseous()) {
             lpgData.clear();
+        } else {
+            petrolData.clear();
         }
         currentRpmCell = -1;
         currentTinjCell = -1f;
@@ -435,7 +435,7 @@ public class FuelMapView extends View {
 
     /** Number of populated cells for a given fuel — used to warn before overwriting. */
     public int getCellCount(FuelMode fuelMode) {
-        return (fuelMode == FuelMode.PETROL) ? petrolData.size() : lpgData.size();
+        return fuelMode.isGaseous() ? lpgData.size() : petrolData.size();
     }
 
     public String exportCorrectionMapCsv() {

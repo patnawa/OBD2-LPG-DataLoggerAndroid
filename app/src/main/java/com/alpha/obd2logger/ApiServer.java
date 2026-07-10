@@ -217,7 +217,7 @@ public class ApiServer extends NanoHTTPD {
 
             String key = rpmCell + "_" + String.format(Locale.US, "%.2f", tinjBinValue);
             
-            boolean isLpg = "lpg/cng".equalsIgnoreCase(record.getFuelMode());
+            boolean isLpg = FuelMode.fromString(record.getFuelMode()).isGaseous();
             Map<String, MapTrimData> targetMap = isLpg ? lpgMap : petrolMap;
             
             MapTrimData cellData = targetMap.get(key);

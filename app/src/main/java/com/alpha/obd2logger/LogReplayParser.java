@@ -141,9 +141,8 @@ public final class LogReplayParser {
 
         FuelMode mode = FuelMode.PETROL;
         if (c.fuelModeIdx != -1 && parts.length > c.fuelModeIdx) {
-            // DataWriter writes FuelMode.getValue(): "petrol" or "lpg/cng".
-            mode = cell(parts, c.fuelModeIdx).toLowerCase().startsWith("petrol")
-                    ? FuelMode.PETROL : FuelMode.LPG;
+            // DataWriter writes FuelMode.getValue(): "petrol", "lpg/cng", "G91", "E20", etc.
+            mode = FuelMode.fromString(cell(parts, c.fuelModeIdx));
         }
 
         if (!isClosedLoop(parts, c)) return null; // skip open-loop for tuning

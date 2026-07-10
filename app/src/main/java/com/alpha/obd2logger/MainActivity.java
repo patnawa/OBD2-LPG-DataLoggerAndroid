@@ -365,17 +365,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     backgroundLoggingCheckbox.setChecked(true);
                     apiServerCheckbox.setChecked(activeConfig.enableApiServer);
                     if (fuelSpinner != null) {
-                        fuelSpinner.setSelection(activeConfig.fuelMode == FuelMode.LPG ? 0 : 1);
+                        fuelSpinner.setSelection(fuelModeToPosition(activeConfig.fuelMode));
                     }
                     if (transportSpinner != null) {
                         transportSpinner.setSelection(transportSpinnerToPosition(activeConfig.transportMode));
                     }
                     if (fuelMapView != null) {
-                        fuelMapView.setMapMode(activeConfig.fuelMode == FuelMode.LPG
+                        fuelMapView.setMapMode(activeConfig.fuelMode.isGaseous()
                                 ? FuelMapView.MapMode.LPG : FuelMapView.MapMode.PETROL);
                         com.google.android.material.button.MaterialButtonToggleGroup mapModeToggle = findViewById(R.id.mapModeToggle);
                         if (mapModeToggle != null) {
-                            mapModeToggle.check(activeConfig.fuelMode == FuelMode.LPG ? R.id.btnMapLpg : R.id.btnMapPetrol);
+                            mapModeToggle.check(activeConfig.fuelMode.isGaseous() ? R.id.btnMapLpg : R.id.btnMapPetrol);
                         }
                     }
                 }
@@ -405,17 +405,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 backgroundLoggingCheckbox.setChecked(false);
                 apiServerCheckbox.setChecked(activeInProcessConfig.enableApiServer);
                 if (fuelSpinner != null) {
-                    fuelSpinner.setSelection(activeInProcessConfig.fuelMode == FuelMode.LPG ? 0 : 1);
+                    fuelSpinner.setSelection(fuelModeToPosition(activeInProcessConfig.fuelMode));
                 }
                 if (transportSpinner != null) {
                     transportSpinner.setSelection(transportSpinnerToPosition(activeInProcessConfig.transportMode));
                 }
                 if (fuelMapView != null) {
-                    fuelMapView.setMapMode(activeInProcessConfig.fuelMode == FuelMode.LPG
+                    fuelMapView.setMapMode(activeInProcessConfig.fuelMode.isGaseous()
                             ? FuelMapView.MapMode.LPG : FuelMapView.MapMode.PETROL);
                     com.google.android.material.button.MaterialButtonToggleGroup mapModeToggle = findViewById(R.id.mapModeToggle);
                     if (mapModeToggle != null) {
-                        mapModeToggle.check(activeInProcessConfig.fuelMode == FuelMode.LPG ? R.id.btnMapLpg : R.id.btnMapPetrol);
+                        mapModeToggle.check(activeInProcessConfig.fuelMode.isGaseous() ? R.id.btnMapLpg : R.id.btnMapPetrol);
                     }
                 }
             }
@@ -686,7 +686,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         fuelSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                FuelMode mode = position == 0 ? FuelMode.LPG : FuelMode.PETROL;
+                FuelMode mode = fuelPositionToMode(position);
                 applyFuelTheme(mode);
                 getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putInt("pref_fuel_position", position).apply();
                 // Propagate fuel mode change to the running logger so
@@ -823,19 +823,42 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
     
     private void applyFuelTheme(FuelMode mode) {
-        int primaryColor = mode == FuelMode.LPG ? 0xFFF59E0B : 0xFF38BDF8; // Orange vs Blue
-        int accentColor = mode == FuelMode.LPG ? 0xFFD97706 : 0xFF0284C7;
-        
+        // Multi-fuel color theme: each fuel type has its own color
+        int primaryColor;
+        int accentColor;
+        String label;
+        switch (mode) {
+            case LPG:
+                primaryColor = 0xFFF59E0B; accentColor = 0xFFD97706; label = "LPG";
+                break;
+            case NGV:
+                primaryColor = 0xFF10B981; accentColor = 0xFF059669; label = "NGV";
+                break;
+            case E20:
+                primaryColor = 0xFF8B5CF6; accentColor = 0xFF7C3AED; label = "E20";
+                break;
+            case E85:
+                primaryColor = 0xFFEC4899; accentColor = 0xFFDB2777; label = "E85";
+                break;
+            case DIESEL:
+                primaryColor = 0xFF6B7280; accentColor = 0xFF4B5563; label = "Diesel";
+                break;
+            case B20:
+                primaryColor = 0xFF059669; accentColor = 0xFF047857; label = "B20";
+                break;
+            case PETROL_91:
+                primaryColor = 0xFF6366F1; accentColor = 0xFF4F46E5; label = "G91";
+                break;
+            case PETROL:
+            default:
+                primaryColor = 0xFF38BDF8; accentColor = 0xFF0284C7; label = "G95";
+                break;
+        }
+
         if (headerFuelMode != null) {
-            if (mode == FuelMode.LPG) {
-                headerFuelMode.setText("LPG/CNG");
-                headerFuelMode.setTextColor(0xFFF59E0B);
-                headerFuelMode.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0x20F59E0B));
-            } else {
-                headerFuelMode.setText("PETROL");
-                headerFuelMode.setTextColor(0xFF38BDF8);
-                headerFuelMode.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0x2038BDF8));
-            }
+            headerFuelMode.setText(label);
+            headerFuelMode.setTextColor(primaryColor);
+            headerFuelMode.setBackgroundTintList(android.content.res.ColorStateList.valueOf(primaryColor & 0x20FFFFFF));
         }
 
         if (fabLog != null) {
@@ -854,6 +877,37 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private String[] prefGaugePids = new String[]{"01_0C", "01_0D", "01_05", "01_04"};
     private String[] prefDashPids = new String[]{"01_06", "01_14", "01_0E", "01_0F"};
     private String[] prefGraphPids = new String[]{"01_0C", "01_0D", "01_06", "01_05", "01_04"};
+
+    /** Map spinner position → FuelMode (must match arrays.xml fuel_modes order) */
+    private static FuelMode fuelPositionToMode(int position) {
+        switch (position) {
+            case 0:  return FuelMode.LPG;
+            case 1:  return FuelMode.NGV;
+            case 2:  return FuelMode.PETROL;      // Petrol 95
+            case 3:  return FuelMode.PETROL_91;   // Gasohol 91
+            case 4:  return FuelMode.E20;
+            case 5:  return FuelMode.E85;
+            case 6:  return FuelMode.DIESEL;      // Diesel B7
+            case 7:  return FuelMode.B20;
+            default: return FuelMode.PETROL;
+        }
+    }
+
+    /** Map FuelMode → spinner position (inverse of fuelPositionToMode) */
+    private static int fuelModeToPosition(FuelMode mode) {
+        if (mode == null) return 2; // default petrol
+        switch (mode) {
+            case LPG:       return 0;
+            case NGV:       return 1;
+            case PETROL:    return 2;
+            case PETROL_91: return 3;
+            case E20:       return 4;
+            case E85:       return 5;
+            case DIESEL:    return 6;
+            case B20:       return 7;
+            default:        return 2;
+        }
+    }
 
     private void setupDynamicPids() {
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
@@ -2200,17 +2254,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // permanently empty. clearData(fuelMode) preserves the comparison fuel.
         if (fuelMapView != null) {
             fuelMapView.clearData(config.fuelMode);
-            if (config.fuelMode == FuelMode.LPG) {
+            if (config.fuelMode.isGaseous()) {
                 sessionLpgData.clear();
             } else {
                 sessionPetrolData.clear();
             }
-            fuelMapView.setMapMode(config.fuelMode == FuelMode.LPG
+            fuelMapView.setMapMode(config.fuelMode.isGaseous()
                     ? FuelMapView.MapMode.LPG : FuelMapView.MapMode.PETROL);
             // Also sync the toggle button in the Map tab
             com.google.android.material.button.MaterialButtonToggleGroup mapModeToggle = findViewById(R.id.mapModeToggle);
             if (mapModeToggle != null) {
-                mapModeToggle.check(config.fuelMode == FuelMode.LPG ? R.id.btnMapLpg : R.id.btnMapPetrol);
+                mapModeToggle.check(config.fuelMode.isGaseous() ? R.id.btnMapLpg : R.id.btnMapPetrol);
             }
         }
 
@@ -2766,7 +2820,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             boolean tempOk = (ect == null) || (ect >= 80.0);
             if (isClosedLoop && tempOk) {
                 if (fuelMapView != null) {
-                    FuelMode mode = "lpg/cng".equalsIgnoreCase(record.getFuelMode()) ? FuelMode.LPG : FuelMode.PETROL;
+                    FuelMode mode = FuelMode.fromString(record.getFuelMode());
                     fuelMapView.pushData(rpm, loadAxis, trim, mode);
                 }
             }
@@ -3226,7 +3280,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         Double stft = valueByKey(record, "01_06");
         Double ltft = valueByKey(record, "01_07");
         if (stft != null) {
-            FuelMode mode = "lpg/cng".equalsIgnoreCase(record.getFuelMode()) ? FuelMode.LPG : FuelMode.PETROL;
+            FuelMode mode = FuelMode.fromString(record.getFuelMode());
             FuelTrimResult result = LPGAnalyzer.analyzeFuelTrim(this, stft, ltft, mode);
             
             if (tuningStatusText != null) {
@@ -5109,7 +5163,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         LoggerConfig config = new LoggerConfig();
         config.context = getApplicationContext();
         config.transportMode = transportModeFromSpinner(transportSpinner.getSelectedItemPosition());
-        config.fuelMode = fuelSpinner.getSelectedItemPosition() == 0 ? FuelMode.LPG : FuelMode.PETROL;
+        config.fuelMode = fuelPositionToMode(fuelSpinner.getSelectedItemPosition());
         config.obdProtocol = obdProtocolFromSpinner(obdProtocolSpinner.getSelectedItemPosition());
         config.wifiIp = text(wifiIpInput, "192.168.0.10");
         config.wifiPort = intText(wifiPortInput, 35000);
@@ -5758,7 +5812,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 LoggerService svc = LoggerService.getInstance();
                 LoggerConfig cfg = (svc != null && svc.getConfig() != null) ? svc.getConfig() : activeInProcessConfig;
                 if (cfg != null && cfg.fuelMode != null) {
-                    fuelSpinner.setSelection(cfg.fuelMode == FuelMode.LPG ? 0 : 1);
+                    fuelSpinner.setSelection(fuelModeToPosition(cfg.fuelMode));
                 } else {
                     int pos = prefs.getInt("pref_fuel_position", 1);
                     if (pos >= 0 && pos < fuelSpinner.getAdapter().getCount()) {
@@ -5766,7 +5820,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     }
                 }
             } else {
-                fuelSpinner.setSelection(1); // Always default Start Fuel Type to Petrol
+                fuelSpinner.setSelection(fuelModeToPosition(FuelMode.PETROL)); // Always default Start Fuel Type to Petrol
             }
         }
         if (obdProtocolSpinner != null) {

@@ -9,7 +9,13 @@
     </string-array>
     <string-array name="fuel_modes">
         <item>LPG/CNG</item>
-        <item>Petrol</item>
+        <item>NGV</item>
+        <item>Petrol 95</item>
+        <item>Gasohol 91</item>
+        <item>Gasohol E20</item>
+        <item>Gasohol E85</item>
+        <item>Diesel B7</item>
+        <item>Diesel B20</item>
     </string-array>
     <string-array name="language_modes">
         <item>System Default</item>

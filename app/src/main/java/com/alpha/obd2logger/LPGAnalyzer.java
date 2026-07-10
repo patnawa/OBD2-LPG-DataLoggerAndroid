@@ -54,21 +54,21 @@ public final class LPGAnalyzer {
         switch (r.getVerdict()) {
             case LEAN:
                 status = context.getString(R.string.analyzer_lean);
-                recommendation = (mode == FuelMode.PETROL)
-                        ? context.getString(R.string.analyzer_petrol_lean)
-                        : context.getString(R.string.analyzer_lpg_lean);
+                recommendation = (mode.isGaseous())
+                        ? context.getString(R.string.analyzer_lpg_lean)
+                        : context.getString(R.string.analyzer_petrol_lean);
                 break;
             case RICH:
                 status = context.getString(R.string.analyzer_rich);
-                recommendation = (mode == FuelMode.PETROL)
-                        ? context.getString(R.string.analyzer_petrol_rich)
-                        : context.getString(R.string.analyzer_lpg_rich);
+                recommendation = (mode.isGaseous())
+                        ? context.getString(R.string.analyzer_lpg_rich)
+                        : context.getString(R.string.analyzer_petrol_rich);
                 break;
             case OK:
                 status = context.getString(R.string.analyzer_ok);
-                recommendation = (mode == FuelMode.PETROL)
-                        ? context.getString(R.string.analyzer_petrol_ok)
-                        : context.getString(R.string.analyzer_lpg_ok);
+                recommendation = (mode.isGaseous())
+                        ? context.getString(R.string.analyzer_lpg_ok)
+                        : context.getString(R.string.analyzer_petrol_ok);
                 break;
             default: // UNKNOWN
                 status = context.getString(R.string.analyzer_unknown);
