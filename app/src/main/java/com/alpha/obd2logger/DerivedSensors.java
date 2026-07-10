@@ -367,7 +367,7 @@ public final class DerivedSensors {
         double da = 145366.0 * (1.0 - Math.pow(pressureRatio, 0.1903)
                 * Math.pow(virtualTemp / 288.15, 0.5379));
 
-        return Math.round(da);
+        return (double) Math.round(da);
     }
 
     /**
