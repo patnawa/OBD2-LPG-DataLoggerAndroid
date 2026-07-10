@@ -289,8 +289,12 @@ public final class AdvancedAirDensity {
         double mafKgS = mafGs / 1000.0;
         double rpmS = rpm / 60.0;
 
-        // VE = (MAF × 2) / (disp × RPM/60 × ρ)
-        double ve = (mafKgS * 2.0) / (displacementM3 * rpmS * manifoldDensityKgM3) * 100.0;
+        // 4-stroke: one intake stroke per 2 revolutions.
+        // Theoretical mass flow = ρ × V × (RPM/120)
+        // VE = actual_mass_flow / theoretical × 100
+        //    = MAF / (ρ × V × RPM/120) × 100
+        double theoreticalKgS = manifoldDensityKgM3 * displacementM3 * (rpmS / 2.0);
+        double ve = (mafKgS / theoreticalKgS) * 100.0;
 
         if (ve < 0 || ve > 250) return null;
         return Math.round(ve * 10.0) / 10.0;
