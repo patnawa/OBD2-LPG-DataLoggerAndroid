@@ -101,29 +101,22 @@ public final class AdvancedAirDensity {
     // ── Fuel-specific constants ───────────────────────────────
     /** Stoichiometric AFR by fuel type */
     private static double stoichAFR(FuelMode fuel) {
-        if (fuel == FuelMode.LPG)  return 15.5;
-        if (fuel == FuelMode.CNG)  return 17.2;
-        if (fuel == FuelMode.DIESEL) return 14.5;
+        if (fuel == FuelMode.LPG)  return 15.5;  // LPG propane/butane mix
         return 14.7; // PETROL default
     }
-    /** Latent heat of vaporization, kJ/kg (0 for diesel/CNG = no manifold evap) */
+    /** Latent heat of vaporization, kJ/kg (LPG has slightly higher than petrol) */
     private static double lhvVaporization(FuelMode fuel) {
         if (fuel == FuelMode.LPG)  return 370.0;
-        if (fuel == FuelMode.PETROL) return 350.0;
-        return 0.0; // DIESEL, CNG — no evap cooling in manifold
+        return 350.0; // PETROL
     }
     /** Fuel density, g/L */
     private static double fuelDensity(FuelMode fuel) {
         if (fuel == FuelMode.LPG)  return 510.0;
-        if (fuel == FuelMode.CNG)  return 0.72; // g/L at STP (compressed)
-        if (fuel == FuelMode.DIESEL) return 832.0;
         return 737.0; // PETROL
     }
     /** Typical brake thermal efficiency by fuel (approximate) */
     private static double thermalEfficiency(FuelMode fuel) {
-        if (fuel == FuelMode.DIESEL) return 0.38;
         if (fuel == FuelMode.LPG)  return 0.30;
-        if (fuel == FuelMode.CNG)  return 0.30;
         return 0.28; // PETROL
     }
 
@@ -409,7 +402,8 @@ public final class AdvancedAirDensity {
      */
     public static Double vaporDisplacementFraction(Double mafGs, FuelMode fuel, Double lambda) {
         if (mafGs == null || mafGs <= 0 || lambda == null || lambda <= 0) return null;
-        if (fuel == FuelMode.DIESEL) return 0.0; // DI, no manifold fuel
+        // Both LPG and PETROL have manifold/port fuel injection → vapor displacement applies
+        // Diesel uses direct injection (no manifold fuel), but FuelMode doesn't include diesel
 
         double afr = lambda * stoichAFR(fuel);
         double fuelGs = mafGs / afr;
@@ -457,7 +451,7 @@ public final class AdvancedAirDensity {
         if (mafGs == null || mafGs <= 0 || lambda == null || lambda <= 0) return null;
 
         double lhv = lhvVaporization(fuel); // kJ/kg
-        if (lhv <= 0) return 0.0; // diesel, CNG
+        if (lhv <= 0) return 0.0; // no evap cooling (not applicable for current FuelMode)
 
         double afr = lambda * stoichAFR(fuel);
         double fuelKgS = (mafGs / 1000.0) / afr;
