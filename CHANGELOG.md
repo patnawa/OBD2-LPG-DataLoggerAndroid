@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.8] - 2026-07-10
+### Fixed
+- **Logger Randomly Stops — retryCount Accumulation Bug** — The `retryCount` counter in both `LoggerService.runLogger` and `MainActivity.runLogger` (in-process mode) was incremented on *any* exception during the logging loop but only reset to 0 when a reconnection occurred (when `isConnected()` returned false). During steady-state operation, the driver's `isConnected()` flag stays true even when transient errors occur (read timeouts, momentary I/O glitches, NPEs from derived-sensor computations), so the counter was never reset. Over a long drive, 11 scattered transient errors would accumulate and permanently kill the logger (`"Logger disconnected permanently"`), requiring a manual restart. Fixed by resetting `retryCount = 0` after every successful `writeRecord()`, so transient blips don't accumulate across a long session.
+- **Derived-Sensor NPEs Feeding Retry Counter** — `AirDensityMonitor.compute()` and `computeAdvanced()` were called unprotected in the logging loop. Any NPE from a null batch value threw straight into the catch block, incrementing the retry counter. Both calls are now wrapped in individual try/catch blocks in both LoggerService and MainActivity, logging the error as non-fatal without feeding the retry counter.
+- **Non-IO Exceptions Counting Toward Retry Cap** — The catch block in both logging paths now distinguishes connection/IO errors (`IOException`, `SocketTimeoutException`, `SocketException`) from data-parsing/derived-sensor errors. Only connection errors increment `retryCount`; non-IO exceptions are logged as warnings and the loop continues without counting toward the permanent stop threshold.
+
 ## [3.7.7] - 2026-07-10
 ### Fixed
 - **Toolbar Button Overlap (START/STOP + Air Density)** — `btnHeaderAirDensity` in `activity_main.xml` was anchored `layout_toStartOf="@id/btnSettings"`, the same anchor as the `fabLog` START/STOP button, causing both views to stack at the same position in the `RelativeLayout`. The Air Density icon overlapped the START/STOP button making both unreliable to tap. Fixed by chaining `btnHeaderAirDensity` to `layout_toStartOf="@id/fabLog"` so the right-to-left order reads: Settings → START/STOP → Air Density → Status → Home.

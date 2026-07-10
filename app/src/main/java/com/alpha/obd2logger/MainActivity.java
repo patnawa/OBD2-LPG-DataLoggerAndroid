@@ -2706,7 +2706,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             // Do NOT call refreshWeatherSync() here — it blocks the logger
                             // thread on slow networks and causes connection timeouts.
                             airDensityMonitor.onObdBatch(batch);
-                            AirDensityMonitor.AirDensityResult dr = airDensityMonitor.compute();
+                            AirDensityMonitor.AirDensityResult dr;
+                            try {
+                                dr = airDensityMonitor.compute();
+                            } catch (Exception computeEx) {
+                                Log.w("OBD2Logger", "Air density compute failed non-fatally", computeEx);
+                                dr = null;
+                            }
                             if (dr != null) {
                                 if (dr.aad != null) {
                                     samples.add(new SensorSample("derived_aad", "Ambient Air Density",
@@ -2744,6 +2750,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 Double lambdaValue = batch.get("Lambda (B1S1)");
                                 if (lambdaValue == null) lambdaValue = batch.get("Wideband Lambda (B1S1)");
 
+                                try {
                                 AdvancedAirDensity.AdvancedResult ar =
                                         airDensityMonitor.computeAdvanced(
                                             mafValue, rpmValue, lambdaValue,
@@ -2810,6 +2817,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                                 "SAE CF Delta", ar.saeCFDelta, "", "ok"));
                                     }
                                 }
+                                } catch (Exception advEx) {
+                                    Log.w("OBD2Logger", "Advanced air density computation failed non-fatally", advEx);
+                                }
                             }
                         }
 
@@ -2824,6 +2834,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
                         writer.writeRecord(record);
                         completed++;
+                        // Reset retry counter on every successful record write so
+                        // transient errors don't accumulate across a long session.
+                        retryCount = 0;
                         final int finalCompleted = completed;
                         sessionRecordCount = finalCompleted;
                         runOnActiveActivity(() -> {
@@ -2866,7 +2879,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     if (!running || e instanceof InterruptedException) {
                         break;
                     }
-                    retryCount++;
+                    // Only connection/IO errors should count toward the retry cap.
+                    // Data-parsing or derived-sensor errors are transient and
+                    // should not accumulate toward a permanent stop.
+                    boolean isConnectionError = e instanceof java.io.IOException
+                            || e instanceof java.net.SocketTimeoutException
+                            || e instanceof java.net.SocketException;
+                    if (isConnectionError) {
+                        retryCount++;
+                        Log.w("OBD2Logger", "Connection error (" + retryCount + "/" + maxRetries + "): " + e.getMessage());
+                    } else {
+                        Log.w("OBD2Logger", "Non-fatal logger exception (not counted toward retry cap)", e);
+                    }
                     if (retryCount > 3 && driver != null) {
                         driver.disconnect();
                     }

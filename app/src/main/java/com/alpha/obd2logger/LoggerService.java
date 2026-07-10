@@ -590,7 +590,13 @@ public final class LoggerService extends Service {
                             // Feed latest OBD2 values
                             airDensityMonitor.onObdBatch(batch);
 
-                            AirDensityMonitor.AirDensityResult dr = airDensityMonitor.compute();
+                            AirDensityMonitor.AirDensityResult dr;
+                            try {
+                                dr = airDensityMonitor.compute();
+                            } catch (Exception computeEx) {
+                                Log.w(TAG, "Air density compute failed non-fatally", computeEx);
+                                dr = null;
+                            }
                             if (dr != null) {
                                 if (dr.aad != null) {
                                     samples.add(new SensorSample("derived_aad", "Ambient Air Density",
@@ -629,7 +635,8 @@ public final class LoggerService extends Service {
                                 Double lambdaValue = batch.get("Lambda (B1S1)");
                                 if (lambdaValue == null) lambdaValue = batch.get("Wideband Lambda (B1S1)");
 
-                                AdvancedAirDensity.AdvancedResult ar =
+                                try {
+                                    AdvancedAirDensity.AdvancedResult ar =
                                         airDensityMonitor.computeAdvanced(
                                             mafValue, rpmValue, lambdaValue,
                                             config.fuelMode,
@@ -695,6 +702,9 @@ public final class LoggerService extends Service {
                                                 "SAE CF Delta", ar.saeCFDelta, "", "ok"));
                                     }
                                 }
+                                } catch (Exception advEx) {
+                                    Log.w(TAG, "Advanced air density computation failed non-fatally", advEx);
+                                }
                             }
                         }
                         
@@ -716,6 +726,11 @@ public final class LoggerService extends Service {
 
                         localWriter.writeRecord(record);
                         localRecordCount++;
+                        // Reset retry counter on every successful record write so
+                        // transient errors don't accumulate across a long session.
+                        // Without this, 11 scattered blips over hours permanently
+                        // kill the logger even though the connection is fine.
+                        retryCount = 0;
                         if (currentSessionToken == sessionToken) {
                             recordCount = localRecordCount;
                         }
@@ -748,7 +763,20 @@ public final class LoggerService extends Service {
                     if (!running || e instanceof InterruptedException) {
                         break;
                     }
-                    retryCount++;
+                    // Only connection/IO errors should count toward the retry cap.
+                    // Data-parsing or derived-sensor errors are transient and
+                    // should not accumulate toward a permanent stop.
+                    boolean isConnectionError = e instanceof java.io.IOException
+                            || e instanceof java.net.SocketTimeoutException
+                            || e instanceof java.net.SocketException;
+                    if (isConnectionError) {
+                        retryCount++;
+                        Log.w(TAG, "Connection error (" + retryCount + "/" + maxRetries + "): " + e.getMessage());
+                    } else {
+                        // Non-IO exception (data parsing, NPE, etc.) — log and
+                        // continue without incrementing the connection retry counter.
+                        Log.w(TAG, "Non-fatal logger exception (not counted toward retry cap)", e);
+                    }
                     if (retryCount > 3 && localDriver != null) {
                         localDriver.disconnect();
                     }

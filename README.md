@@ -1,10 +1,17 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.7.7** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.7.8** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมือนต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.7.8 — Logger Random Stop Fix
+
+### Fixed
+- **Logger Randomly Stops (retryCount Accumulation Bug)** — The retry counter was never reset during normal operation, so 11 scattered transient errors over a long drive would permanently kill the logger. Now resets to 0 after every successful record write.
+- **Derived-Sensor NPEs Feeding Retry Counter** — `AirDensityMonitor.compute()` and `computeAdvanced()` are now wrapped in try/catch so NPEs from null batch values don't increment the retry counter.
+- **Non-IO Exceptions No Longer Count Toward Retry Cap** — Only connection/IO errors (`IOException`, `SocketTimeoutException`, `SocketException`) increment the retry counter; data-parsing errors are logged and skipped.
 
 ## What's New in 3.7.7 — Toolbar Overlap, Icon & Logo Fixes
 
