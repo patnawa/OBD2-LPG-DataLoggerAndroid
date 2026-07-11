@@ -290,4 +290,17 @@
     <string name="feature_dpf_monitor">DPF Monitor (Diesel)</string>
     <string name="feature_custom_pid">Enable Custom PIDs</string>
     <string name="feature_air_density">Air Density (AAD/MAD/BAD)</string>
+
+    <!-- Gauge / Dashboard / Graph slot strings -->
+    <string name="tap_to_add">Tap to Add</string>
+    <string name="live_graphs">Live Graphs</string>
+    <string name="data_slot">Data %1$d</string>
+    <string name="records_count">Records: %1$d</string>
+    <string name="select_obd_param">Select OBD2 Parameter</string>
+    <string name="select_obd_param_sub">Tap to display in slot %1$d or hide</string>
+    <string name="search_param">Search Parameter…</string>
+    <string name="hide_field">Hide / Disable</string>
+    <string name="hide_field_desc">No data shown in this slot</string>
+    <string name="long_press_to_clear">Long-press to clear</string>
+    <string name="slot_cleared">Slot %1$d cleared</string>
 </resources>

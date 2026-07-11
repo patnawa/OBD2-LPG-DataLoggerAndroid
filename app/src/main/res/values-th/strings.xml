@@ -263,4 +263,17 @@
     <string name="feature_dpf_monitor">ตรวจสอบ DPF (ดีเซล)</string>
     <string name="feature_custom_pid">เปิดใช้ Custom PID</string>
     <string name="feature_air_density">ความหนาแน่นอากาศ (AAD/MAD/BAD)</string>
+
+    <!-- Gauge / Dashboard / Graph slot strings -->
+    <string name="tap_to_add">แตะเพื่อเพิ่ม</string>
+    <string name="live_graphs">กราฟเรียลไทม์</string>
+    <string name="data_slot">ข้อมูล %1$d</string>
+    <string name="records_count">บันทึก: %1$d</string>
+    <string name="select_obd_param">เลือก OBD2 Parameter</string>
+    <string name="select_obd_param_sub">แตะเพื่อแสดงผลในสล็อตที่ %1$d หรือเลือกซ่อน</string>
+    <string name="search_param">ค้นหา Parameter…</string>
+    <string name="hide_field">ซ่อนฟิลด์นี้ (ปิดใช้งาน)</string>
+    <string name="hide_field_desc">ไม่ต้องการแสดงข้อมูลในสล็อตนี้</string>
+    <string name="long_press_to_clear">กดค้างเพื่อล้างค่า</string>
+    <string name="slot_cleared">ล้างค่าสล็อต %1$d แล้ว</string>
 </resources>

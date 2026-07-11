@@ -403,7 +403,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 }
                 
                 int count = service.getRecordCount();
-                countText.setText("Records: " + count);
+                countText.setText(getString(R.string.records_count, count));
                 setStatus("Background logging active...", R.color.accent);
                 if (activeConfig != null) updateStatusStripConnection(2, "Connected " + activeConfig.transportMode.getValue());
                 headerStatus.setText("Logging...");
@@ -449,7 +449,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 }
             }
             
-            countText.setText("Records: " + sessionRecordCount);
+            countText.setText(getString(R.string.records_count, sessionRecordCount));
 
             // Restore fuel map from LiveMapStore (single source of truth)
             if (fuelMapView != null) {
@@ -807,6 +807,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         statusText = findViewById(R.id.statusText);
         countText = findViewById(R.id.countText);
+        if (countText != null) countText.setText(getString(R.string.records_count, 0));
         
         dashTitle1 = findViewById(R.id.dashTitle1);
         dashValue1 = findViewById(R.id.dashValue1);
@@ -1049,18 +1050,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             final int idx = i;
             if (gaugeCards[i] != null) {
                 gaugeCards[i].setOnClickListener(v -> showPidSelectionDialog("gauge_" + idx, prefGaugePids, idx, this::setupGauges));
-                gaugeCards[i].setOnLongClickListener(v -> { showPidSelectionDialog("gauge_" + idx, prefGaugePids, idx, this::setupGauges); return true; });
+                gaugeCards[i].setOnLongClickListener(v -> {
+                    clearPidSlot("gauge_" + idx, prefGaugePids, idx, this::setupGauges);
+                    return true;
+                });
             }
             if (dashCards[i] != null) {
                 dashCards[i].setOnClickListener(v -> showPidSelectionDialog("dash_" + idx, prefDashPids, idx, this::setupDashboard));
-                dashCards[i].setOnLongClickListener(v -> { showPidSelectionDialog("dash_" + idx, prefDashPids, idx, this::setupDashboard); return true; });
+                dashCards[i].setOnLongClickListener(v -> {
+                    clearPidSlot("dash_" + idx, prefDashPids, idx, this::setupDashboard);
+                    return true;
+                });
             }
         }
         for (int i=0; i<5; i++) {
             final int idx = i;
             if (graphCards[i] != null) {
                 graphCards[i].setOnClickListener(v -> showPidSelectionDialog("graph_" + idx, prefGraphPids, idx, this::setupGraphs));
-                graphCards[i].setOnLongClickListener(v -> { showPidSelectionDialog("graph_" + idx, prefGraphPids, idx, this::setupGraphs); return true; });
+                graphCards[i].setOnLongClickListener(v -> {
+                    clearPidSlot("graph_" + idx, prefGraphPids, idx, this::setupGraphs);
+                    return true;
+                });
             }
         }
     }
@@ -1078,7 +1088,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         
         // Header Text
         android.widget.TextView titleText = new android.widget.TextView(this);
-        titleText.setText("เลือก OBD2 Parameter");
+        titleText.setText(getString(R.string.select_obd_param));
         titleText.setTextColor(getColorCompat(R.color.text));
         titleText.setTextSize(18);
         titleText.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -1086,7 +1096,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         root.addView(titleText);
 
         android.widget.TextView subTitleText = new android.widget.TextView(this);
-        subTitleText.setText("แตะเพื่อแสดงผลในสล็อตที่ " + (index + 1) + " หรือเลือกซ่อนตัวเลือก");
+        subTitleText.setText(getString(R.string.select_obd_param_sub, (index + 1)));
         subTitleText.setTextColor(getColorCompat(R.color.muted));
         subTitleText.setTextSize(12);
         subTitleText.setPadding(0, 0, 0, (int)(12 * getResources().getDisplayMetrics().density));
@@ -1094,7 +1104,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // Search EditText
         android.widget.EditText searchBar = new android.widget.EditText(this);
-        searchBar.setHint("ค้นหา Parameter... (Search)");
+        searchBar.setHint(getString(R.string.search_param));
         searchBar.setHintTextColor(getColorCompat(R.color.muted));
         searchBar.setTextColor(getColorCompat(R.color.text));
         
@@ -1121,6 +1131,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 android.widget.LinearLayout.LayoutParams.MATCH_PARENT, (int) (350 * getResources().getDisplayMetrics().density));
         listView.setLayoutParams(listParams);
         root.addView(listView);
+
+        // Long-press hint footer
+        android.widget.TextView hint = new android.widget.TextView(this);
+        hint.setText("💡 " + getString(R.string.long_press_to_clear));
+        hint.setTextColor(getColorCompat(R.color.muted));
+        hint.setTextSize(11);
+        hint.setPadding(0, (int)(8 * getResources().getDisplayMetrics().density), 0, 0);
+        root.addView(hint);
 
         // Populate items
         java.util.List<PIDDefinition> allPids = PIDCatalogue.getAll();
@@ -1215,8 +1233,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 gd.setCornerRadius(18 * density); // circular shape
 
                 if (item instanceof String && "none".equals(item)) {
-                    mainText.setText("ซ่อนฟิลด์นี้ (Hide / Disable)");
-                    subText.setText("ไม่ต้องการแสดงข้อมูลในสล็อตนี้");
+                    mainText.setText(getString(R.string.hide_field));
+                    subText.setText(getString(R.string.hide_field_desc));
                     badge.setText("OFF");
                     gd.setColor(0xFFEF4444);
                 } else {
@@ -1274,6 +1292,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dialog.setContentView(root);
         dialog.show();
     }
+
+    /**
+     * Clear a gauge/dashboard/graph slot — set it to "none" (hidden).
+     * Called via long-press on the card.
+     */
+    private void clearPidSlot(String prefKey, String[] array, int index, Runnable onUpdated) {
+        if ("none".equalsIgnoreCase(array[index])) {
+            // Already empty — nothing to clear
+            Toast.makeText(this, getString(R.string.slot_cleared, index + 1), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        array[index] = "none";
+        getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putString(prefKey, "none").apply();
+        onUpdated.run();
+        Toast.makeText(this, getString(R.string.slot_cleared, index + 1), Toast.LENGTH_SHORT).show();
+    }
     
     private void exportCorrectionCsv() {
         if (fuelMapView == null) return;
@@ -1318,7 +1352,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (titles[i] == null || values[i] == null) continue;
             String pidKey = prefDashPids[i];
             if ("none".equalsIgnoreCase(pidKey)) {
-                titles[i].setText("แตะเพื่อเพิ่ม (Tap to Add)");
+                titles[i].setText(getString(R.string.tap_to_add));
                 titles[i].setTextColor(getColorCompat(R.color.muted));
                 values[i].setText("+");
                 values[i].setTextColor(getColorCompat(R.color.muted));
@@ -1542,7 +1576,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             String pidKey = prefGaugePids[i];
             if ("none".equalsIgnoreCase(pidKey)) {
                 gauges[i].setRange(0f, 100f);
-                gauges[i].setLabel("แตะเพื่อเพิ่ม (Tap to Add)");
+                gauges[i].setLabel(getString(R.string.tap_to_add));
                 gauges[i].setUnit("+");
                 gauges[i].setValue(0f);
             } else {
@@ -1578,7 +1612,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (graphs[i] == null) continue;
             String pidKey = prefGraphPids[i];
             if ("none".equalsIgnoreCase(pidKey)) {
-                graphs[i].setLabel("แตะเพื่อเพิ่ม (Tap to Add)", "+");
+                graphs[i].setLabel(getString(R.string.tap_to_add), "+");
                 graphs[i].setRange(0f, 100f);
             } else {
                 PIDDefinition pid = PIDDefinition.findByKey(pidKey);
@@ -2436,7 +2470,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         setStatus("Connecting via " + config.transportMode.getValue() + "...", R.color.accent);
         headerStatus.setText("Connecting...");
         updateStatusStripConnection(1, "Connecting " + config.transportMode.getValue() + "...");
-        countText.setText("Records: 0");
+        countText.setText(getString(R.string.records_count, 0));
         TextView[] values = {dashValue1, dashValue2, dashValue3, dashValue4};
         for (int i=0; i<4; i++) {
             if (values[i] != null) values[i].setText("—");
@@ -3026,7 +3060,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             MainActivity active = activeInstance;
                             if (active != null) {
                                 active.latestDataRecord = record;
-                                active.countText.setText("Records: " + finalCompleted);
+                                active.countText.setText(active.getString(R.string.records_count, finalCompleted));
                                 active.updateDashboard(record);
                                 active.updateGraphs(record);
                                 active.updateFuelMap(record);
@@ -3158,7 +3192,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (headerStatus != null) {
                 headerStatus.setText("Logging...");
             }
-            if (countText != null) countText.setText("Records: " + count);
+            if (countText != null) countText.setText(getString(R.string.records_count, count));
             updateDashboard(record);
             updateGraphs(record);
             updateFuelMap(record);
