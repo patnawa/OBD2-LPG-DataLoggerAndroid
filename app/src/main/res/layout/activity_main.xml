@@ -3472,6 +3472,19 @@
                             android:layout_height="wrap_content"
                             android:text="@string/compare_logs" />
 
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnImportLog"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Import Log"
+                            android:textColor="@color/accent"
+                            android:textSize="12sp"
+                            app:icon="@android:drawable/ic_menu_upload"
+                            app:iconSize="16dp"
+                            app:iconTint="@color/accent" />
+
                         <TextView
                             android:id="@+id/compareHintText"
                             android:layout_width="0dp"

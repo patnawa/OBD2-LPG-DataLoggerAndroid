@@ -34,8 +34,19 @@ public final class VinReader {
 
     /**
      * Parse the VIN from a Mode 09 PID 02 response.
-     * The response may contain multiple frames. We extract all printable
-     * ASCII characters after the header bytes.
+     *
+     * <p>The VIN response is a multi-frame ISO-15765-2 (ISO-TP) message.
+     * Each frame starts with {@code 49 02 0X} where {@code 0X} is the
+     * frame sequence number (01 = first, 02 = second, etc.).
+     *
+     * <p><b>Bug fixed here:</b> The old code found only the <i>first</i>
+     * {@code 4902} and read ASCII to the end of the concatenated hex.
+     * On a 2-frame VIN response (the common case), the second frame's
+     * {@code 49 02 02} header bytes polluted the ASCII extraction,
+     * producing garbage that was rejected downstream.
+     *
+     * <p>The fix strips the {@code 49 02 0X} header from <i>every</i> frame
+     * before concatenating the payload, then extracts printable ASCII.
      */
     static String parseVinResponse(String response) {
         if (response == null || response.isEmpty()) {
@@ -53,47 +64,41 @@ public final class VinReader {
             return null;
         }
 
-        // Find "4902" header
-        int idx = hex.indexOf("4902");
-        if (idx < 0) {
-            // Try finding "490201" pattern
-            idx = hex.indexOf("490201");
-            if (idx >= 0) idx += 6;
-        } else {
-            idx += 4;
-            // Skip frame index byte (01, 02, 03...)
-            if (idx + 2 <= hex.length()) {
-                idx += 2;
-            }
-        }
+        // Strip all "4902XX" frame headers (49=mode, 02=PID, XX=frame index).
+        // After cleanVinLine, the hex stream looks like:
+        //   "490201414243...490202444546...4902034748..."
+        // We want just the payload bytes: "414243...444546...4748..."
+        String payloadHex = hex;
+        // Remove all occurrences of "4902" followed by a 2-char frame index
+        payloadHex = payloadHex.replaceAll("4902[0-9A-F]{2}", "");
 
-        if (idx < 0 || idx >= hex.length()) {
+        if (payloadHex.length() < 2) {
             return null;
         }
 
-        // Extract ASCII characters from remaining hex bytes
+        // Extract printable ASCII characters from the payload hex bytes
         StringBuilder vin = new StringBuilder();
-        while (idx + 2 <= hex.length()) {
-            String byteHex = hex.substring(idx, idx + 2);
+        for (int i = 0; i + 2 <= payloadHex.length(); i += 2) {
+            String byteHex = payloadHex.substring(i, i + 2);
             try {
                 int charVal = Integer.parseInt(byteHex, 16);
-                if (charVal >= 0x20 && charVal <= 0x7E) {
+                // VIN chars are uppercase letters and digits only (no O, I, Q)
+                if (charVal >= 0x30 && charVal <= 0x39       // 0-9
+                        || charVal >= 0x41 && charVal <= 0x5A) { // A-Z
                     vin.append((char) charVal);
                 }
             } catch (NumberFormatException ignored) {
-                // Skip non-hex
             }
-            idx += 2;
         }
 
         String result = vin.toString().trim();
+
         // VIN is exactly 17 characters
         if (result.length() >= 17) {
             return result.substring(0, 17);
         }
-        if (result.length() >= 5) {
-            return result;
-        }
+        // Reject anything shorter than 17 — don't propagate garbage VINs
+        // that would create wrong folder names or break PID caching.
         return null;
     }
 

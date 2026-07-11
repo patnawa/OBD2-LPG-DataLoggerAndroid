@@ -179,6 +179,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private android.widget.ListView historyListViewLpg;
     private TextView historyFolderText;
     private com.google.android.material.button.MaterialButton btnCompareLogs;
+    private com.google.android.material.button.MaterialButton btnImportLog;
     private TextView compareHintText;
     private android.widget.ListView historyListViewFolders;
     private com.google.android.material.button.MaterialButton btnBackToFolders;
@@ -237,6 +238,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private int currentTabIndex = 0;
 
     private static final int PERMISSION_REQUEST_CODE = 1001;
+    private static final int IMPORT_LOG_REQUEST_CODE = 1002;
     private static final int NOTIFICATION_PERMISSION_CODE = 1002;
     private LoggerConfig pendingBackgroundConfig = null;
 
@@ -899,6 +901,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         compareHintText = findViewById(R.id.compareHintText);
         if (btnCompareLogs != null) {
             btnCompareLogs.setOnClickListener(v -> toggleCompareMode());
+        }
+
+        // Import Log button — opens a file picker for any CSV log file
+        // (from Downloads, SD card, USB, cloud Drive) and loads it into
+        // the ReviewSessionActivity for map plotting / compare.
+        btnImportLog = findViewById(R.id.btnImportLog);
+        if (btnImportLog != null) {
+            btnImportLog.setOnClickListener(v -> openImportLogPicker());
         }
         
         setupDynamicPids();
@@ -6857,6 +6867,35 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == IMPORT_LOG_REQUEST_CODE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            try {
+                getContentResolver().takePersistableUriPermission(
+                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (Exception ignored) {
+            }
+            Intent reviewIntent = new Intent(this, ReviewSessionActivity.class);
+            reviewIntent.setData(uri);
+            String fileName = "Imported Log";
+            try (android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                    if (nameIdx >= 0) {
+                        fileName = cursor.getString(nameIdx);
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+            reviewIntent.putExtra("file_name", fileName);
+            reviewIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(reviewIntent);
+        }
+    }
+
+    @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == NOTIFICATION_PERMISSION_CODE) {
@@ -6916,6 +6955,32 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 });
                 Toast.makeText(this, "Bluetooth permission denied. Simulation/WiFi still work.",
                         Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    /**
+     * Open a file picker (ACTION_OPEN_DOCUMENT) so the user can import any CSV
+     * log file from anywhere on the device (Downloads, SD card, USB, cloud Drive)
+     * into the ReviewSessionActivity for map plotting or compare.
+     */
+    private void openImportLogPicker() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("text/*");
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"text/csv", "text/comma-separated-values", "application/csv", "text/plain"});
+            startActivityForResult(intent, IMPORT_LOG_REQUEST_CODE);
+        } catch (Exception e) {
+            // Fallback: some devices don't support ACTION_OPEN_DOCUMENT with text/*
+            try {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"text/csv", "text/plain"});
+                startActivityForResult(intent, IMPORT_LOG_REQUEST_CODE);
+            } catch (Exception e2) {
+                Toast.makeText(this, "No file picker available", Toast.LENGTH_SHORT).show();
             }
         }
     }
