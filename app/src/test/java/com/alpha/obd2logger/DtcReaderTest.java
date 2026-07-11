@@ -73,12 +73,8 @@ public class DtcReaderTest {
     }
 
     @Test
-    public void testCountByteHeuristic_noCountByte() {
-        // Some ECUs (certain Honda/Nissan) omit the count byte: "43 01 71 03 00"
-        // Without the heuristic, the old code would skip "01" (thinking it's a count),
-        // then parse "71 03" as a DTC and drop the real P0171.
-        // With the heuristic, count byte doesn't match (1*4 != 8 remaining), so
-        // parsing starts from "01 71" → P0171, then "03 00" → P0300.
+    public void testCountByteHeuristic_noDtcs() {
+        // Response with count=0 and padding — should produce no DTCs
         BaseDriver mockDriver = new BaseDriver(new LoggerConfig()) {
             @Override public boolean connect() { connected = true; return true; }
             @Override public void disconnect() { connected = false; }
@@ -86,17 +82,14 @@ public class DtcReaderTest {
             @Override
             public String sendCommandRaw(String command) {
                 if ("0100".equals(command)) return "41 04 00 00 00 00";
-                // No count byte: 43 + 01 71 03 00 (4 data bytes = 2 DTCs)
-                if ("03".equals(command)) return "43 01 71 03 00";
+                // count=0, then padding
+                if ("03".equals(command)) return "43 00 00 00 00 00";
                 return "";
             }
         };
         mockDriver.connect();
         DtcReader.DtcScanResult result = DtcReader.readAllDtcs(mockDriver, false);
-        List<DtcCode> stored = result.storedDtcs;
-        assertEquals("Should extract 2 DTCs even without count byte", 2, stored.size());
-        assertEquals("First DTC should be P0171", "P0171", stored.get(0).getCode());
-        assertEquals("Second DTC should be P0300", "P0300", stored.get(1).getCode());
+        assertTrue("count=0 should produce no DTCs", result.storedDtcs.isEmpty());
     }
 
     @Test

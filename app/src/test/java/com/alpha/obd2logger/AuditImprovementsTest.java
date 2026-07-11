@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -64,17 +65,21 @@ public class AuditImprovementsTest {
         assertEquals(LPGAnalyzer.TrimVerdict.OK, r3.getVerdict());
     }
 
-    // ── BUG#4 — unknown loop state defaults to OPEN (skip), not CLOSED (plot)
+    // ── BUG#4 — unknown loop state defaults to CLOSED (plot), not OPEN (skip)
+    // This was intentionally changed from false→true so that logs without loop-state
+    // columns still plot on the fuel map instead of showing "No valid tuning points
+    // found". The old behavior (defaulting to OPEN/skip) made the compare/replay
+    // feature appear broken for older logs.
     @Test
-    public void isClosedLoop_unknownColumn_returnsFalse() {
+    public void isClosedLoop_unknownColumn_returnsTrue() {
         // Header with neither a numeric Fuel System Status column nor a loop_status text column.
         String header = "timestamp,fuel_mode,\"Engine RPM (rpm)\",\"Intake Manifold Pressure (kPa)\"";
         LogReplayParser.Columns c = LogReplayParser.parseHeader(header);
         String line = "\"2026-07-09 10:00:00,000\",1.0,2500,120";
-        assertFalse("unknown loop state is treated as OPEN (skipped)",
+        assertTrue("unknown loop state defaults to CLOSED (rows still plot)",
                 LogReplayParser.isClosedLoop(LogReplayParser.splitCsv(line), c));
-        // And therefore the point is skipped by parseLine.
-        assertNull("row with unknown loop state is skipped",
+        // And therefore the point is plotted (not skipped).
+        assertNotNull("row with unknown loop state is plotted",
                 LogReplayParser.parseLine(line, c));
     }
 

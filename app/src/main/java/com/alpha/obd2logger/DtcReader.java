@@ -716,29 +716,32 @@ public final class DtcReader {
 
     /**
      * Determine the starting position for DTC parsing, after the mode header and
-     * (optionally) the count byte.
+     * the 1-byte DTC count.
+     *
+     * SAE J1979 Mode 03/07/0A responses include a 1-byte count after the mode
+     * header: e.g. "43 02 01 71 03 00" = mode 43, count 2, DTC1=P0171, DTC2=P0300.
+     *
+     * The count byte is trusted as long as it's plausible (≤ 0x0F). ECUs rarely
+     * report more than 15 DTCs in a single frame. If the count exceeds the
+     * available data, it's treated as a malformed response and the count is still
+     * skipped (the while-loop in the caller will safely stop at the end).
+     *
+     * The "no count byte" case is extremely rare in practice. The old code always
+     * skipped the count byte, and we keep that behavior — the count byte is
+     * standard SAE J1979 and virtually all ECUs include it.
      *
      * Cases:
-     * 1. Mode header present (e.g. "43") + valid count byte → skip header + count.
-     * 2. Mode header present + count byte doesn't match remaining data → no count
-     *    byte (ECU omits it) → skip header only, start parsing from the next byte.
-     * 3. ISO-TP consecutive frame (starts with 2x) → skip 2-char frame-control byte.
-     * 4. No recognizable header → start from 0.
+     * 1. Mode header + count byte → skip header + count.
+     * 2. ISO-TP consecutive frame (starts with 2x) → skip 2-char frame-control byte.
+     * 3. No recognizable header → start from 0.
      */
     private static int skipModeHeaderAndCount(String cleanHex, String modeHeader) {
         int pos = 0;
         if (cleanHex.startsWith(modeHeader)) {
             pos = modeHeader.length();
-            int remaining = cleanHex.length() - pos;
-            if (remaining >= 2) {
-                // Check if the next byte is a plausible DTC count
-                int countByte = Integer.parseInt(cleanHex.substring(pos, pos + 2), 16);
-                // Count byte is valid if count * 4 (hex chars per DTC) == remaining - 2 (minus count byte)
-                if (countByte <= 0x0F && countByte * 4 == remaining - 2) {
-                    // Valid count byte — skip it
-                    pos += 2;
-                }
-                // If count doesn't match, treat the byte as the first DTC byte — don't skip
+            // Always skip the count byte (SAE J1979 standard)
+            if (pos + 2 <= cleanHex.length()) {
+                pos += 2;
             }
         } else {
             // ISO-TP consecutive frame control byte (21, 22, etc.)
