@@ -215,8 +215,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private static final java.util.Map<String, Double> pidMaxValues = new java.util.HashMap<>();
     private static final java.util.Map<String, Double> pidSumValues = new java.util.HashMap<>();
     private static final java.util.Map<String, Integer> pidCountValues = new java.util.HashMap<>();
-    private static final java.util.Map<String, FuelMapView.TrimData> sessionPetrolData = new java.util.concurrent.ConcurrentHashMap<>();
-    private static final java.util.Map<String, FuelMapView.TrimData> sessionLpgData = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<String, LiveMapStore.TrimData> sessionPetrolData = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<String, LiveMapStore.TrimData> sessionLpgData = new java.util.concurrent.ConcurrentHashMap<>();
     private final List<BluetoothDevice> bluetoothDevices = new ArrayList<>();
     private long lastSampleTimeMs = 0;
 
@@ -403,9 +403,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 headerStatus.setText("Logging...");
             }
 
+            // Restore fuel map from LiveMapStore (single source of truth)
             if (fuelMapView != null) {
-                fuelMapView.setPetrolData(sessionPetrolData);
-                fuelMapView.setLpgData(sessionLpgData);
+                LoggerService svc = LoggerService.getInstance();
+                LiveMapStore restoreStore = svc != null ? svc.getLiveMapStore() : null;
+                if (restoreStore != null) {
+                    fuelMapView.syncFromStore(restoreStore.snapshot());
+                } else {
+                    fuelMapView.setPetrolData(sessionPetrolData);
+                    fuelMapView.setLpgData(sessionLpgData);
+                }
             }
             setConfigUiEnabled(false);
         } else if (running) {
@@ -438,9 +445,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             
             countText.setText("Records: " + sessionRecordCount);
 
+            // Restore fuel map from LiveMapStore (single source of truth)
             if (fuelMapView != null) {
-                fuelMapView.setPetrolData(sessionPetrolData);
-                fuelMapView.setLpgData(sessionLpgData);
+                LoggerService svc = LoggerService.getInstance();
+                LiveMapStore restoreStore = svc != null ? svc.getLiveMapStore() : null;
+                if (restoreStore != null) {
+                    fuelMapView.syncFromStore(restoreStore.snapshot());
+                } else {
+                    fuelMapView.setPetrolData(sessionPetrolData);
+                    fuelMapView.setLpgData(sessionLpgData);
+                }
             }
             setConfigUiEnabled(false);
         } else {
@@ -2354,6 +2368,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // permanently empty. clearData(fuelMode) preserves the comparison fuel.
         if (fuelMapView != null) {
             fuelMapView.clearData(config.fuelMode);
+            // Also clear the corresponding fuel in LiveMapStore
+            LiveMapStore clearStore = getLiveMapStore();
+            if (clearStore != null) {
+                clearStore.clear(config.fuelMode);
+            }
             if (config.fuelMode.isGaseous()) {
                 sessionLpgData.clear();
             } else {
@@ -2898,14 +2917,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             }
                         });
 
-                        // Copy fuel map data to static maps
-                        MainActivity active = activeInstance;
-                        if (active != null && active.fuelMapView != null) {
-                            sessionPetrolData.clear();
-                            sessionPetrolData.putAll(active.fuelMapView.getPetrolData());
-                            sessionLpgData.clear();
-                            sessionLpgData.putAll(active.fuelMapView.getLpgData());
-                        }
+                        // Fuel map data now lives in LiveMapStore (single source of
+                        // truth). No need to copy to sessionPetrolData — the store
+                        // survives Activity recreation and is read by both UI and API.
 
                         try {
                             Thread.sleep(config.sampleIntervalMs);
@@ -3033,12 +3047,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             updateBatteryMonitor(record);
             updateStatusStrip(record);
 
-            if (fuelMapView != null) {
-                sessionPetrolData.clear();
-                sessionPetrolData.putAll(fuelMapView.getPetrolData());
-                sessionLpgData.clear();
-                sessionLpgData.putAll(fuelMapView.getLpgData());
-            }
+            // Fuel map data now lives in LiveMapStore — no session copy needed.
+            // updateFuelMap() above already pushes to the store and syncs the view.
         });
     }
 
@@ -3095,14 +3105,37 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 trim = ltft;
             }
 
-            boolean tempOk = (ect == null) || (ect >= 80.0);
-            if (isClosedLoop && tempOk) {
-                if (fuelMapView != null) {
-                    FuelMode mode = FuelMode.fromString(record.getFuelMode());
-                    fuelMapView.pushData(rpm, loadAxis, trim, mode);
-                }
+            FuelMode mode = FuelMode.fromString(record.getFuelMode());
+
+            // ── Push to LiveMapStore (single source of truth) ──
+            // If the LoggerService has a LiveMapStore (background path), push there.
+            // The ApiServer also pushes via setLatestData → pushToLiveMapStore, but
+            // that only runs when the API server is enabled. For in-process logging
+            // (no API server), we need to push here so the store stays populated.
+            LiveMapStore store = getLiveMapStore();
+            if (store != null) {
+                store.pushSample(rpm, loadAxis, trim, mode, isClosedLoop, ect);
+            }
+
+            // ── Sync FuelMapView from the store snapshot ──
+            // This replaces the old direct pushData() + sessionPetrolData copy pattern
+            // that caused race conditions and binning mismatches.
+            if (fuelMapView != null && store != null) {
+                fuelMapView.syncFromStore(store.snapshot());
+            } else if (fuelMapView != null) {
+                // Fallback: no store available (e.g. review session) — push directly
+                fuelMapView.pushData(rpm, loadAxis, trim, mode);
             }
         }
+    }
+
+    /**
+     * Returns the LiveMapStore from LoggerService if available.
+     * Used by updateFuelMap to push samples and sync the FuelMapView.
+     */
+    private LiveMapStore getLiveMapStore() {
+        LoggerService s = LoggerService.getInstance();
+        return s != null ? s.getLiveMapStore() : null;
     }
 
     @Override
@@ -5540,8 +5573,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private final java.util.Map<String, TextView> gaugeStatusCache = new java.util.HashMap<>();
 
     private void showPidFilterDialog() {
+        try {
         com.google.android.material.bottomsheet.BottomSheetDialog dialog =
-                new com.google.android.material.bottomsheet.BottomSheetDialog(this);
+                new com.google.android.material.bottomsheet.BottomSheetDialog(this, R.style.AppTheme);
 
         android.widget.LinearLayout root = new android.widget.LinearLayout(this);
         root.setOrientation(android.widget.LinearLayout.VERTICAL);
@@ -5769,6 +5803,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         dialog.setContentView(root);
         dialog.show();
+        } catch (Exception e) {
+            android.util.Log.e("OBD2Logger", "Filter PIDs dialog failed", e);
+            // Fallback: use a plain AlertDialog if BottomSheet fails (theme issue)
+            try {
+                android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+                builder.setTitle("Filter PIDs");
+                builder.setMessage("BottomSheet dialog failed: " + e.getMessage() + "\n\nPlease try again.");
+                builder.setPositiveButton("OK", null);
+                builder.show();
+            } catch (Exception ignored) {}
+        }
     }
 
     private void updateFilterStatusText() {
@@ -5990,6 +6035,34 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (ambient != null) weatherStr += String.format(Locale.US, " • %.0f°C", ambient);
             if (baro != null) weatherStr += String.format(Locale.US, " • %.0fkPa", baro);
             txtWeatherSummary.setText(weatherStr);
+        }
+
+        // ── Weather API connection status + refresh time ──
+        TextView txtWeatherStatus = airDensityCenterDialog.findViewById(R.id.txtDialogWeatherStatus);
+        if (txtWeatherStatus != null && airDensityMonitor != null) {
+            String statusStr;
+            if (airDensityMonitor.isWeatherValid()) {
+                long lastFetch = airDensityMonitor.getLastWeatherFetchMs();
+                String ageStr;
+                if (lastFetch > 0) {
+                    long ageMin = (System.currentTimeMillis() - lastFetch) / 60000L;
+                    if (ageMin < 1) ageStr = "just now";
+                    else if (ageMin < 60) ageStr = ageMin + " min ago";
+                    else ageStr = (ageMin / 60) + " hr ago";
+                } else {
+                    ageStr = "unknown";
+                }
+                statusStr = "API: Connected ✓ • Source: " + airDensityMonitor.getWeatherSource()
+                        + " • Updated: " + ageStr;
+                txtWeatherStatus.setTextColor(0xFF22C55E); // green
+            } else {
+                statusStr = "API: Disconnected ✗ • Using default weather data";
+                txtWeatherStatus.setTextColor(0xFFEF4444); // red
+            }
+            txtWeatherStatus.setText(statusStr);
+        } else if (txtWeatherStatus != null) {
+            txtWeatherStatus.setText("API: Not initialized • Weather unavailable");
+            txtWeatherStatus.setTextColor(0xFF94A3B8); // gray
         }
         if (txtDialogAAD != null) {
             txtDialogAAD.setText(aad != null ? String.format(Locale.US, "%.2f", aad) : "--");

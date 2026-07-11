@@ -130,17 +130,25 @@
             </div>
 
             <div class="card">
-                <h2>7. AI Agent API Server (Local REST API)</h2>
-                <p>The app features a built-in Local HTTP Server designed for MCP (Model Context Protocol) Clients, AI Agents, or custom scripts to read live vehicle data.</p>
+                <h2>7. AI Agent API Server (Local REST API + SSE)</h2>
+                <p>The app features a built-in Local HTTP Server designed for MCP (Model Context Protocol) Clients, AI Agents, or custom scripts to read live vehicle data and fuel-map analysis.</p>
                 <ul>
                     <li><strong>Enable:</strong> In the Settings tab, check the <em>Enable AI Agent API Server</em> box. Your phone's local IP address and URL will be displayed.</li>
                     <li><strong>Usage:</strong> Ensure your computer/AI Agent is on the <strong>same WiFi network</strong> as the phone.</li>
-                    <li><strong>Endpoints:</strong>
+                    <li><strong>REST Endpoints:</strong>
                         <ul>
-                            <li><code>GET /api/status</code> - Returns app status (Connected/Logging, Fuel Mode, VIN).</li>
-                            <li><code>GET /api/data</code> - Returns the latest polled sensor data (RPM, Speed, Fuel Trims, O2 Sensors, etc.) in JSON format.</li>
+                            <li><code>GET /api/status</code> - Connection status, fuel mode, VIN.</li>
+                            <li><code>GET /api/data</code> - Latest sensor data (JSON, keyed by pidKey).</li>
+                            <li><code>GET /api/map</code> - Binned fuel map with petrol/LPG/deviation/tuneAssist maps.</li>
+                            <li><code>GET /api/map/summary</code> - Map stats + tuning recommendation text.</li>
+                            <li><code>GET /api/map/export</code> - Download correction CSV (MAP kPa × RPM grid).</li>
+                            <li><code>POST /api/map/import</code> - Import a map session from JSON.</li>
+                            <li><code>DELETE /api/map</code> - Reset all map data.</li>
+                            <li><code>GET /api/agent</code> - <strong>All-in-one endpoint</strong> for AI agents: status + sensors + map summary + <strong>zone analysis</strong> (idle/cruise/acceleration/fullLoad) + <strong>hotspots</strong> (cells with |deviation| &gt; 5% and suggested corrections) + DTCs with severity. Cached for 500ms for low-latency polling.</li>
+                            <li><code>GET /api/stream</code> - <strong>Server-Sent Events (SSE)</strong> stream — pushes per-record sensor data, <code>map_update</code> (current cell + trim + deviation), and <code>map_summary</code> (every 5 records) so AI agents get realtime updates without polling.</li>
                         </ul>
                     </li>
+                    <li><strong>Fuel Map Data Integrity:</strong> All map data — UI, API, and SSE — reads from a single <code>LiveMapStore</code> with unified FLOOR-based binning. The AI agent sees exactly the same cells the user sees on screen.</li>
                     <li><em>Note: This API has zero impact on the OBD2 polling speed. It serves the latest cached data from memory.</em></li>
                 </ul>
             </div>
@@ -195,17 +203,23 @@
             </div>
 
             <div class="card">
-                <h2>7. AI Agent API Server (เชื่อมต่อระบบ AI อัจฉริยะ)</h2>
-                <p>แอปพลิเคชันนี้มีระบบ Local HTTP Server ฝังมาในตัว เพื่อให้ระบบ AI Agent, MCP Client หรือสคริปต์คอมพิวเตอร์ของคุณ สามารถดึงข้อมูลรถยนต์แบบสดๆ (Real-time) ไปประมวลผลได้</p>
+                <h2>7. AI Agent API Server (เชื่อมต่อระบบ AI อัจฉริยะ + SSE Realtime)</h2>
+                <p>แอปพลิเคชันนี้มีระบบ Local HTTP Server ฝังมาในตัว เพื่อให้ระบบ AI Agent, MCP Client หรือสคริปต์คอมพิวเตอร์ของคุณ สามารถดึงข้อมูลรถยนต์และตารางจูนแบบ Real-time ไปวิเคราะห์และแนะนำการปรับจูนได้</p>
                 <ul>
                     <li><strong>วิธีเปิดใช้งาน:</strong> ไปที่หน้า Settings และติ๊กถูกที่ <em>Enable AI Agent API Server</em> หน้าจอจะแสดง URL สำหรับดึงข้อมูลขึ้นมาให้</li>
                     <li><strong>เงื่อนไข:</strong> คอมพิวเตอร์หรือระบบ AI ของคุณ จะต้องเชื่อมต่อ <strong>WiFi วงเดียวกัน</strong> กับมือถือเครื่องที่เปิดแอปนี้</li>
-                    <li><strong>API Endpoints:</strong>
+                    <li><strong>REST API Endpoints:</strong>
                         <ul>
-                            <li><code>GET /api/status</code> - เช็คสถานะการเชื่อมต่อ (กำลัง Log ข้อมูลอยู่หรือไม่, โหมดน้ำมัน/แก๊ส, เลขตัวถัง)</li>
-                            <li><code>GET /api/data</code> - ดึงข้อมูลเซ็นเซอร์ล่าสุด (รอบเครื่อง, ความเร็ว, Fuel Trims, ค่า O2 ฯลฯ) ในรูปแบบ JSON</li>
+                            <li><code>GET /api/status</code> - สถานะการเชื่อมต่อ, โหมดเชื้อเพลิง, VIN</li>
+                            <li><code>GET /api/data</code> - ข้อมูลเซ็นเซอร์ล่าสุด (JSON, แยกตาม pidKey)</li>
+                            <li><code>GET /api/map</code> - ตาราง Fuel Map (petrol/LPG/deviation/tuneAssist)</li>
+                            <li><code>GET /api/map/summary</code> - สถิติตาราง + คำแนะนำการจูน</li>
+                            <li><code>GET /api/map/export</code> - ดาวน์โหลด CSV ตาราง correction (MAP kPa × RPM)</li>
+                            <li><code>GET /api/agent</code> - <strong>Endpoint รวมสำหรับ AI</strong>: สถานะ + เซ็นเซอร์ + ตาราง + <strong>Zone Analysis</strong> (idle/cruise/acceleration/fullLoad) + <strong>Hotspots</strong> (cell ที่เบี่ยงเบน > 5% พร้อมคำแนะนำการแก้) + DTC พร้อมระดับความรุนแรง (แคช 500ms)</li>
+                            <li><code>GET /api/stream</code> - <strong>SSE (Server-Sent Events)</strong> ส่งข้อมูลแบบ Real-time: sensor data + <code>map_update</code> (cell ปัจจุบัน + trim + deviation) + <code>map_summary</code> (ทุก 5 records) — AI ได้ข้อมูลทันทีโดยไม่ต้อง poll</li>
                         </ul>
                     </li>
+                    <li><strong>ความแม่นยำของตาราง:</strong> ข้อมูลตารางทั้งหมด — UI, API, และ SSE — อ่านจาก <code>LiveMapStore</code> แหล่งเดียว ใช้ binning แบบ FLOOR เหมือนกัน AI agent เห็นข้อมูลตรงเซลล์เดียวกับที่ผู้ใช้เห็นบนหน้าจอ</li>
                     <li><em>หมายเหตุ: การดึงข้อมูลผ่าน API นี้ จะไม่มีผลกระทบและไม่ทำให้ความเร็วในการดึงข้อมูลจากตัวสแกน OBD2 ช้าลงแต่อย่างใด</em></li>
                 </ul>
             </div>

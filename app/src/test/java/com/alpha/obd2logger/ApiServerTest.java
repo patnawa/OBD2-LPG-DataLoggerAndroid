@@ -149,6 +149,9 @@ public class ApiServerTest {
     @Test
     public void testMapImportExportAndClear() throws Exception {
         ApiServer server = new ApiServer(8080);
+        // LiveMapStore is now required — ApiServer delegates all map data to it.
+        LiveMapStore store = new LiveMapStore();
+        server.setLiveMapStore(store);
 
         // Test Import
         String importJson = "{"

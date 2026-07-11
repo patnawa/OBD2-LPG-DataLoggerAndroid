@@ -1,10 +1,31 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.8.1** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.9.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมื่อนต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.9.0 — Realtime AI Agent Pipeline & Map Accuracy Overhaul
+
+### Fixed — Fuel Map Bin Accuracy
+- **RPM Binning Mismatch (UI vs API)** — UI used FLOOR (749→500), API used ROUND (750→1000), causing AI agents to see data in wrong cells. New `MapBinning.java` unifies all binning to FLOOR-based — UI, API, and SSE now agree.
+- **API Server Had No Debounce** — UI filtered noise with 4-sample sliding window, but API didn't — AI saw noise spikes users never saw. Debounce moved to `LiveMapStore` so all consumers get clean data.
+- **Race Condition in sessionPetrolData** — `clear()+putAll()` every record could leave the map empty mid-read. Replaced with immutable `LiveMapStore.snapshot()`.
+- **CSV Export Header** — Still said `T.inj \ RPM` despite Y-axis being MAP kPa. Fixed to `MAP kPa \ RPM`.
+- **Filter PIDs Dialog Crash** — `BottomSheetDialog` used default theme which doesn't support Material3, causing a silent crash. Fixed with explicit `R.style.AppTheme` + fallback to `AlertDialog`.
+
+### Added — Realtime AI Agent Pipeline
+- **SSE `map_update` Event** — AI agents get per-record map deltas via `/api/stream` — no polling needed.
+- **SSE `map_summary` Event** — Every 5 records, aggregated map stats pushed to AI agents.
+- **`/api/agent` Zone Analysis** — Map broken into idle/cruise/acceleration/fullLoad zones with per-zone avg deviation + confidence level.
+- **`/api/agent` Hotspots** — Top 20 cells with |deviation| > 5%, sorted by severity, with suggested corrections.
+- **`/api/agent` Snapshot Cache** — 500ms cache reduces latency for frequent AI polling.
+- **AeroDensity API Status** — Dialog now shows Open-Meteo API connection status (✓/✗), data source, and last fetch age.
+
+### Changed — Architecture
+- **3 Map Data Copies → 1 `LiveMapStore`** — UI, API, and SSE all read from one thread-safe store via immutable snapshots.
+- **`FuelMapView.TrimData` + `ApiServer.MapTrimData` removed** — Replaced by unified `LiveMapStore.TrimData`.
 
 ## What's New in 3.8.1 — Fuel Map, Log Replay, VIN Folders, Persistence & API Enhancements
 

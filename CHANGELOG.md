@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.9.0] - 2026-07-11 — Realtime AI Agent Pipeline & Map Accuracy Overhaul
+
+### Fixed — Fuel Map Bin Accuracy (3 Data Copies → 1 Source of Truth)
+- **RPM Binning Mismatch (UI vs API)** — `FuelMapView` used FLOOR-based binning (749→500) while `ApiServer` used `Math.round` (750→1000), causing the AI agent to see data in a different cell than the user saw on screen. Created `MapBinning.java` as the single source of truth — all three paths (UI, API, SSE) now share the same FLOOR-based binning logic.
+- **API Server Had No Debounce** — The UI filtered transient noise with a 4-sample sliding-window debounce, but the API path (`ApiServer.updateLiveMap`) had none — AI agents saw noise spikes that the user never saw. Moved debounce into `LiveMapStore` so all consumers get the same filtered data.
+- **Race Condition in sessionPetrolData Copy** — Every record, `MainActivity` did `sessionPetrolData.clear(); sessionPetrolData.putAll(...)` which could leave the map empty if an API read happened between clear and putAll. Eliminated by replacing with immutable `LiveMapStore.snapshot()` reads.
+- **CSV Export Header Wrong** — `ApiServer.handleMapExport` still used `"T.inj \\ RPM"` despite the Y-axis being changed to MAP kPa in v3.8.1. Fixed to `"MAP kPa \\ RPM"`.
+- **Filter PIDs Dialog Not Working** — `BottomSheetDialog` was created without an explicit theme, inheriting `Theme_DeviceDefault` which doesn't support Material3 components (`MaterialButton`, `BottomSheetDialog`). This caused a silent crash when opening the dialog — identical root cause to the v3.7.5 AirDensity dialog crash. Fixed by specifying `R.style.AppTheme` and adding a try-catch fallback to `AlertDialog`.
+
+### Added — Realtime AI Agent Pipeline (SSE Push + Zone Analysis)
+- **`LiveMapStore.java` (New)** — Single source of truth for fuel-map trim data. Thread-safe write path (`pushSample`), immutable read path (`snapshot()`), delta path (`deltaSince()` for SSE), with built-in debounce and closed-loop/temp gating. Replaces the three disconnected copies (FuelMapView + sessionPetrolData + ApiServer).
+- **`MapBinning.java` (New)** — Unified binning logic. `binRpm()` (FLOOR-based), `binMap()` (closest-bin), `cellKey()` (canonical format). All map consumers now delegate here.
+- **SSE `map_update` Event** — AI agents connected via `/api/stream` now receive `event: map_update` per record with the current cell, trim averages, hit counts, and deviation — no polling needed.
+- **SSE `map_summary` Event** — Every 5 records, `event: map_summary` pushes aggregated stats (cell counts, average deviation, max deviation cell) so AI agents get a rolling overview without calling `/api/map`.
+- **`/api/agent` Zone Analysis** — The agent endpoint now includes a `zones` object breaking the map into 4 zones (idle/cruise/acceleration/fullLoad) with per-zone avg deviation, avg hits, and confidence level (HIGH/MEDIUM/LOW/NONE).
+- **`/api/agent` Hotspots** — The agent endpoint now includes a `hotspots` array — the top 20 cells with |deviation| > 5%, sorted by severity, each with RPM, load, deviation, hits, verdict (LEAN/RICH), suggested correction percentage, and confidence.
+- **`/api/agent` Snapshot Cache** — The agent endpoint now caches the `LiveMapStore` snapshot for 500ms instead of recomputing the full map analysis on every request — significantly reduces latency for frequent AI polling.
+- **AeroDensity API Status Indicator** — The AeroDensity Intelligence dialog now shows the Open-Meteo weather API connection status (Connected ✓ / Disconnected ✗), data source (Open-Meteo API / Android Sensor / Default), and the age of the last successful fetch ("just now" / "X min ago" / "X hr ago").
+
+### Changed — Architecture
+- **3 Map Data Copies → 1 `LiveMapStore`** — Previously: (A) `FuelMapView.petrolData/lpgData` with FLOOR + debounce, (B) `MainActivity.sessionPetrolData/LpgData` clear+putAll copy, (C) `ApiServer.petrolMap/lpgMap` with ROUND + no debounce. Now: all reads come from `LiveMapStore.snapshot()`.
+- **`FuelMapView.TrimData` removed** — Replaced by `LiveMapStore.TrimData`. `FuelMapView` data maps now use `LiveMapStore.TrimData` directly so snapshots can be copied without conversion.
+- **`ApiServer.MapTrimData` removed** — Replaced by `LiveMapStore.TrimData`. All API endpoints (`/api/map`, `/api/map/summary`, `/api/map/export`, `/api/map/import`, `/api/agent`) now read from the store.
+- **`AirDensityMonitor` Status Getters** — Added `isWeatherValid()`, `getLastWeatherFetchMs()`, `getWeatherSource()`, `getWeatherWindKmh()` for UI display of API connection status.
+
 ## [3.8.1] - 2026-07-10
 ### Fixed
 - **Fuel Map Y-Axis Wrong (T.inj → MAP kPa)** — The fuel map grid Y-axis was using a non-linear "injection time" (T.inj) conversion of MAP, not the actual MAP (kPa) value. Data was placed in wrong cells because the `mapLoadToTinj()` function distorted the sensor readings. Changed to use MAP (kPa) directly with bins: 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 150, 200, 250. Now data matches what the tuner sees on the gauge.

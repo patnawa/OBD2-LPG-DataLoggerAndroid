@@ -1,4 +1,4 @@
-# TunerMap Pro v3.5.0 — Full Function List
+# TunerMap Pro v3.9.0 — Full Function List
 
 ### LIVE DATA / REAL-TIME MONITORING
 | Dashboard     | 2x4 telemetry grid: RPM \| Speed \| Coolant \| Voltage \| km/L \| Boost \| DPF \| DTC |
@@ -9,24 +9,28 @@
 | Status Strip  | Bottom bar: RPM, Speed, Voltage, Boost psi, km/L, DTC badge |
 | PID Swap      | Long-press any gauge/card/graph to choose PID |
 
-### DERIVED SENSORS (v3.5.0)
+### DERIVED SENSORS (v3.9.0)
 | Fuel Economy  | km/L + L/100km from MAF+Speed. Auto AFR/density per fuel mode. Null-safe at idle. |
 |---------------|----------|
 | Turbo Boost   | kPa + psi from MAP-Baro. Baro 0x33 auto-polled, sea-level fallback 101.3 kPa. |
 | DPF Status    | 5 PIDs: Soot (0x7A), Temp (0x7B), Delta (0x85), Regen (0x8C), Ash (0x8B). Health: Clean/Moderate/Warning/Critical. Auto-detect diesel from VIN. |
+| AeroDensity   | AAD/MAD/BAD/Density%/DensityAlt/SAE J1349 CF/Grains — Open-Meteo API status + last fetch time shown in dialog |
 
 ### LPG/CNG TUNING
-| Fuel Map      | 2D grid (RPM x T.inj ms) — STFT+LTFT color-coded |
+| Fuel Map      | 2D grid (RPM x MAP kPa) — STFT+LTFT color-coded |
 |---------------|----------|
 | Dual Fuel     | Petrol + LPG layers, side-by-side comparison |
 | Deviation     | LPG Trim - Petrol Trim per cell (+ lean / - rich) |
 | Tune Assist   | Auto-calculated % correction for LPG ECU multiplier |
-| CSV Export    | Correction grid as CSV for tuning laptop |
+| CSV Export    | Correction grid as CSV (MAP kPa header) for tuning laptop |
 | Closed-Loop   | PID 03 closed loop + ECT >= 80 degC gate |
 | LTFT Fallback | LTFT-only when STFT unavailable (Toyota/Honda) |
-| Cell Lock     | Sliding-window debounce; golden border at 20+ hits |
+| Cell Lock     | Sliding-window debounce (in LiveMapStore); golden border at 20+ hits |
 | Log Compare   | Petrol + LPG logs on one map |
 | Fuel Switch   | Live mid-session Petrol/LPG toggle |
+| Unified Binning| MapBinning.java — FLOOR-based RPM + closest-bin MAP, shared by UI/API/SSE |
+| LiveMapStore  | Single source of truth — snapshot() for reads, pushSample() for writes |
+| Zone Analysis | Idle/Cruise/Acceleration/FullLoad zones with avg deviation + confidence |
 
 ### DIAGNOSTICS
 | DTC Scan      | Mode 03 (stored) + 07 (pending) + 0A (permanent) |
@@ -73,17 +77,33 @@
 | Replay        | Open past CSV for offline analysis |
 
 ### API SERVER (NanoHTTPD :8080)
-| GET  /api/ping       | Heartbeat |
-|----------------------|----------|
-| GET  /api/status     | Connection + fuel mode + VIN |
-| GET  /api/data       | All live sensors (JSON) |
-| GET  /api/config     | Logger config |
-| GET  /api/pids       | PID catalogue |
-| GET  /api/map        | Binned fuel map, min_hits filter |
-| POST /api/map/import | Import map session JSON |
-| GET  /api/map/export | Download correction CSV |
-| DELETE /api/map      | Reset map data |
-| CORS                 | Enabled — web AI agents + MCP |
+| GET  /api/ping           | Heartbeat |
+|--------------------------|----------|
+| GET  /api/status         | Connection + fuel mode + VIN |
+| GET  /api/data           | All live sensors (JSON) |
+| GET  /api/config         | Logger config |
+| GET  /api/pids           | PID catalogue |
+| GET  /api/map            | Binned fuel map (from LiveMapStore), min_hits filter |
+| GET  /api/map/summary    | Map stats + tuning recommendation |
+| POST /api/map/import     | Import map session JSON |
+| GET  /api/map/export     | Download correction CSV (MAP kPa header) |
+| DELETE /api/map          | Reset map data |
+| GET  /api/agent          | AI Agent aggregate: status + sensors + map summary + zones + hotspots + DTCs (500ms cache) |
+| GET  /api/stream         | SSE: sensor data + map_update + map_summary push events |
+| CORS                     | Enabled — web AI agents + MCP |
+
+### SSE (Server-Sent Events) — Realtime Push
+| event: sensor       | Per-record sensor data push |
+|---------------------|----------------------------|
+| event: map_update   | Per-record: current cell, trim avg, hits, deviation |
+| event: map_summary  | Every 5 records: cell counts, avg/max deviation, health trend |
+
+### AI AGENT TUNING INTELLIGENCE
+| Zone Analysis  | Idle (500-1000) / Cruise (1500-3000) / Acceleration (2500-4500) / FullLoad (4000-6500) |
+|----------------|----------------------------------------------------------------------------------------|
+| Hotspots       | Top 20 cells with |deviation| > 5%, sorted by severity, with suggested correction % |
+| Confidence     | HIGH (20+ hits) / MEDIUM (10-19) / LOW (<10) / NONE (0) per cell and per zone |
+| Snapshot Cache | 500ms TTL — frequent polling doesn't recompute full map analysis |
 
 ### UI / UX
 | 6 Tabs        | Dashboard, Gauges, Map, DTC, Battery, Logs |
@@ -93,6 +113,7 @@
 | Keep Screen   | Prevent sleep while foreground |
 | Home Menu     | Card navigation + live vehicle status |
 | History       | Browse, open, share, delete, compare |
+| Filter PIDs   | Select which PIDs to show in Live Readings (theme-fixed) |
 | Settings      | Transport, WiFi, BT, USB, fuel, protocol, interval, toggles |
 
 ### ADAPTER SUPPORT

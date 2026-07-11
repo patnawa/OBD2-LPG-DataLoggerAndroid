@@ -103,6 +103,15 @@
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:layout_marginTop="2dp" />
+
+                    <TextView
+                        android:id="@+id/txtDialogWeatherStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="API: -- • Last: --"
+                        android:textColor="#94A3B8"
+                        android:textSize="10sp"
+                        android:layout_marginTop="2dp" />
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton

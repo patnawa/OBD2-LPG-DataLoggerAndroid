@@ -14,6 +14,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Renders the 2D fuel-trim map grid (RPM × MAP kPa).
+ *
+ * <p>Map constants and binning logic live in {@link MapBinning} — the single
+ * source of truth shared with {@link ApiServer} and {@link LiveMapStore}.
+ *
+ * <p>Data can be pushed two ways:
+ * <ul>
+ *   <li>{@link #pushData} — used by {@link MainActivity#updateFuelMap} during
+ *       live logging and by {@link ReviewSessionActivity} during log replay.</li>
+ *   <li>{@link #syncFromStore} — replaces the entire dataset from a
+ *       {@link LiveMapStore.MapSnapshot}, used when the store is the canonical
+ *       source (background logging path).</li>
+ * </ul>
+ */
 public class FuelMapView extends View {
 
     public enum MapMode {
@@ -26,75 +41,69 @@ public class FuelMapView extends View {
     private Paint badgePaint;
     private final RectF cellRect = new RectF();
 
-    // Grid configuration
-    private static final int RPM_MIN = 500;
-    private static final int RPM_MAX = 6500;
-    private static final int RPM_STEP = 500;
-    
-    // Y-axis: MAP (kPa) bins — directly matches what the ECU reports.
-    // Range covers vacuum (idle ~30 kPa) to forced induction boost (250 kPa).
-    private static final float[] MAP_BINS = {
-        10f, 20f, 30f, 40f, 50f, 60f, 70f, 80f, 90f, 100f, 120f, 150f, 200f, 250f
-    };
+    // Grid configuration — delegated to MapBinning (single source of truth).
+    private static final int RPM_MIN   = MapBinning.RPM_MIN;
+    private static final int RPM_MAX   = MapBinning.RPM_MAX;
+    private static final int RPM_STEP  = MapBinning.RPM_STEP;
+    private static final float[] MAP_BINS = MapBinning.MAP_BINS;
 
-    // Data store: Map<GridKey, TrimData>
-    private final Map<String, TrimData> petrolData = new ConcurrentHashMap<>();
-    private final Map<String, TrimData> lpgData = new ConcurrentHashMap<>();
-    
+    // Data store: Map<GridKey, TrimData> — uses LiveMapStore.TrimData
+    // so snapshots from the store can be copied directly without conversion.
+    private final Map<String, LiveMapStore.TrimData> petrolData = new ConcurrentHashMap<>();
+    private final Map<String, LiveMapStore.TrimData> lpgData = new ConcurrentHashMap<>();
+
     private MapMode currentMode = MapMode.PETROL;
-    
+
     private int currentRpmCell = -1;
     private float currentMapCell = -1f;
 
     // Debounce tracking: sliding window of last N cell positions.
-    // Uses a ring buffer of the last 4 (rpmCell, mapBinValue) pairs.
-    // A sample is accepted if the current cell was seen at least once
-    // in the window — this tolerates brief RPM jitter across cell
-    // boundaries (e.g. idle at 800 RPM in cell 500, blip to 1050 in
-    // cell 1000, then back to 500) without resetting, while still
-    // filtering truly transient one-off pass-through cells.
+    // Kept for backward compat with pushData() path (live logging + replay).
+    // When using syncFromStore(), the store already debounced.
     private static final int DEBOUNCE_WINDOW = 4;
     private final int[] windowRpm = new int[DEBOUNCE_WINDOW];
     private final float[] windowMap = new float[DEBOUNCE_WINDOW];
-    private int windowIdx = 0;    // next write position
-    private int windowFill = 0;   // how many slots filled so far
+    private int windowIdx = 0;
+    private int windowFill = 0;
 
-    private static int findClosestBinIndex(double value, float[] bins) {
-        int bestIdx = 0;
-        double minDiff = Double.MAX_VALUE;
-        for (int i = 0; i < bins.length; i++) {
-            double diff = Math.abs(bins[i] - value);
-            if (diff < minDiff) {
-                minDiff = diff;
-                bestIdx = i;
-            }
-        }
-        return bestIdx;
-    }
+    // Expose MAP bins for API server / CSV export — delegates to MapBinning.
+    public static float[] getMapBins() { return MapBinning.MAP_BINS; }
+    public static int getRpmMin() { return MapBinning.RPM_MIN; }
+    public static int getRpmMax() { return MapBinning.RPM_MAX; }
+    public static int getRpmStep() { return MapBinning.RPM_STEP; }
 
-    // Expose MAP bins for API server / CSV export
-    public static float[] getMapBins() { return MAP_BINS; }
-    public static int getRpmMin() { return RPM_MIN; }
-    public static int getRpmMax() { return RPM_MAX; }
-    public static int getRpmStep() { return RPM_STEP; }
-
-    public Map<String, TrimData> getPetrolData() {
+    public Map<String, LiveMapStore.TrimData> getPetrolData() {
         return petrolData;
     }
 
-    public Map<String, TrimData> getLpgData() {
+    public Map<String, LiveMapStore.TrimData> getLpgData() {
         return lpgData;
     }
 
-    public void setPetrolData(Map<String, TrimData> data) {
+    public void setPetrolData(Map<String, LiveMapStore.TrimData> data) {
         this.petrolData.clear();
         if (data != null) this.petrolData.putAll(data);
         postInvalidate();
     }
 
-    public void setLpgData(Map<String, TrimData> data) {
+    public void setLpgData(Map<String, LiveMapStore.TrimData> data) {
         this.lpgData.clear();
         if (data != null) this.lpgData.putAll(data);
+        postInvalidate();
+    }
+
+    /**
+     * Replace both petrol and LPG datasets from a {@link LiveMapStore.MapSnapshot}.
+     * This is the preferred path when the store is the canonical source
+     * (background logging) — avoids the clear+putAll race condition of
+     * the old sessionPetrolData copy pattern.
+     */
+    public void syncFromStore(LiveMapStore.MapSnapshot snapshot) {
+        if (snapshot == null) return;
+        this.petrolData.clear();
+        this.petrolData.putAll(snapshot.getPetrolData());
+        this.lpgData.clear();
+        this.lpgData.putAll(snapshot.getLpgData());
         postInvalidate();
     }
 
@@ -148,14 +157,9 @@ public class FuelMapView extends View {
     }
 
     private void pushDataInternal(double rpm, double map, double trim, FuelMode fuelMode) {
-        // Floor-based binning: RPM 750→500, 1499→1000, 1500→1500.
-        int rpmCell = (int)(rpm / RPM_STEP) * RPM_STEP;
-        rpmCell = Math.max(RPM_MIN, Math.min(RPM_MAX, rpmCell));
-
-        // MAP (kPa) closest-bin: use the actual sensor value directly.
-        // No conversion — MAP kPa is what the tuner sees on a gauge.
-        int mapIdx = findClosestBinIndex(map, MAP_BINS);
-        float mapBinValue = MAP_BINS[mapIdx];
+        // Binning via MapBinning (single source of truth — same as ApiServer/LiveMapStore).
+        int rpmCell = MapBinning.binRpm(rpm);
+        float mapBinValue = MapBinning.binMap(map);
 
         // Sliding-window debounce
         windowRpm[windowIdx] = rpmCell;
@@ -187,11 +191,11 @@ public class FuelMapView extends View {
         currentRpmCell = rpmCell;
         currentMapCell = mapBinValue;
 
-        String key = rpmCell + "_" + String.format(Locale.US, "%.2f", mapBinValue);
-        Map<String, TrimData> targetData = !fuelMode.isGaseous() ? petrolData : lpgData;
-        TrimData data = targetData.get(key);
+        String key = MapBinning.cellKey(rpmCell, mapBinValue);
+        Map<String, LiveMapStore.TrimData> targetData = !fuelMode.isGaseous() ? petrolData : lpgData;
+        LiveMapStore.TrimData data = targetData.get(key);
         if (data == null) {
-            data = new TrimData();
+            data = new LiveMapStore.TrimData();
         }
         data.addStableValue(trim);
         targetData.put(key, data);
@@ -265,11 +269,11 @@ public class FuelMapView extends View {
                     canvas.drawText(String.valueOf(rpmValue), xLeft + cellWidth / 2, height - (5f * density), textPaint);
                 }
 
-                String key = rpmValue + "_" + String.format(Locale.US, "%.2f", mapValue);
-                TrimData petrol = petrolData.get(key);
-                TrimData lpg = lpgData.get(key);
+                String key = MapBinning.cellKey(rpmValue, mapValue);
+                LiveMapStore.TrimData petrol = petrolData.get(key);
+                LiveMapStore.TrimData lpg = lpgData.get(key);
                 
-                TrimData activeData = (currentMode == MapMode.PETROL) ? petrol : lpg;
+                LiveMapStore.TrimData activeData = (currentMode == MapMode.PETROL) ? petrol : lpg;
                 int hitCount = (activeData != null) ? activeData.getHitCount() : 0;
                 boolean isLocked = (activeData != null) ? activeData.isLocked() : false;
                 
@@ -291,7 +295,7 @@ public class FuelMapView extends View {
                 if (displayTrim != null) {
                     highlightPaint.setColor(getColorForTrim(displayTrim));
                     
-                    int alpha = Math.min(255, 40 + (int)((hitCount / (float)TrimData.MAX_HITS) * 215));
+                    int alpha = Math.min(255, 40 + (int)((hitCount / (float)LiveMapStore.TrimData.MAX_HITS) * 215));
                     if (isLocked) alpha = 255;
                     
                     // Highlight current cell differently
@@ -381,29 +385,6 @@ public class FuelMapView extends View {
         return 0xFF3B82F6;                 // Blue (Very Lean)
     }
 
-    public static class TrimData {
-        public double sum = 0;
-        public int hitCount = 0;
-        public static final int MAX_HITS = 20;
-
-        public void addStableValue(double val) {
-            sum += val;
-            hitCount++;
-        }
-
-        public double getAverage() {
-            return hitCount == 0 ? 0 : sum / hitCount;
-        }
-        
-        public int getHitCount() {
-            return hitCount;
-        }
-        
-        public boolean isLocked() {
-            return hitCount >= MAX_HITS;
-        }
-    }
-    
     /**
      * Checks if there is any overlapping Petrol+LPG data to produce a correction value.
      */
@@ -423,29 +404,28 @@ public class FuelMapView extends View {
 
     public String exportCorrectionMapCsv() {
         StringBuilder sb = new StringBuilder();
-        
-        int rpmCount = (RPM_MAX - RPM_MIN) / RPM_STEP + 1;
+
+        int rpmCount = MapBinning.getRpmCount();
         int mapCount = MAP_BINS.length;
-        
+
         // Header row: RPM as Columns (Horizontal)
-        sb.append("MAP (kPa) \\ RPM");
+        sb.append("MAP kPa \\ RPM");
         for (int c = 0; c < rpmCount; c++) {
-            int rpmValue = RPM_MIN + (c * RPM_STEP);
-            sb.append(",").append(rpmValue);
+            sb.append(",").append(MapBinning.rpmForColumn(c));
         }
         sb.append("\n");
-        
+
         // MAP (kPa) as Rows (Vertical)
         for (int r = 0; r < mapCount; r++) {
-            float mapValue = MAP_BINS[r];
+            float mapValue = MapBinning.mapForRow(r);
             sb.append(String.format(Locale.US, "%.2f", mapValue));
-            
+
             for (int c = 0; c < rpmCount; c++) {
-                int rpmValue = RPM_MIN + (c * RPM_STEP);
-                String key = rpmValue + "_" + String.format(Locale.US, "%.2f", mapValue);
-                TrimData petrol = petrolData.get(key);
-                TrimData lpg = lpgData.get(key);
-                
+                int rpmValue = MapBinning.rpmForColumn(c);
+                String key = MapBinning.cellKey(rpmValue, mapValue);
+                LiveMapStore.TrimData petrol = petrolData.get(key);
+                LiveMapStore.TrimData lpg = lpgData.get(key);
+
                 if (petrol != null && lpg != null) {
                     double correction = lpg.getAverage() - petrol.getAverage();
                     sb.append(",").append(Math.round(correction));
@@ -455,7 +435,7 @@ public class FuelMapView extends View {
             }
             sb.append("\n");
         }
-        
+
         return sb.toString();
     }
 }

@@ -69,6 +69,30 @@ public final class AirDensityMonitor {
         this.context = context != null ? context.getApplicationContext() : null;
     }
 
+    // ── Status getters (for UI display) ──────────────────────
+
+    /** Returns true if the last weather fetch succeeded. */
+    public boolean isWeatherValid() {
+        return weatherValid;
+    }
+
+    /** Returns the timestamp (System.currentTimeMillis()) of the last successful weather fetch, or 0. */
+    public long getLastWeatherFetchMs() {
+        return lastWeatherFetchMs;
+    }
+
+    /** Returns the source of humidity data: "Open-Meteo API", "Android Sensor", or "Default (50%)". */
+    public String getWeatherSource() {
+        if (sensorHumidity != null) return "Android Sensor";
+        if (weatherValid) return "Open-Meteo API";
+        return "Default (50%)";
+    }
+
+    /** Returns cached weather wind speed in km/h. */
+    public double getWeatherWindKmh() {
+        return weatherWindKmh;
+    }
+
     /**
      * Refresh weather data from Open-Meteo API (async, non-blocking).
      * Fetches only if cache is stale (>10 min old).

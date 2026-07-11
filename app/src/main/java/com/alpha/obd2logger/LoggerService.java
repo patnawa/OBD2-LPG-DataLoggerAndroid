@@ -85,8 +85,19 @@ public final class LoggerService extends Service {
     private LoggerConfig activeConfig;
     private DataWriter writer;
     private int recordCount = 0;
-    
+
     private ApiServer apiServer;
+
+    /**
+     * Canonical fuel-map store — single source of truth for both the UI
+     * (FuelMapView) and the API server (ApiServer). Set when the logging
+     * session starts, cleared when it stops.
+     */
+    private LiveMapStore liveMapStore;
+
+    public LiveMapStore getLiveMapStore() {
+        return liveMapStore;
+    }
 
     /** Air density monitor — merges OBD2 + weather API for AAD/MAD/BAD */
     private AirDensityMonitor airDensityMonitor;
@@ -298,6 +309,12 @@ public final class LoggerService extends Service {
                 }
         }
         
+        // ── Initialize LiveMapStore (single source of truth for fuel map) ──
+        liveMapStore = new LiveMapStore();
+        if (currentSessionToken == sessionToken) {
+            // Expose via instance getter for MainActivity to read snapshots
+        }
+
         ApiServer localApiServer = null;
         if (config.enableApiServer) {
             try {
@@ -326,6 +343,7 @@ public final class LoggerService extends Service {
                 localApiServer.setTransportMode(config.transportMode != null ? config.transportMode.getValue() : "UNKNOWN");
                 localApiServer.setAdapterConnected(true);
                 localApiServer.setVehicleBrand(config.vehicleBrand);
+                localApiServer.setLiveMapStore(liveMapStore);
                 localApiServer.resetSession();
                 if (currentSessionToken == sessionToken) {
                     apiServer = localApiServer;
@@ -855,6 +873,9 @@ public final class LoggerService extends Service {
                 writer = null;
                 apiServer = null;
                 driver = null;
+                // Keep liveMapStore alive briefly — MainActivity may still read
+                // the last snapshot when restoring after stop. It gets replaced
+                // on the next startLogging session.
 
                 stopForeground(true);
                 stopSelf();

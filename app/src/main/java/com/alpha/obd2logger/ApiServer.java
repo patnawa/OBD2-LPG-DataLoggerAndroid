@@ -27,7 +27,18 @@ public class ApiServer extends NanoHTTPD {
     private volatile String vehicleBrand;
     private volatile int recordCount;
     private volatile long sessionStartMs;
-    
+
+    /**
+     * The canonical fuel-map store. Set by {@link LoggerService} when the
+     * server starts. All map endpoints read from this — there is no longer
+     * a duplicate petrolMap/lpgMap inside ApiServer.
+     */
+    private volatile LiveMapStore liveMapStore;
+
+    public void setLiveMapStore(LiveMapStore store) {
+        this.liveMapStore = store;
+    }
+
     public interface DtcProvider {
         java.util.List<DtcCode> getStoredDtcs();
         java.util.List<DtcCode> getPendingDtcs();
@@ -38,6 +49,88 @@ public class ApiServer extends NanoHTTPD {
 
     public void setDtcProvider(DtcProvider provider) {
         this.dtcProvider = provider;
+    }
+
+    // ── Snapshot cache for /api/agent (avoids recomputing on every request) ──
+    private volatile LiveMapStore.MapSnapshot cachedSnapshot = null;
+    private volatile long snapshotRefreshedMs = 0;
+    private static final long SNAPSHOT_TTL_MS = 500; // refresh at most every 500ms
+
+    private LiveMapStore.MapSnapshot getFreshSnapshot() {
+        LiveMapStore store = liveMapStore;
+        if (store == null) return null;
+        long now = System.currentTimeMillis();
+        if (cachedSnapshot == null || (now - snapshotRefreshedMs) > SNAPSHOT_TTL_MS) {
+            cachedSnapshot = store.snapshot();
+            snapshotRefreshedMs = now;
+        }
+        return cachedSnapshot;
+    }
+
+    /**
+     * SSE: push map delta + summary events to all connected clients.
+     * Called from setLatestData() after each record.
+     *
+     * - map_update: pushed every record (lightweight — just last cell + hit count)
+     * - map_summary: pushed every 5 records (aggregated stats)
+     */
+    private void broadcastMapSse(int recordCount) {
+        if (sseClients.isEmpty()) return;
+
+        LiveMapStore store = liveMapStore;
+        if (store == null) return;
+
+        // map_update — lightweight per-record push
+        String lastCell = store.getLastCellKey();
+        if (lastCell != null && !lastCell.isEmpty()) {
+            try {
+                JSONObject updateObj = new JSONObject();
+                updateObj.put("cell", lastCell);
+                updateObj.put("recordCount", recordCount);
+                updateObj.put("timestamp", System.currentTimeMillis());
+                // Include deviation if available
+                LiveMapStore.MapSnapshot snap = store.snapshot();
+                LiveMapStore.TrimData petrol = snap.getPetrolData().get(lastCell);
+                LiveMapStore.TrimData lpg = snap.getLpgData().get(lastCell);
+                if (petrol != null) {
+                    updateObj.put("petrolAvg", Math.round(petrol.getAverage() * 10) / 10.0);
+                    updateObj.put("petrolHits", petrol.getHitCount());
+                }
+                if (lpg != null) {
+                    updateObj.put("lpgAvg", Math.round(lpg.getAverage() * 10) / 10.0);
+                    updateObj.put("lpgHits", lpg.getHitCount());
+                }
+                if (petrol != null && lpg != null) {
+                    double dev = lpg.getAverage() - petrol.getAverage();
+                    updateObj.put("deviation", Math.round(dev * 10) / 10.0);
+                }
+                String updateEvent = "event: map_update\ndata: " + updateObj.toString() + "\n\n";
+                for (SseClient client : sseClients) {
+                    client.send(updateEvent);
+                }
+            } catch (JSONException ignored) {}
+        }
+
+        // map_summary — every 5 records
+        if (recordCount % 5 == 0) {
+            try {
+                LiveMapStore.MapSnapshot snap = store.snapshot();
+                JSONObject summaryObj = new JSONObject();
+                summaryObj.put("petrolCells", snap.getPetrolData().size());
+                summaryObj.put("lpgCells", snap.getLpgData().size());
+                summaryObj.put("overlappingCells", snap.getOverlappingCellCount());
+                summaryObj.put("averageDeviation", Math.round(snap.getAverageAbsoluteDeviation() * 10) / 10.0);
+                summaryObj.put("maxDeviation", Math.round(snap.getMaxDeviation() * 10) / 10.0);
+                summaryObj.put("maxDeviationCell", snap.getMaxDeviationCell() != null ? snap.getMaxDeviationCell() : "");
+                summaryObj.put("timestamp", System.currentTimeMillis());
+                String summaryEvent = "event: map_summary\ndata: " + summaryObj.toString() + "\n\n";
+                for (SseClient client : sseClients) {
+                    client.send(summaryEvent);
+                }
+            } catch (JSONException ignored) {}
+        }
+
+        sseClients.removeIf(c -> c.closed);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -125,58 +218,32 @@ public class ApiServer extends NanoHTTPD {
         return obj.toString();
     }
 
-    // Fuel Map Constants matching FuelMapView (MAP kPa bins)
-    private static final int RPM_MIN = 500;
-    private static final int RPM_MAX = 6500;
-    private static final int RPM_STEP = 500;
-    
-    private static final float[] MAP_BINS = {
-        10f, 20f, 30f, 40f, 50f, 60f, 70f, 80f, 90f, 100f, 120f, 150f, 200f, 250f
-    };
-
-    // Thread-safe map tracking
-    public static class MapTrimData {
-        private double sum = 0;
-        private int hitCount = 0;
-
-        public MapTrimData() {}
-
-        public MapTrimData(double sum, int hitCount) {
-            this.sum = sum;
-            this.hitCount = hitCount;
-        }
-
-        public synchronized void add(double val) {
-            sum += val;
-            hitCount++;
-        }
-
-        public synchronized double getAverage() {
-            return hitCount == 0 ? 0 : sum / hitCount;
-        }
-
-        public synchronized int getHitCount() {
-            return hitCount;
-        }
-
-        public synchronized double getSum() {
-            return sum;
-        }
-    }
-
-    private final Map<String, MapTrimData> petrolMap = new ConcurrentHashMap<>();
-    private final Map<String, MapTrimData> lpgMap = new ConcurrentHashMap<>();
+    // ═══════════════════════════════════════════════════════════════
+    //  Fuel Map — delegated to LiveMapStore (single source of truth)
+    // ═══════════════════════════════════════════════════════════════
+    //
+    // Previously ApiServer kept its own petrolMap/lpgMap and binned samples
+    // with Math.round (different from FuelMapView's floor-based binning).
+    // This caused the AI agent to see data in a different cell than the UI.
+    // Now all map data lives in LiveMapStore, and ApiServer just reads
+    // snapshots from it.
 
     public ApiServer(int port) {
         super(port);
     }
 
-    public Map<String, MapTrimData> getPetrolMap() {
-        return petrolMap;
+    /**
+     * Returns the live store's petrol data (for backward compat with
+     * MainActivity session copy logic during migration).
+     */
+    public Map<String, LiveMapStore.TrimData> getPetrolMap() {
+        LiveMapStore store = liveMapStore;
+        return store != null ? store.getPetrolData() : java.util.Collections.emptyMap();
     }
 
-    public Map<String, MapTrimData> getLpgMap() {
-        return lpgMap;
+    public Map<String, LiveMapStore.TrimData> getLpgMap() {
+        LiveMapStore store = liveMapStore;
+        return store != null ? store.getLpgData() : java.util.Collections.emptyMap();
     }
 
     public void setLatestData(DataRecord data, boolean isLogging) {
@@ -187,8 +254,9 @@ public class ApiServer extends NanoHTTPD {
                 sessionStartMs = System.currentTimeMillis();
             }
             recordCount++;
-            updateLiveMap(data);
+            pushToLiveMapStore(data);
             broadcastSse(data);
+            broadcastMapSse(recordCount);
         }
     }
 
@@ -207,11 +275,18 @@ public class ApiServer extends NanoHTTPD {
     public void resetSession() {
         recordCount = 0;
         sessionStartMs = 0;
-        petrolMap.clear();
-        lpgMap.clear();
+        LiveMapStore store = liveMapStore;
+        if (store != null) store.clear();
     }
 
-    private void updateLiveMap(DataRecord record) {
+    /**
+     * Push a DataRecord into the LiveMapStore — the single write path.
+     * Replaces the old updateLiveMap() which had different binning + no debounce.
+     */
+    private void pushToLiveMapStore(DataRecord record) {
+        LiveMapStore store = liveMapStore;
+        if (store == null) return;
+
         Double rpm = valueByKey(record, "01_0C");
         Double map = valueByKey(record, "01_0B");
         Double stft = valueByKey(record, "01_06");
@@ -219,6 +294,9 @@ public class ApiServer extends NanoHTTPD {
         Double ect = valueByKey(record, "01_05");
         Double fuelStatus = valueByKey(record, "01_03");
 
+        if (rpm == null) return;
+
+        // Load axis: MAP preferred, Engine Load % fallback
         double loadAxis;
         if (map != null) {
             loadAxis = map;
@@ -226,41 +304,24 @@ public class ApiServer extends NanoHTTPD {
             Double load = valueByKey(record, "01_04");
             loadAxis = (load != null) ? load : Double.NaN;
         }
+        if (Double.isNaN(loadAxis)) return;
 
+        // Closed-loop check
         boolean isClosedLoop = true;
         if (fuelStatus != null) {
             isClosedLoop = (fuelStatus.intValue() & 0x02) != 0;
         }
-        
-        boolean tempOk = (ect == null) || (ect >= 80.0);
 
-        if (rpm != null && !Double.isNaN(loadAxis) && isClosedLoop && tempOk) {
-            double trim = 0;
-            if (stft != null) {
-                trim = stft + (ltft != null ? ltft : 0);
-            } else if (ltft != null) {
-                trim = ltft;
-            }
-
-            int rpmCell = (int) (Math.round(rpm / RPM_STEP) * RPM_STEP);
-            rpmCell = Math.max(RPM_MIN, Math.min(RPM_MAX, rpmCell));
-
-            // Use MAP (kPa) directly — no T.inj conversion.
-            int mapIdx = findClosestBinIndex(loadAxis, MAP_BINS);
-            float mapBinValue = MAP_BINS[mapIdx];
-
-            String key = rpmCell + "_" + String.format(Locale.US, "%.2f", mapBinValue);
-            
-            boolean isLpg = FuelMode.fromString(record.getFuelMode()).isGaseous();
-            Map<String, MapTrimData> targetMap = isLpg ? lpgMap : petrolMap;
-            
-            MapTrimData cellData = targetMap.get(key);
-            if (cellData == null) {
-                cellData = new MapTrimData();
-                targetMap.put(key, cellData);
-            }
-            cellData.add(trim);
+        // Combined trim
+        double trim = 0;
+        if (stft != null) {
+            trim = stft + (ltft != null ? ltft : 0);
+        } else if (ltft != null) {
+            trim = ltft;
         }
+
+        FuelMode mode = FuelMode.fromString(record.getFuelMode());
+        store.pushSample(rpm, loadAxis, trim, mode, isClosedLoop, ect);
     }
 
     private Double valueByKey(DataRecord record, String key) {
@@ -268,19 +329,6 @@ public class ApiServer extends NanoHTTPD {
             if (sample.getPidKey().equals(key)) return sample.getValue();
         }
         return null;
-    }
-
-    private static int findClosestBinIndex(double value, float[] bins) {
-        int bestIdx = 0;
-        double minDiff = Double.MAX_VALUE;
-        for (int i = 0; i < bins.length; i++) {
-            double diff = Math.abs(bins[i] - value);
-            if (diff < minDiff) {
-                minDiff = diff;
-                bestIdx = i;
-            }
-        }
-        return bestIdx;
     }
 
     @Override
@@ -420,22 +468,26 @@ public class ApiServer extends NanoHTTPD {
             } catch (NumberFormatException ignored) {}
         }
 
+        LiveMapStore store = liveMapStore;
+        Map<String, LiveMapStore.TrimData> petrolMap = store != null ? store.getPetrolData() : java.util.Collections.emptyMap();
+        Map<String, LiveMapStore.TrimData> lpgMap = store != null ? store.getLpgData() : java.util.Collections.emptyMap();
+
         JSONObject obj = new JSONObject();
         try {
             JSONArray rpmArray = new JSONArray();
-            for (int r = RPM_MIN; r <= RPM_MAX; r += RPM_STEP) {
+            for (int r = MapBinning.RPM_MIN; r <= MapBinning.RPM_MAX; r += MapBinning.RPM_STEP) {
                 rpmArray.put(r);
             }
             obj.put("rpmBins", rpmArray);
 
             JSONArray mapArray = new JSONArray();
-            for (float bin : MAP_BINS) {
+            for (float bin : MapBinning.MAP_BINS) {
                 mapArray.put(bin);
             }
             obj.put("mapBins", mapArray);
 
             JSONObject petrolJson = new JSONObject();
-            for (Map.Entry<String, MapTrimData> entry : petrolMap.entrySet()) {
+            for (Map.Entry<String, LiveMapStore.TrimData> entry : petrolMap.entrySet()) {
                 if (entry.getValue().getHitCount() >= minHits) {
                     JSONObject cell = new JSONObject();
                     cell.put("avg", entry.getValue().getAverage());
@@ -446,7 +498,7 @@ public class ApiServer extends NanoHTTPD {
             obj.put("petrolMap", petrolJson);
 
             JSONObject lpgJson = new JSONObject();
-            for (Map.Entry<String, MapTrimData> entry : lpgMap.entrySet()) {
+            for (Map.Entry<String, LiveMapStore.TrimData> entry : lpgMap.entrySet()) {
                 if (entry.getValue().getHitCount() >= minHits) {
                     JSONObject cell = new JSONObject();
                     cell.put("avg", entry.getValue().getAverage());
@@ -458,12 +510,12 @@ public class ApiServer extends NanoHTTPD {
 
             JSONObject deviationJson = new JSONObject();
             JSONObject tuneAssistJson = new JSONObject();
-            
+
             for (String key : petrolMap.keySet()) {
                 if (lpgMap.containsKey(key)) {
-                    MapTrimData pData = petrolMap.get(key);
-                    MapTrimData lData = lpgMap.get(key);
-                    if (pData != null && lData != null && 
+                    LiveMapStore.TrimData pData = petrolMap.get(key);
+                    LiveMapStore.TrimData lData = lpgMap.get(key);
+                    if (pData != null && lData != null &&
                         pData.getHitCount() >= minHits && lData.getHitCount() >= minHits) {
                         double dev = lData.getAverage() - pData.getAverage();
                         deviationJson.put(key, dev);
@@ -478,39 +530,23 @@ public class ApiServer extends NanoHTTPD {
             e.printStackTrace();
             return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\": \"" + e.getMessage() + "\"}");
         }
-        
+
         return newFixedLengthResponse(Response.Status.OK, "application/json", obj.toString());
     }
 
     private Response handleMapSummary() {
+        LiveMapStore store = liveMapStore;
+        LiveMapStore.MapSnapshot snap = store != null ? store.snapshot() : null;
+
         JSONObject obj = new JSONObject();
         try {
-            int petrolCount = petrolMap.size();
-            int lpgCount = lpgMap.size();
-            
-            double sumAbsDev = 0;
-            int commonCells = 0;
-            double maxDev = 0;
-            String maxDevCell = "None";
-
-            for (String key : petrolMap.keySet()) {
-                if (lpgMap.containsKey(key)) {
-                    MapTrimData pData = petrolMap.get(key);
-                    MapTrimData lData = lpgMap.get(key);
-                    if (pData != null && lData != null) {
-                        double dev = lData.getAverage() - pData.getAverage();
-                        double absDev = Math.abs(dev);
-                        sumAbsDev += absDev;
-                        commonCells++;
-                        if (absDev > Math.abs(maxDev)) {
-                            maxDev = dev;
-                            maxDevCell = key;
-                        }
-                    }
-                }
-            }
-
-            double avgAbsDev = commonCells == 0 ? 0 : sumAbsDev / commonCells;
+            int petrolCount = snap != null ? snap.getPetrolData().size() : 0;
+            int lpgCount = snap != null ? snap.getLpgData().size() : 0;
+            int commonCells = snap != null ? snap.getOverlappingCellCount() : 0;
+            double avgAbsDev = snap != null ? snap.getAverageAbsoluteDeviation() : 0;
+            double maxDev = snap != null ? snap.getMaxDeviation() : 0;
+            String maxDevCell = snap != null ? snap.getMaxDeviationCell() : null;
+            if (maxDevCell == null) maxDevCell = "None";
 
             obj.put("petrolCellsCount", petrolCount);
             obj.put("lpgCellsCount", lpgCount);
@@ -543,30 +579,33 @@ public class ApiServer extends NanoHTTPD {
     }
 
     private Response handleMapExport() {
+        LiveMapStore store = liveMapStore;
+        Map<String, LiveMapStore.TrimData> petrolMap = store != null ? store.getPetrolData() : java.util.Collections.emptyMap();
+        Map<String, LiveMapStore.TrimData> lpgMap = store != null ? store.getLpgData() : java.util.Collections.emptyMap();
+
         StringBuilder sb = new StringBuilder();
-        
-        int rpmCount = (RPM_MAX - RPM_MIN) / RPM_STEP + 1;
-        int mapCount = MAP_BINS.length;
-        
+
+        int rpmCount = MapBinning.getRpmCount();
+        int mapCount = MapBinning.MAP_BINS.length;
+
         // Header row
-        sb.append("T.inj \\ RPM");
+        sb.append("MAP kPa \\ RPM");
         for (int c = 0; c < rpmCount; c++) {
-            int rpmValue = RPM_MIN + (c * RPM_STEP);
-            sb.append(",").append(rpmValue);
+            sb.append(",").append(MapBinning.rpmForColumn(c));
         }
         sb.append("\n");
-        
+
         // Rows
         for (int r = 0; r < mapCount; r++) {
-            float mapValue = MAP_BINS[r];
+            float mapValue = MapBinning.mapForRow(r);
             sb.append(String.format(Locale.US, "%.2f", mapValue));
-            
+
             for (int c = 0; c < rpmCount; c++) {
-                int rpmValue = RPM_MIN + (c * RPM_STEP);
-                String key = rpmValue + "_" + String.format(Locale.US, "%.2f", mapValue);
-                MapTrimData petrol = petrolMap.get(key);
-                MapTrimData lpg = lpgMap.get(key);
-                
+                int rpmValue = MapBinning.rpmForColumn(c);
+                String key = MapBinning.cellKey(rpmValue, mapValue);
+                LiveMapStore.TrimData petrol = petrolMap.get(key);
+                LiveMapStore.TrimData lpg = lpgMap.get(key);
+
                 if (petrol != null && lpg != null) {
                     double correction = lpg.getAverage() - petrol.getAverage();
                     sb.append(",").append(Math.round(correction));
@@ -576,19 +615,25 @@ public class ApiServer extends NanoHTTPD {
             }
             sb.append("\n");
         }
-        
+
         Response response = newFixedLengthResponse(Response.Status.OK, "text/csv", sb.toString());
         response.addHeader("Content-Disposition", "attachment; filename=\"tune_assist_map.csv\"");
         return response;
     }
 
     private Response handleMapClear() {
-        petrolMap.clear();
-        lpgMap.clear();
+        LiveMapStore store = liveMapStore;
+        if (store != null) store.clear();
         return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\": \"cleared\"}");
     }
 
     private Response handleMapImport(IHTTPSession session) {
+        LiveMapStore store = liveMapStore;
+        if (store == null) {
+            return newFixedLengthResponse(Response.Status.SERVICE_UNAVAILABLE, "application/json",
+                "{\"error\": \"LiveMapStore not initialized\"}");
+        }
+
         Map<String, String> files = new HashMap<>();
         try {
             session.parseBody(files);
@@ -596,9 +641,9 @@ public class ApiServer extends NanoHTTPD {
             if (body == null || body.trim().isEmpty()) {
                 return newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json", "{\"error\": \"Empty body\"}");
             }
-            
+
             JSONObject root = new JSONObject(body);
-            
+
             if (root.has("petrolMap")) {
                 JSONObject petrolJson = root.getJSONObject("petrolMap");
                 java.util.Iterator<String> keys = petrolJson.keys();
@@ -607,10 +652,10 @@ public class ApiServer extends NanoHTTPD {
                     JSONObject cell = petrolJson.getJSONObject(key);
                     double avg = cell.getDouble("avg");
                     int hits = cell.getInt("hits");
-                    petrolMap.put(key, new MapTrimData(avg * hits, hits));
+                    store.getPetrolData().put(key, new LiveMapStore.TrimData(avg * hits, hits));
                 }
             }
-            
+
             if (root.has("lpgMap")) {
                 JSONObject lpgJson = root.getJSONObject("lpgMap");
                 java.util.Iterator<String> keys = lpgJson.keys();
@@ -619,12 +664,12 @@ public class ApiServer extends NanoHTTPD {
                     JSONObject cell = lpgJson.getJSONObject(key);
                     double avg = cell.getDouble("avg");
                     int hits = cell.getInt("hits");
-                    lpgMap.put(key, new MapTrimData(avg * hits, hits));
+                    store.getLpgData().put(key, new LiveMapStore.TrimData(avg * hits, hits));
                 }
             }
-            
+
             return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\": \"imported\"}");
-            
+
         } catch (IOException | ResponseException | JSONException e) {
             e.printStackTrace();
             return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\": \"" + e.getMessage() + "\"}");
@@ -753,9 +798,13 @@ public class ApiServer extends NanoHTTPD {
      * GET /api/agent — returns a complete snapshot for AI Agent integration:
      *   - Connection & session metadata
      *   - Latest sensor data (detailed, keyed by pidKey)
-     *   - Fuel map summary
+     *   - Fuel map summary (from cached LiveMapStore snapshot)
+     *   - Map zone analysis (idle/cruise/acceleration/fullLoad)
+     *   - Hotspot cells (|deviation| > 5%, sorted by severity)
      *   - DTC codes with severity
-     * This avoids the need for multiple round-trips.
+     *
+     * Uses a cached snapshot (refreshed every 500ms) so frequent polling
+     * by AI agents doesn't recompute the full map analysis each time.
      */
     private Response handleAgent() {
         JSONObject obj = new JSONObject();
@@ -793,36 +842,35 @@ public class ApiServer extends NanoHTTPD {
                 obj.put("sensors", sensorsArr);
             }
 
-            // ── Fuel map summary ──
+            // ── Fuel map summary (from cached snapshot) ──
+            LiveMapStore.MapSnapshot snap = getFreshSnapshot();
             JSONObject mapSummary = new JSONObject();
-            int petrolCount = petrolMap.size();
-            int lpgCount = lpgMap.size();
-            double sumAbsDev = 0;
-            int commonCells = 0;
-            double maxDev = 0;
-            String maxDevCell = "None";
-            for (String key : petrolMap.keySet()) {
-                if (lpgMap.containsKey(key)) {
-                    MapTrimData pData = petrolMap.get(key);
-                    MapTrimData lData = lpgMap.get(key);
-                    if (pData != null && lData != null) {
-                        double dev = lData.getAverage() - pData.getAverage();
-                        sumAbsDev += Math.abs(dev);
-                        commonCells++;
-                        if (Math.abs(dev) > Math.abs(maxDev)) {
-                            maxDev = dev;
-                            maxDevCell = key;
-                        }
-                    }
-                }
+            if (snap != null) {
+                mapSummary.put("petrolCellsCount", snap.getPetrolData().size());
+                mapSummary.put("lpgCellsCount", snap.getLpgData().size());
+                mapSummary.put("overlappingCellsCount", snap.getOverlappingCellCount());
+                mapSummary.put("averageAbsoluteDeviation", snap.getAverageAbsoluteDeviation());
+                double maxDev = snap.getMaxDeviation();
+                mapSummary.put("maxDeviationValue", maxDev);
+                String maxCell = snap.getMaxDeviationCell();
+                mapSummary.put("maxDeviationCell", maxCell != null ? maxCell : "None");
+                mapSummary.put("lastUpdateMs", snap.getSnapshotMs());
+                mapSummary.put("lastCellKey", snap.getLastCellKey());
+            } else {
+                mapSummary.put("petrolCellsCount", 0);
+                mapSummary.put("lpgCellsCount", 0);
+                mapSummary.put("overlappingCellsCount", 0);
+                mapSummary.put("averageAbsoluteDeviation", 0);
+                mapSummary.put("maxDeviationValue", 0);
+                mapSummary.put("maxDeviationCell", "None");
             }
-            mapSummary.put("petrolCellsCount", petrolCount);
-            mapSummary.put("lpgCellsCount", lpgCount);
-            mapSummary.put("overlappingCellsCount", commonCells);
-            mapSummary.put("averageAbsoluteDeviation", commonCells == 0 ? 0 : sumAbsDev / commonCells);
-            mapSummary.put("maxDeviationValue", maxDev);
-            mapSummary.put("maxDeviationCell", maxDevCell);
             obj.put("mapSummary", mapSummary);
+
+            // ── Zone analysis (idle / cruise / acceleration / fullLoad) ──
+            if (snap != null) {
+                obj.put("zones", buildZoneAnalysis(snap));
+                obj.put("hotspots", buildHotspots(snap));
+            }
 
             // ── DTC codes with severity ──
             if (dtcProvider != null) {
@@ -855,5 +903,127 @@ public class ApiServer extends NanoHTTPD {
             e.printStackTrace();
         }
         return newFixedLengthResponse(Response.Status.OK, "application/json", obj.toString());
+    }
+
+    // ── Zone analysis + hotspot helpers for /api/agent ──────────────────
+
+    /**
+     * Builds a zone-by-zone breakdown of the fuel map for the AI agent.
+     * Zones: idle (500-1000), cruise (1500-3000), acceleration (2500-4500),
+     * fullLoad (4000-6500). Each zone reports cell count, avg deviation,
+     * and a confidence level based on average hit count.
+     */
+    private JSONObject buildZoneAnalysis(LiveMapStore.MapSnapshot snap) {
+        JSONObject zones = new JSONObject();
+        try {
+            int[][] zoneRanges = {
+                {500, 1000},    // idle
+                {1500, 3000},   // cruise
+                {2500, 4500},   // acceleration
+                {4000, 6500}    // fullLoad
+            };
+            String[] zoneNames = {"idle", "cruise", "acceleration", "fullLoad"};
+
+            for (int z = 0; z < zoneNames.length; z++) {
+                int rpmLo = zoneRanges[z][0];
+                int rpmHi = zoneRanges[z][1];
+                double sumAbsDev = 0;
+                int cells = 0;
+                int totalHits = 0;
+
+                for (String key : snap.getPetrolData().keySet()) {
+                    LiveMapStore.TrimData lpg = snap.getLpgData().get(key);
+                    LiveMapStore.TrimData petrol = snap.getPetrolData().get(key);
+                    if (petrol == null || lpg == null) continue;
+
+                    // Parse RPM from key: "1500_40.00"
+                    int sep = key.indexOf('_');
+                    if (sep < 0) continue;
+                    int rpm;
+                    try {
+                        rpm = Integer.parseInt(key.substring(0, sep));
+                    } catch (NumberFormatException e) {
+                        continue;
+                    }
+                    if (rpm < rpmLo || rpm > rpmHi) continue;
+
+                    double dev = lpg.getAverage() - petrol.getAverage();
+                    sumAbsDev += Math.abs(dev);
+                    totalHits += Math.min(petrol.getHitCount(), lpg.getHitCount());
+                    cells++;
+                }
+
+                JSONObject zoneObj = new JSONObject();
+                zoneObj.put("rpmRange", new JSONArray().put(rpmLo).put(rpmHi));
+                zoneObj.put("cells", cells);
+                zoneObj.put("avgDeviation", cells == 0 ? 0 : Math.round((sumAbsDev / cells) * 10) / 10.0);
+                int avgHits = cells == 0 ? 0 : totalHits / cells;
+                zoneObj.put("avgHits", avgHits);
+                zoneObj.put("confidence", avgHits >= 20 ? "HIGH" : (avgHits >= 10 ? "MEDIUM" : (avgHits > 0 ? "LOW" : "NONE")));
+                zones.put(zoneNames[z], zoneObj);
+            }
+        } catch (JSONException ignored) {}
+        return zones;
+    }
+
+    /**
+     * Builds a list of hotspot cells — overlapping cells where
+     * |deviation| > 5%, sorted by absolute deviation (descending).
+     * Each hotspot includes RPM, load, deviation, hits, verdict, and
+     * a suggested correction percentage for the AI to relay to the user.
+     */
+    private JSONArray buildHotspots(LiveMapStore.MapSnapshot snap) {
+        JSONArray hotspots = new JSONArray();
+
+        // Collect, then sort by |deviation| descending
+        java.util.List<JSONObject> list = new java.util.ArrayList<>();
+        for (String key : snap.getPetrolData().keySet()) {
+            LiveMapStore.TrimData petrol = snap.getPetrolData().get(key);
+            LiveMapStore.TrimData lpg = snap.getLpgData().get(key);
+            if (petrol == null || lpg == null) continue;
+
+            double dev = lpg.getAverage() - petrol.getAverage();
+            if (Math.abs(dev) <= 5.0) continue; // only report significant deviations
+
+            try {
+                JSONObject h = new JSONObject();
+                h.put("cell", key);
+                // Parse RPM and MAP from key
+                int sep = key.indexOf('_');
+                if (sep > 0) {
+                    try {
+                        h.put("rpm", Integer.parseInt(key.substring(0, sep)));
+                    } catch (NumberFormatException ignored) {}
+                    try {
+                        h.put("load", Double.parseDouble(key.substring(sep + 1)));
+                    } catch (NumberFormatException ignored) {}
+                }
+                h.put("deviation", Math.round(dev * 10) / 10.0);
+                int minHits = Math.min(petrol.getHitCount(), lpg.getHitCount());
+                h.put("hits", minHits);
+                h.put("verdict", dev > 0 ? "LEAN" : "RICH");
+                h.put("suggestion", (dev > 0 ? "+" : "") + Math.round(dev) + "% gas multiplier");
+                h.put("confidence", minHits >= 20 ? "HIGH" : (minHits >= 10 ? "MEDIUM" : "LOW"));
+                list.add(h);
+            } catch (JSONException ignored) {}
+        }
+
+        // Sort by |deviation| descending
+        list.sort((a, b) -> {
+            try {
+                double da = Math.abs(a.getDouble("deviation"));
+                double db = Math.abs(b.getDouble("deviation"));
+                return Double.compare(db, da);
+            } catch (JSONException e) {
+                return 0;
+            }
+        });
+
+        // Limit to top 20 hotspots to keep payload reasonable
+        int limit = Math.min(list.size(), 20);
+        for (int i = 0; i < limit; i++) {
+            hotspots.put(list.get(i));
+        }
+        return hotspots;
     }
 }
