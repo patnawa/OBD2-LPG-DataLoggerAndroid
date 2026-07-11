@@ -5484,6 +5484,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         btnMode08.setStrokeWidth((int)(1 * getResources().getDisplayMetrics().density));
         btnMode08.setStrokeColor(getColorStateListCompat(R.color.accent));
         btnMode08.setTextColor(getColorCompat(R.color.accent));
+        btnMode08.setBackgroundTintList(getColorStateListCompat(R.color.surface));
         btnMode08.setOnClickListener(v -> showMode08Dialog());
         LinearLayout.LayoutParams m08Lp = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -5501,6 +5502,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         btnEnhanced.setStrokeWidth((int)(1 * getResources().getDisplayMetrics().density));
         btnEnhanced.setStrokeColor(getColorStateListCompat(R.color.accent));
         btnEnhanced.setTextColor(getColorCompat(R.color.accent));
+        btnEnhanced.setBackgroundTintList(getColorStateListCompat(R.color.surface));
         btnEnhanced.setOnClickListener(v -> runEnhancedScan());
         LinearLayout.LayoutParams enhLp = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -5517,6 +5519,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         btnEcuScan.setStrokeWidth((int)(1 * getResources().getDisplayMetrics().density));
         btnEcuScan.setStrokeColor(getColorStateListCompat(R.color.accent));
         btnEcuScan.setTextColor(getColorCompat(R.color.accent));
+        btnEcuScan.setBackgroundTintList(getColorStateListCompat(R.color.surface));
         btnEcuScan.setOnClickListener(v -> runPerEcuScan());
         LinearLayout.LayoutParams ecuLp = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
