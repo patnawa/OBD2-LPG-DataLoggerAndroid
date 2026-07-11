@@ -577,6 +577,51 @@ public final class LoggerService extends Service {
                         Double dpfRegen = batch.get("DPF Regen Status");
                         Double dpfAsh = batch.get("DPF Ash Load");
 
+                        // ── MAP Fallback: synthesize from Engine Load when MAP is null ──
+                        // Many vehicles (MAF-based Toyota/Honda/Mazda) don't support PID 0x0B
+                        // (Intake Manifold Pressure). Without MAP, the fuel map Y-axis is
+                        // empty and Tune Assist has no load axis. Engine Load (0x04) is
+                        // supported by virtually every OBD2 vehicle and correlates with
+                        // manifold pressure: at idle, load is low (~20-30%) and MAP is low
+                        // (~30-40 kPa vacuum); at full throttle, load is high (~80-100%)
+                        // and MAP approaches barometric (~100 kPa).
+                        //
+                        // We synthesize MAP = baro * (load% / 100) when the real MAP
+                        // sensor is unavailable. This is clearly marked as a synthesized
+                        // value (status="synth") so it's transparent in logs and UI.
+                        // The fuel map and Tune Assist can now work on ALL vehicles,
+                        // not just those with MAP sensors.
+                        if (mapValue == null) {
+                            Double engineLoad = batch.get("Engine Load");
+                            Double baroForSynth = baroValue != null ? baroValue : 101.3; // sea-level fallback
+                            if (engineLoad != null) {
+                                // Synthesize MAP from Engine Load:
+                                // - At 0% load (coasting): MAP ≈ 0 (deep vacuum, unrealistic)
+                                // - At 20% load (idle): MAP ≈ 20 kPa (too low for idle)
+                                // - Real idle MAP is ~30-40 kPa at sea level with ~20-30% load
+                                //
+                                // Better formula: MAP = 30 + (baro - 30) * (load/100)
+                                // This gives idle (~25% load) → MAP ≈ 30 + 71*0.25 = 48 kPa (realistic)
+                                // and full throttle (100% load) → MAP ≈ baro (correct)
+                                double synthMap = 30.0 + (baroForSynth - 30.0) * (engineLoad / 100.0);
+                                synthMap = Math.round(synthMap * 10.0) / 10.0; // 1 decimal place
+                                batch.put("Intake Manifold Pressure", synthMap);
+                                mapValue = synthMap;
+
+                                // Update the sample we already created with the synthesized value
+                                for (int si = 0; si < samples.size(); si++) {
+                                    SensorSample s = samples.get(si);
+                                    if ("01_0B".equals(s.getPidKey())) {
+                                        samples.set(si, new SensorSample("01_0B", "Intake Manifold Pressure",
+                                                synthMap, "kPa", "synth"));
+                                        break;
+                                    }
+                                }
+                                // Don't count as failure — we successfully synthesized
+                                consecutiveFailures.put("01_0B", 0);
+                            }
+                        }
+
                         // Fuel Consumption
                         if (config.showFuelConsumption && mafValue != null && speedValue != null) {
                             Double kml = DerivedSensors.fuelConsumptionKmL(mafValue, speedValue, config.fuelMode);

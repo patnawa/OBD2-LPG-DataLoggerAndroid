@@ -2721,6 +2721,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         Double dpfAsh = batch.get("DPF Ash Load");
                         Double dpfRegen = batch.get("DPF Regen Status");
 
+                        // ── MAP Fallback: synthesize from Engine Load when MAP is null ──
+                        // Same logic as LoggerService — see comments there.
+                        if (mapValue == null) {
+                            Double engineLoad = batch.get("Engine Load");
+                            Double baroForSynth = baroValue != null ? baroValue : 101.3;
+                            if (engineLoad != null) {
+                                double synthMap = 30.0 + (baroForSynth - 30.0) * (engineLoad / 100.0);
+                                synthMap = Math.round(synthMap * 10.0) / 10.0;
+                                batch.put("Intake Manifold Pressure", synthMap);
+                                mapValue = synthMap;
+                                for (int si = 0; si < samples.size(); si++) {
+                                    SensorSample s = samples.get(si);
+                                    if ("01_0B".equals(s.getPidKey())) {
+                                        samples.set(si, new SensorSample("01_0B", "Intake Manifold Pressure",
+                                                synthMap, "kPa", "synth"));
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
                         // Fuel Consumption
                         if (config.showFuelConsumption && mafValue != null && speedValue != null) {
                             Double kml = DerivedSensors.fuelConsumptionKmL(mafValue, speedValue, config.fuelMode);
