@@ -1,10 +1,55 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.9.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.12.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมื่อนต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.12.0 — Gauge/Dashboard Localization + Long-press to Clear
+
+### Fixed — Localization
+- **"Tap to Add" placeholder** — Was a fixed bilingual literal `"แตะเพื่อเพิ่ม (Tap to Add)""` that never switched with app language. Now uses proper string resources (EN/TH).
+- **PID selection dialog** — Was entirely hardcoded Thai. Now uses localized string resources for title, subtitle, search hint, and hide option.
+- **"Live Graphs", "Data 1-4", "Records: N"** — All hardcoded strings in the gauge/dashboard layouts now use string resources.
+
+### Added — Long-press to Clear PID
+- **Long-press on any gauge/dashboard/graph card** now clears the PID slot (sets to hidden/none). Previously there was no way to remove a PID — click and long-press both opened the same picker dialog.
+- **Toast confirmation** — "Slot N cleared" confirms the action.
+- **"💡 Long-press to clear" hint** — Added at the bottom of the PID picker dialog.
+
+## What's New in 3.11.0 — Pro Scanner Bugs + Icon Visibility + Compact Start Button
+
+### Fixed — Pro Scanner (4 bugs)
+- **In-Use Performance data hidden** — Condition only checked PIDs 0D/0E, skipping valid distance/time data from PID 0F.
+- **Enhanced Scan only worked for 4 of 23 brands** — Rewrote to use Brand enum directly. All 23 brands now mapped to their enhanced modes (Mode 21/1A/27/2C/22).
+- **Mode 21/61 sent twice for unknown VINs** — Deduplicated with LinkedHashSet.
+- **Mode 08 dialog showed all 14 tests** — Now queries supported tests first and filters the list. Bitmap parser fixed to read all data bytes.
+
+### Fixed — UI
+- **App logo on blue hero header** — Blue/cyan elements were invisible on the blue gradient. Changed to white + amber.
+- **Start button too wide** — Reduced padding/icon size, added maxWidth=90dp to prevent fuel badge from shrinking.
+- **Pro Scanner buttons** — Green text on blue background was unreadable. Changed to surface (white/dark) background.
+
+## What's New in 3.10.0 — DTC Scan, VIN Detection & Deep PID Scan (8 bugs) + DTC UI Overhaul
+
+### Fixed — Fuel & AFR
+- **Fuel badge showing raw enum name** — Redundant `setText` overwrote the localized label.
+- **AFR gauge stuck at zero** — Derived keys had no PIDDefinition; added `DerivedGaugeConfig` with proper ranges for 27 derived sensors.
+- **LPG fuel map shows 0% trim** — Added lambda-based trim fallback: `trim = (lambda - 1.0) * 100`.
+
+### Fixed — PID Detection
+- **Missing bitmap banks** — Extended from 4 to all 8 SAE J1979 bitmap banks (`0100`–`01E0`).
+- **Force-include set too narrow** — Expanded from 7 to 17 PIDs (added speed, MAF, throttle, baro, voltage, DPF PIDs).
+
+### Fixed — DTC Scanning
+- **ECU names show wrong brand** — Split single `ECU_NAMES` map into per-brand maps with `setBrand()`.
+- **In-process path didn't load brand DTC DB** — Added `DtcDatabase.initForVin()` call.
+- **Protocol not re-locked after DTC scan** — Added `0100` re-probe after `ATSP0` restore.
+- **NO DATA with space not filtered** — Added regex match for `"NO DATA"` variant.
+
+### Added — DTC UI Overhaul
+- Vehicle info card (brand + VIN), loading spinner, empty state ("All Clear!"), deep scan badge, button grouping, MaterialButton consistency.
 
 ## What's New in 3.9.0 — Realtime AI Agent Pipeline & Map Accuracy Overhaul
 

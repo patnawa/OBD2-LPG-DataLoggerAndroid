@@ -2,6 +2,64 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.12.0] - 2026-07-11 — Gauge/Dashboard Localization + Long-press to Clear PID Slots
+
+### Fixed — Localization (Thai/English now switches properly)
+- **"แตะเพื่อเพิ่ม (Tap to Add)" bilingual text** — The placeholder for empty gauge/dashboard/graph slots was a fixed bilingual literal that never switched with the app language. Now uses `R.string.tap_to_add` (EN: "Tap to Add", TH: "แตะเพื่อเพิ่ม") in `setupDashboard()`, `setupGauges()`, and `setupGraphs()`.
+- **PID Selection Dialog All Hardcoded Thai** — The dialog title ("เลือก OBD2 Parameter"), subtitle, search hint ("ค้นหา Parameter... (Search)"), and "Hide/Disable" option were all hardcoded Thai. Now uses string resources that switch with locale.
+- **"Live Graphs" header** — Hardcoded in `activity_main.xml`. Now uses `@string/live_graphs`.
+- **"Data 1-4" dashboard placeholders** — Hardcoded in `activity_main.xml`. Now uses `@string/tap_to_add`.
+- **"Records: N" counter** — Hardcoded `"Records: " + count` in 4 Java locations. Now uses `getString(R.string.records_count, N)`.
+
+### Added — Long-press to Clear/Remove PID
+- **Long-press clears slot** — Gauges, Dashboard stat cards, and Graph cards: long-press now clears the PID slot to "none" (hidden). Previously click and long-press both opened the same PID picker dialog with no direct way to remove a PID.
+- **`clearPidSlot()` method** — Saves "none" to SharedPreferences, refreshes the UI, and shows a Toast confirmation ("Slot N cleared").
+- **"💡 Long-press to clear" hint** — Added a footer hint in the PID selection dialog so users know they can long-press to remove a PID.
+
+## [3.11.0] - 2026-07-11 — Pro Scanner Bugs + Icon Visibility + Compact Start Button
+
+### Fixed — Pro Scanner (4 bugs)
+- **In-Use Performance data hidden** — Display condition only checked PIDs 0D/0E (ignition/trip count). If a vehicle supported only PID 0F (distance/time), the entire performance block was silently skipped. Extended condition to also check `distanceSinceClearKm` and `timeSinceClearMin`.
+- **Enhanced Scan only worked for 4 of 23 brands** — `scanEnhancedForBrand()` matched string names ("toyota", "honda", etc.) but `getBrandName()` returns display names like "Mercedes-Benz" — 19 brands always got "No codes found". Rewrote to accept `VinBrandDetector.Brand` enum directly. Mapped all 23 brands: Toyota/Lexus/Honda/Mitsubishi/Mazda/Suzuki/Hyundai/Kia/Volvo/Isuzu→Mode 21, Nissan→Mode 1A, Ford→Mode 27, Chevrolet→Mode 2C, BMW→21+22, Mercedes/BYD/GWM/NETA/AION/DEEPAL/MG/Tesla→Mode 22 (UDS).
+- **Mode 21/61 sent twice for unknown VINs** — Toyota and Honda both mapped to Mode 21/61; when brand=null (unknown VIN), the same command was sent twice. Restructured with `LinkedHashSet` so each unique mode/header pair is sent only once.
+- **Mode 08 dialog showed all 14 tests unconditionally** — `querySupportedTests()` existed but was never called; bitmap parser only read 8 bits (TIDs 01-08). Dialog now queries supported TIDs first and filters the list. Bitmap parser fixed to read all data bytes. Falls back to showing all with warning if query fails.
+
+### Fixed — Icon Visibility
+- **App logo on blue hero header** — Gauge arc and glow were `#38BDF8` (light blue) on a `#2563EB→#1E3A8A` blue gradient — nearly invisible. Changed to `#FFFFFF` (white). OBD plug accent `#22D3EE` (cyan) changed to `#FBBF24` (amber, matches needle).
+- **Hero subtitle** — `#BFDBFE` (light blue) on blue gradient had marginal contrast. Changed to `#E0F2FE` (pale blue).
+
+### Fixed — Start Button
+- **Start button too wide, shrinking fuel badge** — Reduced padding 14dp→8dp, icon size 14dp→12dp, icon padding 4dp→2dp. Added `maxWidth="90dp"` to cap button width.
+
+## [3.10.0] - 2026-07-11 — DTC Scan, VIN Detection & Deep PID Scan (8 bugs) + DTC UI Overhaul
+
+### Fixed — Fuel & AFR
+- **Fuel badge showing raw enum name** — `applyFuelTheme()` set the correct label, then `headerFuelMode.setText(mode.name())` overwrote it with "PETROL_95". Removed the redundant setText.
+- **AFR gauge stuck at zero** — `setupGauges()` skipped derived keys (no PIDDefinition) leaving the gauge at 0-100 range. Added `DerivedGaugeConfig` with proper ranges for 27 derived keys (DCAFR: 8-20, fuel economy: 0-30, boost: -100 to 200, etc.).
+- **LPG fuel map shows 0% trim** — `LogReplayParser` only read STFT+LTFT; LPG vehicles often have only lambda. Added lambda-based trim fallback: `trim = (lambda - 1.0) * 100`.
+
+### Fixed — PID Detection
+- **Missing bitmap banks** — Only 4 of 8 SAE J1979 bitmap banks were queried (`0100`–`0160`). PIDs 0x81–0xFF never detected via live query. Extended to all 8 banks (`0100`–`01E0`).
+- **Force-include set too narrow** — Only 7 core PIDs force-included. Expanded to 17: added speed (0D), MAF (10), throttle (11), baro (33), voltage (42), and DPF PIDs (7A, 7B, 85, 8B, 8C).
+
+### Fixed — DTC Scanning
+- **ECU names show wrong brand** — Single `ECU_NAMES` LinkedHashMap — Nissan overwrote Toyota at shared CAN ID 0x7E0. Split into per-brand maps with `setBrand()` method.
+- **In-process path didn't load brand DTC DB** — Added `DtcDatabase.initForVin()` + `DtcReader.setBrand()` calls in the in-process VIN reading path.
+- **Protocol not re-locked after DTC scan** — Added `0100` re-probe + 200ms settle after `ATSP0` restore.
+- **NO DATA with space not filtered** — Changed `clean.equals("NODATA")` to `clean.matches("(?i)NODATA|NO DATA")`.
+
+### Added — DTC UI Overhaul
+- **Vehicle info card** — Shows detected brand + VIN after scanning.
+- **Loading state** — ProgressBar spinner during DTC scan.
+- **Empty state** — Green checkmark "All Clear!" card when no DTCs found.
+- **Deep scan badge** — Orange pill "🔬 DEEP SCAN — All Protocols".
+- **Button grouping** — "DTC Actions" and "Vehicle Info" section labels.
+- **Visual consistency** — All buttons converted to MaterialButton with 12dp corner radius. Card radius 2dp→8dp.
+
+### Fixed — Pre-existing Test Failures
+- **FreezeFrameReaderTest** — Count-byte heuristic was too strict, rejecting valid count bytes with trailing padding. Reverted to always skipping count byte (SAE J1979 standard).
+- **AuditImprovementsTest** — `isClosedLoop()` default changed from false to true for CSV files without loop-state columns.
+
 ## [3.9.0] - 2026-07-11 — Realtime AI Agent Pipeline & Map Accuracy Overhaul
 
 ### Fixed — Fuel Map Bin Accuracy (3 Data Copies → 1 Source of Truth)
