@@ -19,6 +19,23 @@ public final class DtcReader {
 
     private DtcReader() {}
 
+    /** Current vehicle brand — set via setBrand() from DtcDatabase.initForVin(). */
+    private static volatile VinBrandDetector.Brand currentBrand = null;
+
+    /**
+     * Set the current vehicle brand so ECU module names use the correct
+     * manufacturer labels instead of whatever brand was last to put() into
+     * the shared map.
+     */
+    public static void setBrand(VinBrandDetector.Brand brand) {
+        currentBrand = brand;
+    }
+
+    /** Get the current vehicle brand (for moduleNameForCanId). */
+    public static VinBrandDetector.Brand getBrand() {
+        return currentBrand;
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  Protocol Bus Definitions
     // ═══════════════════════════════════════════════════════════════
@@ -88,14 +105,24 @@ public final class DtcReader {
     //  Module Detection (ECU CAN ID → Name)
     // ═══════════════════════════════════════════════════════════════
 
-    /** ECU CAN IDs — generic defaults (Toyota wins for shared 0x7E0-0x7EF). */
+    /** ECU CAN IDs — generic defaults (non-brand-specific IDs). */
     static final Map<Integer, String> ECU_NAMES = new LinkedHashMap<>();
+
+    /** Per-brand ECU name maps — checked before the generic ECU_NAMES so
+     *  the correct manufacturer label is shown for shared CAN IDs like
+     *  0x7E0 (Toyota, Mazda, and Nissan all use it). */
+    static final Map<Integer, String> TOYOTA_ECU = new LinkedHashMap<>();
+    static final Map<Integer, String> HONDA_ECU  = new LinkedHashMap<>();
+    static final Map<Integer, String> MAZDA_ECU  = new LinkedHashMap<>();
+    static final Map<Integer, String> NISSAN_ECU = new LinkedHashMap<>();
+    static final Map<Integer, String> ISUZU_ECU  = new LinkedHashMap<>();
+    static final Map<Integer, String> MITSUBISHI_ECU = new LinkedHashMap<>();
 
     /** Ford HS-CAN names — override shared IDs when Ford mode is active. */
     static final Map<Integer, String> FORD_HS_CAN_NAMES = new LinkedHashMap<>();
 
     static {
-        // ── Ford HS-CAN (overrides shared 0x7E0-0x7EF when Ford mode active) ──
+        // ── Ford HS-CAN (overrides shared 0x7E0-0x7EF when Ford Mode active) ──
         FORD_HS_CAN_NAMES.put(0x7E0, "PCM — Powertrain Control (Ford)");
         FORD_HS_CAN_NAMES.put(0x7E1, "TCM — Transmission (Ford)");
         FORD_HS_CAN_NAMES.put(0x7E2, "ABS Module (Ford)");
@@ -114,63 +141,65 @@ public final class DtcReader {
         FORD_HS_CAN_NAMES.put(0x7EF, "APIM Response");
 
         // ── Toyota ──
-        ECU_NAMES.put(0x7E0, "ECM — Engine Control (Toyota)");
-        ECU_NAMES.put(0x7E1, "TCM — Transmission (Toyota)");
-        ECU_NAMES.put(0x7E2, "ABS/VSC — Brakes (Toyota)");
-        ECU_NAMES.put(0x7E3, "SRS — Airbag (Toyota)");
-        ECU_NAMES.put(0x7E4, "HV ECU — Hybrid Vehicle (Toyota)");
-        ECU_NAMES.put(0x7E5, "EPS — Power Steering (Toyota)");
-        ECU_NAMES.put(0x7E6, "A/C — Air Conditioner (Toyota)");
-        ECU_NAMES.put(0x7E7, "BCM — Body Control (Toyota)");
-        ECU_NAMES.put(0x7E8, "ECM Response");
-        ECU_NAMES.put(0x7E9, "TCM Response");
-        ECU_NAMES.put(0x7EA, "ABS Response");
-        ECU_NAMES.put(0x7EB, "SRS Response");
-        ECU_NAMES.put(0x7EC, "HV ECU Response");
-        ECU_NAMES.put(0x7ED, "EPS Response");
-        ECU_NAMES.put(0x7EE, "A/C Response");
-        ECU_NAMES.put(0x7EF, "BCM Response");
+        TOYOTA_ECU.put(0x7E0, "ECM — Engine Control (Toyota)");
+        TOYOTA_ECU.put(0x7E1, "TCM — Transmission (Toyota)");
+        TOYOTA_ECU.put(0x7E2, "ABS/VSC — Brakes (Toyota)");
+        TOYOTA_ECU.put(0x7E3, "SRS — Airbag (Toyota)");
+        TOYOTA_ECU.put(0x7E4, "HV ECU — Hybrid Vehicle (Toyota)");
+        TOYOTA_ECU.put(0x7E5, "EPS — Power Steering (Toyota)");
+        TOYOTA_ECU.put(0x7E6, "A/C — Air Conditioner (Toyota)");
+        TOYOTA_ECU.put(0x7E7, "BCM — Body Control (Toyota)");
+        TOYOTA_ECU.put(0x7E8, "ECM Response");
+        TOYOTA_ECU.put(0x7E9, "TCM Response");
+        TOYOTA_ECU.put(0x7EA, "ABS Response");
+        TOYOTA_ECU.put(0x7EB, "SRS Response");
+        TOYOTA_ECU.put(0x7EC, "HV ECU Response");
+        TOYOTA_ECU.put(0x7ED, "EPS Response");
+        TOYOTA_ECU.put(0x7EE, "A/C Response");
+        TOYOTA_ECU.put(0x7EF, "BCM Response");
 
         // ── Honda ──
-        ECU_NAMES.put(0x7C0, "PGM-FI — Fuel Injection (Honda)");
-        ECU_NAMES.put(0x7C1, "AT — Auto Transmission (Honda)");
-        ECU_NAMES.put(0x7C2, "VSA — Stability Assist (Honda)");
-        ECU_NAMES.put(0x7C3, "SRS — Airbag (Honda)");
-        ECU_NAMES.put(0x7C8, "PGM-FI Response");
+        HONDA_ECU.put(0x7C0, "PGM-FI — Fuel Injection (Honda)");
+        HONDA_ECU.put(0x7C1, "AT — Auto Transmission (Honda)");
+        HONDA_ECU.put(0x7C2, "VSA — Stability Assist (Honda)");
+        HONDA_ECU.put(0x7C3, "SRS — Airbag (Honda)");
+        HONDA_ECU.put(0x7C8, "PGM-FI Response");
 
         // ── Mazda ── (shares Ford architecture)
-        ECU_NAMES.put(0x7E0, "PCM — Powertrain (Mazda)");
-        ECU_NAMES.put(0x7E1, "TCM — Transmission (Mazda)");
-        ECU_NAMES.put(0x7E2, "ABS/DSC (Mazda)");
-        ECU_NAMES.put(0x7E3, "EPS — Steering (Mazda)");
-
-        // ── Isuzu D-Max (29-bit CAN) ──
-        ECU_NAMES.put(0x18DA00F1, "ECM — Engine (Isuzu D-Max)");
-        ECU_NAMES.put(0x18DA00F2, "TCM — Transmission (Isuzu)");
-        ECU_NAMES.put(0x18DA00F3, "ABS — Brakes (Isuzu)");
+        MAZDA_ECU.put(0x7E0, "PCM — Powertrain (Mazda)");
+        MAZDA_ECU.put(0x7E1, "TCM — Transmission (Mazda)");
+        MAZDA_ECU.put(0x7E2, "ABS/DSC (Mazda)");
+        MAZDA_ECU.put(0x7E3, "EPS — Steering (Mazda)");
+        MAZDA_ECU.put(0x7E8, "PCM Response");
+        MAZDA_ECU.put(0x7E9, "TCM Response");
 
         // ── Nissan ──
-        ECU_NAMES.put(0x7E0, "ECM — Engine (Nissan)");
-        ECU_NAMES.put(0x7E1, "TCM — CVT/Auto (Nissan)");
-        ECU_NAMES.put(0x7E2, "ABS/VDC (Nissan)");
-        ECU_NAMES.put(0x7E3, "SRS — Airbag (Nissan)");
+        NISSAN_ECU.put(0x7E0, "ECM — Engine (Nissan)");
+        NISSAN_ECU.put(0x7E1, "TCM — CVT/Auto (Nissan)");
+        NISSAN_ECU.put(0x7E2, "ABS/VDC (Nissan)");
+        NISSAN_ECU.put(0x7E3, "SRS — Airbag (Nissan)");
+        NISSAN_ECU.put(0x7E8, "ECM Response");
+        NISSAN_ECU.put(0x7E9, "TCM Response");
 
-        // ── Mitsubishi (unique CAN IDs; shared 7E0-7EF covered by Toyota) ──
-        ECU_NAMES.put(0x762, "AWC/S-AWC — All Wheel Control (Mitsubishi)");
-        ECU_NAMES.put(0x763, "ASC — Active Stability (Mitsubishi)");
-        ECU_NAMES.put(0x764, "ETACS — Body Control/BCM (Mitsubishi)");
-        ECU_NAMES.put(0x765, "EPS — Steering (Mitsubishi)");
-        ECU_NAMES.put(0x76A, "KOS/OSS — Keyless Operation (Mitsubishi)");
-        ECU_NAMES.put(0x76B, "TPMS — Tire Pressure (Mitsubishi)");
-        ECU_NAMES.put(0x72E, "4WD — Transfer Case (Mitsubishi Triton/Pajero)");
-        ECU_NAMES.put(0x72F, "AFS — Adaptive Front Light (Mitsubishi)");
-        ECU_NAMES.put(0x744, "MMCS — Multimedia/Navi (Mitsubishi)");
-        ECU_NAMES.put(0x611, "Engine-ECU Diesel (Mitsubishi 4D56/4N15)");
-        ECU_NAMES.put(0x619, "Engine-ECU Response (Mitsubishi Diesel)");
-        // MUT protocol (ISO 14230 KWP) — older Mitsubishi (pre-2008 Lancer, Pajero Sport, Strada)
-        // Uses functional addressing 0x33, but ELM327 handles this transparently via ATSP auto.
+        // ── Isuzu D-Max (29-bit CAN) ──
+        ISUZU_ECU.put(0x18DA00F1, "ECM — Engine (Isuzu D-Max)");
+        ISUZU_ECU.put(0x18DA00F2, "TCM — Transmission (Isuzu)");
+        ISUZU_ECU.put(0x18DA00F3, "ABS — Brakes (Isuzu)");
 
-        // ── Ford MS-CAN ──
+        // ── Mitsubishi (unique CAN IDs) ──
+        MITSUBISHI_ECU.put(0x762, "AWC/S-AWC — All Wheel Control (Mitsubishi)");
+        MITSUBISHI_ECU.put(0x763, "ASC — Active Stability (Mitsubishi)");
+        MITSUBISHI_ECU.put(0x764, "ETACS — Body Control/BCM (Mitsubishi)");
+        MITSUBISHI_ECU.put(0x765, "EPS — Steering (Mitsubishi)");
+        MITSUBISHI_ECU.put(0x76A, "KOS/OSS — Keyless Operation (Mitsubishi)");
+        MITSUBISHI_ECU.put(0x76B, "TPMS — Tire Pressure (Mitsubishi)");
+        MITSUBISHI_ECU.put(0x72E, "4WD — Transfer Case (Mitsubishi Triton/Pajero)");
+        MITSUBISHI_ECU.put(0x72F, "AFS — Adaptive Front Light (Mitsubishi)");
+        MITSUBISHI_ECU.put(0x744, "MMCS — Multimedia/Navi (Mitsubishi)");
+        MITSUBISHI_ECU.put(0x611, "Engine-ECU Diesel (Mitsubishi 4D56/4N15)");
+        MITSUBISHI_ECU.put(0x619, "Engine-ECU Response (Mitsubishi Diesel)");
+
+        // ── Generic ECU names (non-brand-specific IDs) ──
         ECU_NAMES.put(0x726, "GEM — Generic Electronic Module (Ford)");
         ECU_NAMES.put(0x727, "SJB — Smart Junction Box");
         ECU_NAMES.put(0x728, "BCM — Body Control (Ford)");
@@ -184,12 +213,26 @@ public final class DtcReader {
         ECU_NAMES.put(0x750, "FCIM — Front Controls");
     }
 
-    /** Look up ECU name — prefers Ford names when fordMode is true. */
+    /**
+     * Look up ECU name — checks brand-specific map first so shared CAN IDs
+     * like 0x7E0 show the correct manufacturer (Toyota vs Nissan vs Mazda).
+     * Falls back to the generic ECU_NAMES map, then a heuristic.
+     */
     private static String moduleNameForCanId(int ecuId, boolean fordMode) {
+        // Ford mode: Ford HS-CAN overrides take priority
         if (fordMode) {
             String fordName = FORD_HS_CAN_NAMES.get(ecuId);
             if (fordName != null) return fordName;
         }
+
+        // Brand-specific map — set via setBrand() from DtcDatabase.initForVin()
+        Map<Integer, String> brandMap = getBrandEcuMap(currentBrand);
+        if (brandMap != null) {
+            String brandName = brandMap.get(ecuId);
+            if (brandName != null) return brandName;
+        }
+
+        // Generic ECU names (non-brand-specific IDs like Ford MS-CAN body modules)
         String name = ECU_NAMES.get(ecuId);
         if (name != null) return name;
 
@@ -201,6 +244,21 @@ public final class DtcReader {
             return String.format("Module 0x%03X (MS-CAN)", ecuId);
         }
         return String.format("Module 0x%X", ecuId);
+    }
+
+    /** Get the per-brand ECU name map for the detected vehicle brand. */
+    private static Map<Integer, String> getBrandEcuMap(VinBrandDetector.Brand brand) {
+        if (brand == null) return null;
+        switch (brand) {
+            case TOYOTA: case LEXUS: return TOYOTA_ECU;
+            case HONDA:             return HONDA_ECU;
+            case MAZDA:             return MAZDA_ECU;
+            case NISSAN:            return NISSAN_ECU;
+            case ISUZU:             return ISUZU_ECU;
+            case MITSUBISHI:        return MITSUBISHI_ECU;
+            case FORD:              return FORD_HS_CAN_NAMES;
+            default:                return null;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -419,9 +477,15 @@ public final class DtcReader {
             ));
         }
 
-        // Always restore to auto-detect
+        // Always restore to auto-detect and re-probe so the ELM327 re-locks
+        // onto the correct protocol before PID detection runs. Without this,
+        // the first PID query after the DTC scan can get an unreliable response
+        // because the adapter may still be on a non-default protocol.
         driver.sendCommandRaw("ATSP0");
         try { Thread.sleep(150); } catch (InterruptedException ignored) {}
+        // Send a throwaway 0100 probe to trigger auto-detect re-lock
+        driver.sendCommandRaw("0100");
+        try { Thread.sleep(200); } catch (InterruptedException ignored) {}
 
         return new DtcScanResult(allStored, allPending, allPermanent, allModules, statuses);
     }
@@ -475,8 +539,7 @@ public final class DtcReader {
         if (!isValidResponse(probe)) {
             // No ECU responded on this protocol — skip DTC scan entirely
             driver.sendCommandRaw("ATCFC0");
-            return new BusScanResult(stored, pending, permanent, moduleBuilders.isEmpty()
-                ? new ArrayList<>() : new ArrayList<>(), false);
+            return new BusScanResult(stored, pending, permanent, new ArrayList<>(), false);
         }
 
         // Enable headers to see CAN IDs
@@ -619,6 +682,15 @@ public final class DtcReader {
 
     /**
      * Parse DTCs from a hex payload string (mode byte + data, no CAN ID header).
+     *
+     * SAE J1979 specifies a 1-byte count after the mode header (e.g. "43 02 01 71 03 00"
+     * = 2 DTCs). However, some ECUs (notably certain Honda/Nissan models) omit the count
+     * byte and return just mode + DTC bytes (e.g. "43 01 71 03 00"). The old code always
+     * skipped 1 byte after the mode header, silently dropping the first DTC.
+     *
+     * Heuristic: after the mode header, check if the next byte is a plausible count
+     * (count × 4 hex chars == remaining data length). If it doesn't match, treat the
+     * byte as the first DTC byte instead.
      */
     private static List<DtcCode> parseDtcPayload(String hex, String modeHeader) {
         List<DtcCode> codes = new ArrayList<>();
@@ -627,15 +699,7 @@ public final class DtcReader {
         String cleanHex = hex.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
         if (cleanHex.length() < 4) return codes;
 
-        int pos = 0;
-        if (cleanHex.startsWith(modeHeader)) {
-            pos = modeHeader.length();
-            if (pos + 2 <= cleanHex.length()) pos += 2;
-        } else {
-            if (cleanHex.length() >= 2 && cleanHex.substring(0, 2).matches("2[0-9A-F]")) {
-                pos = 2;
-            }
-        }
+        int pos = skipModeHeaderAndCount(cleanHex, modeHeader);
 
         while (pos + 4 <= cleanHex.length()) {
             int byteA = Integer.parseInt(cleanHex.substring(pos, pos + 2), 16);
@@ -650,6 +714,41 @@ public final class DtcReader {
         return codes;
     }
 
+    /**
+     * Determine the starting position for DTC parsing, after the mode header and
+     * (optionally) the count byte.
+     *
+     * Cases:
+     * 1. Mode header present (e.g. "43") + valid count byte → skip header + count.
+     * 2. Mode header present + count byte doesn't match remaining data → no count
+     *    byte (ECU omits it) → skip header only, start parsing from the next byte.
+     * 3. ISO-TP consecutive frame (starts with 2x) → skip 2-char frame-control byte.
+     * 4. No recognizable header → start from 0.
+     */
+    private static int skipModeHeaderAndCount(String cleanHex, String modeHeader) {
+        int pos = 0;
+        if (cleanHex.startsWith(modeHeader)) {
+            pos = modeHeader.length();
+            int remaining = cleanHex.length() - pos;
+            if (remaining >= 2) {
+                // Check if the next byte is a plausible DTC count
+                int countByte = Integer.parseInt(cleanHex.substring(pos, pos + 2), 16);
+                // Count byte is valid if count * 4 (hex chars per DTC) == remaining - 2 (minus count byte)
+                if (countByte <= 0x0F && countByte * 4 == remaining - 2) {
+                    // Valid count byte — skip it
+                    pos += 2;
+                }
+                // If count doesn't match, treat the byte as the first DTC byte — don't skip
+            }
+        } else {
+            // ISO-TP consecutive frame control byte (21, 22, etc.)
+            if (cleanHex.length() >= 2 && cleanHex.substring(0, 2).matches("2[0-9A-F]")) {
+                pos = 2;
+            }
+        }
+        return pos;
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  Backward-Compatible Simple API
     // ═══════════════════════════════════════════════════════════════
@@ -661,7 +760,7 @@ public final class DtcReader {
         String[] lines = response.replace("\r", "\n").split("\n");
         for (String line : lines) {
             String clean = line.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "").trim();
-            if (clean.isEmpty() || clean.equals("NODATA")) continue;
+            if (clean.isEmpty() || clean.matches("(?i)NODATA|NO DATA")) continue;
 
             int colonIdx = clean.indexOf(':');
             if (colonIdx >= 0) clean = clean.substring(colonIdx + 1);
@@ -669,15 +768,7 @@ public final class DtcReader {
             String hex = clean.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
             if (hex.length() < 4) continue;
 
-            int pos = 0;
-            if (hex.startsWith(modeHeader)) {
-                pos = modeHeader.length();
-                if (pos + 2 <= hex.length()) pos += 2;
-            } else {
-                if (hex.length() >= 2 && hex.substring(0, 2).matches("2[0-9A-F]")) {
-                    pos = 2;
-                }
-            }
+            int pos = skipModeHeaderAndCount(hex, modeHeader);
 
             while (pos + 4 <= hex.length()) {
                 int byteA = Integer.parseInt(hex.substring(pos, pos + 2), 16);

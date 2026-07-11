@@ -62,6 +62,10 @@ public final class DtcDatabase {
             loadDatabase(context, assetFile, brandCache);
         }
         currentBrand = brand;
+        // Propagate brand to DtcReader so ECU module names use the correct
+        // manufacturer labels (Toyota vs Nissan vs Mazda, etc.) instead of
+        // whatever brand was last to put() into the shared map.
+        DtcReader.setBrand(brand);
         String brandName = VinBrandDetector.getBrandName(brand);
         if (!brandCache.isEmpty()) {
             Log.i(TAG, "Loaded " + brandCache.size() + " brand-specific codes for " + brandName);

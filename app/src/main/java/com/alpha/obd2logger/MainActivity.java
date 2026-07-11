@@ -2611,11 +2611,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         String vin = VinReader.readVin(driver);
         if (vin != null) {
             config.vin = vin;
+            // Load brand-specific DTC database and set the brand in DtcReader
+            // so ECU module names use the correct manufacturer labels.
+            // (The onVinRead callback does this for the service path, but the
+            // in-process path bypasses the callback.)
+            VinBrandDetector.Brand brand = VinBrandDetector.detect(vin);
+            DtcReader.setBrand(brand);
+            DtcDatabase.initForVin(this, vin);
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
                 if (active != null) {
                     active.headerVin.setText("VIN: " + vin);
                     if (active.txtHomeVin != null) active.txtHomeVin.setText(vin);
+                    // Auto-detect diesel on first run (same as onVinRead callback)
+                    if (!vin.equals("UNKNOWN")) {
+                        String brandName = DtcDatabase.initForVin(active, vin);
+                        if (brandName != null && !"Unknown".equals(brandName)) {
+                            Toast.makeText(active, "Brand: " + brandName, Toast.LENGTH_SHORT).show();
+                        }
+                    }
                 }
             });
         }

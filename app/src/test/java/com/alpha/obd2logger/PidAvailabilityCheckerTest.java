@@ -57,7 +57,10 @@ public class PidAvailabilityCheckerTest {
 
     @Test
     public void filterCatalogueExcludesUnsupportedPids() {
-        // If only 0x0C is supported, 0x0D (Speed) should NOT be in the filtered list
+        // If only 0x0C is supported, a non-force-included PID like 0x0E
+        // (Timing Advance) should NOT be in the filtered list.
+        // Note: 0x0D (Speed) IS now force-included because it's critical for
+        // fuel-economy derived sensors, so we test against 0x0E instead.
         List<String> supported = Arrays.asList("0C");
         List<PIDDefinition> filtered = PidAvailabilityChecker.filterCatalogue(
                 supported, PIDCatalogue.getAll());
@@ -65,7 +68,7 @@ public class PidAvailabilityCheckerTest {
             String baseHex = pid.getPidHex().contains("_")
                     ? pid.getPidHex().substring(0, pid.getPidHex().indexOf('_'))
                     : pid.getPidHex();
-            assertFalse("Unsupported PID 0D should not be in filtered list", baseHex.equals("0D"));
+            assertFalse("Unsupported PID 0E should not be in filtered list", baseHex.equals("0E"));
         }
     }
 

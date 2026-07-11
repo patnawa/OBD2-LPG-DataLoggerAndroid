@@ -53,9 +53,12 @@ public final class PidAvailabilityChecker {
         List<String> supported = new ArrayList<>();
         boolean anyResponse = false;
 
-        // Query PID 0x00, 0x20, 0x40, 0x60 — each covers a 32-PID range
-        String[] bitmapPids = {"0100", "0120", "0140", "0160"};
-        int[] bitmapBases = {0x00, 0x20, 0x40, 0x60};
+        // Query PID 0x00, 0x20, 0x40, 0x60, 0x80, 0xA0, 0xC0, 0xE0 — each
+        // covers a 32-PID range. SAE J1979 defines up to 8 bitmap banks.
+        // The previous code only queried the first 4, silently dropping
+        // PIDs 0x81–0xFF (including DPF PIDs 0x85, 0x8B, 0x8C).
+        String[] bitmapPids = {"0100", "0120", "0140", "0160", "0180", "01A0", "01C0", "01E0"};
+        int[] bitmapBases = {0x00, 0x20, 0x40, 0x60, 0x80, 0xA0, 0xC0, 0xE0};
 
         for (int i = 0; i < bitmapPids.length; i++) {
             String response = elm.sendCommandRaw(bitmapPids[i]);
@@ -128,7 +131,10 @@ public final class PidAvailabilityChecker {
         // Build a set for O(1) lookup
         java.util.Set<String> supportedSet = new java.util.HashSet<>(supportedHex);
 
-        // Force-include core PIDs critical for basic engine diagnostics and LPG tuning
+        // Force-include core PIDs critical for diagnostics, LPG tuning, and
+        // derived sensors. Without these, features like fuel economy (needs
+        // 0D speed + 10 MAF), turbo boost (needs 33 baro), DPF monitor
+        // (needs 7A/7B/85/8B/8C), and AFR (needs lambda) break silently.
         supportedSet.add("03"); // Fuel System Status
         supportedSet.add("04"); // Engine Load
         supportedSet.add("05"); // Coolant Temp
@@ -136,6 +142,17 @@ public final class PidAvailabilityChecker {
         supportedSet.add("07"); // Long Term Fuel Trim
         supportedSet.add("0B"); // MAP (falls back to Load if vehicle lacks MAP sensor)
         supportedSet.add("0C"); // Engine RPM
+        supportedSet.add("0D"); // Vehicle Speed — fuel economy derived
+        supportedSet.add("10"); // MAF Air Flow — fuel economy + AFR derived
+        supportedSet.add("11"); // Throttle Position
+        supportedSet.add("33"); // Barometric Pressure — turbo boost derived
+        supportedSet.add("42"); // Control Module Voltage — lpgCritical
+        // DPF PIDs — auto-enabled for diesel, must survive filtering
+        supportedSet.add("7A"); // DPF Soot Load
+        supportedSet.add("7B"); // DPF Temperature
+        supportedSet.add("85"); // DPF Delta Pressure
+        supportedSet.add("8B"); // DPF Ash Load
+        supportedSet.add("8C"); // DPF Regen Status
 
         List<PIDDefinition> filtered = new ArrayList<>();
         for (PIDDefinition pid : catalogue) {
