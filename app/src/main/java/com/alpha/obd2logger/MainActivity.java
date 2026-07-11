@@ -107,6 +107,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private Button btnReadDtc, btnClearDtc, btnReadVin, btnReadiness;
     private TextView dtcStatusText;
     private LinearLayout dtcListContainer, readinessContainer;
+    private com.google.android.material.card.MaterialCardView dtcVehicleCard;
+    private TextView dtcVehicleBrand, dtcVehicleVin;
+    private android.widget.ProgressBar dtcScanProgress;
 
     // --- UI: Battery tab ---
     private BatteryTestView batteryTestView;
@@ -247,6 +250,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private static volatile boolean isConnecting = false;
     private static volatile boolean pendingStartLoggingAfterPermission = false;
     public static volatile boolean isPaused = false;
+    private boolean lastDtcScanWasDeep = false; // tracks whether last scan was deep
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -841,6 +845,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcStatusText = findViewById(R.id.dtcStatusText);
         dtcListContainer = findViewById(R.id.dtcListContainer);
         readinessContainer = findViewById(R.id.readinessContainer);
+        dtcVehicleCard = findViewById(R.id.dtcVehicleCard);
+        dtcVehicleBrand = findViewById(R.id.dtcVehicleBrand);
+        dtcVehicleVin = findViewById(R.id.dtcVehicleVin);
+        dtcScanProgress = findViewById(R.id.dtcScanProgress);
 
         // Logs tab
         txtSessionDuration = findViewById(R.id.txtSessionDuration);
@@ -2629,6 +2637,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         if (brandName != null && !"Unknown".equals(brandName)) {
                             Toast.makeText(active, "Brand: " + brandName, Toast.LENGTH_SHORT).show();
                         }
+                        // Update DTC vehicle info card
+                        if (active.dtcVehicleCard != null) active.dtcVehicleCard.setVisibility(View.VISIBLE);
+                        if (active.dtcVehicleBrand != null)
+                            active.dtcVehicleBrand.setText(brandName != null ? brandName : "Unknown Brand");
+                        if (active.dtcVehicleVin != null)
+                            active.dtcVehicleVin.setText("VIN: " + vin);
                     }
                 }
             });
@@ -3304,6 +3318,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 String brandName = DtcDatabase.initForVin(this, vin);
                 if (brandName != null && !"Unknown".equals(brandName)) {
                     Toast.makeText(this, "Brand: " + brandName, Toast.LENGTH_SHORT).show();
+                }
+
+                // ── Update DTC vehicle info card ──
+                if (dtcVehicleCard != null) {
+                    dtcVehicleCard.setVisibility(View.VISIBLE);
+                }
+                if (dtcVehicleBrand != null) {
+                    dtcVehicleBrand.setText(brandName != null ? brandName : "Unknown Brand");
+                }
+                if (dtcVehicleVin != null) {
+                    dtcVehicleVin.setText("VIN: " + vin);
                 }
 
                 android.content.SharedPreferences p = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
@@ -4334,6 +4359,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         dtcStatusText.setText("Reading DTCs...");
         dtcStatusText.setTextColor(getColorCompat(R.color.muted));
+        if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
+        lastDtcScanWasDeep = false;
         dtcListContainer.removeAllViews();
 
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
@@ -4393,6 +4420,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
                 
                 runOnUiThread(() -> {
+                    if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
                     displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
                     displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
                     updateDtcBadge(stored.size(), pending.size(), permanent.size());
@@ -4418,6 +4446,53 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (stored.isEmpty() && pending.isEmpty() && permanent.isEmpty()) {
             dtcStatusText.setText(getString(R.string.no_dtcs));
             dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+
+            // ── Green checkmark card for clean state ──
+            float density = getResources().getDisplayMetrics().density;
+            int pad = (int)(24 * density);
+            int padSmall = (int)(8 * density);
+
+            com.google.android.material.card.MaterialCardView cleanCard = new com.google.android.material.card.MaterialCardView(this);
+            LinearLayout cleanLayout = new LinearLayout(this);
+            cleanLayout.setOrientation(LinearLayout.VERTICAL);
+            cleanLayout.setGravity(android.view.Gravity.CENTER);
+            cleanLayout.setPadding(pad, pad, pad, pad);
+            cleanCard.addView(cleanLayout);
+            com.google.android.material.card.MaterialCardView.LayoutParams cleanLp =
+                    new com.google.android.material.card.MaterialCardView.LayoutParams(
+                            com.google.android.material.card.MaterialCardView.LayoutParams.MATCH_PARENT,
+                            com.google.android.material.card.MaterialCardView.LayoutParams.WRAP_CONTENT);
+            cleanCard.setLayoutParams(cleanLp);
+            cleanCard.setCardBackgroundColor(getColorCompat(R.color.accent));
+            cleanCard.setCardElevation(0);
+            cleanCard.setRadius((int)(12 * density));
+            cleanCard.setStrokeWidth(0);
+
+            TextView checkIcon = new TextView(this);
+            checkIcon.setText("✅");
+            checkIcon.setTextSize(36);
+            checkIcon.setGravity(android.view.Gravity.CENTER);
+            checkIcon.setPadding(0, padSmall, 0, padSmall);
+
+            TextView cleanTitle = new TextView(this);
+            cleanTitle.setText("All Clear!");
+            cleanTitle.setTextColor(getColorCompat(R.color.surface));
+            cleanTitle.setTextSize(18);
+            cleanTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            cleanTitle.setGravity(android.view.Gravity.CENTER);
+
+            TextView cleanDesc = new TextView(this);
+            cleanDesc.setText("No diagnostic trouble codes found.\nVehicle is operating normally.");
+            cleanDesc.setTextColor(getColorCompat(R.color.surface));
+            cleanDesc.setAlpha(0.85f);
+            cleanDesc.setTextSize(13);
+            cleanDesc.setGravity(android.view.Gravity.CENTER);
+            cleanDesc.setPadding(0, padSmall, 0, 0);
+
+            cleanLayout.addView(checkIcon);
+            cleanLayout.addView(cleanTitle);
+            cleanLayout.addView(cleanDesc);
+            dtcListContainer.addView(cleanCard);
             return;
         }
 
@@ -4627,12 +4702,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
 
         // Add Export PDF Report button at the bottom of list if DTCs or freeze frame exist
-        Button exportBtn = new Button(this);
+        com.google.android.material.button.MaterialButton exportBtn =
+                new com.google.android.material.button.MaterialButton(this);
         exportBtn.setText("📤 Export PDF Report");
+        exportBtn.setTextSize(13);
+        exportBtn.setCornerRadius(dpPx(12));
+        exportBtn.setStrokeWidth((int)(1 * getResources().getDisplayMetrics().density));
+        exportBtn.setStrokeColor(getColorStateListCompat(R.color.primary));
+        exportBtn.setTextColor(getColorCompat(R.color.primary));
         exportBtn.setOnClickListener(v -> exportDtcReport());
         LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        btnLp.topMargin = 16;
+        btnLp.topMargin = (int)(16 * getResources().getDisplayMetrics().density);
         exportBtn.setLayoutParams(btnLp);
         dtcListContainer.addView(exportBtn);
     }
@@ -4717,6 +4798,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         headerView.setTypeface(null, android.graphics.Typeface.BOLD);
         sectionHeader.addView(headerView);
         dtcListContainer.addView(sectionHeader);
+
+        // Deep scan badge — visually distinguishes deep scan from fast scan
+        if (lastDtcScanWasDeep) {
+            TextView deepBadge = new TextView(this);
+            deepBadge.setText("🔬 DEEP SCAN — All Protocols");
+            deepBadge.setTextColor(getColorCompat(R.color.surface));
+            deepBadge.setTextSize(11);
+            deepBadge.setTypeface(null, android.graphics.Typeface.BOLD);
+            deepBadge.setBackgroundResource(R.drawable.bg_dtc_badge_pill);
+            deepBadge.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                    getColorCompat(R.color.warning)));
+            deepBadge.setPadding(dpToPx(12), dpToPx(4), dpToPx(12), dpToPx(4));
+            LinearLayout.LayoutParams deepLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            deepLp.bottomMargin = dpToPx(8);
+            deepBadge.setLayoutParams(deepLp);
+            dtcListContainer.addView(deepBadge);
+        }
 
         // Per-protocol rows
         for (DtcReader.ProtocolScanStatus s : protocolStatuses) {
@@ -4813,6 +4912,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         dtcStatusText.setText("🔬 Deep Scan: probing all protocols...");
         dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+        if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
+        lastDtcScanWasDeep = true;
         dtcListContainer.removeAllViews();
         Toast.makeText(this, "Deep scanning all protocols — this may take 20-30s...", Toast.LENGTH_SHORT).show();
 
@@ -4859,6 +4960,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
 
                 runOnUiThread(() -> {
+                    if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
                     displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
                     displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
                     updateDtcBadge(stored.size(), pending.size(), permanent.size());
@@ -5373,38 +5475,63 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         });
 
         // ── Bi-Directional Control (Mode 08) button ──
-        Button btnMode08 = new Button(this);
+        com.google.android.material.button.MaterialButton btnMode08 =
+                new com.google.android.material.button.MaterialButton(this);
         btnMode08.setText("🎮 Bi-Directional Control (Mode 08)");
         btnMode08.setTextSize(12);
+        btnMode08.setCornerRadius(dpPx(12));
+        btnMode08.setStrokeWidth((int)(1 * getResources().getDisplayMetrics().density));
+        btnMode08.setStrokeColor(getColorStateListCompat(R.color.accent));
+        btnMode08.setTextColor(getColorCompat(R.color.accent));
         btnMode08.setOnClickListener(v -> showMode08Dialog());
         LinearLayout.LayoutParams m08Lp = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        m08Lp.bottomMargin = 8;
-        m08Lp.topMargin = 4;
+        m08Lp.bottomMargin = (int)(8 * getResources().getDisplayMetrics().density);
+        m08Lp.topMargin = (int)(4 * getResources().getDisplayMetrics().density);
         btnMode08.setLayoutParams(m08Lp);
         dtcListContainer.addView(btnMode08);
 
         // ── Enhanced Mode Scan button ──
-        Button btnEnhanced = new Button(this);
+        com.google.android.material.button.MaterialButton btnEnhanced =
+                new com.google.android.material.button.MaterialButton(this);
         btnEnhanced.setText("🔍 Enhanced Scan (Manufacturer Codes)");
         btnEnhanced.setTextSize(12);
+        btnEnhanced.setCornerRadius(dpPx(12));
+        btnEnhanced.setStrokeWidth((int)(1 * getResources().getDisplayMetrics().density));
+        btnEnhanced.setStrokeColor(getColorStateListCompat(R.color.accent));
+        btnEnhanced.setTextColor(getColorCompat(R.color.accent));
         btnEnhanced.setOnClickListener(v -> runEnhancedScan());
         LinearLayout.LayoutParams enhLp = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        enhLp.bottomMargin = 8;
+        enhLp.bottomMargin = (int)(8 * getResources().getDisplayMetrics().density);
         btnEnhanced.setLayoutParams(enhLp);
         dtcListContainer.addView(btnEnhanced);
 
         // ── Per-ECU Physical Addressing Scan button ──
-        Button btnEcuScan = new Button(this);
+        com.google.android.material.button.MaterialButton btnEcuScan =
+                new com.google.android.material.button.MaterialButton(this);
         btnEcuScan.setText("📡 Per-ECU Scan (Physical Addressing)");
         btnEcuScan.setTextSize(12);
+        btnEcuScan.setCornerRadius(dpPx(12));
+        btnEcuScan.setStrokeWidth((int)(1 * getResources().getDisplayMetrics().density));
+        btnEcuScan.setStrokeColor(getColorStateListCompat(R.color.accent));
+        btnEcuScan.setTextColor(getColorCompat(R.color.accent));
         btnEcuScan.setOnClickListener(v -> runPerEcuScan());
         LinearLayout.LayoutParams ecuLp = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        ecuLp.bottomMargin = 8;
+        ecuLp.bottomMargin = (int)(8 * getResources().getDisplayMetrics().density);
         btnEcuScan.setLayoutParams(ecuLp);
         dtcListContainer.addView(btnEcuScan);
+    }
+
+    /** Helper: dp → px for dynamic view creation. */
+    private int dpPx(int dp) {
+        return (int)(dp * getResources().getDisplayMetrics().density);
+    }
+
+    /** Helper: getColorStateList without requiring API 23. */
+    private android.content.res.ColorStateList getColorStateListCompat(int colorRes) {
+        return android.content.res.ColorStateList.valueOf(getColorCompat(colorRes));
     }
 
     /**

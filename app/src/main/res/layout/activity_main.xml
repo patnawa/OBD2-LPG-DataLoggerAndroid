@@ -2617,7 +2617,68 @@
                     android:textColor="@color/primary"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="16dp" />
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Vehicle info card: shows detected brand + VIN -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/dtcVehicleCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="12dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/border"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="12dp"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_build"
+                            android:tint="@color/primary"
+                            android:layout_marginEnd="10dp"
+                            android:contentDescription="Vehicle" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/dtcVehicleBrand"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/text"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/dtcVehicleVin"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/muted"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- DTC action group: Read + Clear -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="DTC Actions"
+                    android:textColor="@color/muted"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:layout_marginBottom="6dp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -2634,7 +2695,7 @@
                         android:text="@string/read_dtc"
                         app:backgroundTint="@color/primary"
                         android:textColor="@color/background"
-                        app:cornerRadius="2dp" />
+                        app:cornerRadius="12dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnClearDtc"
@@ -2645,8 +2706,19 @@
                         android:text="@string/clear_dtc"
                         app:backgroundTint="@color/danger"
                         android:textColor="@color/text"
-                        app:cornerRadius="2dp" />
+                        app:cornerRadius="12dp" />
                 </LinearLayout>
+
+                <!-- Vehicle info group: VIN + Readiness -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Vehicle Info"
+                    android:textColor="@color/muted"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:layout_marginBottom="6dp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -2664,7 +2736,7 @@
                         android:text="@string/read_vin"
                         android:textColor="@color/primary"
                         app:strokeColor="@color/primary"
-                        app:cornerRadius="2dp" />
+                        app:cornerRadius="12dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnReadiness"
@@ -2676,24 +2748,40 @@
                         android:text="@string/read_readiness"
                         android:textColor="@color/primary"
                         app:strokeColor="@color/primary"
-                        app:cornerRadius="2dp" />
+                        app:cornerRadius="12dp" />
                 </LinearLayout>
 
+                <!-- Status card with loading spinner -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
                     app:cardBackgroundColor="?attr/colorSurfaceVariant"
                     app:cardCornerRadius="12dp">
-                    
-                    <TextView
-                        android:id="@+id/dtcStatusText"
+
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:orientation="horizontal"
                         android:padding="16dp"
-                        android:text="Connect to vehicle, then use the buttons above."
-                        android:textColor="@color/muted"
-                        android:textSize="14sp" />
+                        android:gravity="center_vertical">
+
+                        <ProgressBar
+                            android:id="@+id/dtcScanProgress"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_marginEnd="12dp"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/dtcStatusText"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Connect to vehicle, then use the buttons above."
+                            android:textColor="@color/muted"
+                            android:textSize="14sp" />
+                    </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
                 <LinearLayout
