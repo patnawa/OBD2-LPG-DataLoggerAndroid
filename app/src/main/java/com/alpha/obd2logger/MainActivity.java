@@ -747,11 +747,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 FuelMode mode = fuelPositionToMode(position);
+                // applyFuelTheme sets the badge label (e.g. "G95", "LPG", "Diesel")
+                // AND its color — do NOT overwrite with mode.name() (raw enum like
+                // "PETROL_91") which would show the wrong text.
                 applyFuelTheme(mode);
-                // Update header fuel mode badge
-                if (headerFuelMode != null) {
-                    headerFuelMode.setText(mode.name());
-                }
                 getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit().putInt("pref_fuel_position", position).apply();
                 // Propagate fuel mode change to the running logger so
                 // subsequent records route to the correct map layer.
@@ -1474,6 +1473,52 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
     }
 
+    /**
+     * Provides range/label/unit for derived-sensor keys that have no
+     * PIDDefinition. Without this, gauges/graphs assigned to derived keys
+     * (e.g. derived_dcafr) keep the default 0–100 range and "Tap to Add"
+     * label, making real values look stuck at zero.
+     */
+    private static final class DerivedGaugeConfig {
+        final float min, max;
+        final String label, unit;
+        DerivedGaugeConfig(float min, float max, String label, String unit) {
+            this.min = min; this.max = max; this.label = label; this.unit = unit;
+        }
+    }
+    private static DerivedGaugeConfig getDerivedGaugeConfig(String key) {
+        if (key == null) return null;
+        switch (key) {
+            case "derived_dcafr":      return new DerivedGaugeConfig(8f, 20f, "DCAFR", ":1");
+            case "derived_fuel_kmL":   return new DerivedGaugeConfig(0f, 30f, "Fuel Econ", "km/L");
+            case "derived_fuel_l100":  return new DerivedGaugeConfig(0f, 30f, "Fuel Econ", "L/100");
+            case "derived_boost_kpa":  return new DerivedGaugeConfig(-100f, 200f, "Boost", "kPa");
+            case "derived_boost_psi":  return new DerivedGaugeConfig(-15f, 30f, "Boost", "psi");
+            case "derived_ve":         return new DerivedGaugeConfig(0f, 150f, "VE", "%");
+            case "derived_maf_dev":    return new DerivedGaugeConfig(-50f, 50f, "MAF Dev", "%");
+            case "derived_aad":        return new DerivedGaugeConfig(0f, 80f, "AAD", "lbs/1000ft³");
+            case "derived_mad":        return new DerivedGaugeConfig(0f, 80f, "MAD", "lbs/1000ft³");
+            case "derived_bad":        return new DerivedGaugeConfig(0f, 120f, "BAD", "lbs/1000ft³");
+            case "derived_density_pct": return new DerivedGaugeConfig(50f, 120f, "Density", "%");
+            case "derived_density_alt": return new DerivedGaugeConfig(-1000f, 15000f, "Density Alt", "ft");
+            case "derived_sae_cf":     return new DerivedGaugeConfig(0.8f, 1.2f, "SAE CF", "");
+            case "derived_tmf":        return new DerivedGaugeConfig(0f, 500f, "TMF", "g/s");
+            case "derived_lvd":        return new DerivedGaugeConfig(0f, 0.1f, "Vapor Disp", "");
+            case "derived_eff_density": return new DerivedGaugeConfig(0f, 2f, "Eff Density", "kg/m³");
+            case "derived_ecc_dt":     return new DerivedGaugeConfig(-30f, 10f, "Evap Cool", "°C");
+            case "derived_ecc_mad":    return new DerivedGaugeConfig(0f, 80f, "ECC MAD", "lbs/1000ft³");
+            case "derived_pdi":        return new DerivedGaugeConfig(0f, 150f, "PDI", "");
+            case "derived_sae_j607":   return new DerivedGaugeConfig(0.8f, 1.2f, "J607 CF", "");
+            case "derived_sae_cf_delta": return new DerivedGaugeConfig(-0.1f, 0.1f, "CF Delta", "");
+            case "derived_compressor_eff": return new DerivedGaugeConfig(0f, 100f, "Comp Eff", "%");
+            case "derived_intercooler_eff": return new DerivedGaugeConfig(0f, 100f, "IC Eff", "%");
+            case "derived_omd":        return new DerivedGaugeConfig(0f, 20f, "O2 Density", "lbs/1000ft³");
+            case "derived_grains":     return new DerivedGaugeConfig(0f, 150f, "Grains", "gr/lb");
+            case "derived_humidity":  return new DerivedGaugeConfig(0f, 100f, "Humidity", "%");
+            default: return null;
+        }
+    }
+
     private void setupGauges() {
         GaugeView[] gauges = {gauge1, gauge2, gauge3, gauge4};
         // Per-gauge color themes: {arc, needle, warning}
@@ -1502,6 +1547,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     gauges[i].setFullColors(theme[0], theme[1], theme[2]);
                     // Set warning at 80% of max for RPM, 90% for others
                     gauges[i].setWarningStart(i == 0 ? 0.75f : 0.85f);
+                } else {
+                    // Derived keys (no PIDDefinition) — use derived config
+                    DerivedGaugeConfig dc = getDerivedGaugeConfig(pidKey);
+                    if (dc != null) {
+                        gauges[i].setRange(dc.min, dc.max);
+                        gauges[i].setLabel(dc.label);
+                        gauges[i].setUnit(dc.unit);
+                        int[] theme = gaugeThemes[i];
+                        gauges[i].setFullColors(theme[0], theme[1], theme[2]);
+                        gauges[i].setWarningStart(0.85f);
+                    }
                 }
             }
         }
@@ -1522,6 +1578,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     graphs[i].setLabel(pid.getName(), pid.getUnit());
                     graphs[i].setRange((float)pid.getMinVal(), (float)pid.getMaxVal());
                     graphs[i].setLineColor(colors[i]);
+                } else {
+                    // Derived keys (no PIDDefinition) — use derived config
+                    DerivedGaugeConfig dc = getDerivedGaugeConfig(pidKey);
+                    if (dc != null) {
+                        graphs[i].setLabel(dc.label, dc.unit);
+                        graphs[i].setRange(dc.min, dc.max);
+                        graphs[i].setLineColor(colors[i]);
+                    }
                 }
             }
         }

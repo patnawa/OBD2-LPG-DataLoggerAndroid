@@ -34,6 +34,7 @@ public final class LogReplayParser {
     public static final class Columns {
         public int fuelModeIdx = -1, loopStatusIdx = -1, fuelSystemStatusIdx = -1;
         public int rpmIdx = -1, mapIdx = -1, loadIdx = -1, stftIdx = -1, ltftIdx = -1;
+        public int lambdaIdx = -1;  // PID 0x34 or 0x44 — for LPG vehicles without STFT/LTFT
         public int axisIdx() { return (mapIdx != -1) ? mapIdx : loadIdx; }
         public boolean hasRequired() { return rpmIdx != -1 && axisIdx() != -1; }
     }
@@ -97,6 +98,7 @@ public final class LogReplayParser {
             else if (h.contains("engine load")) c.loadIdx = i;
             else if (h.contains("short term fuel trim")) c.stftIdx = i;
             else if (h.contains("long term fuel trim")) c.ltftIdx = i;
+            else if (h.contains("lambda") || h.contains("wideband lambda") || h.contains("equivalence ratio")) c.lambdaIdx = i;
         }
         return c;
     }
@@ -176,7 +178,24 @@ public final class LogReplayParser {
                 String s = cell(parts, c.ltftIdx);
                 if (!s.isEmpty()) ltft = Double.parseDouble(s);
             }
-            return new Point(rpm, axis, stft + ltft, mode);
+            double trim = stft + ltft;
+            // Lambda fallback: LPG/CNG vehicles often have no STFT/LTFT PIDs but
+            // DO have a wideband lambda (PID 0x34 or 0x44). When both trims are
+            // absent (0), derive a "synthetic trim" from lambda deviation:
+            //   trim% = (lambda - 1.0) * 100
+            // e.g. lambda 1.05 → +5% lean, lambda 0.95 → -5% rich.
+            // This makes the fuel map useful for LPG tuning even without
+            // standard fuel-trim PIDs.
+            if (stft == 0.0 && ltft == 0.0 && c.lambdaIdx != -1 && parts.length > c.lambdaIdx) {
+                String lamStr = cell(parts, c.lambdaIdx);
+                if (!lamStr.isEmpty()) {
+                    double lambda = Double.parseDouble(lamStr);
+                    if (lambda > 0 && lambda < 3) {
+                        trim = (lambda - 1.0) * 100.0;
+                    }
+                }
+            }
+            return new Point(rpm, axis, trim, mode);
         } catch (NumberFormatException ignored) {
             return null;
         }

@@ -148,4 +148,67 @@ public class LogReplayParserTest {
         assertEquals("2 closed-loop petrol points plotted", 2, petrol);
         assertEquals("1 closed-loop lpg point plotted", 1, lpg);
     }
+
+    // ── Lambda-based trim fallback tests ──
+    // LPG/CNG vehicles often have no STFT/LTFT PIDs but DO have a wideband
+    // lambda (PID 0x34 or 0x44). The parser should derive a synthetic trim
+    // from lambda: trim% = (lambda - 1.0) * 100.
+
+    private static final String HEADER_WITH_LAMBDA =
+        "\"timestamp\",elapsed_s,fuel_mode,loop_status,vehicle_brand,vin,"
+        + "\"Engine RPM (rpm)\",\"Intake Manifold Pressure (kPa)\","
+        + "\"Lambda (B1S1) ()\",\"Fuel System Status ()\"";
+
+    @Test
+    public void parseHeader_detectsLambdaColumn() {
+        LogReplayParser.Columns c = LogReplayParser.parseHeader(HEADER_WITH_LAMBDA);
+        assertEquals("lambda column found", 8, c.lambdaIdx);
+        assertTrue(c.hasRequired());
+    }
+
+    @Test
+    public void parseLine_lambdaFallbackWhenNoTrim() {
+        // LPG log with lambda 1.05 (lean) but no STFT/LTFT columns.
+        // trim should be (1.05 - 1.0) * 100 = +5.0%
+        LogReplayParser.Columns c = LogReplayParser.parseHeader(HEADER_WITH_LAMBDA);
+        LogReplayParser.Point p = LogReplayParser.parseLine(
+            "\"t\",1,\"lpg/cng\",\"Closed\",\"b\",\"v\",2000,40,1.05,2", c);
+        assertNotNull("lambda-only row plots", p);
+        assertEquals("trim derived from lambda", 5.0, p.trim, 0.001);
+        assertEquals(FuelMode.LPG, p.fuelMode);
+    }
+
+    @Test
+    public void parseLine_lambdaRichGivesNegativeTrim() {
+        // lambda 0.92 (rich) → trim = (0.92 - 1.0) * 100 = -8.0%
+        LogReplayParser.Columns c = LogReplayParser.parseHeader(HEADER_WITH_LAMBDA);
+        LogReplayParser.Point p = LogReplayParser.parseLine(
+            "\"t\",1,\"lpg/cng\",\"Closed\",\"b\",\"v\",2500,50,0.92,2", c);
+        assertNotNull(p);
+        assertEquals("rich lambda → negative trim", -8.0, p.trim, 0.001);
+    }
+
+    @Test
+    public void parseLine_stftTakesPriorityOverLambda() {
+        // When STFT is present, lambda should NOT override it.
+        String header = HEADER_WITH_LAMBDA.replace(
+            "\"Lambda (B1S1) ()\",",
+            "\"Short Term Fuel Trim (%)\",\"Lambda (B1S1) ()\",");
+        LogReplayParser.Columns c = LogReplayParser.parseHeader(header);
+        // STFT=3.5, lambda=1.05 → trim should be 3.5 (STFT wins, not 5.0 from lambda)
+        LogReplayParser.Point p = LogReplayParser.parseLine(
+            "\"t\",1,\"petrol\",\"Closed\",\"b\",\"v\",2000,40,3.5,1.05,2", c);
+        assertNotNull(p);
+        assertEquals("STFT takes priority over lambda fallback", 3.5, p.trim, 0.001);
+    }
+
+    @Test
+    public void parseLine_lambdaOutOfRangeIgnored() {
+        // lambda 0.0 or >3 are invalid — should not produce a synthetic trim
+        LogReplayParser.Columns c = LogReplayParser.parseHeader(HEADER_WITH_LAMBDA);
+        LogReplayParser.Point p = LogReplayParser.parseLine(
+            "\"t\",1,\"lpg/cng\",\"Closed\",\"b\",\"v\",2000,40,0.0,2", c);
+        assertNotNull(p);
+        assertEquals("invalid lambda → trim stays 0", 0.0, p.trim, 0.001);
+    }
 }
