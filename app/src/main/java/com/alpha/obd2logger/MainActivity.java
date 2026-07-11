@@ -5451,7 +5451,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             try {
                 Mode09Reader.InUsePerformance perf = Mode09Reader.readInUsePerformance(activeDriver);
                 runOnUiThread(() -> {
-                    if (perf.ignitionCycles >= 0 || perf.obdTripCount >= 0) {
+                    if (perf.ignitionCycles >= 0 || perf.obdTripCount >= 0
+                            || perf.distanceSinceClearKm >= 0 || perf.timeSinceClearMin >= 0) {
                         TextView perfView = new TextView(this);
                         perfView.setText("📊 In-Use Performance Since Clear:\n"
                             + "  Ignitions: " + (perf.ignitionCycles >= 0 ? perf.ignitionCycles : "N/A") + "\n"
@@ -5536,6 +5537,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     /**
      * Show bi-directional control dialog for Mode 08 tests.
+     * Queries supported tests first; if available, only shows supported tests.
+     * Falls back to showing all tests with a warning if support query fails.
      */
     private void showMode08Dialog() {
         BaseDriver activeDriver = getActiveDriver();
@@ -5544,46 +5547,62 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return;
         }
 
-        String[] testNames = new String[Mode08Controller.STANDARD_TESTS.size()];
-        String[] testIds = new String[Mode08Controller.STANDARD_TESTS.size()];
-        int i = 0;
-        for (Map.Entry<String, Mode08Controller.TestId> entry : Mode08Controller.STANDARD_TESTS.entrySet()) {
-            testNames[i] = entry.getValue().name + " (TID " + entry.getKey() + ")";
-            testIds[i] = entry.getKey();
-            i++;
-        }
+        // Query supported tests in background, then show dialog
+        dtcExecutor.submit(() -> {
+            java.util.List<String> supportedTids = Mode08Controller.querySupportedTests(activeDriver);
+            runOnUiThread(() -> {
+                boolean filtered = !supportedTids.isEmpty();
+                java.util.List<String> tidsToShow = filtered ? supportedTids : new java.util.ArrayList<>(Mode08Controller.STANDARD_TESTS.keySet());
 
-        new android.app.AlertDialog.Builder(this)
-            .setTitle("🎮 Bi-Directional Control (Mode 08)\n⚠ Some tests activate physical components")
-            .setItems(testNames, (dialog, which) -> {
-                String tid = testIds[which];
-                String testName = Mode08Controller.getTestName(tid);
-                String testDesc = Mode08Controller.getTestDescription(tid);
+                String[] testNames = new String[tidsToShow.size()];
+                String[] testIds = new String[tidsToShow.size()];
+                for (int i = 0; i < tidsToShow.size(); i++) {
+                    String tid = tidsToShow.get(i);
+                    Mode08Controller.TestId test = Mode08Controller.STANDARD_TESTS.get(tid);
+                    testNames[i] = (test != null ? test.name : "Unknown Test") + " (TID " + tid + ")";
+                    testIds[i] = tid;
+                }
+
+                String title = "🎮 Bi-Directional Control (Mode 08)\n⚠ Some tests activate physical components";
+                if (!filtered) {
+                    title += "\n⚠ Could not query supported tests — showing all";
+                } else {
+                    title += "\n✅ " + tidsToShow.size() + " supported test" + (tidsToShow.size() > 1 ? "s" : "") + " detected";
+                }
 
                 new android.app.AlertDialog.Builder(this)
-                    .setTitle("Run: " + testName)
-                    .setMessage(testDesc + "\n\nProceed?")
-                    .setPositiveButton("Run Test", (d2, w2) -> {
+                    .setTitle(title)
+                    .setItems(testNames, (dialog, which) -> {
+                        String tid = testIds[which];
+                        String testName = Mode08Controller.getTestName(tid);
+                        String testDesc = Mode08Controller.getTestDescription(tid);
+
+                        new android.app.AlertDialog.Builder(this)
+                            .setTitle("Run: " + testName)
+                            .setMessage(testDesc + "\n\nProceed?")
+                            .setPositiveButton("Run Test", (d2, w2) -> {
+                                dtcExecutor.submit(() -> {
+                                    boolean ok = Mode08Controller.runTest(activeDriver, tid);
+                                    runOnUiThread(() -> {
+                                        Toast.makeText(this,
+                                            ok ? "✅ " + testName + " — acknowledged" : "❌ " + testName + " — not supported or failed",
+                                            Toast.LENGTH_LONG).show();
+                                    });
+                                });
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                    })
+                    .setNeutralButton("Cancel All Tests", (dialog, which) -> {
                         dtcExecutor.submit(() -> {
-                            boolean ok = Mode08Controller.runTest(activeDriver, tid);
-                            runOnUiThread(() -> {
-                                Toast.makeText(this,
-                                    ok ? "✅ " + testName + " — acknowledged" : "❌ " + testName + " — not supported or failed",
-                                    Toast.LENGTH_LONG).show();
-                            });
+                            Mode08Controller.cancelAllTests(activeDriver);
+                            runOnUiThread(() -> Toast.makeText(this, "All tests cancelled", Toast.LENGTH_SHORT).show());
                         });
                     })
-                    .setNegativeButton("Cancel", null)
+                    .setNegativeButton("Close", null)
                     .show();
-            })
-            .setNeutralButton("Cancel All Tests", (dialog, which) -> {
-                dtcExecutor.submit(() -> {
-                    Mode08Controller.cancelAllTests(activeDriver);
-                    runOnUiThread(() -> Toast.makeText(this, "All tests cancelled", Toast.LENGTH_SHORT).show());
-                });
-            })
-            .setNegativeButton("Close", null)
-            .show();
+            });
+        });
     }
 
     /**
@@ -5603,8 +5622,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         Toast.makeText(this, "Enhanced scan: " + brandName + "...", Toast.LENGTH_SHORT).show();
         dtcExecutor.submit(() -> {
-            List<DtcCode> enhanced = DtcReader.scanEnhancedForBrand(activeDriver,
-                brandName.equalsIgnoreCase("Unknown") ? null : brandName.toLowerCase());
+            VinBrandDetector.Brand brandForScan = (brand == VinBrandDetector.Brand.UNKNOWN) ? null : brand;
+            List<DtcCode> enhanced = DtcReader.scanEnhancedForBrand(activeDriver, brandForScan);
 
             runOnUiThread(() -> {
                 if (enhanced.isEmpty()) {

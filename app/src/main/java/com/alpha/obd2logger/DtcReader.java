@@ -1008,24 +1008,117 @@ public final class DtcReader {
 
     /**
      * Scan all known enhanced modes for a given manufacturer.
-     * @param brand "toyota", "honda", "nissan", "ford", or null for all
+     * @param brand Brand enum, or null for all known modes
+     * @deprecated Use {@link #scanEnhancedForBrand(BaseDriver, VinBrandDetector.Brand)} instead
      */
+    @Deprecated
     public static List<DtcCode> scanEnhancedForBrand(BaseDriver driver, String brand) {
+        if (driver == null || !driver.isConnected()) return new ArrayList<>();
+        if (brand == null) return scanEnhancedForBrand(driver, (VinBrandDetector.Brand) null);
+        // Map common string names to Brand enum
+        String b = brand.toLowerCase();
+        for (VinBrandDetector.Brand bd : VinBrandDetector.Brand.values()) {
+            if (bd.name().equalsIgnoreCase(b)) return scanEnhancedForBrand(driver, bd);
+        }
+        return scanEnhancedForBrand(driver, (VinBrandDetector.Brand) null);
+    }
+
+    /**
+     * Scan all known enhanced modes for a given manufacturer.
+     *
+     * Enhanced modes by manufacturer:
+     *   Toyota/Lexus: Mode 21 (61) — enhanced DTCs
+     *   Honda:        Mode 21 (61)
+     *   Nissan:       Mode 1A (5A) — enhanced DTCs
+     *   Ford:         Mode 27 (67) — manufacturer-specific
+     *   Mitsubishi:   Mode 21 (61)
+     *   Mazda:        Mode 21 (61)
+     *   Suzuki:       Mode 21 (61)
+     *   Hyundai/Kia:  Mode 21 (61)
+     *   Chevrolet:    Mode 2C (6C) — manufacturer DTCs
+     *   Volvo:        Mode 21 (61)
+     *   BMW:          Mode 21 (61) + Mode 22 (62)
+     *   Mercedes:     Mode 22 (62) — UDS
+     *   BYD/GWM/NETA/AION/DEEPAL/MG: Mode 22 (62) — ISO 14229 UDS
+     *   Tesla:         Mode 22 (62)
+     *   Unknown/null: try all unique mode/header pairs
+     *
+     * @param driver connected OBD2 driver
+     * @param brand Brand enum, or null to scan all known enhanced modes
+     * @return deduplicated list of DTCs from enhanced modes
+     */
+    public static List<DtcCode> scanEnhancedForBrand(BaseDriver driver, VinBrandDetector.Brand brand) {
         List<DtcCode> all = new ArrayList<>();
         if (driver == null || !driver.isConnected()) return all;
 
-        if (brand == null || brand.equalsIgnoreCase("toyota")) {
-            all.addAll(scanEnhancedMode(driver, "21", "61"));
+        // Build the set of (mode, responseHeader) pairs to query for this brand.
+        // Using a LinkedHashSet preserves order while preventing duplicate queries
+        // (e.g. Toyota and Honda both use Mode 21/61 — should only be sent once).
+        java.util.Set<String> modeHeaderPairs = new java.util.LinkedHashSet<>();
+        // Each entry is "mode,responseHeader" e.g. "21,61"
+
+        if (brand == null) {
+            // Unknown VIN — try all unique enhanced mode pairs
+            modeHeaderPairs.add("21,61");
+            modeHeaderPairs.add("1A,5A");
+            modeHeaderPairs.add("27,67");
+            modeHeaderPairs.add("2C,6C");
+            modeHeaderPairs.add("22,62");
+        } else {
+            switch (brand) {
+                case TOYOTA:
+                case LEXUS:
+                case HONDA:
+                case MITSUBISHI:
+                case MAZDA:
+                case SUZUKI:
+                case HYUNDAI:
+                case KIA:
+                case VOLVO:
+                    modeHeaderPairs.add("21,61");
+                    break;
+                case NISSAN:
+                    modeHeaderPairs.add("1A,5A");
+                    break;
+                case FORD:
+                    modeHeaderPairs.add("27,67");
+                    break;
+                case CHEVROLET:
+                    modeHeaderPairs.add("2C,6C");
+                    break;
+                case BMW:
+                    modeHeaderPairs.add("21,61");
+                    modeHeaderPairs.add("22,62");
+                    break;
+                case MERCEDES:
+                case BYD:
+                case GWM:
+                case NETA:
+                case AION:
+                case DEEPAL:
+                case MG:
+                case TESLA:
+                    modeHeaderPairs.add("22,62");
+                    break;
+                case ISUZU:
+                    modeHeaderPairs.add("21,61");
+                    break;
+                default:
+                    // Unknown — try all
+                    modeHeaderPairs.add("21,61");
+                    modeHeaderPairs.add("1A,5A");
+                    modeHeaderPairs.add("27,67");
+                    modeHeaderPairs.add("2C,6C");
+                    modeHeaderPairs.add("22,62");
+                    break;
+            }
         }
-        if (brand == null || brand.equalsIgnoreCase("honda")) {
-            all.addAll(scanEnhancedMode(driver, "21", "61"));
+
+        for (String pair : modeHeaderPairs) {
+            String[] parts = pair.split(",");
+            all.addAll(scanEnhancedMode(driver, parts[0], parts[1]));
         }
-        if (brand == null || brand.equalsIgnoreCase("nissan")) {
-            all.addAll(scanEnhancedMode(driver, "1A", "5A"));
-        }
-        if (brand == null || brand.equalsIgnoreCase("ford")) {
-            all.addAll(scanEnhancedMode(driver, "27", "67"));
-        }
+
         // Deduplicate
         java.util.Set<String> seen = new java.util.HashSet<>();
         List<DtcCode> deduped = new ArrayList<>();

@@ -114,6 +114,10 @@ public final class Mode08Controller {
     /**
      * Get the list of supported Mode 08 tests for this vehicle.
      * Sends "0800" which returns supported TIDs in some vehicles.
+     *
+     * SAE J2190: The response after "4800" contains a bitmap where each bit
+     * represents a TID. Bit 0 of the first byte = TID 01, bit 7 = TID 08,
+     * bit 0 of the second byte = TID 09, etc.
      */
     public static java.util.List<String> querySupportedTests(BaseDriver driver) {
         java.util.List<String> supported = new java.util.ArrayList<>();
@@ -126,17 +130,22 @@ public final class Mode08Controller {
         int idx = hex.indexOf("4800");
         if (idx < 0) return supported;
 
-        // Parse supported TID bitmap (each bit = one TID)
+        // Parse supported TID bitmap across all data bytes (not just first byte)
         String data = hex.substring(idx + 4);
-        if (data.length() >= 2) {
+        int tid = 1;
+        for (int i = 0; i + 2 <= data.length() && tid <= 0x7F; i += 2) {
             try {
-                int bitmap = Integer.parseInt(data.substring(0, 2), 16);
+                int bitmap = Integer.parseInt(data.substring(i, i + 2), 16);
                 for (int bit = 0; bit < 8; bit++) {
                     if ((bitmap & (1 << bit)) != 0) {
-                        supported.add(String.format("%02X", bit + 1));
+                        supported.add(String.format("%02X", tid));
                     }
+                    tid++;
+                    if (tid > 0x7F) break;
                 }
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+                break;
+            }
         }
         return supported;
     }

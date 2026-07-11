@@ -14,7 +14,7 @@
 
     <!-- Soft glow -->
     <path
-        android:fillColor="#38BDF8"
+        android:fillColor="#FFFFFF"
         android:fillAlpha="0.18"
         android:pathData="M36,12m-21,0a21,21 0,1 1,42 0a21,21 0,1 1,-42 0" />
     <path
@@ -30,7 +30,7 @@
         android:fillColor="#00000000"
         android:pathData="M17,45a19,19 0,0 1,38 0" />
     <path
-        android:strokeColor="#38BDF8"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="3.3"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
@@ -68,10 +68,10 @@
 
     <!-- OBD plug accent -->
     <path
-        android:fillColor="#22D3EE"
+        android:fillColor="#FBBF24"
         android:pathData="M55,16h5.4v9.3h-5.4z" />
     <path
-        android:strokeColor="#22D3EE"
+        android:strokeColor="#FBBF24"
         android:strokeWidth="1.7"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
