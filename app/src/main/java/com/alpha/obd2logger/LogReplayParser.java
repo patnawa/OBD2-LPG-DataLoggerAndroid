@@ -137,6 +137,10 @@ public final class LogReplayParser {
     /**
      * Parse a single data line into a plottable Point, or null if the line should
      * be skipped (too short, open loop, or unparseable numbers).
+     *
+     * If the MAP column value is empty (common in logs from MAF-based vehicles
+     * before the MAP synthesis fix), falls back to Engine Load as the Y-axis —
+     * mirrors the live logging path in updateFuelMap().
      */
     public static Point parseLine(String line, Columns c) {
         String[] parts = splitCsv(line);
@@ -144,7 +148,6 @@ public final class LogReplayParser {
 
         FuelMode mode = FuelMode.PETROL;
         if (c.fuelModeIdx != -1 && parts.length > c.fuelModeIdx) {
-            // DataWriter writes FuelMode.getValue(): "petrol", "lpg/cng", "G91", "E20", etc.
             mode = FuelMode.fromString(cell(parts, c.fuelModeIdx));
         }
 
@@ -152,7 +155,16 @@ public final class LogReplayParser {
 
         try {
             double rpm = Double.parseDouble(cell(parts, c.rpmIdx));
-            double axis = Double.parseDouble(cell(parts, c.axisIdx()));
+
+            // Try the primary axis (MAP). If empty, fall back to Engine Load.
+            double axis;
+            String axisStr = cell(parts, c.axisIdx());
+            if (axisStr.isEmpty() && c.mapIdx != -1 && c.loadIdx != -1) {
+                // MAP column exists but value is empty — use Engine Load
+                axisStr = cell(parts, c.loadIdx);
+            }
+            if (axisStr.isEmpty()) return null; // no load axis at all
+            axis = Double.parseDouble(axisStr);
 
             double stft = 0.0;
             if (c.stftIdx != -1 && parts.length > c.stftIdx) {

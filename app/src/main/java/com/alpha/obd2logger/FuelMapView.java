@@ -152,8 +152,29 @@ public class FuelMapView extends View {
      * and trigger a single redraw at the end via {@link #postInvalidate()}
      * or {@link #invalidate()} on the UI thread.
      */
+    /**
+     * Push data without triggering a redraw, and WITHOUT debounce.
+     * Used by ReviewSessionActivity / LogReplayParser when replaying a
+     * saved log file. During replay, every record is a real measurement
+     * from a different moment in a drive — RPM/MAP change with every
+     * record, so the sliding-window debounce (designed for live jitter
+     * filtering) would reject 90%+ of the data points.
+     */
     public void pushDataNoInvalidate(double rpm, double map, double trim, FuelMode fuelMode) {
-        pushDataInternal(rpm, map, trim, fuelMode);
+        int rpmCell = MapBinning.binRpm(rpm);
+        float mapBinValue = MapBinning.binMap(map);
+
+        currentRpmCell = rpmCell;
+        currentMapCell = mapBinValue;
+
+        String key = MapBinning.cellKey(rpmCell, mapBinValue);
+        Map<String, LiveMapStore.TrimData> targetData = !fuelMode.isGaseous() ? petrolData : lpgData;
+        LiveMapStore.TrimData data = targetData.get(key);
+        if (data == null) {
+            data = new LiveMapStore.TrimData();
+        }
+        data.addStableValue(trim);
+        targetData.put(key, data);
     }
 
     private void pushDataInternal(double rpm, double map, double trim, FuelMode fuelMode) {
