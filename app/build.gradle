@@ -10,13 +10,16 @@ android {
         applicationId 'com.alpha.obd2logger'
         minSdk 23
         targetSdk 35
-        versionCode 110
-        versionName '3.16.9'
+        versionCode 111
+        versionName '3.17.0'
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            // R8 shrinks + obfuscates: smaller APK, faster cold start, no
+            // change to runtime behavior or map-calculation logic.
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {

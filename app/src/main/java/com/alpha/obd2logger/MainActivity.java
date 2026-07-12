@@ -74,6 +74,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView txtHomeFuelEconomy, txtHomeBoost, txtHomeDpf, txtHomeDtc;
     private TextView txtHomeThrottle, txtHomeFuelTrim;
     private TextView txtHomeDiagnosticSummary, txtHomeDiagnosticMeta;
+    private View cardHomeDiagnostics;
+    private android.widget.ImageView imgHomeDiagnostics;
     private LiveMultiGraphView homeRpmTrend;
     private TextView stripBoost, stripFuel;
     private View headerStatusDot, headerApiDivider;
@@ -272,6 +274,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_main);
+
+            // First-run: guide the user through adapter connection before the
+            // main UI. Pure UI; writes transport prefs, touches no map logic.
+            if (ConnectionWizardActivity.shouldShow(this)) {
+                startActivity(new Intent(this, ConnectionWizardActivity.class));
+            }
 
             LoggerService.dtcClearTrigger = () -> {
                 runOnUiThread(() -> clearDtcs());
@@ -548,7 +556,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtHomeFuelTrim = findViewById(R.id.cockpitFuelTrim);
         txtHomeDiagnosticSummary = findViewById(R.id.cockpitDiagnosticSummary);
         txtHomeDiagnosticMeta = findViewById(R.id.cockpitDiagnosticMeta);
-        txtHomeDpf = null;
+        cardHomeDiagnostics = findViewById(R.id.cockpitDiagnostics);
+        imgHomeDiagnostics = findViewById(R.id.cockpitDiagnosticIcon);
+
         txtHomeDtc = null;
         stripBoost = findViewById(R.id.stripBoost);
         stripFuel = findViewById(R.id.stripFuel);
@@ -699,24 +709,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         
         btnSelectLogFolder = findViewById(R.id.btnSelectLogFolder);
         TextView appVersionText = findViewById(R.id.appVersionText);
-        TextView homeVersionText = findViewById(R.id.homeVersionText);
         try {
             String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             String versionString = "Version " + versionName;
             if (appVersionText != null) {
                 appVersionText.setText(versionString);
             }
-            if (homeVersionText != null) {
-                homeVersionText.setText(versionString);
-            }
         } catch (Exception e) {
             if (appVersionText != null) {
                 appVersionText.setText("Version 3.2.1");
             }
-            if (homeVersionText != null) {
-                homeVersionText.setText("Version 3.2.1");
-            }
         }
+
+        // Reflect current language on the Home shortcut card.
+        updateHomeLanguageLabel();
 
         // Dashboard
         fabLog = findViewById(R.id.fabLog);
@@ -1541,14 +1547,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             cardBattery.setOnClickListener(v -> showTab(7));
         }
 
-        View homeNavGauges = findViewById(R.id.homeNavGauges);
-        if (homeNavGauges != null) homeNavGauges.setOnClickListener(v -> showTab(1));
-        View homeNavTable = findViewById(R.id.homeNavTable);
-        if (homeNavTable != null) homeNavTable.setOnClickListener(v -> showTab(0));
-        View homeNavGraph = findViewById(R.id.homeNavGraph);
-        if (homeNavGraph != null) homeNavGraph.setOnClickListener(v -> showTab(1));
-        View homeNavAlerts = findViewById(R.id.homeNavAlerts);
-        if (homeNavAlerts != null) homeNavAlerts.setOnClickListener(v -> showTab(3));
+        // Home language shortcut -> jump straight to Settings (language spinner).
+        View cardLanguage = findViewById(R.id.cockpitLanguage);
+        if (cardLanguage != null) {
+            cardLanguage.setOnClickListener(v -> showTab(5));
+        }
+
 
         View bottomHome = findViewById(R.id.homeBottomHome);
         if (bottomHome != null) bottomHome.setOnClickListener(v -> showTab(6));
@@ -3568,6 +3572,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (txtHomeDiagnosticMeta != null) {
                 txtHomeDiagnosticMeta.setText(dtcCount > 0 ? "Tap to inspect and clear" : "Ready for a full scan");
             }
+            // Severity-tint the whole card so fault state is obvious at a glance.
+            applyDiagnosticSeverity(dtcCount);
         }
     }
 
@@ -3609,17 +3615,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             txtHomeAdapter.setText(state == 2 && deviceName != null
                     ? deviceName
                     : (state == 1 ? "Negotiating protocol…" : "Connect an OBD2 adapter to begin live scanning"));
-        }
-        
-        TextView txtHomeConnectionState = findViewById(R.id.txtHomeConnectionState);
-        if (txtHomeConnectionState != null) {
-            txtHomeConnectionState.setText(state == 2 ? "CONNECTED" : (state == 1 ? "CONNECTING" : "DISCONNECTED"));
-            txtHomeConnectionState.setTextColor(getColorCompat(textColor));
-        }
-        
-        View homeStatusDot = findViewById(R.id.homeStatusDot);
-        if (homeStatusDot != null) {
-            homeStatusDot.setBackgroundResource(state == 2 ? R.drawable.bg_status_dot_on : (state == 1 ? R.drawable.bg_status_dot_connecting : R.drawable.bg_status_dot_off));
         }
 
         TextView cockpitConnection = findViewById(R.id.cockpitConnection);
@@ -3673,6 +3668,50 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             } else {
                 stripDtcBadge.setVisibility(View.GONE);
             }
+        }
+    }
+
+    /**
+     * Tint the Home diagnostic-health card by severity so fault state is obvious
+     * at a glance (UI-only; does not touch any map / trim calculation).
+     * 0 faults  -> green (accent), no stroke
+     * pending only -> amber (warning)
+     * stored 1-2 -> red (danger)
+     */
+    /**
+     * Show the active language on the Home shortcut card (UI-only).
+     */
+    private void updateHomeLanguageLabel() {
+        TextView label = findViewById(R.id.cockpitLanguageValue);
+        if (label == null) return;
+        String lang = LocaleHelper.getLanguage(this);
+        if (LocaleHelper.LANG_THAI.equals(lang)) {
+            label.setText("ไทย (Thai)");
+        } else if (LocaleHelper.LANG_ENGLISH.equals(lang)) {
+            label.setText("English");
+        } else {
+            label.setText("System Default");
+        }
+    }
+
+    private void applyDiagnosticSeverity(int dtcCount) {
+        if (cardHomeDiagnostics == null) return;
+        int strokeColor;
+        if (dtcCount <= 0) {
+            strokeColor = getColorCompat(R.color.accent);
+        } else if (dtcCount <= 2) {
+            strokeColor = getColorCompat(R.color.danger);
+        } else {
+            strokeColor = getColorCompat(R.color.danger);
+        }
+        if (cardHomeDiagnostics instanceof com.google.android.material.card.MaterialCardView) {
+            com.google.android.material.card.MaterialCardView cv =
+                    (com.google.android.material.card.MaterialCardView) cardHomeDiagnostics;
+            cv.setStrokeColor(strokeColor);
+            cv.setStrokeWidth(dtcCount > 0 ? 2 : 1);
+        }
+        if (imgHomeDiagnostics != null) {
+            imgHomeDiagnostics.setColorFilter(strokeColor);
         }
     }
 

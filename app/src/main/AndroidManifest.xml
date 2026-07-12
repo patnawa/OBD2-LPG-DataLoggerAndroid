@@ -63,6 +63,11 @@
             android:theme="@style/AppTheme"
             android:label="Review Session" />
 
+        <activity android:name=".ConnectionWizardActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:label="Setup" />
+
         <!-- AndroidX App Locales support service -->
         <service
             android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"

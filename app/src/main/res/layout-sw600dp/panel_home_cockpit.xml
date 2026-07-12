@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Landscape / dash-mount variant of the Home cockpit. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/panelHome"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="14dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="14dp"
+    android:paddingBottom="96dp">
+
+    <!-- LEFT COLUMN: live telemetry + graph (the glanceable bit) -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.15"
+        android:orientation="vertical"
+        android:paddingEnd="8dp">
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardCornerRadius="16dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="16dp">
+                <View
+                    android:id="@+id/cockpitStatusDot"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/bg_status_dot_off" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:id="@+id/cockpitConnection"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="DISCONNECTED"
+                        android:textColor="@color/muted"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/cockpitAdapter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:text="Connect adapter to begin scanning"
+                        android:textColor="@color/muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+                <TextView
+                    android:id="@+id/cockpitProtocol"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_status_chip"
+                    android:gravity="center"
+                    android:minHeight="38dp"
+                    android:paddingStart="14dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="14dp"
+                    android:paddingBottom="6dp"
+                    android:text="OBD2"
+                    android:textColor="@color/primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardCornerRadius="20dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.08"
+                    android:text="LIVE TELEMETRY"
+                    android:textColor="@color/primary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.2" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/cockpitRpm" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="monospace" android:text="---" android:textColor="@color/text" android:textSize="44sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RPM" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
+                    </LinearLayout>
+                    <View android:layout_width="1dp" android:layout_height="72dp" android:background="@color/border" />
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/cockpitSpeed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="monospace" android:text="---" android:textColor="@color/primary" android:textSize="34sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="km/h" android:textColor="@color/muted" android:textSize="11sp" />
+                    </LinearLayout>
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="64dp" android:layout_weight="1" android:layout_marginEnd="4dp" android:background="@drawable/panel" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/cockpitBoost" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/primary" android:textSize="19sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="BOOST psi" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="64dp" android:layout_weight="1" android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:background="@drawable/panel" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/cockpitThrottle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/accent" android:textSize="19sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="THROTTLE %" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="64dp" android:layout_weight="1" android:layout_marginStart="4dp" android:background="@drawable/panel" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/cockpitFuelTrim" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="#A78BFA" android:textSize="19sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FUEL TRIM %" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:orientation="horizontal">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/cockpitCoolant" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/warning" android:textSize="24sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="COOLANT °C" android:textColor="@color/muted" android:textSize="9sp" android:textStyle="bold" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/cockpitVoltage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/accent" android:textSize="24sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="VOLTAGE · V" android:textColor="@color/muted" android:textSize="9sp" android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardCornerRadius="20dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="LIVE DATA GRAPH" android:textColor="@color/text" android:textSize="12sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/cockpitGraphLive" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="● LIVE" android:textColor="@color/accent" android:textSize="10sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/cockpitGraphPause" android:layout_width="32dp" android:layout_height="32dp" android:layout_marginStart="6dp" android:gravity="center" android:text="Ⅱ" android:textColor="@color/text" android:textSize="15sp" android:textStyle="bold" android:background="?attr/selectableItemBackgroundBorderless" android:clickable="true" android:focusable="true" android:contentDescription="Pause live graph" />
+                </LinearLayout>
+                <com.alpha.obd2logger.LiveMultiGraphView
+                    android:id="@+id/cockpitLiveGraph"
+                    android:layout_width="match_parent"
+                    android:layout_height="150dp"
+                    android:layout_marginTop="4dp"
+                    android:contentDescription="Live RPM, speed, and boost graph" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:layout_marginTop="4dp">
+                    <TextView android:id="@+id/cockpitLegendRpm" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="● RPM (x1000)" android:textColor="#29A8FF" android:textSize="9sp" android:clickable="true" android:focusable="true" android:contentDescription="Toggle RPM graph line" />
+                    <TextView android:id="@+id/cockpitLegendSpeed" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="● Speed (km/h)" android:textColor="#39D98A" android:textSize="9sp" android:clickable="true" android:focusable="true" android:contentDescription="Toggle speed graph line" />
+                    <TextView android:id="@+id/cockpitLegendBoost" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="● Boost (psi)" android:textColor="#A855F7" android:textSize="9sp" android:clickable="true" android:focusable="true" android:contentDescription="Toggle boost graph line" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+
+    <!-- RIGHT COLUMN: status + shortcuts -->
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:paddingStart="8dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cockpitLanguage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="?attr/colorSurface"
+                app:cardCornerRadius="16dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingTop="14dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="14dp">
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_marginEnd="12dp"
+                        android:src="@drawable/ic_language"
+                        app:tint="@color/primary" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/prompt_language"
+                            android:textColor="@color/text"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/cockpitLanguageValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="English"
+                            android:textColor="@color/muted"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                    <TextView
+                        android:layout_width="32dp"
+                        android:layout_height="48dp"
+                        android:gravity="center"
+                        android:text="›"
+                        android:textColor="@color/muted"
+                        android:textSize="26sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cockpitDiagnostics"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="?attr/colorSurface"
+                app:cardCornerRadius="16dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="14dp">
+                    <ImageView
+                        android:id="@+id/cockpitDiagnosticIcon"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_marginEnd="12dp"
+                        android:src="@drawable/ic_build"
+                        app:tint="@color/accent" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="DIAGNOSTIC HEALTH"
+                            android:textColor="@color/text"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/cockpitDiagnosticSummary"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="No active fault codes"
+                            android:textColor="@color/accent"
+                            android:textSize="12sp" />
+                        <TextView
+                            android:id="@+id/cockpitDiagnosticMeta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Ready for a full scan"
+                            android:textColor="@color/muted"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+                    <TextView
+                        android:id="@+id/cockpitDiagnosticChevron"
+                        android:layout_width="32dp"
+                        android:layout_height="48dp"
+                        android:gravity="center"
+                        android:text="›"
+                        android:textColor="@color/muted"
+                        android:textSize="26sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="10dp"
+                android:letterSpacing="0.08"
+                android:text="QUICK ACCESS"
+                android:textColor="@color/muted"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitGauges" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginEnd="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_speed" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="GAUGES CLUSTER" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Real-time gauges &amp; custom dials" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitLogs" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_list" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="LIVE GRAPH" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Live logging &amp; graphing" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitDashboard" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginStart="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_dashboard" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="DASHBOARD" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Tuning table readouts" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitMap" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginEnd="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_map" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="TRIM MAPPING" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Fuel trim deviation &amp; mapping" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitDtc" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_build" app:tint="@color/warning" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="DTC SCANNER" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Read &amp; clear diagnostic codes" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitBattery" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginStart="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_battery" app:tint="@color/accent" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="POWER MONITOR" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Battery, alternator &amp; ripple" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

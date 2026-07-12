@@ -11,7 +11,25 @@
     <string name="prompt_obd_protocol">โปรโตคอล OBD2</string>
     <string name="prompt_bluetooth_device">อุปกรณ์บลูทูธ OBD2</string>
 
-    <!-- Tab labels -->
+    <!-- First-run connection wizard -->
+    <string name="wizard_title">เชื่อมต่ออแดปเตอร์ OBD2</string>
+    <string name="wizard_subtitle">อแดปเตอร์ของคุณเชื่อมต่อแบบใด? เราจะตั้งค่าให้ให้อัตโนมัติ</string>
+    <string name="wizard_opt_wifi">อแดปเตอร์ Wi‑Fi</string>
+    <string name="wizard_opt_wifi_desc">vLinker MC / ELM327 ผ่าน Wi‑Fi (ฮอทสปอตรถหรือเชื่อมต่อตรง)</string>
+    <string name="wizard_opt_usb">อแดปเตอร์ USB</string>
+    <string name="wizard_opt_usb_desc">vLinker FS / CH340 / FTDI เสียบผ่าน USB‑OTG</string>
+    <string name="wizard_opt_bt">บลูทูธ (คลาสสิก)</string>
+    <string name="wizard_opt_bt_desc">Serial SPP ELM327 ที่จับคู่กับโทรศัพท์</string>
+    <string name="wizard_opt_ble">บลูทูธ Low Energy</string>
+    <string name="wizard_opt_ble_desc">ดองเกิล BLE GATT OBD2</string>
+    <string name="wizard_opt_auto">ตรวจหาอัตโนมัติ</string>
+    <string name="wizard_opt_auto_desc">สแกน USB › Wi‑Fi › BT เลือกตัวแรกที่พบ</string>
+    <string name="wizard_opt_sim">สาธิต / จำลอง</string>
+    <string name="wizard_opt_sim_desc">ไม่ต้องใช้อุปกรณ์ณ์ — ทดสอบทุกฟังก์ชัน</string>
+    <string name="wizard_continue">ดำเนินการต่อ</string>
+    <string name="wizard_skip">ตั้งค่าในภายหลัง</string>
+
+
     <string name="tab_dashboard">หน้าปัด</string>
     <string name="tab_gauges">เกจ</string>
     <string name="tab_map">แผนที่</string>
