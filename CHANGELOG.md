@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.16.3] - 2026-07-12 — Refined Primary Action + Gauge Sizing
+
+### UI polish
+- Reworked the bottom Start control into a larger, elevated, solid-primary circular action with a play icon and high-contrast label; Stop uses the pause icon and danger color.
+- Permanently removed Home and Start actions from the top toolbar because both are available in persistent bottom navigation.
+- Increased the home OBD protocol badge typography, padding, and touch/readability height.
+- Reduced all four Dashboard circular gauge containers from 320dp to 200dp so cards match their two-column width and no longer have excessive vertical space.
+
 ## [3.16.2] - 2026-07-12 — Persistent Navigation + Dense Live Telemetry
 
 ### Navigation

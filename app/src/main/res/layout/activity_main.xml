@@ -57,7 +57,8 @@
                 app:icon="@android:drawable/ic_media_play"
                 app:iconSize="12dp"
                 app:iconTint="@color/background"
-                app:iconPadding="2dp" />
+                app:iconPadding="2dp"
+                android:visibility="gone" />
 
             <!-- Connection status chip -->
             <LinearLayout
@@ -366,8 +367,8 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/homeBottomPrimary"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
+            android:layout_width="68dp"
+            android:layout_height="68dp"
             android:layout_marginStart="5dp"
             android:layout_marginEnd="5dp"
             android:contentDescription="Start or stop logging"
@@ -377,13 +378,18 @@
             android:minHeight="0dp"
             android:padding="0dp"
             android:text="START"
-            android:textColor="@color/primary"
-            android:textSize="10sp"
+            android:textColor="@color/background"
+            android:textSize="11sp"
             android:textStyle="bold"
-            app:backgroundTint="@color/surface2"
-            app:cornerRadius="32dp"
-            app:strokeColor="@color/border"
-            app:strokeWidth="1dp" />
+            app:backgroundTint="@color/primary"
+            app:cornerRadius="34dp"
+            app:elevation="8dp"
+            app:icon="@android:drawable/ic_media_play"
+            app:iconPadding="1dp"
+            app:iconSize="18dp"
+            app:iconTint="@color/background"
+            app:strokeColor="@color/primary"
+            app:strokeWidth="2dp" />
 
         <LinearLayout android:id="@+id/homeBottomLogs" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
             <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_list" app:tint="@color/muted" />
@@ -2422,7 +2428,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge1"
                             android:layout_width="match_parent"
-                            android:layout_height="320dp"
+                            android:layout_height="200dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -2443,7 +2449,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge2"
                             android:layout_width="match_parent"
-                            android:layout_height="320dp"
+                            android:layout_height="200dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
@@ -2472,7 +2478,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge3"
                             android:layout_width="match_parent"
-                            android:layout_height="320dp"
+                            android:layout_height="200dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -2493,7 +2499,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge4"
                             android:layout_width="match_parent"
-                            android:layout_height="320dp"
+                            android:layout_height="200dp"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>

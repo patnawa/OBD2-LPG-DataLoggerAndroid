@@ -1432,7 +1432,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
             if (btnHomeConnect != null) {
                 btnHomeConnect.setText("STOP");
-                btnHomeConnect.setIcon(null);
+                btnHomeConnect.setIconResource(android.R.drawable.ic_media_pause);
                 btnHomeConnect.setTextColor(getColorCompat(R.color.background));
                 btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
             }
@@ -1442,9 +1442,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
             if (btnHomeConnect != null) {
                 btnHomeConnect.setText("START");
-                btnHomeConnect.setIcon(null);
-                btnHomeConnect.setTextColor(getColorCompat(R.color.primary));
-                btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.surface2)));
+                btnHomeConnect.setIconResource(android.R.drawable.ic_media_play);
+                btnHomeConnect.setTextColor(getColorCompat(R.color.background));
+                btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
             }
         }
     }
@@ -1477,7 +1477,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
 
             if (btnGoHome != null) {
-                btnGoHome.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
+                btnGoHome.setVisibility(View.GONE);
             }
 
             // Status strip: hide on home screen for a cleaner look, show on all other tabs

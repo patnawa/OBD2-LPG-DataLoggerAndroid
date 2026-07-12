@@ -1,12 +1,15 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.16.2** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.16.3** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมื่อนต่อ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.16.2 — Persistent Navigation + Dense Live Telemetry
+## What's New in 3.16.3 — Refined Primary Action + Gauge Sizing
+- Prominent high-contrast Start/Stop control, simplified in-page toolbar, larger protocol badge, and properly proportioned dashboard gauge cards.
+
+## Previous: 3.16.2 — Persistent Navigation + Dense Live Telemetry
 - Bottom navigation now remains usable on every screen with labels matching their actual actions; Live Telemetry adds Boost, Throttle, and Total Fuel Trim readouts.
 
 ## Previous: 3.16.1 — Reference-Matched Navigation + Quick Access
