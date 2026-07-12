@@ -10,7 +10,7 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/topHeader"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="56dp"
         android:background="?attr/colorSurface"
         app:elevation="4dp"
         app:layout_constraintTop_toTopOf="parent"
@@ -182,19 +182,25 @@
     </com.google.android.material.appbar.MaterialToolbar>
 
     <!-- Bottom Status Strip — persistent live status bar -->
-    <LinearLayout
+    <HorizontalScrollView
         android:id="@+id/statusStrip"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:orientation="horizontal"
+        android:layout_height="60dp"
         android:background="?attr/colorSurface"
         android:elevation="8dp"
-        android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:fillViewport="true"
+        android:scrollbars="none"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
 
         <!-- Connection status indicator -->
         <View
@@ -206,9 +212,8 @@
 
         <TextView
             android:id="@+id/statusDeviceText"
-            android:layout_width="0dp"
+            android:layout_width="160dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="Disconnected"
             android:textColor="@color/muted"
             android:textSize="12sp"
@@ -328,7 +333,8 @@
             android:visibility="gone"
             android:layout_marginStart="8dp" />
 
-    </LinearLayout>
+        </LinearLayout>
+    </HorizontalScrollView>
 
     <!-- Content area -->
     <ScrollView
@@ -347,21 +353,21 @@
             android:layout_height="wrap_content">
 
             <LinearLayout
-                android:id="@+id/panelHome"
+                android:id="@+id/panelHomeLegacy"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:visibility="visible">
+                android:visibility="gone">
 
                 <!-- ===== Premium Tuner Hero Header ===== -->
                 <FrameLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_hero_gradient"
-                    android:paddingTop="26dp"
-                    android:paddingBottom="26dp"
-                    android:paddingStart="20dp"
-                    android:paddingEnd="20dp">
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -378,31 +384,89 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="TUNER CONTROL PANEL"
+                                android:text="VEHICLE OVERVIEW"
                                 android:textColor="#FFFFFF"
-                                android:textSize="22sp"
+                                android:textSize="15sp"
                                 android:textStyle="bold"
-                                android:letterSpacing="0.05" />
+                                android:letterSpacing="0.08" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="OBD2 Real-Time Telemetry &amp; ECU Tuning"
+                                android:text="LIVE OBD2 TELEMETRY • LPG TUNING"
                                 android:textColor="#E0F2FE"
                                 android:textSize="11sp"
-                                android:textStyle="bold"
-                                android:letterSpacing="0.05"
-                                android:layout_marginTop="4dp" />
+                                android:layout_marginTop="2dp" />
                         </LinearLayout>
 
                         <ImageView
-                            android:layout_width="56dp"
-                            android:layout_height="56dp"
-                            android:layout_marginStart="16dp"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:layout_marginStart="12dp"
                             android:src="@drawable/ic_app_logo"
                             android:contentDescription="App Logo" />
                     </LinearLayout>
                 </FrameLayout>
+
+                <!-- Fast, one-handed navigation for an in-car dashboard. -->
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@color/background"
+                    android:scrollbars="none">
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/homeModeRail"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        app:singleSelection="true"
+                        app:selectionRequired="true"
+                        app:checkedButton="@id/homeNavLive">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/homeNavLive"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:text="LIVE"
+                            android:textStyle="bold"
+                            android:textColor="@color/primary" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/homeNavGauges"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:text="GAUGES"
+                            android:textColor="@color/muted" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/homeNavTable"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:text="TABLE"
+                            android:textColor="@color/muted" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/homeNavGraph"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:text="GRAPH"
+                            android:textColor="@color/muted" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/homeNavAlerts"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:text="ALERTS"
+                            android:textColor="@color/muted" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+                </HorizontalScrollView>
 
                 <!-- Section Container -->
                 <LinearLayout
@@ -415,7 +479,7 @@
                     <com.google.android.material.card.MaterialCardView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
+                        android:layout_marginBottom="12dp"
                         app:cardBackgroundColor="?attr/colorSurface"
                         app:cardCornerRadius="16dp"
                         app:strokeWidth="1dp"
@@ -425,7 +489,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:padding="16dp">
+                            android:padding="12dp">
 
                             <!-- Status Banner -->
                             <LinearLayout
@@ -433,7 +497,7 @@
                                 android:layout_height="wrap_content"
                                 android:orientation="horizontal"
                                 android:gravity="center_vertical"
-                                android:layout_marginBottom="12dp">
+                                android:layout_marginBottom="8dp">
 
                                 <View
                                     android:id="@+id/homeStatusDot"
@@ -448,7 +512,7 @@
                                     android:layout_height="wrap_content"
                                     android:layout_weight="1"
                                     android:text="DISCONNECTED"
-                                    android:textColor="@color/danger"
+                                    android:textColor="@color/muted"
                                     android:textSize="12sp"
                                     android:textStyle="bold"
                                     android:letterSpacing="0.05" />
@@ -463,18 +527,12 @@
                                     android:textStyle="bold" />
                             </LinearLayout>
 
-                            <View
-                                android:layout_width="match_parent"
-                                android:layout_height="1dp"
-                                android:background="@color/border"
-                                android:layout_marginBottom="12dp" />
-
                             <!-- Metadata Grid -->
                             <LinearLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:orientation="horizontal"
-                                android:layout_marginBottom="16dp">
+                                android:layout_marginBottom="10dp">
 
                                 <LinearLayout
                                     android:layout_width="0dp"
@@ -531,18 +589,21 @@
                                 </LinearLayout>
                             </LinearLayout>
 
-                            <!-- Connection Trigger Button -->
+                            <!-- Connection is a setup action, so it is deliberately compact. -->
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/btnHomeConnect"
-                                android:layout_width="match_parent"
-                                android:layout_height="48dp"
-                                android:text="CONNECT &amp; TUNE"
+                                android:layout_width="wrap_content"
+                                android:layout_height="40dp"
+                                android:layout_gravity="end"
+                                android:text="CONNECT"
                                 android:textColor="@color/background"
                                 app:backgroundTint="@color/primary"
                                 app:icon="@android:drawable/ic_media_play"
                                 app:iconGravity="textStart"
-                                app:iconPadding="8dp"
-                                app:cornerRadius="8dp"
+                                app:iconPadding="4dp"
+                                app:cornerRadius="20dp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
                                 android:textStyle="bold"
                                 android:letterSpacing="0.02" />
                         </LinearLayout>
@@ -565,6 +626,33 @@
                             android:paddingTop="10dp"
                             android:paddingBottom="10dp">
 
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingStart="16dp"
+                                android:paddingEnd="16dp"
+                                android:layout_marginBottom="8dp">
+
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="LIVE SNAPSHOT"
+                                    android:textColor="@color/text"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:letterSpacing="0.06" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Updates while logging"
+                                    android:textColor="@color/muted"
+                                    android:textSize="10sp" />
+                            </LinearLayout>
+
                             <!-- Row 1: RPM / Speed / Coolant / Voltage -->
                             <LinearLayout
                                 android:layout_width="match_parent"
@@ -581,22 +669,22 @@
                                 android:gravity="center">
 
                                 <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/home_engine_rpm"
-                                    android:textColor="@color/muted"
-                                    android:textSize="9sp"
-                                    android:textStyle="bold" />
-
-                                <TextView
                                     android:id="@+id/txtHomeRpm"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="---"
                                     android:textColor="@color/danger"
-                                    android:textSize="18sp"
+                                    android:textSize="25sp"
                                     android:textStyle="bold"
-                                    android:layout_marginTop="2dp" />
+                                    android:fontFamily="monospace" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="RPM"
+                                    android:textColor="@color/muted"
+                                    android:textSize="10sp"
+                                    android:textStyle="bold" />
                             </LinearLayout>
 
                             <View
@@ -613,22 +701,22 @@
                                 android:gravity="center">
 
                                 <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/home_speed"
-                                    android:textColor="@color/muted"
-                                    android:textSize="9sp"
-                                    android:textStyle="bold" />
-
-                                <TextView
                                     android:id="@+id/txtHomeSpeed"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="---"
                                     android:textColor="@color/accent"
-                                    android:textSize="18sp"
+                                    android:textSize="25sp"
                                     android:textStyle="bold"
-                                    android:layout_marginTop="2dp" />
+                                    android:fontFamily="monospace" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="SPEED · km/h"
+                                    android:textColor="@color/muted"
+                                    android:textSize="10sp"
+                                    android:textStyle="bold" />
                             </LinearLayout>
 
                             <View
@@ -645,22 +733,22 @@
                                 android:gravity="center">
 
                                 <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/home_coolant"
-                                    android:textColor="@color/muted"
-                                    android:textSize="9sp"
-                                    android:textStyle="bold" />
-
-                                <TextView
                                     android:id="@+id/txtHomeCoolant"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="---"
                                     android:textColor="@color/warning"
-                                    android:textSize="18sp"
+                                    android:textSize="25sp"
                                     android:textStyle="bold"
-                                    android:layout_marginTop="2dp" />
+                                    android:fontFamily="monospace" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="COOLANT · °C"
+                                    android:textColor="@color/muted"
+                                    android:textSize="10sp"
+                                    android:textStyle="bold" />
                             </LinearLayout>
 
                             <View
@@ -677,22 +765,22 @@
                                 android:gravity="center">
 
                                 <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/home_voltage"
-                                    android:textColor="@color/muted"
-                                    android:textSize="9sp"
-                                    android:textStyle="bold" />
-
-                                <TextView
                                     android:id="@+id/txtHomeVoltage"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="---"
                                     android:textColor="@color/primary"
-                                    android:textSize="18sp"
+                                    android:textSize="25sp"
                                     android:textStyle="bold"
-                                    android:layout_marginTop="2dp" />
+                                    android:fontFamily="monospace" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="VOLTAGE · V"
+                                    android:textColor="@color/muted"
+                                    android:textSize="10sp"
+                                    android:textStyle="bold" />
                             </LinearLayout>
                             </LinearLayout>
 
@@ -834,6 +922,16 @@
                                     android:layout_marginTop="2dp" />
                             </LinearLayout>
                             </LinearLayout>
+
+                            <com.alpha.obd2logger.GraphView
+                                android:id="@+id/homeRpmTrend"
+                                android:layout_width="match_parent"
+                                android:layout_height="92dp"
+                                android:layout_marginStart="12dp"
+                                android:layout_marginEnd="12dp"
+                                android:layout_marginTop="10dp"
+                                android:layout_marginBottom="4dp"
+                                android:contentDescription="Live RPM trend" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -859,7 +957,7 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         app:cardBackgroundColor="?attr/colorSurface"
-                        app:cardCornerRadius="16dp"
+                        app:cardCornerRadius="20dp"
                         app:strokeWidth="1dp"
                         app:strokeColor="?attr/colorOutlineVariant">
 
@@ -867,13 +965,15 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:padding="14dp"
+                            android:padding="16dp"
                             android:gravity="center_vertical">
 
                             <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
                                 android:src="@drawable/ic_speed"
+                                android:background="@drawable/bg_icon_gauges"
+                                android:padding="8dp"
                                 app:tint="@color/primary"
                                 android:layout_marginEnd="14dp" />
 
@@ -918,8 +1018,8 @@
                         android:layout_marginBottom="8dp">
 
                         <!-- Dashboard Card -->
-                        <com.google.android.material.card.MaterialCardView
-                            android:id="@+id/cardHomeDashboard"
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeDashboard"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -928,7 +1028,7 @@
                             android:focusable="true"
                             android:foreground="?attr/selectableItemBackground"
                             app:cardBackgroundColor="?attr/colorSurface"
-                            app:cardCornerRadius="16dp"
+                            app:cardCornerRadius="20dp"
                             app:strokeWidth="1dp"
                             app:strokeColor="?attr/colorOutlineVariant">
 
@@ -936,12 +1036,14 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
-                                android:padding="14dp">
+                                android:padding="16dp">
 
                                 <ImageView
-                                    android:layout_width="24dp"
-                                    android:layout_height="24dp"
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
                                     android:src="@drawable/ic_dashboard"
+                                    android:background="@drawable/bg_icon_dashboard"
+                                    android:padding="8dp"
                                     app:tint="@color/primary"
                                     android:layout_marginBottom="8dp" />
 
@@ -964,8 +1066,8 @@
                         </com.google.android.material.card.MaterialCardView>
 
                         <!-- Trim Map Card -->
-                        <com.google.android.material.card.MaterialCardView
-                            android:id="@+id/cardHomeMap"
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeMap"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -974,7 +1076,7 @@
                             android:focusable="true"
                             android:foreground="?attr/selectableItemBackground"
                             app:cardBackgroundColor="?attr/colorSurface"
-                            app:cardCornerRadius="16dp"
+                            app:cardCornerRadius="20dp"
                             app:strokeWidth="1dp"
                             app:strokeColor="?attr/colorOutlineVariant">
 
@@ -982,12 +1084,14 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
-                                android:padding="14dp">
+                                android:padding="16dp">
 
                                 <ImageView
-                                    android:layout_width="24dp"
-                                    android:layout_height="24dp"
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
                                     android:src="@drawable/ic_map"
+                                    android:background="@drawable/bg_icon_map"
+                                    android:padding="8dp"
                                     app:tint="@color/primary"
                                     android:layout_marginBottom="8dp" />
 
@@ -1011,6 +1115,17 @@
                     </LinearLayout>
 
                     <!-- Row 2 -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="TOOLS"
+                        android:textColor="@color/muted"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.08"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginBottom="12dp" />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -1018,8 +1133,8 @@
                         android:layout_marginBottom="16dp">
 
                         <!-- DTC Card -->
-                        <com.google.android.material.card.MaterialCardView
-                            android:id="@+id/cardHomeDtc"
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeDtc"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -1028,7 +1143,7 @@
                             android:focusable="true"
                             android:foreground="?attr/selectableItemBackground"
                             app:cardBackgroundColor="?attr/colorSurface"
-                            app:cardCornerRadius="16dp"
+                            app:cardCornerRadius="20dp"
                             app:strokeWidth="1dp"
                             app:strokeColor="?attr/colorOutlineVariant">
 
@@ -1036,12 +1151,14 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
-                                android:padding="14dp">
+                                android:padding="16dp">
 
                                 <ImageView
-                                    android:layout_width="24dp"
-                                    android:layout_height="24dp"
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
                                     android:src="@drawable/ic_build"
+                                    android:background="@drawable/bg_icon_dtc"
+                                    android:padding="8dp"
                                     app:tint="@color/primary"
                                     android:layout_marginBottom="8dp" />
 
@@ -1064,8 +1181,8 @@
                         </com.google.android.material.card.MaterialCardView>
 
                         <!-- Battery Card -->
-                        <com.google.android.material.card.MaterialCardView
-                            android:id="@+id/cardHomeBattery"
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHomeBattery"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -1074,7 +1191,7 @@
                             android:focusable="true"
                             android:foreground="?attr/selectableItemBackground"
                             app:cardBackgroundColor="?attr/colorSurface"
-                            app:cardCornerRadius="16dp"
+                            app:cardCornerRadius="20dp"
                             app:strokeWidth="1dp"
                             app:strokeColor="?attr/colorOutlineVariant">
 
@@ -1082,12 +1199,14 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
-                                android:padding="14dp">
+                                android:padding="16dp">
 
                                 <ImageView
-                                    android:layout_width="24dp"
-                                    android:layout_height="24dp"
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
                                     android:src="@drawable/ic_battery"
+                                    android:background="@drawable/bg_icon_battery"
+                                    android:padding="8dp"
                                     app:tint="@color/primary"
                                     android:layout_marginBottom="8dp" />
 
@@ -1132,7 +1251,7 @@
                         android:focusable="true"
                         android:foreground="?attr/selectableItemBackground"
                         app:cardBackgroundColor="?attr/colorSurface"
-                        app:cardCornerRadius="16dp"
+                        app:cardCornerRadius="20dp"
                         app:strokeWidth="1dp"
                         app:strokeColor="?attr/colorOutlineVariant">
 
@@ -1140,13 +1259,15 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:padding="14dp"
+                            android:padding="16dp"
                             android:gravity="center_vertical">
 
                             <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
                                 android:src="@drawable/ic_list"
+                                android:background="@drawable/bg_icon_logs"
+                                android:padding="8dp"
                                 app:tint="@color/primary"
                                 android:layout_marginEnd="14dp" />
 
@@ -1203,6 +1324,8 @@
 
                 </LinearLayout>
             </LinearLayout>
+
+            <include layout="@layout/panel_home_cockpit" />
 
             <!-- ===== FUEL MAP TAB ===== -->
             <LinearLayout

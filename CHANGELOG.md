@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.16.0] - 2026-07-12 — Material 3 Automotive Cockpit UI
+
+### Changed — Complete home layout redesign
+- Rebuilt the home screen as a focused automotive cockpit inspired by the supplied `ui.png` reference.
+- Added a compact ECU connection card and a 48dp one-tap connect/disconnect action.
+- Added a prominent live telemetry card with RPM, speed, protocol, and an animated RPM trend graph.
+- Added large coolant and voltage cards for at-a-glance driving visibility.
+- Reorganized Dashboard, Gauges, Trim Map, DTC Scanner, Logs, and Battery into large two-column quick-access tiles.
+- Added LIVE / GAUGES / TABLE / GRAPH / ALERTS shortcuts mapped to the existing feature panels.
+
+### Material 3 / in-car usability
+- Refined the dark palette to near-black navy surfaces with cyan primary, green success, amber warning, and red danger roles.
+- Increased important tap targets and numeric typography, reduced decorative clutter, and strengthened contrast for night driving.
+- Made the persistent live status strip horizontally scrollable so RPM, speed, voltage, boost, fuel, DTC, and Start/Stop remain usable on narrow phones.
+- Preserved the existing single-Activity panel architecture and all OBD2 logging/diagnostic behavior.
+
 ## [3.15.0] - 2026-07-12 — AeroDensity Intelligence Physics + Scanner Fix
 
 ### Fixed — Air density math & honesty

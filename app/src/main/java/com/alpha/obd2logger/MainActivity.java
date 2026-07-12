@@ -72,6 +72,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView headerStatus, headerVin, headerFuelMode, headerApiStatus;
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
     private TextView txtHomeFuelEconomy, txtHomeBoost, txtHomeDpf, txtHomeDtc;
+    private GraphView homeRpmTrend;
     private TextView stripBoost, stripFuel;
     private View headerStatusDot, headerApiDivider;
     private android.widget.ImageButton btnSettings;
@@ -530,22 +531,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         topHeader = findViewById(R.id.topHeader);
         panelHome = findViewById(R.id.panelHome);
-        txtHomeVin = findViewById(R.id.txtHomeVin);
-        txtHomeVoltage = findViewById(R.id.txtHomeVoltage);
-        txtHomeAdapter = findViewById(R.id.txtHomeAdapter);
-        txtHomeProtocol = findViewById(R.id.txtHomeProtocol);
-        txtHomeRpm = findViewById(R.id.txtHomeRpm);
-        txtHomeSpeed = findViewById(R.id.txtHomeSpeed);
-        txtHomeCoolant = findViewById(R.id.txtHomeCoolant);
+        txtHomeVin = null; // VIN is shown on the diagnostics screen.
+        txtHomeVoltage = findViewById(R.id.cockpitVoltage);
+        txtHomeAdapter = findViewById(R.id.cockpitAdapter);
+        txtHomeProtocol = findViewById(R.id.cockpitProtocol);
+        txtHomeRpm = findViewById(R.id.cockpitRpm);
+        txtHomeSpeed = findViewById(R.id.cockpitSpeed);
+        txtHomeCoolant = findViewById(R.id.cockpitCoolant);
+        homeRpmTrend = findViewById(R.id.cockpitRpmTrend);
+        if (homeRpmTrend != null) {
+            homeRpmTrend.setRange(0f, 7000f);
+            homeRpmTrend.setLabel("RPM trend", "");
+        }
         // Derived sensor displays
-        txtHomeFuelEconomy = findViewById(R.id.txtHomeFuelEconomy);
-        txtHomeBoost = findViewById(R.id.txtHomeBoost);
-        txtHomeDpf = findViewById(R.id.txtHomeDpf);
-        txtHomeDtc = findViewById(R.id.txtHomeDtc);
+        txtHomeFuelEconomy = null;
+        txtHomeBoost = null;
+        txtHomeDpf = null;
+        txtHomeDtc = null;
         stripBoost = findViewById(R.id.stripBoost);
         stripFuel = findViewById(R.id.stripFuel);
 
-        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnHomeConnect);
+        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnCockpitConnect);
         if (btnHomeConnect != null) {
             btnHomeConnect.setOnClickListener(v -> {
                 if (running) {
@@ -986,6 +992,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 graph.setLineColor(primaryColor);
             }
         }
+        if (homeRpmTrend != null) {
+            homeRpmTrend.setLineColor(primaryColor);
+        }
     }
 
     private String[] prefGaugePids = new String[]{"01_0C", "01_0D", "01_05", "01_04"};
@@ -1413,7 +1422,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
      */
     private void setFabState(boolean isLogging) {
         if (fabLog == null) return;
-        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnHomeConnect);
+        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnCockpitConnect);
         if (isLogging) {
             fabLog.setText("STOP");
             fabLog.setIconResource(android.R.drawable.ic_media_pause);
@@ -1489,30 +1498,39 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             btnGoHome.setOnClickListener(v -> showTab(6));
         }
         
-        View cardDashboard = findViewById(R.id.cardHomeDashboard);
+        View cardDashboard = findViewById(R.id.cockpitDashboard);
         if (cardDashboard != null) {
             cardDashboard.setOnClickListener(v -> showTab(0));
         }
-        View cardGauges = findViewById(R.id.cardHomeGauges);
+        View cardGauges = findViewById(R.id.cockpitGauges);
         if (cardGauges != null) {
             cardGauges.setOnClickListener(v -> showTab(1));
         }
-        View cardMap = findViewById(R.id.cardHomeMap);
+        View cardMap = findViewById(R.id.cockpitMap);
         if (cardMap != null) {
             cardMap.setOnClickListener(v -> showTab(2));
         }
-        View cardDtc = findViewById(R.id.cardHomeDtc);
+        View cardDtc = findViewById(R.id.cockpitDtc);
         if (cardDtc != null) {
             cardDtc.setOnClickListener(v -> showTab(3));
         }
-        View cardLogs = findViewById(R.id.cardHomeLogs);
+        View cardLogs = findViewById(R.id.cockpitLogs);
         if (cardLogs != null) {
             cardLogs.setOnClickListener(v -> showTab(4));
         }
-        View cardBattery = findViewById(R.id.cardHomeBattery);
+        View cardBattery = findViewById(R.id.cockpitBattery);
         if (cardBattery != null) {
             cardBattery.setOnClickListener(v -> showTab(7));
         }
+
+        View homeNavGauges = findViewById(R.id.homeNavGauges);
+        if (homeNavGauges != null) homeNavGauges.setOnClickListener(v -> showTab(1));
+        View homeNavTable = findViewById(R.id.homeNavTable);
+        if (homeNavTable != null) homeNavTable.setOnClickListener(v -> showTab(0));
+        View homeNavGraph = findViewById(R.id.homeNavGraph);
+        if (homeNavGraph != null) homeNavGraph.setOnClickListener(v -> showTab(1));
+        View homeNavAlerts = findViewById(R.id.homeNavAlerts);
+        if (homeNavAlerts != null) homeNavAlerts.setOnClickListener(v -> showTab(3));
     }
 
     /**
@@ -3415,7 +3433,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         stripSpeed.setText(speed != null ? String.format(Locale.US, "%.0f", speed) : "--");
         if (voltage != null) {
             String voltStr = String.format(Locale.US, "%.1f V", voltage);
-            if (txtHomeVoltage != null) txtHomeVoltage.setText(voltStr);
+            if (txtHomeVoltage != null) txtHomeVoltage.setText(String.format(Locale.US, "%.1f", voltage));
             stripVoltage.setText(String.format(Locale.US, "%.1f", voltage));
             // Color-code voltage: red < 12.2, amber 12.2-12.65, green 12.65-14.7, red > 14.8
             if (voltage < 12.2 || voltage > 14.8) {
@@ -3433,13 +3451,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // Live home page telemetry updates
         if (txtHomeRpm != null) {
-            txtHomeRpm.setText(rpm != null ? String.format(Locale.US, "%.0f RPM", rpm) : "---");
+            txtHomeRpm.setText(rpm != null ? String.format(Locale.US, "%.0f", rpm) : "---");
+        }
+        if (homeRpmTrend != null && rpm != null) {
+            homeRpmTrend.pushValue(rpm.floatValue());
         }
         if (txtHomeSpeed != null) {
-            txtHomeSpeed.setText(speed != null ? String.format(Locale.US, "%.0f km/h", speed) : "---");
+            txtHomeSpeed.setText(speed != null ? String.format(Locale.US, "%.0f", speed) : "---");
         }
         if (txtHomeCoolant != null) {
-            txtHomeCoolant.setText(coolant != null ? String.format(Locale.US, "%.0f °C", coolant) : "---");
+            txtHomeCoolant.setText(coolant != null ? String.format(Locale.US, "%.0f", coolant) : "---");
         }
 
         // ── Derived sensors: Fuel Economy + Turbo Boost ──────
@@ -3526,8 +3547,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (homeStatusDot != null) {
             homeStatusDot.setBackgroundResource(state == 2 ? R.drawable.bg_status_dot_on : (state == 1 ? R.drawable.bg_status_dot_connecting : R.drawable.bg_status_dot_off));
         }
+
+        TextView cockpitConnection = findViewById(R.id.cockpitConnection);
+        if (cockpitConnection != null) {
+            cockpitConnection.setText(state == 2 ? "CONNECTED" : (state == 1 ? "CONNECTING" : "DISCONNECTED"));
+            cockpitConnection.setTextColor(getColorCompat(textColor));
+        }
+        View cockpitStatusDot = findViewById(R.id.cockpitStatusDot);
+        if (cockpitStatusDot != null) {
+            cockpitStatusDot.setBackgroundResource(dotRes);
+        }
         
-        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnHomeConnect);
+        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnCockpitConnect);
         if (btnHomeConnect != null) {
             if (state == 2) {
                 btnHomeConnect.setText("DISCONNECT ECU");
