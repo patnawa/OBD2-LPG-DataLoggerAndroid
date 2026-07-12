@@ -182,7 +182,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView txtOMD, txtCompEff, txtICEff, txtVE, txtPDI, txtGrains, txtAirDensityWeather;
 
     // --- UI: History tab ---
-    private View panelHistory;
+
     private android.widget.ListView historyListViewPetrol;
     private android.widget.ListView historyListViewLpg;
     private TextView historyFolderText;
@@ -590,6 +590,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // Battery tab
         batteryTestView = findViewById(R.id.batteryTestView);
+        if (batteryTestView != null) {
+            int nightModeFlags = getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+            batteryTestView.setDarkTheme(nightModeFlags == android.content.res.Configuration.UI_MODE_NIGHT_YES);
+        }
         batteryVoltageText = findViewById(R.id.batteryVoltageText);
         batteryVoltageValueText = findViewById(R.id.batteryVoltageValueText);
         batteryVoltageStatusBadge = findViewById(R.id.batteryVoltageStatusBadge);
@@ -1483,7 +1487,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             // Status strip: hide on home screen for a cleaner look, show on all other tabs
             if (statusStrip != null) {
-                statusStrip.setVisibility(View.GONE);
+                statusStrip.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
             }
             View homeBottomNav = findViewById(R.id.homeBottomNav);
             if (homeBottomNav != null) {
@@ -1748,8 +1752,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         
         themeSpinner.post(() -> {
             themeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                private boolean isInitial = true;
                 @Override
                 public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    if (isInitial) {
+                        isInitial = false;
+                        return;
+                    }
                     int mode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
                     if (position == 1) mode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO;
                     else if (position == 2) mode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES;
@@ -1757,10 +1766,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     if (prefs.getInt("app_theme", -1) != mode) {
                         prefs.edit().putInt("app_theme", mode).commit();
                         androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode);
+                        if (batteryTestView != null) {
+                            batteryTestView.setDarkTheme(mode == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES);
+                        }
                         recreate(); // Force recreate so it applies immediately and reliably
                     }
-
-
                 }
 
                 @Override
@@ -1802,7 +1812,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             readDtcsDeep();
             return true;
         });
-        btnClearDtc.setOnClickListener(v -> clearDtcs());
+        btnClearDtc.setOnClickListener(v -> {
+            new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                .setTitle(R.string.clear_dtc_confirm_title)
+                .setMessage(R.string.clear_dtc_confirm_msg)
+                .setPositiveButton(R.string.confirm, (dialog, which) -> clearDtcs())
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+        });
         btnReadVin.setOnClickListener(v -> readVin());
         btnReadVin.setOnLongClickListener(v -> {
             showScanHistoryDialog();
@@ -3601,25 +3618,49 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 break;
         }
         statusDot.setBackgroundResource(dotRes);
-        statusDeviceText.setText(deviceName);
+        
+        String displayDeviceName = deviceName;
+        if (state == 0) {
+            if ("Disconnected".equalsIgnoreCase(deviceName)) {
+                displayDeviceName = getString(R.string.status_offline);
+            } else if ("Connection failed".equalsIgnoreCase(deviceName)) {
+                displayDeviceName = getString(R.string.status_offline) + " (Failed)";
+            } else if ("Connection timed out".equalsIgnoreCase(deviceName)) {
+                displayDeviceName = getString(R.string.status_offline) + " (Timeout)";
+            } else if ("Permission denied".equalsIgnoreCase(deviceName)) {
+                displayDeviceName = getString(R.string.status_offline) + " (Permission Denied)";
+            } else if ("Service failed".equalsIgnoreCase(deviceName)) {
+                displayDeviceName = getString(R.string.status_offline) + " (Service Failed)";
+            }
+        } else if (state == 1) {
+            if (deviceName != null && deviceName.toLowerCase().startsWith("connecting")) {
+                displayDeviceName = getString(R.string.status_connecting);
+            } else if ("Reconnecting...".equalsIgnoreCase(deviceName)) {
+                displayDeviceName = getString(R.string.status_connecting) + "...";
+            }
+        }
+        
+        statusDeviceText.setText(displayDeviceName);
         statusDeviceText.setTextColor(getColorCompat(textColor));
         // Sync header status dot + chip
         if (headerStatusDot != null) headerStatusDot.setBackgroundResource(dotRes);
         if (headerStatus != null) {
-            headerStatus.setText(state == 2 ? "Connected" : (state == 1 ? "Connecting" : "Offline"));
+            headerStatus.setText(state == 2 ? getString(R.string.status_connected) : (state == 1 ? getString(R.string.status_connecting) : getString(R.string.status_offline)));
             headerStatus.setTextColor(getColorCompat(textColor));
         }
 
         // Update home screen status
         if (txtHomeAdapter != null) {
-            txtHomeAdapter.setText(state == 2 && deviceName != null
-                    ? deviceName
-                    : (state == 1 ? "Negotiating protocol…" : "Connect an OBD2 adapter to begin live scanning"));
+            txtHomeAdapter.setText(state == 2 && displayDeviceName != null
+                    ? displayDeviceName
+                    : (state == 1 ? getString(R.string.status_negotiating) : getString(R.string.status_connect_adapter_prompt)));
         }
+        
+
 
         TextView cockpitConnection = findViewById(R.id.cockpitConnection);
         if (cockpitConnection != null) {
-            cockpitConnection.setText(state == 2 ? "CONNECTED" : (state == 1 ? "CONNECTING" : "DISCONNECTED"));
+            cockpitConnection.setText((state == 2 ? getString(R.string.status_connected) : (state == 1 ? getString(R.string.status_connecting) : getString(R.string.status_offline))).toUpperCase(java.util.Locale.US));
             cockpitConnection.setTextColor(getColorCompat(textColor));
         }
         View cockpitStatusDot = findViewById(R.id.cockpitStatusDot);
@@ -3628,7 +3669,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         TextView graphLive = findViewById(R.id.cockpitGraphLive);
         if (graphLive != null) {
-            graphLive.setText(state == 2 ? "● LIVE" : (state == 1 ? "● CONNECTING" : "○ NO LIVE DATA"));
+            graphLive.setText(state == 2 ? "● " + getString(R.string.status_connected).toUpperCase(java.util.Locale.US) : (state == 1 ? "● " + getString(R.string.status_connecting).toUpperCase(java.util.Locale.US) : getString(R.string.status_no_live_data)));
             graphLive.setTextColor(getColorCompat(state == 2 ? R.color.accent : (state == 1 ? R.color.warning : R.color.muted)));
         }
         
@@ -4454,6 +4495,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             dtcStatusText.setTextColor(getColorCompat(R.color.danger));
             return;
         }
+        setDtcButtonsEnabled(false);
         dtcStatusText.setText("Reading DTCs...");
         dtcStatusText.setTextColor(getColorCompat(R.color.muted));
         if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
@@ -4527,6 +4569,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (!wasPaused) {
                     isPaused = false;
                 }
+                runOnUiThread(() -> setDtcButtonsEnabled(true));
             }
         });
     }
@@ -5007,6 +5050,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             dtcStatusText.setTextColor(getColorCompat(R.color.danger));
             return;
         }
+        setDtcButtonsEnabled(false);
         dtcStatusText.setText("🔬 Deep Scan: probing all protocols...");
         dtcStatusText.setTextColor(getColorCompat(R.color.warning));
         if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
@@ -5067,6 +5111,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (!wasPaused) {
                     isPaused = false;
                 }
+                runOnUiThread(() -> setDtcButtonsEnabled(true));
             }
         });
     }
@@ -5330,12 +5375,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 .show();
     }
 
+    private void setDtcButtonsEnabled(boolean enabled) {
+        if (btnReadDtc != null) btnReadDtc.setEnabled(enabled);
+        if (btnClearDtc != null) btnClearDtc.setEnabled(enabled);
+        if (btnReadVin != null) btnReadVin.setEnabled(enabled);
+        if (btnReadiness != null) btnReadiness.setEnabled(enabled);
+    }
+
     private void clearDtcs() {
         BaseDriver activeDriver = getActiveDriver();
         if (activeDriver == null || !activeDriver.isConnected()) {
             dtcStatusText.setText("Not connected. Start logging first.");
             return;
         }
+        setDtcButtonsEnabled(false);
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             boolean wasPaused = isPaused;
@@ -5369,6 +5422,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (!wasPaused) {
                     isPaused = false;
                 }
+                runOnUiThread(() -> setDtcButtonsEnabled(true));
             }
         });
     }
@@ -5379,6 +5433,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             dtcStatusText.setText("Not connected. Start logging first.");
             return;
         }
+        setDtcButtonsEnabled(false);
         dtcStatusText.setText("Reading VIN...");
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
@@ -5403,6 +5458,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (!wasPaused) {
                     isPaused = false;
                 }
+                runOnUiThread(() -> setDtcButtonsEnabled(true));
             }
         });
     }
@@ -5413,6 +5469,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             dtcStatusText.setText("Not connected. Start logging first.");
             return;
         }
+        setDtcButtonsEnabled(false);
         dtcStatusText.setText("Checking readiness monitors...");
         readinessContainer.removeAllViews();
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
@@ -5429,6 +5486,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (!wasPaused) {
                     isPaused = false;
                 }
+                runOnUiThread(() -> setDtcButtonsEnabled(true));
             }
         });
     }
@@ -6738,74 +6796,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return false;
         }
         return true;
-    }
-
-    // --- Log folder ---
-
-    private void openLogFolder() {
-        String savedUriStr = getSharedPreferences("OBD2Prefs", MODE_PRIVATE).getString("custom_log_folder_uri", null);
-        if (savedUriStr != null) {
-            try {
-                Uri folderUri = Uri.parse(savedUriStr);
-                Intent folderIntent = new Intent(Intent.ACTION_VIEW);
-                folderIntent.setDataAndType(folderUri, "vnd.android.document/directory");
-                folderIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                startActivity(folderIntent);
-                return;
-            } catch (Exception e) {
-                // Fall through to default behavior if opening custom folder fails
-            }
-        }
-
-        // Try opening the default Downloads/TunerMapPro folder directly in the file manager
-        try {
-            Uri defaultUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:Download%2FTunerMapPro");
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(defaultUri, "vnd.android.document/directory");
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(intent);
-        } catch (Exception e) {
-            // Fallback 1: Try primary:Download directory
-            try {
-                Uri downloadUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:Download");
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setDataAndType(downloadUri, "vnd.android.document/directory");
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                startActivity(intent);
-            } catch (Exception ex) {
-                // Fallback 2: Try standard ACTION_GET_CONTENT
-                try {
-                    Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                    intent.setDataAndType(Uri.parse("content://com.android.externalstorage.documents/document/primary:Download%2FTunerMapPro"), "*/*");
-                    intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    startActivity(Intent.createChooser(intent, "Open Logs Folder"));
-                } catch (Exception exc) {
-                    // Fallback 3: Open the latest single file
-                    openLatestLogFile();
-                }
-            }
-        }
-    }
-
-    private void openLatestLogFile() {
-        Uri uri = currentCsvUri;
-        String mimeType = "text/csv";
-        if (uri == null) {
-            uri = currentJsonlUri;
-            mimeType = "application/x-ndjson";
-        }
-        if (uri == null) {
-            Toast.makeText(this, "No log file available yet.", Toast.LENGTH_LONG).show();
-            return;
-        }
-        try {
-            Intent fileIntent = new Intent(Intent.ACTION_VIEW);
-            fileIntent.setDataAndType(uri, mimeType);
-            fileIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(fileIntent, "Open OBD2 log file"));
-        } catch (Exception e) {
-            Toast.makeText(this, "Could not open log file.", Toast.LENGTH_LONG).show();
-        }
     }
 
     // --- Utility ---

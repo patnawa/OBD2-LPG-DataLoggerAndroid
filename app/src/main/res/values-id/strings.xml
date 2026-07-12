@@ -1,0 +1,137 @@
+<resources>
+    <string name="app_name">TunerMap Pro</string>
+    <string name="start">Mulai</string>
+    <string name="stop">Berhenti</string>
+    <string name="idle_status">Siap. Pilih mode koneksi dan mulai pencatatan log.</string>
+    <string name="log_path">Log akan disimpan di Downloads/TunerMapPro</string>
+    <string name="tap_to_open_logs">Ketuk untuk membuka Downloads/TunerMapPro</string>
+    <string name="prompt_transport_mode">Mode koneksi</string>
+    <string name="prompt_fuel_mode">Mode bahan bakar</string>
+    <string name="prompt_obd_protocol">Protokol OBD2</string>
+    <string name="prompt_bluetooth_device">Perangkat OBD2 Bluetooth</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">Dasbor</string>
+    <string name="tab_gauges">Meteran</string>
+    <string name="tab_map">Peta</string>
+    <string name="tab_dtc">DTC</string>
+    <string name="tab_logs">Log</string>
+    <string name="tab_settings">Pengaturan</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">Analisis Penyetelan Pintar</string>
+    <string name="waiting_for_data">Menunggu data Fuel Trim...</string>
+    <string name="live_fuel_map">Peta Fuel Trim Langsung</string>
+    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = RPM (500-6500)</string>
+    <string name="how_to_read_map_title">Cara Membaca Peta</string>
+    <string name="how_to_read_map_desc" formatted="false">Menunjukkan Fuel Trim Total (STFT + LTFT)\n🟢 Hijau (±5%) = Sempurna\n🔴 Merah (Negatif) = Rich (Kurangi bahan bakar)\n🔵 Biru (Positif) = Lean (Tambah bahan bakar)\n\nKUNCI SEL &amp; PENGHITUNG SENTUHAN:\nSel dimulai dengan transparan. Jaga kestabilan RPM/MAP untuk mengumpulkan data. Opasitas meningkat dengan jumlah sentuhan.\nx20 sentuhan = Terkunci (Bingkai Emas).\n\nDEVIASI: Menunjukkan (LPG/CNG - Bensin).\n+ berarti LPG miskin (Lean). - berarti LPG kaya (Rich). Targetkan 0%.\n\nASISTEN SETEL (TUNE ASSIST): Menunjukkan persentase koreksi yang tepat untuk peta LPG Anda (Dapat diekspor ke CSV).\n\n* Catatan: Untuk menggunakan Asisten Setel atau Deviasi, Anda harus mengumpulkan data Bensin dan LPG terlebih dahulu!</string>
+    <string name="petrol">BENSIN</string>
+    <string name="petrol_logs_header">Log Bensin</string>
+    <string name="lpg_logs_header">Log LPG/CNG</string>
+    <string name="open_log_file">BUKA FILE LOG</string>
+    <string name="open_log_file_chooser">Pilih file CSV log</string>
+    <string name="open_log_multi_hint">Tip: pilih beberapa file (misal log Bensin + log LPG) untuk membandingkannya.</string>
+    <string name="compare_logs">Bandingkan 2 Log</string>
+    <string name="compare_logs_cancel">Batalkan Perbandingan</string>
+    <string name="compare_hint_select">Pilih log Bensin dan log LPG (maks 2), lalu ketuk Bandingkan.</string>
+    <string name="compare_hint_count">Dipilih %1$d/2 — ketuk Bandingkan untuk memplot keduanya di peta.</string>
+    <string name="compare_need_two">Pilih minimal 2 log (atau 1) untuk dibandingkan.</string>
+    <string name="compare_max_two">Anda hanya dapat membandingkan hingga 2 log sekaligus.</string>
+    <string name="open_log_csv_only">Hanya file log CSV yang dapat dibuka di peta. (Log JSONL tidak didukung untuk pemutaran ulang).</string>
+    <string name="open_log_skipped_non_csv">Melewatkan %1$d file non-CSV — hanya CSV yang dapat diplot.</string>
+    <string name="lpg">LPG/CNG</string>
+    <string name="deviation">DEVIASI</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">TIDAK DIKETAHUI</string>
+    <string name="analyzer_no_data">Data sensor tidak tersedia</string>
+    <string name="analyzer_lean">LEAN</string>
+    <string name="analyzer_rich">RICH</string>
+    <string name="analyzer_ok">OK</string>
+    
+    <string name="analyzer_petrol_lean">Mesin pabrik berjalan miskin (Lean). Periksa kebocoran vakum atau sensor rusak sebelum menyetel LPG.</string>
+    <string name="analyzer_petrol_rich">Mesin pabrik berjalan kaya (Rich). Perbaiki masalah mekanis sebelum menyetel LPG.</string>
+    <string name="analyzer_petrol_ok">Setelan pabrik sehat. Aman untuk mengumpulkan baseline.</string>
+    
+    <string name="analyzer_lpg_lean">LPG/CNG MISKIN. NAIKKAN nilai di peta gas (tambah bahan bakar).</string>
+    <string name="analyzer_lpg_rich">LPG/CNG KAYA. TURUNKAN nilai di peta gas (kurangi bahan bakar).</string>
+    <string name="analyzer_lpg_ok">Campuran LPG/CNG sangat cocok dengan baseline pabrik.</string>
+    
+    <string name="status_perfect_translated">Sempurna</string>
+    <string name="status_lean_translated">Lean</string>
+    <string name="status_rich_translated">Rich</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nStatus: %3$s\nSaran: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">Baca DTC</string>
+    <string name="clear_dtc">Hapus DTC</string>
+    <string name="read_vin">Baca VIN</string>
+    <string name="read_readiness">Periksa Kesiapan</string>
+    <string name="no_dtcs">Tidak ada DTC tersimpan.</string>
+    <string name="dtc_count">Jumlah DTC: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">Siapkan Pengukur 0-100</string>
+    <string name="perf_reset">Atur Ulang</string>
+    <string name="perf_brake">Mulai Tes Rem</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">Konsumsi Bahan Bakar</string>
+
+    <string name="prompt_language">Bahasa / Language</string>
+
+    <!-- Service -->
+    <string name="background_logging">Pencatatan Latar Belakang</string>
+    <string name="keep_screen_on">Biarkan Layar Menyala</string>
+    <string name="log_destination_label">Folder Tujuan Log</string>
+    <string name="default_log_folder">Downloads/TunerMapPro (Bawaan)</string>
+    <string name="select_folder">Pilih</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">Baterai dan Sistem Pengisian</string>
+    <string name="battery_subtitle">Diagnostik baterai 12V profesional via OBD2 PID 0x42</string>
+    <string name="battery_live_graph">Monitor Tegangan Real-time</string>
+    <string name="battery_waiting">Hubungkan ke kendaraan untuk memulai pemantauan</string>
+    <string name="battery_connect_first">Hubungkan ke kendaraan, lalu jalankan pengujian.</string>
+    <string name="battery_soc_label">Status Pengisian</string>
+    <string name="battery_soh_label">Status Kesehatan</string>
+    <string name="battery_overall_score">Skor Keseluruhan Baterai</string>
+    <string name="battery_type_hint">Jenis baterai</string>
+    <string name="battery_age_hint">Umur (bulan)</string>
+    <string name="battery_test_resting">Tegangan Istirahat</string>
+    <string name="battery_test_alternator">Uji Alternator</string>
+    <string name="battery_test_load">Uji Penurunan Tegangan</string>
+    <string name="battery_test_crank">Uji Starter</string>
+    <string name="battery_test_ripple">Uji Ripple/Dioda</string>
+    <string name="battery_test_full">Diagnostik Lengkap</string>
+    <string name="home_card_battery_title">Penguji Baterai</string>
+    <string name="home_card_battery_desc">Kesehatan baterai, alternator dan uji penurunan tegangan</string>
+    <string name="tab_battery">Baterai</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>Tergenang (Standar)</item>
+        <item>AGM (Tikar Kaca Penyerap)</item>
+        <item>EFB (Tergenang Ditingkatkan)</item>
+        <item>Sel Gel</item>
+        <item>Kalsium (Ca/Ca)</item>
+        <item>LiFePO4 (Lithium Iron Phosphate)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">Tergenang</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">Gel</string>
+    <string name="battery_chemistry_calcium">Kalsium</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"Ambang Pengisian:
+• 14.4–14.7V: Pengisian normal (mesin menyala)
+• 12.6–12.8V: Baterai penuh (mesin mati)
+• 12.4V: 75%% terisi
+• 12.2V atau kurang: Baterai lemah, segera isi"</string>
+
+</resources>

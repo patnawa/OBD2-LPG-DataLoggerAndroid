@@ -20,7 +20,7 @@ captures/
 .cxx/
 
 # Hermes agent
-.agents/skills/
+.agents/
 
 # OS
 .DS_Store

@@ -1,0 +1,136 @@
+<resources>
+    <string name="app_name">TunerMap Pro</string>
+    <string name="start">بدء</string>
+    <string name="stop">إيقاف</string>
+    <string name="idle_status">جاهز. حدد وضع الاتصال وابدأ تسجيل البيانات.</string>
+    <string name="log_path">سيتم حفظ السجلات في Downloads/TunerMapPro</string>
+    <string name="tap_to_open_logs">انقر لفتح المجلد Downloads/TunerMapPro</string>
+    <string name="prompt_transport_mode">وضع الاتصال</string>
+    <string name="prompt_fuel_mode">وضع الوقود</string>
+    <string name="prompt_obd_protocol">بروتوكول OBD2</string>
+    <string name="prompt_bluetooth_device">جهاز OBD2 بلوتوث</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">لوحة القيادة</string>
+    <string name="tab_gauges">العدادات</string>
+    <string name="tab_map">الخريطة</string>
+    <string name="tab_dtc">الأعطال</string>
+    <string name="tab_logs">السجلات</string>
+    <string name="tab_settings">الإعدادات</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">تحليل الضبط الذكي</string>
+    <string name="waiting_for_data">بانتظار بيانات تعديل الوقود...</string>
+    <string name="live_fuel_map">خريطة تعديل الوقود الحية</string>
+    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = دورتين بالدقيقة RPM (500-6500)</string>
+    <string name="how_to_read_map_title">كيفية قراءة الخريطة</string>
+    <string name="how_to_read_map_desc" formatted="false">توضح تعديل الوقود الإجمالي (STFT + LTFT)\n🟢 أخضر (±5%) = ممتاز\n🔴 أحمر (سالب) = غني (تقليل الوقود)\n🔵 أزرق (موجب) = فقير (زيادة الوقود)\n\nقفل الخلية وعداد النقاط:\nتبدأ الخلايا شفافة. حافظ على ثبات RPM/MAP لجمع البيانات. تزداد العتامة مع تكرار النقاط.\nx20 نقطة = مقفل (إطار ذهبي).\n\nالانحراف (DEVIATION): يوضح (LPG/CNG - بنزين).\n+ يعني أن الغاز فقير. - يعني أن الغاز غني. استهدف 0%.\n\nمساعد الضبط (TUNE ASSIST): يوضح النسبة المئوية الدقيقة للتصحيح لخريطة الغاز (يمكن تصديرها كـ CSV).\n\n* ملاحظة: لاستخدام مساعد الضبط أو الانحراف، يجب جمع بيانات البنزين والغاز أولاً!</string>
+    <string name="petrol">البنزين</string>
+    <string name="petrol_logs_header">سجلات البنزين</string>
+    <string name="lpg_logs_header">سجلات الغاز (LPG/CNG)</string>
+    <string name="open_log_file">فتح ملف سجل</string>
+    <string name="open_log_file_chooser">اختر ملف(ات) سجل CSV</string>
+    <string name="open_log_multi_hint">نصيحة: اختر ملفات متعددة (مثل سجل البنزين + سجل الغاز) للمقارنة بينها.</string>
+    <string name="compare_logs">مقارنة سجلين</string>
+    <string name="compare_logs_cancel">إلغاء المقارنة</string>
+    <string name="compare_hint_select">اختر سجل بنزين وسجل غاز (الحد الأقصى 2)، ثم انقر مقارنة.</string>
+    <string name="compare_hint_count">تم اختيار %1$d/2 — انقر مقارنة لعرضهما على الخريطة.</string>
+    <string name="compare_need_two">اختر سجلين على الأقل (أو سجل واحد) للمقارنة.</string>
+    <string name="compare_max_two">يمكن مقارنة سجلين كحد أقصى في المرة الواحدة.</string>
+    <string name="open_log_csv_only">يمكن فتح ملفات سجل CSV فقط على الخريطة. (سجلات JSONL غير مدعومة للعرض).</string>
+    <string name="open_log_skipped_non_csv">تجاوز %1$d ملفات غير CSV — يمكن رسم ملفات CSV فقط.</string>
+    <string name="lpg">LPG/CNG</string>
+    <string name="deviation">الانحراف</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">غير معروف</string>
+    <string name="analyzer_no_data">لا توجد بيانات مستشعر متاحة</string>
+    <string name="analyzer_lean">فقير</string>
+    <string name="analyzer_rich">غني</string>
+    <string name="analyzer_ok">موافق</string>
+    
+    <string name="analyzer_petrol_lean">محرك المصنع يعمل بوقود فقير. افحص تسريب الهواء أو تلف المستشعرات قبل ضبط الغاز.</string>
+    <string name="analyzer_petrol_rich">محرك المصنع يعمل بوقود غني. أصلح المشاكل الميكانيكية قبل ضبط الغاز.</string>
+    <string name="analyzer_petrol_ok">حالة ضبط المصنع ممتازة. من الآمن بدء جمع البيانات الأساسية.</string>
+    
+    <string name="analyzer_lpg_lean">الغاز (LPG/CNG) فقير. قم بزيادة القيم في خريطة الغاز (إضافة وقود).</string>
+    <string name="analyzer_lpg_rich">الغاز (LPG/CNG) غني. قم بتقليل القيم في خريطة الغاز (تقليل وقود).</string>
+    <string name="analyzer_lpg_ok">خليط الغاز متطابق بشكل وثيق مع خط الأساس للمصنع.</string>
+    
+    <string name="status_perfect_translated">ممتاز</string>
+    <string name="status_lean_translated">فقير</string>
+    <string name="status_rich_translated">غني</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nالحالة: %3$s\nنصيحة: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">قراءة رموز الأعطال</string>
+    <string name="clear_dtc">مسح رموز الأعطال</string>
+    <string name="read_vin">قراءة رقم الشاصي (VIN)</string>
+    <string name="read_readiness">فحص الجاهزية</string>
+    <string name="no_dtcs">لا توجد رموز أعطال مخزنة.</string>
+    <string name="dtc_count">عدد رموز الأعطال: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">تجهيز مؤقت 0-100</string>
+    <string name="perf_reset">إعادة ضبط</string>
+    <string name="perf_brake">بدء اختبار المكابح</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">اقتصاد الوقود</string>
+
+    <string name="prompt_language">اللغة / Language</string>
+
+    <!-- Service -->
+    <string name="background_logging">تسجيل السجلات في الخلفية</string>
+    <string name="keep_screen_on">إبقاء الشاشة مضاءة</string>
+    <string name="log_destination_label">مجلد حفظ السجلات</string>
+    <string name="default_log_folder">Downloads/TunerMapPro (افتراضي)</string>
+    <string name="select_folder">تحديد</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">البطارية ونظام الشحن</string>
+    <string name="battery_subtitle">تشخيص بطارية 12V احترافي عبر OBD2 PID 0x42</string>
+    <string name="battery_live_graph">مراقب الجهد المباشر</string>
+    <string name="battery_waiting">اتصل بالسيارة لبدء المراقبة</string>
+    <string name="battery_connect_first">اتصل بالسيارة ثم قم بإجراء اختبار.</string>
+    <string name="battery_soc_label">حالة الشحن</string>
+    <string name="battery_soh_label">حالة الصحة</string>
+    <string name="battery_overall_score">النتيجة الإجمالية للبطارية</string>
+    <string name="battery_type_hint">نوع البطارية</string>
+    <string name="battery_age_hint">العمر (أشهر)</string>
+    <string name="battery_test_resting">جهد السكون</string>
+    <string name="battery_test_alternator">اختبار المولد</string>
+    <string name="battery_test_load">اختبار انخفاض الجهد</string>
+    <string name="battery_test_crank">اختبار الإدارة</string>
+    <string name="battery_test_ripple">اختبار التموج/الديود</string>
+    <string name="battery_test_full">تشخيص كامل</string>
+    <string name="home_card_battery_title">مختبر البطارية</string>
+    <string name="home_card_battery_desc">فحص صحة البطارية والمولد وانخفاض الجهد</string>
+    <string name="tab_battery">البطارية</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>مغمور (قياسي)</item>
+        <item>AGM (حصيرة زجاجية ماصة)</item>
+        <item>EFB (مغمور محسّن)</item>
+        <item>سيل جل</item>
+        <item>كالسيوم (Ca/Ca)</item>
+        <item>LiFePO4 (فوسفات حديد الليثيوم)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">مغمور</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">جل</string>
+    <string name="battery_chemistry_calcium">كالسيوم</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"عتبات الشحن:
+• 14.4–14.7V: شحن عادي (المحرك يعمل)
+• 12.6–12.8V: بطارية ممتلئة (المحرك مطفأ)
+• 12.4V: شحن 75%%
+• 12.2V أو أقل: بطارية ضعيفة، اشحنها فوراً"</string>
+
+</resources>

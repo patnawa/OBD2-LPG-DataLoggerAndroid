@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.17.0] - 2026-07-12 — UX Polish, Localization & Code Cleanup
+
+### Home & Core UX
+- Corrected bottom telemetry status strip visibility logic to display on all non-home tabs.
+- Added warning confirmation modal prompt before manually clearing Diagnostic Trouble Codes (DTCs).
+- Added button spamming protection that disables read/clear/VIN/readiness scanner buttons during active operations.
+- Fixed theme settings selection loop recreations.
+- Synced system theme preference changes dynamically to the Battery Tester graphic monitor.
+- Added Slate-900 rounded contrast bubble tooltips behind the live telemetry graph cursor to ensure legibility in both light and dark modes.
+
+### Code Quality & Lifecycle Safeguards
+- Added thread interruption checks in replay parsing loops to completely prevent background thread leaks on screen rotations.
+- Removed obsolete legacy layouts (`panelHomeLegacy` removing ~970 lines of unused XML).
+- Cleaned up unused gradients, menu structures, and dead helper methods in ApiServer and MainActivity.
+
 ## [3.16.9] - 2026-07-12 — Interactive Live Graph
 
 ### Home scanner

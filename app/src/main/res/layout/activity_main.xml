@@ -405,6 +405,10 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
             <include layout="@layout/panel_home_cockpit" />
 
             <!-- ===== FUEL MAP TAB ===== -->
@@ -3960,6 +3964,7 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
+        </FrameLayout>
     </ScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

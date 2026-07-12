@@ -27,7 +27,7 @@
                 android:layout_width="28dp"
                 android:layout_height="28dp"
                 android:src="@drawable/ic_air_density"
-                app:tint="#38BDF8"
+                app:tint="?attr/colorPrimary"
                 android:layout_marginEnd="10dp" />
 
             <LinearLayout
@@ -39,7 +39,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="AERODENSITY INTELLIGENCE"
+                    android:text="@string/air_density_dialog_title"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -48,7 +48,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="SAE J1349 Standard Correction &amp; Thermodynamics"
+                    android:text="@string/air_density_dialog_subtitle"
                     android:textColor="@color/muted"
                     android:textSize="11sp" />
             </LinearLayout>
@@ -71,7 +71,7 @@
             app:cardBackgroundColor="?attr/colorSurfaceVariant"
             app:cardCornerRadius="14dp"
             app:strokeWidth="1dp"
-            app:strokeColor="#38BDF8">
+            app:strokeColor="?attr/colorPrimary">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -89,8 +89,8 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="ATMOSPHERIC WEATHER &amp; SENSORS"
-                        android:textColor="#38BDF8"
+                        android:text="@string/air_density_weather_sensors"
+                        android:textColor="?attr/colorPrimary"
                         android:textSize="11sp"
                         android:textStyle="bold" />
 
@@ -109,7 +109,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="API: -- • Last: --"
-                        android:textColor="#94A3B8"
+                        android:textColor="@color/muted"
                         android:textSize="10sp"
                         android:layout_marginTop="2dp" />
                 </LinearLayout>
@@ -119,12 +119,12 @@
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
                     android:layout_height="36dp"
-                    android:text="REFRESH"
+                    android:text="@string/air_density_refresh"
                     android:textSize="11sp"
-                    android:textColor="#38BDF8"
+                    android:textColor="?attr/colorPrimary"
                     app:icon="@android:drawable/ic_popup_sync"
                     app:iconSize="14dp"
-                    app:iconTint="#38BDF8" />
+                    app:iconTint="?attr/colorPrimary" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -144,7 +144,7 @@
                 app:cardBackgroundColor="?attr/colorSurface"
                 app:cardCornerRadius="14dp"
                 app:strokeWidth="1.5dp"
-                app:strokeColor="#38BDF8">
+                app:strokeColor="?attr/colorPrimary">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -156,7 +156,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="AMBIENT (AAD)"
+                        android:text="@string/air_density_ambient_aad"
                         android:textColor="@color/muted"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -166,7 +166,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textColor="#38BDF8"
+                        android:textColor="?attr/colorPrimary"
                         android:textSize="24sp"
                         android:textStyle="bold"
                         android:fontFamily="monospace"
@@ -201,7 +201,7 @@
                 app:cardBackgroundColor="?attr/colorSurface"
                 app:cardCornerRadius="14dp"
                 app:strokeWidth="1.5dp"
-                app:strokeColor="#10B981">
+                app:strokeColor="?attr/colorTertiary">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -213,7 +213,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="MANIFOLD (MAD)"
+                        android:text="@string/air_density_manifold_mad"
                         android:textColor="@color/muted"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -223,7 +223,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textColor="#10B981"
+                        android:textColor="?attr/colorTertiary"
                         android:textSize="24sp"
                         android:textStyle="bold"
                         android:fontFamily="monospace"
@@ -257,7 +257,7 @@
                 app:cardBackgroundColor="?attr/colorSurface"
                 app:cardCornerRadius="14dp"
                 app:strokeWidth="1.5dp"
-                app:strokeColor="#F59E0B">
+                app:strokeColor="@color/warning">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -269,7 +269,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="BOOST (BAD)"
+                        android:text="@string/air_density_boost_bad"
                         android:textColor="@color/muted"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -279,7 +279,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textColor="#F59E0B"
+                        android:textColor="@color/warning"
                         android:textSize="24sp"
                         android:textStyle="bold"
                         android:fontFamily="monospace"
@@ -295,7 +295,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Boost Added"
+                        android:text="@string/air_density_boost_added"
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="11sp"
                         android:textStyle="bold"
@@ -308,7 +308,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="SAE J1349 &amp; ATMOSPHERIC CONDITIONS"
+            android:text="@string/air_density_sec_atm_cond"
             android:textColor="?attr/colorOnSurface"
             android:textSize="12sp"
             android:textStyle="bold"
@@ -330,7 +330,7 @@
                 android:padding="12dp"
                 android:layout_marginEnd="4dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="Density Altitude" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
+                    android:text="@string/air_density_density_alt" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
                 <TextView android:id="@+id/txtDialogDensityAlt" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="-- ft" android:textColor="?attr/colorOnSurface" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
             </LinearLayout>
@@ -345,7 +345,7 @@
                 android:padding="12dp"
                 android:layout_marginStart="4dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="SAE Correction CF" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
+                    android:text="@string/air_density_sae_cf" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
                 <TextView android:id="@+id/txtDialogSAECF" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="--" android:textColor="?attr/colorOnSurface" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
             </LinearLayout>
@@ -367,7 +367,7 @@
                 android:padding="12dp"
                 android:layout_marginEnd="4dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="Water Vapor Density" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
+                    android:text="@string/air_density_wv_density" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
                 <TextView android:id="@+id/txtDialogGrains" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="-- grains" android:textColor="?attr/colorOnSurface" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
             </LinearLayout>
@@ -382,7 +382,7 @@
                 android:padding="12dp"
                 android:layout_marginStart="4dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="Power Density (PDI)" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
+                    android:text="@string/air_density_power_density" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
                 <TextView android:id="@+id/txtDialogPDI" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="--" android:textColor="?attr/colorOnSurface" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
             </LinearLayout>
@@ -392,7 +392,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="TURBO &amp; INTERCOOLER THERMODYNAMICS"
+            android:text="@string/air_density_sec_turbo_ic"
             android:textColor="?attr/colorOnSurface"
             android:textSize="12sp"
             android:textStyle="bold"
@@ -414,9 +414,9 @@
                 android:padding="12dp"
                 android:layout_marginEnd="4dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="Compressor Eff" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
+                    android:text="@string/air_density_compressor_eff" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
                 <TextView android:id="@+id/txtDialogCompEff" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="--%" android:textColor="#38BDF8" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
+                    android:text="--%" android:textColor="?attr/colorPrimary" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
             </LinearLayout>
 
             <LinearLayout
@@ -430,9 +430,9 @@
                 android:layout_marginStart="4dp"
                 android:layout_marginEnd="4dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="Intercooler Eff" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
+                    android:text="@string/air_density_intercooler_eff" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
                 <TextView android:id="@+id/txtDialogICEff" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="--%" android:textColor="#10B981" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
+                    android:text="--%" android:textColor="?attr/colorTertiary" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
             </LinearLayout>
 
             <LinearLayout
@@ -445,9 +445,9 @@
                 android:padding="12dp"
                 android:layout_marginStart="4dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="Volumetric Eff" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
+                    android:text="@string/air_density_volumetric_eff" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
                 <TextView android:id="@+id/txtDialogVE" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="--%" android:textColor="#F59E0B" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
+                    android:text="--%" android:textColor="@color/warning" android:textSize="18sp" android:textStyle="bold" android:fontFamily="monospace" />
             </LinearLayout>
         </LinearLayout>
 
@@ -463,7 +463,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="14dp"
-                android:text="AeroDensity Guide:\n• AAD measures oxygen availability in ambient air outside the car.\n• MAD measures density in your intake manifold after turbo and intercooler.\n• BAD shows density added above ambient pressure.\n• Higher AAD/MAD = More Oxygen = More Horsepower &amp; Optimal Combustion."
+                android:text="@string/air_density_guide_desc"
                 android:textColor="@color/muted"
                 android:textSize="12sp"
                 android:lineSpacingExtra="3dp" />
@@ -473,7 +473,7 @@
             android:id="@+id/btnDialogCloseAirDensity"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:text="CLOSE"
+            android:text="@string/air_density_close"
             android:textColor="@color/background"
             android:textStyle="bold"
             app:backgroundTint="?attr/colorOnSurface"

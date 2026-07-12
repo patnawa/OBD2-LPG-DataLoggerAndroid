@@ -289,29 +289,7 @@ public class ApiServer extends NanoHTTPD {
      * Push a DataRecord into the LiveMapStore — the single write path.
      * Replaces the old updateLiveMap() which had different binning + no debounce.
      */
-    /**
-         * Push a DataRecord into the LiveMapStore.
-         * Primary write path for background logging when API server is enabled
-         * (LoggerService only calls setLatestData when API is on). In-process UI
-         * also writes via MainActivity when the service store is shared.
-         *
-         * Always updates the active cell cursor so SSE + map highlight stay live
-         * even for gated/debounced samples.
-         */
-        private void pushToLiveMapStore(DataRecord record) {
-            LiveMapStore store = liveMapStore;
-            if (store == null || record == null) return;
-            MapSampleMeta meta = MapSampleMeta.from(record);
-            FuelMode mode = FuelMode.fromString(record.getFuelMode());
-            store.pushFromMeta(meta, mode);
-        }
 
-    private Double valueByKey(DataRecord record, String key) {
-        for (SensorSample sample : record.getSamples()) {
-            if (sample.getPidKey().equals(key)) return sample.getValue();
-        }
-        return null;
-    }
 
     @Override
     public Response serve(IHTTPSession session) {

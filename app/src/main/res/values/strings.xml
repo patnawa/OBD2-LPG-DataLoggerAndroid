@@ -328,4 +328,62 @@
     <string name="hide_field_desc">No data shown in this slot</string>
     <string name="long_press_to_clear">Long-press to clear</string>
     <string name="slot_cleared">Slot %1$d cleared</string>
+
+    <!-- DTC confirmation -->
+    <string name="clear_dtc_confirm_title">Clear Diagnostic Trouble Codes?</string>
+    <string name="clear_dtc_confirm_msg">This will clear all stored fault codes and reset emissions readiness monitors. Are you sure you want to proceed?</string>
+    <string name="confirm">Confirm</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Home cockpit custom strings -->
+    <string name="home_status_disconnected">DISCONNECTED</string>
+    <string name="home_status_connect_desc">Connect adapter to begin scanning</string>
+    <string name="home_status_obd2">OBD2</string>
+    <string name="home_title_live_telemetry">LIVE TELEMETRY</string>
+    <string name="home_label_rpm">RPM</string>
+    <string name="home_label_kmh">km/h</string>
+    <string name="home_title_live_data_graph">LIVE DATA GRAPH</string>
+    <string name="home_label_live">● LIVE</string>
+    <string name="home_label_rolling_window">60-second rolling window</string>
+    <string name="home_label_rpm_legend">● RPM (x1000)</string>
+    <string name="home_label_speed_legend">● Speed (km/h)</string>
+    <string name="home_label_boost_legend">● Boost (psi)</string>
+    <string name="home_label_coolant">COOLANT °C</string>
+    <string name="home_label_voltage">VOLTAGE · V</string>
+    <string name="home_label_boost_psi">BOOST psi</string>
+    <string name="home_label_throttle_pct">THROTTLE %</string>
+    <string name="home_label_fuel_trim_pct">FUEL TRIM %</string>
+    <string name="home_title_diagnostic_health">DIAGNOSTIC HEALTH</string>
+    <string name="home_diagnostic_no_codes">No active fault codes</string>
+    <string name="home_diagnostic_ready_scan">Ready for a full scan</string>
+    <string name="home_title_quick_access">QUICK ACCESS</string>
+
+    <!-- Air density dialog custom strings -->
+    <string name="air_density_dialog_title">AERODENSITY INTELLIGENCE</string>
+    <string name="air_density_dialog_subtitle">SAE J1349 Standard Correction &amp; Thermodynamics</string>
+    <string name="air_density_weather_sensors">ATMOSPHERIC WEATHER &amp; SENSORS</string>
+    <string name="air_density_refresh">REFRESH</string>
+    <string name="air_density_ambient_aad">AMBIENT (AAD)</string>
+    <string name="air_density_manifold_mad">MANIFOLD (MAD)</string>
+    <string name="air_density_boost_bad">BOOST (BAD)</string>
+    <string name="air_density_boost_added">Boost Added</string>
+    <string name="air_density_sec_atm_cond">SAE J1349 &amp; ATMOSPHERIC CONDITIONS</string>
+    <string name="air_density_density_alt">Density Altitude</string>
+    <string name="air_density_sae_cf">SAE Correction CF</string>
+    <string name="air_density_wv_density">Water Vapor Density</string>
+    <string name="air_density_power_density">Power Density (PDI)</string>
+    <string name="air_density_sec_turbo_ic">TURBO &amp; INTERCOOLER THERMODYNAMICS</string>
+    <string name="air_density_compressor_eff">Compressor Eff</string>
+    <string name="air_density_intercooler_eff">Intercooler Eff</string>
+    <string name="air_density_volumetric_eff">Volumetric Eff</string>
+    <string name="air_density_guide_desc">AeroDensity Guide:\n• AAD measures oxygen availability in ambient air outside the car.\n• MAD measures density in your intake manifold after turbo and intercooler.\n• BAD shows density added above ambient pressure.\n• Higher AAD/MAD = More Oxygen = More Horsepower &amp; Optimal Combustion.</string>
+    <string name="air_density_close">CLOSE</string>
+
+    <!-- General Connection Statuses -->
+    <string name="status_connected">Connected</string>
+    <string name="status_connecting">Connecting</string>
+    <string name="status_offline">Offline</string>
+    <string name="status_negotiating">Negotiating protocol…</string>
+    <string name="status_connect_adapter_prompt">Connect an OBD2 adapter to begin live scanning</string>
+    <string name="status_no_live_data">● NO LIVE DATA</string>
 </resources>

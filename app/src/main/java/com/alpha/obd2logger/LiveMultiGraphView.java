@@ -113,10 +113,26 @@ public final class LiveMultiGraphView extends View {
             cursor.setColor(Color.argb(190, 235, 245, 255));
             cursor.setStrokeWidth(Math.max(1f, d));
             canvas.drawLine(x, top, x, top + h, cursor);
+
+            float boxX = Math.min(x + 6f * d, getWidth() - 112f * d);
+            float boxY = top + 2f * d;
+            float boxW = 100f * d;
+            float boxH = 46f * d;
+            
+            Paint bubblePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            bubblePaint.setColor(Color.argb(215, 15, 23, 42)); // Slate 900, 85% opacity
+            bubblePaint.setStyle(Paint.Style.FILL);
+            canvas.drawRoundRect(boxX - 6f * d, boxY, boxX + boxW, boxY + boxH, 8f * d, 8f * d, bubblePaint);
+
+            Paint bubbleBorder = new Paint(Paint.ANTI_ALIAS_FLAG);
+            bubbleBorder.setColor(Color.argb(40, 255, 255, 255)); // Subtle white border
+            bubbleBorder.setStyle(Paint.Style.STROKE);
+            bubbleBorder.setStrokeWidth(1f * d);
+            canvas.drawRoundRect(boxX - 6f * d, boxY, boxX + boxW, boxY + boxH, 8f * d, 8f * d, bubbleBorder);
+
             labels.setTextAlign(Paint.Align.LEFT);
             labels.setTextSize(10f * d);
             labels.setColor(Color.WHITE);
-            float boxX = Math.min(x + 6f * d, getWidth() - 112f * d);
             canvas.drawText("RPM " + format(valueAt(rpm, index), 0), boxX, top + 14f * d, labels);
             canvas.drawText("SPD " + format(valueAt(speed, index), 0), boxX, top + 27f * d, labels);
             canvas.drawText("BST " + format(valueAt(boost, index), 1), boxX, top + 40f * d, labels);

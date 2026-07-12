@@ -196,6 +196,9 @@ public class ReviewSessionActivity extends AppCompatActivity {
 
             String line;
             while ((line = reader.readLine()) != null) {
+                if (Thread.currentThread().isInterrupted()) {
+                    return null;
+                }
                 lineCount++;
                 LogReplayParser.Point p = LogReplayParser.parseLine(line, cols);
                 if (p == null) continue; // too short, open loop, or unparseable

@@ -43,7 +43,7 @@
                     android:id="@+id/cockpitConnection"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="DISCONNECTED"
+                    android:text="@string/home_status_disconnected"
                     android:textColor="@color/muted"
                     android:textSize="15sp"
                     android:textStyle="bold" />
@@ -54,7 +54,7 @@
                     android:layout_marginTop="2dp"
                     android:maxLines="1"
                     android:ellipsize="end"
-                    android:text="Connect adapter to begin scanning"
+                    android:text="@string/home_status_connect_desc"
                     android:textColor="@color/muted"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -69,7 +69,7 @@
                 android:paddingTop="6dp"
                 android:paddingEnd="14dp"
                 android:paddingBottom="6dp"
-                android:text="OBD2"
+                android:text="@string/home_status_obd2"
                 android:textColor="@color/primary"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -93,7 +93,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:letterSpacing="0.08"
-                android:text="LIVE TELEMETRY"
+                android:text="@string/home_title_live_telemetry"
                 android:textColor="@color/primary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -105,12 +105,12 @@
                 android:orientation="horizontal">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.2" android:gravity="center" android:orientation="vertical">
                     <TextView android:id="@+id/cockpitRpm" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="monospace" android:text="---" android:textColor="@color/text" android:textSize="44sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RPM" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_rpm" android:textColor="@color/muted" android:textSize="11sp" android:textStyle="bold" />
                 </LinearLayout>
                 <View android:layout_width="1dp" android:layout_height="72dp" android:background="@color/border" />
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
                     <TextView android:id="@+id/cockpitSpeed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="monospace" android:text="---" android:textColor="@color/primary" android:textSize="34sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="km/h" android:textColor="@color/muted" android:textSize="11sp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_kmh" android:textColor="@color/muted" android:textSize="11sp" />
                 </LinearLayout>
             </LinearLayout>
             <LinearLayout
@@ -119,8 +119,8 @@
                 android:layout_marginTop="12dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="LIVE DATA GRAPH" android:textColor="@color/text" android:textSize="12sp" android:textStyle="bold" />
-                <TextView android:id="@+id/cockpitGraphLive" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="● LIVE" android:textColor="@color/accent" android:textSize="10sp" android:textStyle="bold" />
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/home_title_live_data_graph" android:textColor="@color/text" android:textSize="12sp" android:textStyle="bold" />
+                <TextView android:id="@+id/cockpitGraphLive" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_live" android:textColor="@color/accent" android:textSize="10sp" android:textStyle="bold" />
                 <TextView android:id="@+id/cockpitGraphPause" android:layout_width="32dp" android:layout_height="32dp" android:layout_marginStart="6dp" android:gravity="center" android:text="Ⅱ" android:textColor="@color/text" android:textSize="15sp" android:textStyle="bold" android:background="?attr/selectableItemBackgroundBorderless" android:clickable="true" android:focusable="true" android:contentDescription="Pause live graph" />
             </LinearLayout>
             <LinearLayout
@@ -129,7 +129,7 @@
                 android:layout_marginTop="6dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="60-second rolling window" android:textColor="@color/muted" android:textSize="9sp" />
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/home_label_rolling_window" android:textColor="@color/muted" android:textSize="9sp" />
                 <TextView android:id="@+id/cockpitGraphRange" android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_status_chip" android:paddingStart="10dp" android:paddingTop="4dp" android:paddingEnd="10dp" android:paddingBottom="4dp" android:text="60s" android:textColor="@color/primary" android:textSize="10sp" android:textStyle="bold" />
             </LinearLayout>
             <com.alpha.obd2logger.LiveMultiGraphView
@@ -139,33 +139,33 @@
                 android:layout_marginTop="4dp"
                 android:contentDescription="Live RPM, speed, and boost graph" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:layout_marginTop="4dp">
-                <TextView android:id="@+id/cockpitLegendRpm" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="● RPM (x1000)" android:textColor="#29A8FF" android:textSize="9sp" android:clickable="true" android:focusable="true" android:contentDescription="Toggle RPM graph line" />
-                <TextView android:id="@+id/cockpitLegendSpeed" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="● Speed (km/h)" android:textColor="#39D98A" android:textSize="9sp" android:clickable="true" android:focusable="true" android:contentDescription="Toggle speed graph line" />
-                <TextView android:id="@+id/cockpitLegendBoost" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="● Boost (psi)" android:textColor="#A855F7" android:textSize="9sp" android:clickable="true" android:focusable="true" android:contentDescription="Toggle boost graph line" />
+                <TextView android:id="@+id/cockpitLegendRpm" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/home_label_rpm_legend" android:textColor="#29A8FF" android:textSize="9sp" android:clickable="true" android:focusable="true" android:contentDescription="Toggle RPM graph line" />
+                <TextView android:id="@+id/cockpitLegendSpeed" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/home_label_speed_legend" android:textColor="#39D98A" android:textSize="9sp" android:clickable="true" android:focusable="true" android:contentDescription="Toggle speed graph line" />
+                <TextView android:id="@+id/cockpitLegendBoost" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/home_label_boost_legend" android:textColor="#A855F7" android:textSize="9sp" android:clickable="true" android:focusable="true" android:contentDescription="Toggle boost graph line" />
             </LinearLayout>
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="horizontal">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
                     <TextView android:id="@+id/cockpitCoolant" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/warning" android:textSize="24sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="COOLANT °C" android:textColor="@color/muted" android:textSize="9sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_coolant" android:textColor="@color/muted" android:textSize="9sp" android:textStyle="bold" />
                 </LinearLayout>
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
                     <TextView android:id="@+id/cockpitVoltage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/accent" android:textSize="24sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="VOLTAGE · V" android:textColor="@color/muted" android:textSize="9sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_voltage" android:textColor="@color/muted" android:textSize="9sp" android:textStyle="bold" />
                 </LinearLayout>
             </LinearLayout>
             <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="12dp" android:layout_marginBottom="10dp" android:background="@color/border" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
                 <LinearLayout android:layout_width="0dp" android:layout_height="64dp" android:layout_weight="1" android:layout_marginEnd="4dp" android:background="@drawable/panel" android:gravity="center" android:orientation="vertical">
                     <TextView android:id="@+id/cockpitBoost" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/primary" android:textSize="19sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="BOOST psi" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_boost_psi" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
                 </LinearLayout>
                 <LinearLayout android:layout_width="0dp" android:layout_height="64dp" android:layout_weight="1" android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:background="@drawable/panel" android:gravity="center" android:orientation="vertical">
                     <TextView android:id="@+id/cockpitThrottle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/accent" android:textSize="19sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="THROTTLE %" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_throttle_pct" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
                 </LinearLayout>
                 <LinearLayout android:layout_width="0dp" android:layout_height="64dp" android:layout_weight="1" android:layout_marginStart="4dp" android:background="@drawable/panel" android:gravity="center" android:orientation="vertical">
                     <TextView android:id="@+id/cockpitFuelTrim" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="#A78BFA" android:textSize="19sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FUEL TRIM %" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_fuel_trim_pct" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
@@ -263,7 +263,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="DIAGNOSTIC HEALTH"
+                    android:text="@string/home_title_diagnostic_health"
                     android:textColor="@color/text"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -272,7 +272,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="3dp"
-                    android:text="No active fault codes"
+                    android:text="@string/home_diagnostic_no_codes"
                     android:textColor="@color/accent"
                     android:textSize="12sp" />
                 <TextView
@@ -280,7 +280,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:text="Ready for a full scan"
+                    android:text="@string/home_diagnostic_ready_scan"
                     android:textColor="@color/muted"
                     android:textSize="10sp" />
             </LinearLayout>
@@ -301,7 +301,7 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="10dp"
         android:letterSpacing="0.08"
-        android:text="QUICK ACCESS"
+        android:text="@string/home_title_quick_access"
         android:textColor="@color/muted"
         android:textSize="12sp"
         android:textStyle="bold" />
@@ -309,25 +309,26 @@
     <!-- Detailed 3-column cards, matching the supplied reference. -->
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
         <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitGauges" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginEnd="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_speed" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="GAUGES CLUSTER" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Real-time gauges &amp; custom dials" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_speed" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="@string/home_card_gauges_title" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="@string/home_card_gauges_desc" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
         </com.google.android.material.card.MaterialCardView>
         <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitLogs" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_list" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="LIVE GRAPH" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Live logging &amp; graphing" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_list" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="@string/home_card_logs_title" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="@string/home_card_logs_desc" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
         </com.google.android.material.card.MaterialCardView>
         <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitDashboard" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginStart="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_dashboard" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="DASHBOARD" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Tuning table readouts" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_dashboard" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="@string/home_card_dashboard_title" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="@string/home_card_dashboard_desc" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
         <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitMap" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginEnd="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_map" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="TRIM MAPPING" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Fuel trim deviation &amp; mapping" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_map" app:tint="@color/primary" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="@string/home_card_map_title" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="@string/home_card_map_desc" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
         </com.google.android.material.card.MaterialCardView>
         <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitDtc" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_build" app:tint="@color/warning" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="DTC SCANNER" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Read &amp; clear diagnostic codes" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_build" app:tint="@color/warning" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="@string/home_card_dtc_title" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="@string/home_card_dtc_desc" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
         </com.google.android.material.card.MaterialCardView>
         <com.google.android.material.card.MaterialCardView android:id="@+id/cockpitBattery" android:layout_width="0dp" android:layout_height="132dp" android:layout_weight="1" android:layout_marginStart="4dp" android:clickable="true" android:focusable="true" android:foreground="?attr/selectableItemBackground" app:cardBackgroundColor="?attr/colorSurface" app:cardCornerRadius="16dp" app:strokeColor="@color/primary" app:strokeWidth="1dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_battery" app:tint="@color/accent" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="POWER MONITOR" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="Battery, alternator &amp; ripple" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:orientation="vertical"><ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_battery" app:tint="@color/accent" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="@string/home_card_battery_title" android:textColor="@color/text" android:textSize="11sp" android:textStyle="bold" /><TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:text="@string/home_card_battery_desc" android:textColor="@color/muted" android:textSize="10sp" android:maxLines="3" /><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="›" android:textColor="@color/muted" android:textSize="22sp" /></LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 </LinearLayout>
+

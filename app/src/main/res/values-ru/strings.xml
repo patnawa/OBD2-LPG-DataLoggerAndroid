@@ -1,0 +1,137 @@
+<resources>
+    <string name="app_name">TunerMap Pro</string>
+    <string name="start">Старт</string>
+    <string name="stop">Стоп</string>
+    <string name="idle_status">Готово. Выберите режим подключения и запустите запись.</string>
+    <string name="log_path">Логи сохраняются в Downloads/TunerMapPro</string>
+    <string name="tap_to_open_logs">Нажмите, чтобы открыть Downloads/TunerMapPro</string>
+    <string name="prompt_transport_mode">Режим подключения</string>
+    <string name="prompt_fuel_mode">Режим топлива</string>
+    <string name="prompt_obd_protocol">Протокол OBD2</string>
+    <string name="prompt_bluetooth_device">Bluetooth OBD2 устройство</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">Панель</string>
+    <string name="tab_gauges">Датчики</string>
+    <string name="tab_map">Карта</string>
+    <string name="tab_dtc">Ошибки</string>
+    <string name="tab_logs">Логи</string>
+    <string name="tab_settings">Настройки</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">Интеллектуальный анализ настройки</string>
+    <string name="waiting_for_data">Ожидание данных топливной коррекции...</string>
+    <string name="live_fuel_map">Карта топливной коррекции в реальном времени</string>
+    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = Об/мин (500-6500)</string>
+    <string name="how_to_read_map_title">Как читать карту</string>
+    <string name="how_to_read_map_desc" formatted="false">Показывает суммарную коррекцию (STFT + LTFT)\n🟢 Зеленый (±5%) = Идеально\n🔴 Красный (Отриц.) = Богатая (Уменьшить топливо)\n🔵 Синий (Полож.) = Бедная (Добавить топливо)\n\nCELL LOCK И СЧЕТЧИК ПОПАДАНИЙ:\nЯчейки изначально прозрачные. Удерживайте стабильные Об/мин/MAP для сбора данных. Прозрачность уменьшается с попаданиями.\nx20 попаданий = Заблокировано (Золотая рамка).\n\nОТКЛОНЕНИЕ: Показывает (LPG/CNG - Бензин).\n+ означает, что газ Бедный. - означает, что газ Богатый. Стремитесь к 0%.\n\nTUNE ASSIST: Показывает точную коррекцию в % для газовой карты (Экспорт в CSV).\n\n* Примечание: Для работы функций отклонения и Tune Assist необходимо предварительно собрать данные как на Бензине, так и на Газе!</string>
+    <string name="petrol">БЕНЗИН</string>
+    <string name="petrol_logs_header">Логи Бензина</string>
+    <string name="lpg_logs_header">Логи Газа (LPG/CNG)</string>
+    <string name="open_log_file">ОТКРЫТЬ ЛОГ-ФАЙЛ</string>
+    <string name="open_log_file_chooser">Выберите CSV лог-файл(ы)</string>
+    <string name="open_log_multi_hint">Совет: выберите несколько файлов (например, лог бензина + лог газа) для их сравнения.</string>
+    <string name="compare_logs">Сравнить 2 лога</string>
+    <string name="compare_logs_cancel">Отмена сравнения</string>
+    <string name="compare_hint_select">Выберите лог бензина и лог газа (макс 2), затем нажмите Сравнить.</string>
+    <string name="compare_hint_count">Выбрано %1$d/2 — нажмите Сравнить для отображения на карте.</string>
+    <string name="compare_need_two">Выберите как минимум 2 лога (или 1) для сравнения.</string>
+    <string name="compare_max_two">Вы можете сравнивать не более 2 логов одновременно.</string>
+    <string name="open_log_csv_only">На карте можно открывать только файлы логов CSV. (Логи JSONL не поддерживаются для воспроизведения).</string>
+    <string name="open_log_skipped_non_csv">Пропущено %1$d не-CSV файлов — поддерживается только формат CSV.</string>
+    <string name="lpg">LPG/CNG</string>
+    <string name="deviation">ОТКЛОНЕНИЕ</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">НЕИЗВЕСТНО</string>
+    <string name="analyzer_no_data">Данные датчиков недоступны</string>
+    <string name="analyzer_lean">БЕДНАЯ</string>
+    <string name="analyzer_rich">БОГАТАЯ</string>
+    <string name="analyzer_ok">OK</string>
+    
+    <string name="analyzer_petrol_lean">Штатный двигатель работает на бедной смеси. Проверьте на подсос воздуха или неисправность датчиков перед настройкой газа.</string>
+    <string name="analyzer_petrol_rich">Штатный двигатель работает на богатой смеси. Устраните механические неисправности перед настройкой газа.</string>
+    <string name="analyzer_petrol_ok">Штатная система исправна. Можно собирать базовые данные.</string>
+    
+    <string name="analyzer_lpg_lean">Смесь газа (LPG/CNG) БЕДНАЯ. УВЕЛИЧЬТЕ значения в газовой карте (добавить топливо).</string>
+    <string name="analyzer_lpg_rich">Смесь газа (LPG/CNG) БОГАТАЯ. УМЕНЬШИТЕ значения в газовой карте (убрать топливо).</string>
+    <string name="analyzer_lpg_ok">Смесь газа близка к штатным бензиновым показателям.</string>
+    
+    <string name="status_perfect_translated">Идеально</string>
+    <string name="status_lean_translated">Бедная</string>
+    <string name="status_rich_translated">Богатая</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nСтатус: %3$s\nСовет: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">Считать ошибки (DTC)</string>
+    <string name="clear_dtc">Сбросить ошибки (DTC)</string>
+    <string name="read_vin">Считать VIN</string>
+    <string name="read_readiness">Проверить готовность</string>
+    <string name="no_dtcs">Ошибок в памяти нет.</string>
+    <string name="dtc_count">Количество ошибок: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">Активировать таймер 0-100</string>
+    <string name="perf_reset">Сброс</string>
+    <string name="perf_brake">Начать тест торможения</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">Расход топлива</string>
+
+    <string name="prompt_language">Язык / Language</string>
+
+    <!-- Service -->
+    <string name="background_logging">Запись в фоновом режиме</string>
+    <string name="keep_screen_on">Не выключать экран</string>
+    <string name="log_destination_label">Папка назначения логов</string>
+    <string name="default_log_folder">Downloads/TunerMapPro (По умолчанию)</string>
+    <string name="select_folder">Выбрать</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">Аккумулятор и система зарядки</string>
+    <string name="battery_subtitle">Профессиональная диагностика АКБ 12В через OBD2 PID 0x42</string>
+    <string name="battery_live_graph">Монитор напряжения в реальном времени</string>
+    <string name="battery_waiting">Подключите автомобиль для начала мониторинга</string>
+    <string name="battery_connect_first">Подключите автомобиль, затем выполните тест.</string>
+    <string name="battery_soc_label">Состояние заряда</string>
+    <string name="battery_soh_label">Состояние здоровья</string>
+    <string name="battery_overall_score">Общий балл аккумулятора</string>
+    <string name="battery_type_hint">Тип АКБ</string>
+    <string name="battery_age_hint">Возраст (мес.)</string>
+    <string name="battery_test_resting">Напряжение покоя</string>
+    <string name="battery_test_alternator">Тест генератора</string>
+    <string name="battery_test_load">Тест падения напряжения</string>
+    <string name="battery_test_crank">Тест запуска</string>
+    <string name="battery_test_ripple">Тест пульсации/диода</string>
+    <string name="battery_test_full">Полная диагностика</string>
+    <string name="home_card_battery_title">Тестер АКБ</string>
+    <string name="home_card_battery_desc">Состояние АКБ, генератор и тест падения напряжения</string>
+    <string name="tab_battery">АКБ</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>Жидкостный (Стандарт)</item>
+        <item>AGM (Абсорбирующий Стекломат)</item>
+        <item>EFB (Улучшенный Жидкостный)</item>
+        <item>Гелевый Элемент</item>
+        <item>Кальциевый (Ca/Ca)</item>
+        <item>LiFePO4 (Литий-железо-фосфат)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">Жидкостный</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">Гелевый</string>
+    <string name="battery_chemistry_calcium">Кальциевый</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"Пороги зарядки:
+• 14.4–14.7V: Нормальная зарядка (двигатель работает)
+• 12.6–12.8V: Батарея заряжена (двигатель выключен)
+• 12.4V: 75%% заряда
+• 12.2V или меньше: Слабая батарея, немедленно зарядить"</string>
+
+</resources>

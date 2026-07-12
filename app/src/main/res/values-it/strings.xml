@@ -1,0 +1,137 @@
+<resources>
+    <string name="app_name">TunerMap Pro</string>
+    <string name="start">Avvia</string>
+    <string name="stop">Ferma</string>
+    <string name="idle_status">Pronto. Seleziona la modalità di connessione e avvia la registrazione.</string>
+    <string name="log_path">I log verranno salvati in Downloads/TunerMapPro</string>
+    <string name="tap_to_open_logs">Tocca per aprire Downloads/TunerMapPro</string>
+    <string name="prompt_transport_mode">Modalità di connessione</string>
+    <string name="prompt_fuel_mode">Modalità carburante</string>
+    <string name="prompt_obd_protocol">Protocollo OBD2</string>
+    <string name="prompt_bluetooth_device">Dispositivo OBD2 Bluetooth</string>
+
+    <!-- Tab labels -->
+    <string name="tab_dashboard">Cruscotto</string>
+    <string name="tab_gauges">Indicatori</string>
+    <string name="tab_map">Mappa</string>
+    <string name="tab_dtc">DTC</string>
+    <string name="tab_logs">Log</string>
+    <string name="tab_settings">Impostazioni</string>
+
+    <!-- Map UI -->
+    <string name="smart_tuning_analysis">Analisi di calibrazione intelligente</string>
+    <string name="waiting_for_data">In attesa dei dati Fuel Trim...</string>
+    <string name="live_fuel_map">Mappa Fuel Trim in tempo reale</string>
+    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = Giri/min (500-6500)</string>
+    <string name="how_to_read_map_title">Come leggere la mappa</string>
+    <string name="how_to_read_map_desc" formatted="false">Mostra il Fuel Trim totale (STFT + LTFT)\n🟢 Verde (±5%) = Perfetto\n🔴 Rosso (Negativo) = Ricco (Ridurre carburante)\n🔵 Blu (Positivo) = Magro (Aggiungere carburante)\n\nBLOCCO CELLA E CONTATORE COLPI:\nLe celle iniziano trasparenti. Mantieni stabili Giri/min/MAP per raccogliere dati. L\'opacità aumenta con i colpi.\nx20 colpi = Bloccato (Bordo dorato).\n\nDEVIAZIONE: Mostra (LPG/CNG - Benzina).\n+ significa che il GPL è magro. - significa che il GPL è ricco. Punta allo 0%.\n\nASSISTENTE DI CALIBRAZIONE: Mostra la correzione esatta in % per la mappa GPL (Esportabile in CSV).\n\n* Nota: per utilizzare l\'assistente o la deviazione, devi prima raccogliere dati sia a Benzina che a GPL!</string>
+    <string name="petrol">BENZINA</string>
+    <string name="petrol_logs_header">Log Benzina</string>
+    <string name="lpg_logs_header">Log GPL/Metano</string>
+    <string name="open_log_file">APRI FILE DI LOG</string>
+    <string name="open_log_file_chooser">Seleziona file CSV di log</string>
+    <string name="open_log_multi_hint">Suggerimento: seleziona più file (es. un log Benzina + un log GPL) per confrontarli insieme.</string>
+    <string name="compare_logs">Confronta 2 log</string>
+    <string name="compare_logs_cancel">Annulla confronto</string>
+    <string name="compare_hint_select">Selecione un log Benzina e uno GPL (max 2), quindi tocca Confronta.</string>
+    <string name="compare_hint_count">Selezionati %1$d/2 — tocca Confronta per tracciarli sulla mappa.</string>
+    <string name="compare_need_two">Seleziona almeno 2 log (o 1) da confrontare.</string>
+    <string name="compare_max_two">Puoi confrontare al massimo 2 log alla volta.</string>
+    <string name="open_log_csv_only">Sulla mappa possono essere aperti solo file di log CSV. (I log JSONL non sono supportati per la riproduzione).</string>
+    <string name="open_log_skipped_non_csv">Saltato %1$d file non CSV — solo il format CSV può essere tracciato.</string>
+    <string name="lpg">GPL/Metano</string>
+    <string name="deviation">DEVIAZIONE</string>
+    
+    <!-- Tuning Analyzer Context Strings -->
+    <string name="analyzer_unknown">SCONOSCIUTO</string>
+    <string name="analyzer_no_data">Nessun dato del sensore disponibile</string>
+    <string name="analyzer_lean">MAGRO</string>
+    <string name="analyzer_rich">RICCO</string>
+    <string name="analyzer_ok">OK</string>
+    
+    <string name="analyzer_petrol_lean">Il motore originale gira magro. Cerca perdite di vuoto o sensori difettosi prima di calibrare il GPL.</string>
+    <string name="analyzer_petrol_rich">Il motore originale gira ricco. Risolvi i problemi meccanici prima di calibrare il GPL.</string>
+    <string name="analyzer_petrol_ok">La calibrazione a benzina è in salute. Sicuro per raccogliere i dati di riferimento.</string>
+    
+    <string name="analyzer_lpg_lean">GPL/Metano è MAGRO. AUMENTA i valori nella mappa del gas (aggiungi carburante).</string>
+    <string name="analyzer_lpg_rich">GPL/Metano è RICCO. DIMINUISCI i valori nella mappa del gas (riduci carburante).</string>
+    <string name="analyzer_lpg_ok">La miscela GPL/Metano corrisponde strettamente ai dati di riferimento originali.</string>
+    
+    <string name="status_perfect_translated">Perfetto</string>
+    <string name="status_lean_translated">Magro</string>
+    <string name="status_rich_translated">Ricco</string>
+    
+    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nStato: %3$s\nConsiglio: %4$s</string>
+
+    <!-- DTC -->
+    <string name="read_dtc">Leggi DTC</string>
+    <string name="clear_dtc">Cancella DTC</string>
+    <string name="read_vin">Leggi VIN</string>
+    <string name="read_readiness">Verifica prontezza</string>
+    <string name="no_dtcs">Nessun DTC memorizzato.</string>
+    <string name="dtc_count">Numero di DTC: %1$d</string>
+
+    <!-- Performance -->
+    <string name="perf_arm">Arma timer 0-100</string>
+    <string name="perf_reset">Ripristina</string>
+    <string name="perf_brake">Avvia test frenata</string>
+
+    <!-- Fuel -->
+    <string name="fuel_economy">Consumo carburante</string>
+
+    <string name="prompt_language">Lingua / Language</string>
+
+    <!-- Service -->
+    <string name="background_logging">Registrazione in background</string>
+    <string name="keep_screen_on">Mantieni lo schermo acceso</string>
+    <string name="log_destination_label">Cartella di destinazione dei log</string>
+    <string name="default_log_folder">Downloads/TunerMapPro (Predefinita)</string>
+    <string name="select_folder">Seleziona</string>
+
+    <!-- Battery Tester -->
+    <string name="battery_title">Batteria e Sistema di Carica</string>
+    <string name="battery_subtitle">Diagnosi professionale batteria 12V via OBD2 PID 0x42</string>
+    <string name="battery_live_graph">Monitor Tensione in Tempo Reale</string>
+    <string name="battery_waiting">Connetti al veicolo per iniziare il monitoraggio</string>
+    <string name="battery_connect_first">Connetti al veicolo, poi esegui un test.</string>
+    <string name="battery_soc_label">Stato di Carica</string>
+    <string name="battery_soh_label">Stato di Salute</string>
+    <string name="battery_overall_score">Punteggio Complessivo Batteria</string>
+    <string name="battery_type_hint">Tipo di batteria</string>
+    <string name="battery_age_hint">Età (mesi)</string>
+    <string name="battery_test_resting">Tensione a Riposo</string>
+    <string name="battery_test_alternator">Test Alternatore</string>
+    <string name="battery_test_load">Test Caduta di Tensione</string>
+    <string name="battery_test_crank">Test Avviamento</string>
+    <string name="battery_test_ripple">Test Oscillazione/Diodo</string>
+    <string name="battery_test_full">Diagnosi Completa</string>
+    <string name="home_card_battery_title">Tester Batteria</string>
+    <string name="home_card_battery_desc">Salute batteria, alternatore e test caduta di tensione</string>
+    <string name="tab_battery">Batteria</string>
+
+    <string-array name="battery_chemistry_types">
+        <item>Allagato (Standard)</item>
+        <item>AGM (Tappetino in Vetro Assorbente)</item>
+        <item>EFB (Allagato Migliorato)</item>
+        <item>Cella Gel</item>
+        <item>Calcio (Ca/Ca)</item>
+        <item>LiFePO4 (Fosfato di Ferro e Litio)</item>
+    </string-array>
+    
+    <string name="battery_chemistry_flooded">Allagato</string>
+    <string name="battery_chemistry_agm">AGM</string>
+    <string name="battery_chemistry_efb">EFB</string>
+    <string name="battery_chemistry_gel">Gel</string>
+    <string name="battery_chemistry_calcium">Calcio</string>
+    <string name="battery_chemistry_lifepo4">LiFePO4</string>
+
+    <!-- Battery Test Buttons -->
+    
+    <!-- Battery Charge Thresholds -->
+    <string name="battery_charge_thresholds">"Soglie di Carica:
+• 14.4–14.7V: Carica normale (motore in funzione)
+• 12.6–12.8V: Batteria piena (motore spento)
+• 12.4V: 75%% di carica
+• 12.2V o meno: Batteria debole, ricarica immediatamente"</string>
+
+</resources>

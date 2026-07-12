@@ -301,4 +301,62 @@
     <string name="hide_field_desc">ไม่ต้องการแสดงข้อมูลในสล็อตนี้</string>
     <string name="long_press_to_clear">กดค้างเพื่อล้างค่า</string>
     <string name="slot_cleared">ล้างค่าสล็อต %1$d แล้ว</string>
+
+    <!-- DTC confirmation -->
+    <string name="clear_dtc_confirm_title">ลบโค้ดข้อผิดพลาด (DTC)?</string>
+    <string name="clear_dtc_confirm_msg">การดำเนินการนี้จะลบโค้ดข้อผิดพลาดทั้งหมดและรีเซ็ตการตรวจสอบมลพิษ คุณแน่ใจหรือไม่ที่จะดำเนินการต่อ?</string>
+    <string name="confirm">ยืนยัน</string>
+    <string name="cancel">ยกเลิก</string>
+
+    <!-- Home cockpit custom strings -->
+    <string name="home_status_disconnected">ยังไม่ได้เชื่อมต่อ</string>
+    <string name="home_status_connect_desc">เชื่อมต่ออะแดปเตอร์เพื่อเริ่มต้นสแกน</string>
+    <string name="home_status_obd2">OBD2</string>
+    <string name="home_title_live_telemetry">ข้อมูลสดเครื่องยนต์</string>
+    <string name="home_label_rpm">RPM</string>
+    <string name="home_label_kmh">กม./ชม.</string>
+    <string name="home_title_live_data_graph">กราฟแสดงผลสด</string>
+    <string name="home_label_live">● สด</string>
+    <string name="home_label_rolling_window">ข้อมูลย้อนหลัง 60 วินาที</string>
+    <string name="home_label_rpm_legend">● รอบเครื่องยนต์ (x1000)</string>
+    <string name="home_label_speed_legend">● ความเร็ว (กม./ชม.)</string>
+    <string name="home_label_boost_legend">● บูสต์ (psi)</string>
+    <string name="home_label_coolant">อุณหภูมิน้ำหล่อเย็น °C</string>
+    <string name="home_label_voltage">แรงดันไฟแบตเตอรี่ · V</string>
+    <string name="home_label_boost_psi">บูสต์ psi</string>
+    <string name="home_label_throttle_pct">ลิ้นเร่ง %</string>
+    <string name="home_label_fuel_trim_pct">ค่าปรับ Trim %</string>
+    <string name="home_title_diagnostic_health">สถานะการวิเคราะห์ปัญหา</string>
+    <string name="home_diagnostic_no_codes">ไม่พบรหัสความผิดปกติ</string>
+    <string name="home_diagnostic_ready_scan">พร้อมทำการสแกนเต็มรูปแบบ</string>
+    <string name="home_title_quick_access">ทางลัดด่วน</string>
+
+    <!-- Air density dialog custom strings -->
+    <string name="air_density_dialog_title">ข้อมูลความหนาแน่นอากาศ</string>
+    <string name="air_density_dialog_subtitle">ค่าชดเชยมาตรฐาน SAE J1349 &amp; อุณหพลศาสตร์</string>
+    <string name="air_density_weather_sensors">เซ็นเซอร์สภาพอากาศ &amp; บรรยากาศ</string>
+    <string name="air_density_refresh">รีเฟรช</string>
+    <string name="air_density_ambient_aad">อากาศภายนอก (AAD)</string>
+    <string name="air_density_manifold_mad">ท่อร่วมไอดี (MAD)</string>
+    <string name="air_density_boost_bad">อากาศบูสต์ (BAD)</string>
+    <string name="air_density_boost_added">แรงดันบูสต์ที่เพิ่ม</string>
+    <string name="air_density_sec_atm_cond">มาตรฐาน SAE J1349 &amp; สภาพบรรยากาศ</string>
+    <string name="air_density_density_alt">ความสูงตามความหนาแน่น</string>
+    <string name="air_density_sae_cf">ตัวคูณปรับแก้ SAE</string>
+    <string name="air_density_wv_density">ความหนาแน่นของไอน้ำ</string>
+    <string name="air_density_power_density">ดัชนีกำลังเครื่องยนต์ (PDI)</string>
+    <string name="air_density_sec_turbo_ic">อุณหพลศาสตร์ระบบเทอร์โบ &amp; อินเตอร์คูลเลอร์</string>
+    <string name="air_density_compressor_eff">ประสิทธิภาพคอมเพรสเซอร์</string>
+    <string name="air_density_intercooler_eff">ประสิทธิภาพอินเตอร์คูลเลอร์</string>
+    <string name="air_density_volumetric_eff">ประสิทธิภาพปริมาตร (VE)</string>
+    <string name="air_density_guide_desc">คู่มือความหนาแน่นอากาศ:\n• AAD วัดปริมาณออกซิเจนในอากาศภายนอกรถ\n• MAD วัดความหนาแน่นในท่อร่วมไอดีหลังผ่านเทอร์โบและอินเตอร์คูลเลอร์\n• BAD แสดงความหนาแน่นส่วนต่างจากแรงดันบูสต์เหนือชั้นบรรยากาศ\n• ค่า AAD/MAD ยิ่งสูง = ออกซิเจนยิ่งมาก = ได้ม้าเพิ่มและการเผาไหม้ที่สมบูรณ์ขึ้น</string>
+    <string name="air_density_close">ปิด</string>
+
+    <!-- General Connection Statuses -->
+    <string name="status_connected">เชื่อมต่อแล้ว</string>
+    <string name="status_connecting">กำลังเชื่อมต่อ...</string>
+    <string name="status_offline">ออฟไลน์</string>
+    <string name="status_negotiating">กำลังยืนยันโปรโตคอล...</string>
+    <string name="status_connect_adapter_prompt">เชื่อมต่ออะแดปเตอร์เพื่อเริ่มต้นสแกน</string>
+    <string name="status_no_live_data">● ไม่มีข้อมูลสด</string>
 </resources>
