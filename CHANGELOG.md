@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.16.5] - 2026-07-12 — Professional Scanner Home
+
+### First-page UX
+- Added a dedicated Diagnostic Health card directly below Live Telemetry.
+- Shows `No active fault codes` in the healthy state and the exact active fault count when DTCs exist.
+- Shows contextual guidance: `Ready for a full scan` or `Tap to inspect and clear`.
+- Made the entire Diagnostic Health card open the DTC Scanner.
+- Kept live telemetry as the primary hierarchy: RPM, speed, coolant, voltage, boost, throttle, and total fuel trim.
+
 ## [3.16.4] - 2026-07-12 — Modern Primary Action + Balanced Status/Gauges
 
 ### UI polish

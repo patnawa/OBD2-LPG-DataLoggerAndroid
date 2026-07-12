@@ -73,6 +73,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
     private TextView txtHomeFuelEconomy, txtHomeBoost, txtHomeDpf, txtHomeDtc;
     private TextView txtHomeThrottle, txtHomeFuelTrim;
+    private TextView txtHomeDiagnosticSummary, txtHomeDiagnosticMeta;
     private GraphView homeRpmTrend;
     private TextView stripBoost, stripFuel;
     private View headerStatusDot, headerApiDivider;
@@ -549,6 +550,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtHomeBoost = findViewById(R.id.cockpitBoost);
         txtHomeThrottle = findViewById(R.id.cockpitThrottle);
         txtHomeFuelTrim = findViewById(R.id.cockpitFuelTrim);
+        txtHomeDiagnosticSummary = findViewById(R.id.cockpitDiagnosticSummary);
+        txtHomeDiagnosticMeta = findViewById(R.id.cockpitDiagnosticMeta);
         txtHomeDpf = null;
         txtHomeDtc = null;
         stripBoost = findViewById(R.id.stripBoost);
@@ -1527,6 +1530,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         View cardDtc = findViewById(R.id.cockpitDtc);
         if (cardDtc != null) {
             cardDtc.setOnClickListener(v -> showTab(3));
+        }
+        View cardDiagnostics = findViewById(R.id.cockpitDiagnostics);
+        if (cardDiagnostics != null) {
+            cardDiagnostics.setOnClickListener(v -> showTab(3));
         }
         View cardLogs = findViewById(R.id.cockpitLogs);
         if (cardLogs != null) {
@@ -3525,10 +3532,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
 
         // DTC count badge
-        if (txtHomeDtc != null) {
+        if (txtHomeDtc != null || txtHomeDiagnosticSummary != null) {
             int dtcCount = LoggerService.lastStoredDtcs.size() + LoggerService.lastPendingDtcs.size();
-            txtHomeDtc.setText(dtcCount > 0 ? String.valueOf(dtcCount) : "0");
-            txtHomeDtc.setTextColor(getColorCompat(dtcCount > 0 ? R.color.danger : R.color.accent));
+            if (txtHomeDtc != null) {
+                txtHomeDtc.setText(dtcCount > 0 ? String.valueOf(dtcCount) : "0");
+                txtHomeDtc.setTextColor(getColorCompat(dtcCount > 0 ? R.color.danger : R.color.accent));
+            }
+            if (txtHomeDiagnosticSummary != null) {
+                txtHomeDiagnosticSummary.setText(dtcCount > 0
+                        ? String.format(Locale.US, "%d active fault code%s", dtcCount, dtcCount == 1 ? "" : "s")
+                        : "No active fault codes");
+                txtHomeDiagnosticSummary.setTextColor(getColorCompat(dtcCount > 0 ? R.color.danger : R.color.accent));
+            }
+            if (txtHomeDiagnosticMeta != null) {
+                txtHomeDiagnosticMeta.setText(dtcCount > 0 ? "Tap to inspect and clear" : "Ready for a full scan");
+            }
         }
     }
 
