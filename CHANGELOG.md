@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.16.9] - 2026-07-12 — Interactive Live Graph
+
+### Home scanner
+- Added pause/resume control for the Home live graph without stopping logging.
+- Added touch/drag inspection cursor with real RPM, Speed, and Boost values.
+- Added tap-to-toggle legend controls for each graph series.
+- Added explicit `LIVE`, `PAUSED`, and `NO LIVE DATA` feedback.
+
 ## [3.16.8] - 2026-07-12 — Detailed Multi-color Live Graph
 
 ### Home scanner

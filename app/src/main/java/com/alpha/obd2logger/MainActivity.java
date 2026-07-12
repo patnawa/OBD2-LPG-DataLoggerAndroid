@@ -1558,6 +1558,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (bottomLogs != null) bottomLogs.setOnClickListener(v -> showTab(4));
         View bottomMore = findViewById(R.id.homeBottomMore);
         if (bottomMore != null) bottomMore.setOnClickListener(v -> showTab(3));
+
+        TextView graphPause = findViewById(R.id.cockpitGraphPause);
+        if (graphPause != null && homeRpmTrend != null) {
+            graphPause.setOnClickListener(v -> {
+                homeRpmTrend.setPaused(!homeRpmTrend.isPaused());
+                boolean paused = homeRpmTrend.isPaused();
+                graphPause.setText(paused ? "▶" : "Ⅱ");
+                graphPause.setContentDescription(paused ? "Resume live graph" : "Pause live graph");
+                TextView live = findViewById(R.id.cockpitGraphLive);
+                if (live != null && currentTabIndex == 6) {
+                    live.setText(paused ? "Ⅱ PAUSED" : "● LIVE");
+                    live.setTextColor(getColorCompat(paused ? R.color.warning : R.color.accent));
+                }
+            });
+        }
+        View legendRpm = findViewById(R.id.cockpitLegendRpm);
+        if (legendRpm != null && homeRpmTrend != null) legendRpm.setOnClickListener(v -> homeRpmTrend.toggleSeries(0));
+        View legendSpeed = findViewById(R.id.cockpitLegendSpeed);
+        if (legendSpeed != null && homeRpmTrend != null) legendSpeed.setOnClickListener(v -> homeRpmTrend.toggleSeries(1));
+        View legendBoost = findViewById(R.id.cockpitLegendBoost);
+        if (legendBoost != null && homeRpmTrend != null) legendBoost.setOnClickListener(v -> homeRpmTrend.toggleSeries(2));
     }
 
     /**
