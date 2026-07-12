@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.16.1] - 2026-07-12 — Reference-Matched Navigation + Quick Access
+
+### Fixed from visual review
+- Added a fixed bottom navigation matching the supplied reference: Home, Connect, center Start/Stop action, Logs, and More.
+- Removed the generic top toolbar on Home to eliminate duplicate connection/settings controls.
+- Removed the second Connect/Disconnect button from the cockpit header; connection status is now display-only.
+- Rebuilt Quick Access into two rows of three cards with icons, titles, descriptions, chevrons, and feature-specific accent colors.
+- Added descriptions for Gauges Cluster, Live Graph, Dashboard, Trim Mapping, DTC Scanner, and Power Monitor so cards no longer look empty.
+- Added extra bottom content clearance so the fixed navigation never covers the last Quick Access row.
+
 ## [3.16.0] - 2026-07-12 — Material 3 Automotive Cockpit UI
 
 ### Changed — Complete home layout redesign

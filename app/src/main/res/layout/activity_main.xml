@@ -336,6 +336,65 @@
         </LinearLayout>
     </HorizontalScrollView>
 
+    <!-- Home navigation from the supplied reference: four destinations plus a
+         prominent central primary action. It is fixed to the bottom, not part
+         of the scrolling cockpit content. -->
+    <LinearLayout
+        android:id="@+id/homeBottomNav"
+        android:layout_width="0dp"
+        android:layout_height="76dp"
+        android:background="@color/surface"
+        android:elevation="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:visibility="visible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout android:id="@+id/homeBottomHome" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_home" app:tint="@color/primary" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Home" android:textColor="@color/primary" android:textSize="11sp" android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/homeBottomConnect" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_settings" app:tint="@color/muted" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Connect" android:textColor="@color/muted" android:textSize="11sp" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/homeBottomPrimary"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:contentDescription="Start or stop logging"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:text="+"
+            android:textColor="@color/primary"
+            android:textSize="34sp"
+            app:backgroundTint="@color/surface2"
+            app:cornerRadius="32dp"
+            app:strokeColor="@color/border"
+            app:strokeWidth="1dp" />
+
+        <LinearLayout android:id="@+id/homeBottomLogs" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_list" app:tint="@color/muted" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Logs" android:textColor="@color/muted" android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/homeBottomMore" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_dashboard" app:tint="@color/muted" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="More" android:textColor="@color/muted" android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+
     <!-- Content area -->
     <ScrollView
         android:layout_width="0dp"

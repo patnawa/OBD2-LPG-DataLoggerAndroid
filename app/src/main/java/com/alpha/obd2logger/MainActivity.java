@@ -551,7 +551,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         stripBoost = findViewById(R.id.stripBoost);
         stripFuel = findViewById(R.id.stripFuel);
 
-        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnCockpitConnect);
+        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.homeBottomPrimary);
         if (btnHomeConnect != null) {
             btnHomeConnect.setOnClickListener(v -> {
                 if (running) {
@@ -1422,14 +1422,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
      */
     private void setFabState(boolean isLogging) {
         if (fabLog == null) return;
-        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnCockpitConnect);
+        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.homeBottomPrimary);
         if (isLogging) {
             fabLog.setText("STOP");
             fabLog.setIconResource(android.R.drawable.ic_media_pause);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
             if (btnHomeConnect != null) {
-                btnHomeConnect.setText("DISCONNECT ECU");
-                btnHomeConnect.setIconResource(android.R.drawable.ic_media_pause);
+                btnHomeConnect.setText("■");
+                btnHomeConnect.setIcon(null);
+                btnHomeConnect.setTextColor(getColorCompat(R.color.background));
                 btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
             }
         } else {
@@ -1437,9 +1438,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fabLog.setIconResource(android.R.drawable.ic_media_play);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
             if (btnHomeConnect != null) {
-                btnHomeConnect.setText("CONNECT & TUNE");
-                btnHomeConnect.setIconResource(android.R.drawable.ic_media_play);
-                btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
+                btnHomeConnect.setText("+");
+                btnHomeConnect.setIcon(null);
+                btnHomeConnect.setTextColor(getColorCompat(R.color.primary));
+                btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.surface2)));
             }
         }
     }
@@ -1478,6 +1480,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             // Status strip: hide on home screen for a cleaner look, show on all other tabs
             if (statusStrip != null) {
                 statusStrip.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
+            }
+            View homeBottomNav = findViewById(R.id.homeBottomNav);
+            if (homeBottomNav != null) {
+                homeBottomNav.setVisibility(index == 6 ? View.VISIBLE : View.GONE);
+            }
+            // Home owns its status and navigation surfaces; avoid duplicating
+            // the generic toolbar controls above them.
+            if (topHeader != null) {
+                topHeader.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
             }
             
             if (index == 4) {
@@ -1531,6 +1542,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (homeNavGraph != null) homeNavGraph.setOnClickListener(v -> showTab(1));
         View homeNavAlerts = findViewById(R.id.homeNavAlerts);
         if (homeNavAlerts != null) homeNavAlerts.setOnClickListener(v -> showTab(3));
+
+        View bottomHome = findViewById(R.id.homeBottomHome);
+        if (bottomHome != null) bottomHome.setOnClickListener(v -> showTab(6));
+        View bottomConnect = findViewById(R.id.homeBottomConnect);
+        if (bottomConnect != null) bottomConnect.setOnClickListener(v -> showTab(5));
+        View bottomLogs = findViewById(R.id.homeBottomLogs);
+        if (bottomLogs != null) bottomLogs.setOnClickListener(v -> showTab(4));
+        View bottomMore = findViewById(R.id.homeBottomMore);
+        if (bottomMore != null) bottomMore.setOnClickListener(v -> showTab(0));
     }
 
     /**
@@ -3558,19 +3578,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             cockpitStatusDot.setBackgroundResource(dotRes);
         }
         
-        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.btnCockpitConnect);
-        if (btnHomeConnect != null) {
-            if (state == 2) {
-                btnHomeConnect.setText("DISCONNECT ECU");
-                btnHomeConnect.setIconResource(android.R.drawable.ic_media_pause);
-                btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
-            } else {
-                btnHomeConnect.setText("CONNECT & TUNE");
-                btnHomeConnect.setIconResource(android.R.drawable.ic_media_play);
-                btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
-            }
-        }
-
         if (txtHomeProtocol != null) {
             if (state == 2) {
                 LoggerConfig cfg = activeInProcessConfig != null ? activeInProcessConfig : readConfigFromUi();
