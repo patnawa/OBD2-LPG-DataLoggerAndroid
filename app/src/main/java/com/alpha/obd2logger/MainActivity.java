@@ -72,6 +72,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView headerStatus, headerVin, headerFuelMode, headerApiStatus;
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
     private TextView txtHomeFuelEconomy, txtHomeBoost, txtHomeDpf, txtHomeDtc;
+    private TextView txtHomeThrottle, txtHomeFuelTrim;
     private GraphView homeRpmTrend;
     private TextView stripBoost, stripFuel;
     private View headerStatusDot, headerApiDivider;
@@ -545,7 +546,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         // Derived sensor displays
         txtHomeFuelEconomy = null;
-        txtHomeBoost = null;
+        txtHomeBoost = findViewById(R.id.cockpitBoost);
+        txtHomeThrottle = findViewById(R.id.cockpitThrottle);
+        txtHomeFuelTrim = findViewById(R.id.cockpitFuelTrim);
         txtHomeDpf = null;
         txtHomeDtc = null;
         stripBoost = findViewById(R.id.stripBoost);
@@ -1428,7 +1431,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fabLog.setIconResource(android.R.drawable.ic_media_pause);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
             if (btnHomeConnect != null) {
-                btnHomeConnect.setText("■");
+                btnHomeConnect.setText("STOP");
                 btnHomeConnect.setIcon(null);
                 btnHomeConnect.setTextColor(getColorCompat(R.color.background));
                 btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
@@ -1438,7 +1441,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fabLog.setIconResource(android.R.drawable.ic_media_play);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
             if (btnHomeConnect != null) {
-                btnHomeConnect.setText("+");
+                btnHomeConnect.setText("START");
                 btnHomeConnect.setIcon(null);
                 btnHomeConnect.setTextColor(getColorCompat(R.color.primary));
                 btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.surface2)));
@@ -1479,11 +1482,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             // Status strip: hide on home screen for a cleaner look, show on all other tabs
             if (statusStrip != null) {
-                statusStrip.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
+                statusStrip.setVisibility(View.GONE);
             }
             View homeBottomNav = findViewById(R.id.homeBottomNav);
             if (homeBottomNav != null) {
-                homeBottomNav.setVisibility(index == 6 ? View.VISIBLE : View.GONE);
+                homeBottomNav.setVisibility(View.VISIBLE);
             }
             // Home owns its status and navigation surfaces; avoid duplicating
             // the generic toolbar controls above them.
@@ -3486,13 +3489,23 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // ── Derived sensors: Fuel Economy + Turbo Boost ──────
         Double fuelKmL = valueByKey(record, "derived_fuel_kmL");
         Double boostPsi = valueByKey(record, "derived_boost_psi");
+        Double throttle = valueByKey(record, "01_11");
+        Double stft = valueByKey(record, "01_06");
+        Double ltft = valueByKey(record, "01_07");
         Double dpfSoot = valueByKey(record, "01_7A");
 
         if (txtHomeFuelEconomy != null) {
             txtHomeFuelEconomy.setText(fuelKmL != null ? String.format(Locale.US, "%.1f km/L", fuelKmL) : "---");
         }
         if (txtHomeBoost != null) {
-            txtHomeBoost.setText(boostPsi != null ? String.format(Locale.US, "%.1f psi", boostPsi) : "---");
+            txtHomeBoost.setText(boostPsi != null ? String.format(Locale.US, "%.1f", boostPsi) : "---");
+        }
+        if (txtHomeThrottle != null) {
+            txtHomeThrottle.setText(throttle != null ? String.format(Locale.US, "%.0f", throttle) : "---");
+        }
+        if (txtHomeFuelTrim != null) {
+            Double totalTrim = stft != null && ltft != null ? stft + ltft : (ltft != null ? ltft : stft);
+            txtHomeFuelTrim.setText(totalTrim != null ? String.format(Locale.US, "%+.1f", totalTrim) : "---");
         }
         if (txtHomeDpf != null) {
             if (dpfSoot != null) {
@@ -3591,6 +3604,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (txtHomeRpm != null) txtHomeRpm.setText("---");
                 if (txtHomeSpeed != null) txtHomeSpeed.setText("---");
                 if (txtHomeCoolant != null) txtHomeCoolant.setText("---");
+                if (txtHomeBoost != null) txtHomeBoost.setText("---");
+                if (txtHomeThrottle != null) txtHomeThrottle.setText("---");
+                if (txtHomeFuelTrim != null) txtHomeFuelTrim.setText("---");
             }
         }
     }

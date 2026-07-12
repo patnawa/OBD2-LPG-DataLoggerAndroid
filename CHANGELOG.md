@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.16.2] - 2026-07-12 — Persistent Navigation + Dense Live Telemetry
+
+### Navigation
+- Bottom navigation now stays visible on every panel, so Home can always return to the cockpit.
+- Renamed Connect to Settings because it opens connection settings.
+- Replaced the ambiguous center `+` with explicit START / STOP state text.
+- Renamed More to Dashboard because it opens the live parameter dashboard.
+- Retired the old live status strip to avoid competing bottom navigation surfaces.
+
+### Live Telemetry
+- Added compact Boost, Throttle, and combined STFT+LTFT readouts below the RPM trend.
+- Kept RPM and speed dominant while filling unused space with actionable tuning data.
+- Live values reset cleanly when the adapter disconnects.
+
 ## [3.16.1] - 2026-07-12 — Reference-Matched Navigation + Quick Access
 
 ### Fixed from visual review
