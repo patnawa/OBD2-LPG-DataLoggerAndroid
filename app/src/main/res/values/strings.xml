@@ -43,26 +43,33 @@
     <string name="deviation">DEVIATION</string>
     <string name="map_formula_hint">Formula: Deviation = LPG Trim - Petrol Trim. Adjust your LPG ECU multiplier map by this percentage.</string>
     
-    <!-- Tuning Analyzer Context Strings -->
-    <string name="analyzer_unknown">UNKNOWN</string>
-    <string name="analyzer_no_data">No sensor data available</string>
-    <string name="analyzer_lean">LEAN</string>
-    <string name="analyzer_rich">RICH</string>
-    <string name="analyzer_ok">OK</string>
-    
-    <string name="analyzer_petrol_lean">Factory engine is running lean. Check for vacuum leaks or bad sensors before tuning LPG.</string>
-    <string name="analyzer_petrol_rich">Factory engine is running rich. Fix mechanical issues before tuning LPG.</string>
-    <string name="analyzer_petrol_ok">Factory tune is healthy. Safe to collect baseline.</string>
-    
-    <string name="analyzer_lpg_lean">LPG/CNG is LEAN. INCREASE values in gas map (add fuel).</string>
-    <string name="analyzer_lpg_rich">LPG/CNG is RICH. DECREASE values in gas map (reduce fuel).</string>
-    <string name="analyzer_lpg_ok">LPG/CNG mixture matches factory baseline closely.</string>
-    
-    <string name="status_perfect_translated">Perfect</string>
-    <string name="status_lean_translated">Lean</string>
-    <string name="status_rich_translated">Rich</string>
-    
-    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nStatus: %3$s\nAdvice: %4$s</string>
+    <!-- Tuning Analyzer Context Strings (professional OBD2 fuel-trim engine) -->
+        <string name="analyzer_unknown">UNKNOWN</string>
+        <string name="analyzer_no_data">No fuel-trim sensors reporting. Check PID support (01_06/01_07).</string>
+        <string name="analyzer_lean">LEAN</string>
+        <string name="analyzer_rich">RICH</string>
+        <string name="analyzer_ok">OK</string>
+        <string name="analyzer_unstable">UNSTABLE</string>
+        <string name="analyzer_open_loop">Open loop — mixture not controlled by oxygen feedback. Wait for closed loop before analyzing.</string>
+        <string name="analyzer_cold_engine">Engine cold (ECT ≤ 80 °C). Warm up before fuel-trim analysis or LPG mapping.</string>
+        <string name="analyzer_partial_data">Partial fuel-trim data (STFT or LTFT only). Diagnostic confidence is limited.</string>
+        <string name="analyzer_diesel_no_trim">Diesel modes do not use STFT/LTFT fuel trims.</string>
+        <string name="analyzer_unstable_advice">STFT oscillation is high. Hold steady load / RPM — do not log map cells until trims settle.</string>
+        <string name="analyzer_bank_imbalance">⚠ Bank1 vs Bank2 imbalance — inspect O2 sensors / exhaust leaks before map work.</string>
+
+        <string name="analyzer_petrol_lean">Factory engine is running lean. Check for vacuum leaks or bad sensors before tuning LPG.</string>
+        <string name="analyzer_petrol_rich">Factory engine is running rich. Fix mechanical issues before tuning LPG.</string>
+        <string name="analyzer_petrol_ok">Factory tune is healthy (LTFT within ±5%). Safe to collect petrol baseline.</string>
+
+        <string name="analyzer_lpg_lean">LPG/CNG is LEAN. INCREASE gas map values (add fuel) in the active RPM×load cell.</string>
+        <string name="analyzer_lpg_rich">LPG/CNG is RICH. DECREASE gas map values (reduce fuel) in the active RPM×load cell.</string>
+        <string name="analyzer_lpg_ok">LPG/CNG mixture matches factory baseline closely (LTFT within ±8%).</string>
+
+        <string name="status_perfect_translated">Perfect</string>
+        <string name="status_lean_translated">Lean</string>
+        <string name="status_rich_translated">Rich</string>
+
+        <string name="tuning_status_format">STFT: %1$s | LTFT: %2$s\nStatus: %3$s (conf %4$d%%)\nAdvice: %5$s</string>
 
     <!-- DTC -->
     <string name="read_dtc">Read DTCs</string>

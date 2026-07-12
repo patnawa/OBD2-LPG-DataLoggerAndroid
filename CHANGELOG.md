@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.14.0] - 2026-07-12 — Professional Fuel-Trim Analyzer (OBD2 shop-grade)
+
+### Fixed
+- **Thai OK → UNKNOWN** — Localization rebuilt FuelTrimResult from the string status only. Thai `สมบูรณ์ (PERFECT)` never contained the word "OK", so `getVerdict()` became UNKNOWN after display. Status now keeps the enum through localization.
+- **UNKNOWN painted as RICH/red** — UI colour fell through to danger when status was not OK/LEAN. Now uses discrete roles: OK green, LEAN blue, RICH red, UNSTABLE amber, UNKNOWN muted grey.
+- **Analyzer ignored open-loop / cold engine** — Live strip could shout LEAN/RICH while loop was open or ECT < 80 °C. Gate forces UNKNOWN with explicit reason.
+- **Panel only when STFT present** — If STFT dropped momentarily UI froze on last sample. Analyses with STFT-only / LTFT-only / Bank2 now update and show "—" for missing side.
+- **±10% STFT+LTFT "OK"** — Too soft for petrol prep (false PERFECT at LTFT +8). Replaced with LTFT-primary thresholds: petrol ±5% OK / ±8% lean-rich; LPG ±8% OK / ±12% lean-rich.
+
+### Added
+- Bank1+Bank2 fusion (01_06/07/08/09) with imbalance flag when |B1−B2| ≥ 5%.
+- STFT short-window std-dev → UNSTABLE verdict (hold load, don't log map cells).
+- Confidence % and gate reason (OPEN_LOOP / COLD / PARTIAL / NO_DATA / DIESEL).
+- EN + TH strings for all new states; advice appends LTFT magnitude for map adjustments.
+- `LPGAnalyzerTest` coverage for CL gate, cold, thresholds, bank merge, localization enum preserve.
+
+### Dashboard
+- `tuning_status_format` now shows STFT/LTFT text, confidence, professional advice.
+- Reset STFT history window on Start logging (no bleed across fuel sessions).
+
 ## [3.13.0] - 2026-07-12 — Live Map Right-Cell + AI Log Columns + Import/Compare
 
 ### Fixed — Live Map always tracks the correct cell

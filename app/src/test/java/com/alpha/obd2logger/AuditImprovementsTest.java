@@ -53,17 +53,19 @@ public class AuditImprovementsTest {
     }
 
     @Test
-    public void analyzeFuelTrim_bothPresent_givesVerdict() {
-        // total = 12 > 10 => LEAN
-        FuelTrimResult r = LPGAnalyzer.analyzeFuelTrim(6.0, 6.0, FuelMode.PETROL);
-        assertEquals(LPGAnalyzer.TrimVerdict.LEAN, r.getVerdict());
-        // negative total => RICH
-        FuelTrimResult r2 = LPGAnalyzer.analyzeFuelTrim(-6.0, -6.0, FuelMode.LPG);
-        assertEquals(LPGAnalyzer.TrimVerdict.RICH, r2.getVerdict());
-        // within ±10 => OK
-        FuelTrimResult r3 = LPGAnalyzer.analyzeFuelTrim(1.0, 1.0, FuelMode.PETROL);
-        assertEquals(LPGAnalyzer.TrimVerdict.OK, r3.getVerdict());
-    }
+        public void analyzeFuelTrim_bothPresent_givesVerdict() {
+            // Petrol LTFT-primary: LTFT 6 > 5 OK band => LEAN
+            FuelTrimResult r = LPGAnalyzer.analyzeFuelTrim(6.0, 6.0, FuelMode.PETROL);
+            assertEquals(LPGAnalyzer.TrimVerdict.LEAN, r.getVerdict());
+            // LPG band is looser (±8 OK): LTFT -6 alone is still OK, needs LTFT over warn
+            FuelTrimResult r2ok = LPGAnalyzer.analyzeFuelTrim(-1.0, -6.0, FuelMode.LPG);
+            assertEquals(LPGAnalyzer.TrimVerdict.OK, r2ok.getVerdict());
+            FuelTrimResult r2 = LPGAnalyzer.analyzeFuelTrim(-1.0, -13.0, FuelMode.LPG);
+            assertEquals(LPGAnalyzer.TrimVerdict.RICH, r2.getVerdict());
+            // within petrol OK band => OK
+            FuelTrimResult r3 = LPGAnalyzer.analyzeFuelTrim(1.0, 1.0, FuelMode.PETROL);
+            assertEquals(LPGAnalyzer.TrimVerdict.OK, r3.getVerdict());
+        }
 
     // ── BUG#4 — unknown loop state defaults to CLOSED (plot), not OPEN (skip)
     // This was intentionally changed from false→true so that logs without loop-state

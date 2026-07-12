@@ -45,20 +45,27 @@
     <string name="map_formula_hint">สูตรคำนวณ: ค่าเบี่ยงเบน (Deviation) = แก๊ส Trim - น้ำมัน Trim. ใช้เปอร์เซ็นต์นี้ปรับค่าตารางคูณในกล่องจูนแก๊สของคุณ</string>
     
     <string name="analyzer_unknown">ไม่ทราบสถานะ</string>
-    <string name="analyzer_no_data">ไม่มีข้อมูลเซ็นเซอร์</string>
-    <string name="analyzer_lean">บางไป (LEAN)</string>
-    <string name="analyzer_rich">หนาไป (RICH)</string>
-    <string name="analyzer_ok">สมบูรณ์ (PERFECT)</string>
-    <string name="analyzer_petrol_lean">เครื่องยนต์น้ำมันทำงานบางเกินไป ตรวจสอบท่อแวคคั่มรั่วหรือเซ็นเซอร์ก่อนเริ่มจูนแก๊ส</string>
-    <string name="analyzer_petrol_rich">เครื่องยนต์น้ำมันทำงานหนาเกินไป แก้ไขปัญหาเครื่องยนต์ก่อนเริ่มจูนแก๊ส</string>
-    <string name="analyzer_petrol_ok">เครื่องยนต์น้ำมันทำงานสมบูรณ์ พร้อมเก็บค่า Baseline</string>
-    <string name="analyzer_lpg_lean">แก๊สบางไป (LEAN) กรุณาเพิ่มการจ่ายแก๊สในตารางจูนแก๊ส</string>
-    <string name="analyzer_lpg_rich">แก๊สหนาไป (RICH) กรุณาลดการจ่ายแก๊สในตารางจูนแก๊ส</string>
-    <string name="analyzer_lpg_ok">การจ่ายแก๊สสมบูรณ์ ใกล้เคียงกับ Baseline ของน้ำมันเดิม</string>
-    <string name="status_perfect_translated">สมบูรณ์ (PERFECT)</string>
-    <string name="status_lean_translated">บางไป (LEAN)</string>
-    <string name="status_rich_translated">หนาไป (RICH)</string>
-    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nสถานะ: %3$s\nคำแนะนำ: %4$s</string>
+        <string name="analyzer_no_data">ไม่มีข้อมูลเซ็นเซอร์ Trim (01_06/01_07) ตรวจสอบว่ารถรองรับ PID นี้</string>
+        <string name="analyzer_lean">บางไป (LEAN)</string>
+        <string name="analyzer_rich">หนาไป (RICH)</string>
+        <string name="analyzer_ok">สมบูรณ์ (PERFECT)</string>
+        <string name="analyzer_unstable">ไม่เสถียร (UNSTABLE)</string>
+        <string name="analyzer_open_loop">Open Loop — ยังไม่ใช้ O2 feedback รอปิดลูปก่อนวิเคราะห์</string>
+        <string name="analyzer_cold_engine">เครื่องยังเย็น (ECT ≤ 80°C) อุ่นเครื่องก่อนวิเคราะห์ / จูน</string>
+        <string name="analyzer_partial_data">มีข้อมูล Trim บางส่วนเท่านั้น (STFT หรือ LTFT อย่างใดอย่างหนึ่ง) ความมั่นใจต่ำ</string>
+        <string name="analyzer_diesel_no_trim">โหมดดีเซลไม่มี STFT/LTFT fuel trim</string>
+        <string name="analyzer_unstable_advice">STFT แกว่งมาก รักษารอบ/โหลดให้คงที่ — อย่าเก็บค่า map จนกว่า trim จะนิ่ง</string>
+        <string name="analyzer_bank_imbalance">⚠ Bank1 กับ Bank2 ไม่สมดุล — ตรวจ O2 / ไอเสียรั่วก่อนจูน</string>
+        <string name="analyzer_petrol_lean">เครื่องยนต์น้ำมันบางเกินไป ตรวจสอบท่อแวคคั่มรั่วหรือเซ็นเซอร์ก่อนเริ่มจูนแก๊ส</string>
+        <string name="analyzer_petrol_rich">เครื่องยนต์น้ำมันหนาเกินไป แก้ไขปัญหาเครื่องยนต์ก่อนเริ่มจูนแก๊ส</string>
+        <string name="analyzer_petrol_ok">เครื่องยนต์น้ำมันสมบูรณ์ (LTFT อยู่ใน ±5%) พร้อมเก็บ Baseline</string>
+        <string name="analyzer_lpg_lean">แก๊สบาง (LEAN) เพิ่มค่าในตารางจูนแก๊สที่ cell ปัจจุบัน</string>
+        <string name="analyzer_lpg_rich">แก๊สหนา (RICH) ลดค่าในตารางจูนแก๊สที่ cell ปัจจุบัน</string>
+        <string name="analyzer_lpg_ok">การจ่ายแก๊สสมดุลใกล้เคียง baseline น้ำมัน (LTFT อยู่ใน ±8%)</string>
+        <string name="status_perfect_translated">สมบูรณ์ (PERFECT)</string>
+        <string name="status_lean_translated">บางไป (LEAN)</string>
+        <string name="status_rich_translated">หนาไป (RICH)</string>
+        <string name="tuning_status_format">STFT: %1$s | LTFT: %2$s\nสถานะ: %3$s (มั่นใจ %4$d%%)\nคำแนะนำ: %5$s</string>
 
     <string name="read_dtc">อ่านโค้ด DTC</string>
     <string name="clear_dtc">ลบโค้ด DTC</string>

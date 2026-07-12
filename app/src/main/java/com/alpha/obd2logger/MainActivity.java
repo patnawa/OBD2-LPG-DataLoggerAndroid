@@ -2476,6 +2476,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (values[i] != null) values[i].setText("—");
         }
 
+        // Reset analyzer history so STFT std-dev window does not bleed across sessions/fuels.
+        LPGAnalyzer.resetHistory();
+
         // Sync FuelMapView mode with selected fuel mode so data shows immediately.
         // IMPORTANT: only clear the fuel we're about to (re)log — NOT the whole map.
         // The Tune Assist / Deviation workflow logs Petrol, then switches to LPG and
@@ -2483,20 +2486,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Petrol data the moment LPG logging begins, leaving Deviation/Correction
         // permanently empty. clearData(fuelMode) preserves the comparison fuel.
         if (fuelMapView != null) {
-                    fuelMapView.clearData(config.fuelMode);
-                    // Also clear the corresponding fuel in LiveMapStore (service or in-process)
-                    LiveMapStore clearStore = getLiveMapStore();
-                    if (clearStore != null) {
-                        clearStore.clear(config.fuelMode);
-                    }
-                    if (inProcessMapStore != null) {
-                        inProcessMapStore.clear(config.fuelMode);
-                    }
-                    if (config.fuelMode.isGaseous()) {
-                        sessionLpgData.clear();
-                    } else {
-                        sessionPetrolData.clear();
-                    }
+            fuelMapView.clearData(config.fuelMode);
+            // Also clear the corresponding fuel in LiveMapStore (service or in-process)
+            LiveMapStore clearStore = getLiveMapStore();
+            if (clearStore != null) {
+                clearStore.clear(config.fuelMode);
+            }
+            if (inProcessMapStore != null) {
+                inProcessMapStore.clear(config.fuelMode);
+            }
+            if (config.fuelMode.isGaseous()) {
+                sessionLpgData.clear();
+            } else {
+                sessionPetrolData.clear();
+            }
             fuelMapView.setMapMode(config.fuelMode.isGaseous()
                     ? FuelMapView.MapMode.LPG : FuelMapView.MapMode.PETROL);
             // Also sync the toggle button in the Map tab
@@ -3750,39 +3753,64 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void updateFuelTrim(DataRecord record) {
         if (record == null) return;
-        Double stft = valueByKey(record, "01_06");
-        Double ltft = valueByKey(record, "01_07");
-        if (stft != null) {
-            FuelMode mode = FuelMode.fromString(record.getFuelMode());
-            FuelTrimResult result = LPGAnalyzer.analyzeFuelTrim(this, stft, ltft, mode);
-            
-            if (tuningStatusText != null) {
-                int color = result.getStatus().equals(getString(R.string.analyzer_ok)) ? R.color.accent :
-                        (result.getStatus().equals(getString(R.string.analyzer_lean)) ? R.color.primary : R.color.danger);
-                tuningStatusText.setTextColor(getColorCompat(color));
-                tuningStatusText.setText(String.format(Locale.US,
-                        getString(R.string.tuning_status_format),
-                        result.getStft(), result.getLtft(),
-                        result.getStatus(),
-                        result.getRecommendation()));
-            }
+        Double stftB1 = valueByKey(record, "01_06");
+        Double ltftB1 = valueByKey(record, "01_07");
+        Double stftB2 = valueByKey(record, "01_08");
+        Double ltftB2 = valueByKey(record, "01_09");
+        Double fuelStatus = valueByKey(record, "01_03");
+        Double ect = valueByKey(record, "01_05");
 
-            // Update new professional tuning views
-            if (txtTuningStft != null) {
-                txtTuningStft.setText(String.format(Locale.US, "%.1f%%", result.getStft()));
-            }
-            if (txtTuningLtft != null) {
-                txtTuningLtft.setText(String.format(Locale.US, "%.1f%%", result.getLtft()));
-            }
-            if (txtTuningStatus != null) {
-                txtTuningStatus.setText(result.getStatus());
-                int color = result.getStatus().equals(getString(R.string.analyzer_ok)) ? R.color.accent :
-                        (result.getStatus().equals(getString(R.string.analyzer_lean)) ? R.color.primary : R.color.danger);
-                txtTuningStatus.setTextColor(getColorCompat(color));
-            }
-            if (txtTuningAdvice != null) {
-                txtTuningAdvice.setText(result.getRecommendation());
-            }
+        // Always recompute even with partial PIDs so UI never freezes on last sample.
+        if (stftB1 == null && ltftB1 == null && stftB2 == null && ltftB2 == null
+                && fuelStatus == null && ect == null) {
+            return;
+        }
+
+        FuelMode mode = FuelMode.fromString(record.getFuelMode());
+        FuelTrimResult result = LPGAnalyzer.analyzeLocalized(
+                this, stftB1, ltftB1, stftB2, ltftB2, fuelStatus, ect, mode);
+
+        int colorRes = colorForTrimVerdict(result.getVerdict());
+        String stftTxt = result.hasStft()
+                ? String.format(Locale.US, "%.1f%%", result.getStft()) : "—";
+        String ltftTxt = result.hasLtft()
+                ? String.format(Locale.US, "%.1f%%", result.getLtft()) : "—";
+
+        if (tuningStatusText != null) {
+            tuningStatusText.setTextColor(getColorCompat(colorRes));
+            tuningStatusText.setText(String.format(Locale.US,
+                    getString(R.string.tuning_status_format),
+                    stftTxt, ltftTxt,
+                    result.getStatus(),
+                    result.getConfidence(),
+                    result.getRecommendation()));
+        }
+
+        if (txtTuningStft != null) {
+            txtTuningStft.setText(stftTxt);
+        }
+        if (txtTuningLtft != null) {
+            txtTuningLtft.setText(ltftTxt);
+        }
+        if (txtTuningStatus != null) {
+            txtTuningStatus.setText(result.getStatus());
+            txtTuningStatus.setTextColor(getColorCompat(colorRes));
+        }
+        if (txtTuningAdvice != null) {
+            txtTuningAdvice.setText(result.getRecommendation());
+        }
+    }
+
+    /** Professional colour roles: never paint UNKNOWN as RICH/red. */
+    private int colorForTrimVerdict(LPGAnalyzer.TrimVerdict v) {
+        if (v == null) return R.color.muted;
+        switch (v) {
+            case OK: return R.color.accent;
+            case LEAN: return R.color.primary;
+            case RICH: return R.color.danger;
+            case UNSTABLE: return R.color.warning;
+            case UNKNOWN:
+            default: return R.color.muted;
         }
     }
 
