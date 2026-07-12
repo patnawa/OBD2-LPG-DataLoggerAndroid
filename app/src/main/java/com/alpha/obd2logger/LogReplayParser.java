@@ -31,13 +31,19 @@ public final class LogReplayParser {
     }
 
     /** Resolved column indices from a header line. axisIdx = MAP, else Engine Load. */
-    public static final class Columns {
-        public int fuelModeIdx = -1, loopStatusIdx = -1, fuelSystemStatusIdx = -1;
-        public int rpmIdx = -1, mapIdx = -1, loadIdx = -1, stftIdx = -1, ltftIdx = -1;
-        public int lambdaIdx = -1;  // PID 0x34 or 0x44 — for LPG vehicles without STFT/LTFT
-        public int axisIdx() { return (mapIdx != -1) ? mapIdx : loadIdx; }
-        public boolean hasRequired() { return rpmIdx != -1 && axisIdx() != -1; }
-    }
+        public static final class Columns {
+            public int fuelModeIdx = -1, loopStatusIdx = -1, fuelSystemStatusIdx = -1;
+            public int rpmIdx = -1, mapIdx = -1, loadIdx = -1, stftIdx = -1, ltftIdx = -1;
+            public int lambdaIdx = -1;  // PID 0x34 or 0x44 — for LPG vehicles without STFT/LTFT
+            // Optional ≥3.13 AI map columns (used when present to prefer accepted samples)
+            public int mapRpmCellIdx = -1, mapAxisValueIdx = -1, mapAcceptedIdx = -1, mapTrimTotalIdx = -1;
+            public int axisIdx() { return (mapIdx != -1) ? mapIdx : loadIdx; }
+            public boolean hasRequired() {
+                if (rpmIdx != -1 && axisIdx() != -1) return true;
+                // New logs can satisfy with pre-binned map columns alone
+                return mapRpmCellIdx != -1 && mapAxisValueIdx != -1;
+            }
+        }
 
     private LogReplayParser() {}
 
@@ -85,23 +91,29 @@ public final class LogReplayParser {
     }
 
     /** Resolve column indices from a (possibly quoted) header line. */
-    public static Columns parseHeader(String headerLine) {
-        Columns c = new Columns();
-        String[] headers = splitCsv(headerLine);
-        for (int i = 0; i < headers.length; i++) {
-            String h = headers[i].toLowerCase().replace("\"", "").trim();
-            if (h.equals("fuel_mode")) c.fuelModeIdx = i;
-            else if (h.equals("loop_status")) c.loopStatusIdx = i;
-            else if (h.contains("fuel system status")) c.fuelSystemStatusIdx = i;
-            else if (h.contains("engine rpm")) c.rpmIdx = i;
-            else if (h.contains("manifold pressure")) c.mapIdx = i;
-            else if (h.contains("engine load")) c.loadIdx = i;
-            else if (h.contains("short term fuel trim")) c.stftIdx = i;
-            else if (h.contains("long term fuel trim")) c.ltftIdx = i;
-            else if (h.contains("lambda") || h.contains("wideband lambda") || h.contains("equivalence ratio")) c.lambdaIdx = i;
+        public static Columns parseHeader(String headerLine) {
+            Columns c = new Columns();
+            String[] headers = splitCsv(headerLine);
+            for (int i = 0; i < headers.length; i++) {
+                String h = headers[i].toLowerCase().replace("\"", "").trim();
+                if (h.equals("fuel_mode")) c.fuelModeIdx = i;
+                else if (h.equals("loop_status")) c.loopStatusIdx = i;
+                else if (h.contains("fuel system status")) c.fuelSystemStatusIdx = i;
+                else if (h.contains("engine rpm") && !h.contains("map rpm")) c.rpmIdx = i;
+                else if (h.contains("manifold pressure")) c.mapIdx = i;
+                else if (h.contains("engine load")) c.loadIdx = i;
+                // Only Bank 1 trims for the map (Bank 2 columns would overwrite incorrectly)
+                else if (h.contains("short term fuel trim") && !h.contains("bank 2") && c.stftIdx == -1) c.stftIdx = i;
+                else if (h.contains("long term fuel trim") && !h.contains("bank 2") && c.ltftIdx == -1) c.ltftIdx = i;
+                else if (h.contains("lambda") || h.contains("wideband lambda") || h.contains("equivalence ratio")) c.lambdaIdx = i;
+                // Optional precomputed map fields from ≥3.13 logs (AI-friendly)
+                else if (h.contains("map rpm cell")) c.mapRpmCellIdx = i;
+                else if (h.contains("map axis value")) c.mapAxisValueIdx = i;
+                else if (h.contains("map accepted")) c.mapAcceptedIdx = i;
+                else if (h.contains("map trim total")) c.mapTrimTotalIdx = i;
+            }
+            return c;
         }
-        return c;
-    }
 
     /**
      * Closed-loop gating per SAE J1979 PID 03 byte A bit flags:
@@ -137,67 +149,108 @@ public final class LogReplayParser {
     }
 
     /**
-     * Parse a single data line into a plottable Point, or null if the line should
-     * be skipped (too short, open loop, or unparseable numbers).
-     *
-     * If the MAP column value is empty (common in logs from MAF-based vehicles
-     * before the MAP synthesis fix), falls back to Engine Load as the Y-axis —
-     * mirrors the live logging path in updateFuelMap().
-     */
-    public static Point parseLine(String line, Columns c) {
-        String[] parts = splitCsv(line);
-        if (parts.length <= Math.max(c.rpmIdx, c.axisIdx())) return null;
+         * Parse a single data line into a plottable Point, or null if the line should
+         * be skipped (too short, open loop, or unparseable numbers).
+         *
+         * If the MAP column value is empty (common in logs from MAF-based vehicles
+         * before the MAP synthesis fix), falls back to Engine Load as the Y-axis —
+         * mirrors the live logging path in updateFuelMap().
+         *
+         * When ≥3.13 AI map columns are present ({@code map_accepted} /
+         * {@code map_trim_total} / binned axis), prefer those so compare/import
+         * replays exactly what LiveMapStore accepted during live logging.
+         */
+        public static Point parseLine(String line, Columns c) {
+            String[] parts = splitCsv(line);
 
-        FuelMode mode = FuelMode.PETROL;
-        if (c.fuelModeIdx != -1 && parts.length > c.fuelModeIdx) {
-            mode = FuelMode.fromString(cell(parts, c.fuelModeIdx));
-        }
-
-        if (!isClosedLoop(parts, c)) return null; // skip open-loop for tuning
-
-        try {
-            double rpm = Double.parseDouble(cell(parts, c.rpmIdx));
-
-            // Try the primary axis (MAP). If empty, fall back to Engine Load.
-            double axis;
-            String axisStr = cell(parts, c.axisIdx());
-            if (axisStr.isEmpty() && c.mapIdx != -1 && c.loadIdx != -1) {
-                // MAP column exists but value is empty — use Engine Load
-                axisStr = cell(parts, c.loadIdx);
+            FuelMode mode = FuelMode.PETROL;
+            if (c.fuelModeIdx != -1 && parts.length > c.fuelModeIdx) {
+                mode = FuelMode.fromString(cell(parts, c.fuelModeIdx));
             }
-            if (axisStr.isEmpty()) return null; // no load axis at all
-            axis = Double.parseDouble(axisStr);
 
-            double stft = 0.0;
-            if (c.stftIdx != -1 && parts.length > c.stftIdx) {
-                String s = cell(parts, c.stftIdx);
-                if (!s.isEmpty()) stft = Double.parseDouble(s);
+            // Prefer explicit map_accepted flag when present (1 = LiveMapStore took it)
+            if (c.mapAcceptedIdx != -1 && parts.length > c.mapAcceptedIdx) {
+                String acc = cell(parts, c.mapAcceptedIdx);
+                if (!acc.isEmpty()) {
+                    try {
+                        if (Double.parseDouble(acc) < 0.5) return null; // rejected
+                    } catch (NumberFormatException ignored) { /* fall through */ }
+                }
+            } else if (!isClosedLoop(parts, c)) {
+                return null; // skip open-loop for tuning
             }
-            double ltft = 0.0;
-            if (c.ltftIdx != -1 && parts.length > c.ltftIdx) {
-                String s = cell(parts, c.ltftIdx);
-                if (!s.isEmpty()) ltft = Double.parseDouble(s);
-            }
-            double trim = stft + ltft;
-            // Lambda fallback: LPG/CNG vehicles often have no STFT/LTFT PIDs but
-            // DO have a wideband lambda (PID 0x34 or 0x44). When both trims are
-            // absent (0), derive a "synthetic trim" from lambda deviation:
-            //   trim% = (lambda - 1.0) * 100
-            // e.g. lambda 1.05 → +5% lean, lambda 0.95 → -5% rich.
-            // This makes the fuel map useful for LPG tuning even without
-            // standard fuel-trim PIDs.
-            if (stft == 0.0 && ltft == 0.0 && c.lambdaIdx != -1 && parts.length > c.lambdaIdx) {
-                String lamStr = cell(parts, c.lambdaIdx);
-                if (!lamStr.isEmpty()) {
-                    double lambda = Double.parseDouble(lamStr);
-                    if (lambda > 0 && lambda < 3) {
-                        trim = (lambda - 1.0) * 100.0;
+
+            try {
+                double rpm;
+                double axis;
+                double trim;
+
+                boolean usedAiCols = false;
+                if (c.mapRpmCellIdx != -1 && c.mapAxisValueIdx != -1
+                        && parts.length > Math.max(c.mapRpmCellIdx, c.mapAxisValueIdx)) {
+                    String rpmCellStr = cell(parts, c.mapRpmCellIdx);
+                    String axisStr = cell(parts, c.mapAxisValueIdx);
+                    if (!rpmCellStr.isEmpty() && !axisStr.isEmpty()) {
+                        rpm = Double.parseDouble(rpmCellStr);
+                        axis = Double.parseDouble(axisStr);
+                        usedAiCols = true;
+                    } else {
+                        rpm = Double.NaN;
+                        axis = Double.NaN;
+                    }
+                } else {
+                    rpm = Double.NaN;
+                    axis = Double.NaN;
+                }
+
+                if (!usedAiCols) {
+                    int need = Math.max(c.rpmIdx, c.axisIdx());
+                    if (need < 0 || parts.length <= need) return null;
+                    rpm = Double.parseDouble(cell(parts, c.rpmIdx));
+
+                    String axisStr = cell(parts, c.axisIdx());
+                    if (axisStr.isEmpty() && c.mapIdx != -1 && c.loadIdx != -1) {
+                        axisStr = cell(parts, c.loadIdx);
+                    }
+                    if (axisStr.isEmpty()) return null;
+                    axis = Double.parseDouble(axisStr);
+                }
+
+                if (c.mapTrimTotalIdx != -1 && parts.length > c.mapTrimTotalIdx) {
+                    String t = cell(parts, c.mapTrimTotalIdx);
+                    if (!t.isEmpty()) {
+                        trim = Double.parseDouble(t);
+                        return new Point(rpm, axis, trim, mode);
                     }
                 }
+
+                double stft = 0.0;
+                if (c.stftIdx != -1 && parts.length > c.stftIdx) {
+                    String s = cell(parts, c.stftIdx);
+                    if (!s.isEmpty()) stft = Double.parseDouble(s);
+                }
+                double ltft = 0.0;
+                if (c.ltftIdx != -1 && parts.length > c.ltftIdx) {
+                    String s = cell(parts, c.ltftIdx);
+                    if (!s.isEmpty()) ltft = Double.parseDouble(s);
+                }
+                trim = stft + ltft;
+                // Lambda fallback: LPG/CNG vehicles often have no STFT/LTFT PIDs but
+                // DO have a wideband lambda (PID 0x34 or 0x44). When both trims are
+                // absent (0), derive a "synthetic trim" from lambda deviation:
+                //   trim% = (lambda - 1.0) * 100
+                if (stft == 0.0 && ltft == 0.0 && c.lambdaIdx != -1 && parts.length > c.lambdaIdx) {
+                    String lamStr = cell(parts, c.lambdaIdx);
+                    if (!lamStr.isEmpty()) {
+                        double lambda = Double.parseDouble(lamStr);
+                        if (lambda > 0 && lambda < 3) {
+                            trim = (lambda - 1.0) * 100.0;
+                        }
+                    }
+                }
+                return new Point(rpm, axis, trim, mode);
+            } catch (NumberFormatException ignored) {
+                return null;
             }
-            return new Point(rpm, axis, trim, mode);
-        } catch (NumberFormatException ignored) {
-            return null;
         }
     }
-}

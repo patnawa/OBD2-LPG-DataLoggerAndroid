@@ -93,19 +93,32 @@ public class FuelMapView extends View {
     }
 
     /**
-     * Replace both petrol and LPG datasets from a {@link LiveMapStore.MapSnapshot}.
-     * This is the preferred path when the store is the canonical source
-     * (background logging) — avoids the clear+putAll race condition of
-     * the old sessionPetrolData copy pattern.
-     */
-    public void syncFromStore(LiveMapStore.MapSnapshot snapshot) {
-        if (snapshot == null) return;
-        this.petrolData.clear();
-        this.petrolData.putAll(snapshot.getPetrolData());
-        this.lpgData.clear();
-        this.lpgData.putAll(snapshot.getLpgData());
-        postInvalidate();
-    }
+         * Replace both petrol and LPG datasets from a {@link LiveMapStore.MapSnapshot}.
+         * Preferred path when the store is the canonical source (background logging).
+         *
+         * <p>Also copies the active (RPM, MAP) cursor so the live highlight tracks
+         * the vehicle's exact current bin — even when the latest sample was rejected
+         * by debounce / open-loop gates (the store still updates the cursor).
+         */
+        public void syncFromStore(LiveMapStore.MapSnapshot snapshot) {
+            if (snapshot == null) return;
+            this.petrolData.clear();
+            this.petrolData.putAll(snapshot.getPetrolData());
+            this.lpgData.clear();
+            this.lpgData.putAll(snapshot.getLpgData());
+            if (snapshot.getActiveRpmCell() >= 0) {
+                this.currentRpmCell = snapshot.getActiveRpmCell();
+                this.currentMapCell = snapshot.getActiveMapBin();
+            }
+            postInvalidate();
+        }
+
+        /** Explicitly set the live highlight to a (pre-binned) cell. */
+        public void setActiveCell(int rpmCell, float mapBin) {
+            this.currentRpmCell = rpmCell;
+            this.currentMapCell = mapBin;
+            postInvalidate();
+        }
 
     public FuelMapView(Context context) {
         super(context);

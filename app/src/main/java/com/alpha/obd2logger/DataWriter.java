@@ -139,6 +139,18 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("derived_pdi", "Power Density Index");
         registerDerived("derived_sae_j607", "SAE J607 Correction Factor");
         registerDerived("derived_sae_cf_delta", "SAE CF Delta (J1349-J607)");
+        // Fuel-map AI columns: cell targeting + accept/reject codes so agents can
+        // rebuild LiveMapStore-quality maps from the log alone (without re-deriving
+        // binning / closed-loop / warm rules). Numeric only for easy ML ingestion.
+        registerDerived("map_rpm_cell", "Map RPM Cell (rpm)");
+        registerDerived("map_axis_value", "Map Axis Value");
+        registerDerived("map_axis_source", "Map Axis Source (1=MAP 2=LOAD)");
+        registerDerived("map_trim_total", "Map Trim Total STFT+LTFT (%)");
+        registerDerived("map_closed_loop", "Map Closed Loop (1/0)");
+        registerDerived("map_warm", "Map Engine Warm (1/0)");
+        registerDerived("map_gated", "Map Gate Eligible (1/0)");
+        registerDerived("map_accepted", "Map Sample Accepted (1/0)");
+        registerDerived("map_reject_code", "Map Reject Code");
     }
 
     private void registerDerived(String key, String label) {

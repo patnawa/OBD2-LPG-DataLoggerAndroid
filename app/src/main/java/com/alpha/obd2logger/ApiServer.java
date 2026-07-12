@@ -246,19 +246,25 @@ public class ApiServer extends NanoHTTPD {
         return store != null ? store.getLpgData() : java.util.Collections.emptyMap();
     }
 
-    public void setLatestData(DataRecord data, boolean isLogging) {
-        this.latestData = data;
-        this.isLogging = isLogging;
-        if (data != null) {
-            if (recordCount == 0 || sessionStartMs == 0) {
-                sessionStartMs = System.currentTimeMillis();
+    /**
+         * Publish latest live data for /api/data and SSE.
+         *
+         * <p>Does NOT write the fuel map — {@link LoggerService} (or in-process
+         * MainActivity) is the single writer to {@link LiveMapStore}. Writing here
+         * used to double-count hits whenever UI callbacks also called pushSample.
+         */
+        public void setLatestData(DataRecord data, boolean isLogging) {
+            this.latestData = data;
+            this.isLogging = isLogging;
+            if (data != null) {
+                if (recordCount == 0 || sessionStartMs == 0) {
+                    sessionStartMs = System.currentTimeMillis();
+                }
+                recordCount++;
+                broadcastSse(data);
+                broadcastMapSse(recordCount);
             }
-            recordCount++;
-            pushToLiveMapStore(data);
-            broadcastSse(data);
-            broadcastMapSse(recordCount);
         }
-    }
 
     public void setAdapterConnected(boolean connected) {
         this.adapterConnected = connected;
@@ -283,46 +289,22 @@ public class ApiServer extends NanoHTTPD {
      * Push a DataRecord into the LiveMapStore — the single write path.
      * Replaces the old updateLiveMap() which had different binning + no debounce.
      */
-    private void pushToLiveMapStore(DataRecord record) {
-        LiveMapStore store = liveMapStore;
-        if (store == null) return;
-
-        Double rpm = valueByKey(record, "01_0C");
-        Double map = valueByKey(record, "01_0B");
-        Double stft = valueByKey(record, "01_06");
-        Double ltft = valueByKey(record, "01_07");
-        Double ect = valueByKey(record, "01_05");
-        Double fuelStatus = valueByKey(record, "01_03");
-
-        if (rpm == null) return;
-
-        // Load axis: MAP preferred, Engine Load % fallback
-        double loadAxis;
-        if (map != null) {
-            loadAxis = map;
-        } else {
-            Double load = valueByKey(record, "01_04");
-            loadAxis = (load != null) ? load : Double.NaN;
+    /**
+         * Push a DataRecord into the LiveMapStore.
+         * Primary write path for background logging when API server is enabled
+         * (LoggerService only calls setLatestData when API is on). In-process UI
+         * also writes via MainActivity when the service store is shared.
+         *
+         * Always updates the active cell cursor so SSE + map highlight stay live
+         * even for gated/debounced samples.
+         */
+        private void pushToLiveMapStore(DataRecord record) {
+            LiveMapStore store = liveMapStore;
+            if (store == null || record == null) return;
+            MapSampleMeta meta = MapSampleMeta.from(record);
+            FuelMode mode = FuelMode.fromString(record.getFuelMode());
+            store.pushFromMeta(meta, mode);
         }
-        if (Double.isNaN(loadAxis)) return;
-
-        // Closed-loop check
-        boolean isClosedLoop = true;
-        if (fuelStatus != null) {
-            isClosedLoop = (fuelStatus.intValue() & 0x02) != 0;
-        }
-
-        // Combined trim
-        double trim = 0;
-        if (stft != null) {
-            trim = stft + (ltft != null ? ltft : 0);
-        } else if (ltft != null) {
-            trim = ltft;
-        }
-
-        FuelMode mode = FuelMode.fromString(record.getFuelMode());
-        store.pushSample(rpm, loadAxis, trim, mode, isClosedLoop, ect);
-    }
 
     private Double valueByKey(DataRecord record, String key) {
         for (SensorSample sample : record.getSamples()) {
@@ -524,9 +506,16 @@ public class ApiServer extends NanoHTTPD {
                 }
             }
             obj.put("deviationMap", deviationJson);
-            obj.put("tuneAssistMap", tuneAssistJson);
+                        obj.put("tuneAssistMap", tuneAssistJson);
+                        if (store != null) {
+                            obj.put("activeCellKey", store.getLastCellKey() != null ? store.getLastCellKey() : "");
+                            obj.put("activeRpmCell", store.getActiveRpmCell());
+                            obj.put("activeMapBin", store.getActiveMapBin());
+                            obj.put("axisSource", store.getAxisSource());
+                            obj.put("totalAcceptedSamples", store.getTotalRecords());
+                        }
 
-        } catch (JSONException e) {
+                    } catch (JSONException e) {
             e.printStackTrace();
             return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\": \"" + e.getMessage() + "\"}");
         }
@@ -553,9 +542,16 @@ public class ApiServer extends NanoHTTPD {
             obj.put("overlappingCellsCount", commonCells);
             obj.put("averageAbsoluteDeviation", avgAbsDev);
             obj.put("maxDeviationValue", maxDev);
-            obj.put("maxDeviationCell", maxDevCell);
+                        obj.put("maxDeviationCell", maxDevCell);
+                        if (snap != null) {
+                            obj.put("activeCellKey", snap.getLastCellKey() != null ? snap.getLastCellKey() : "");
+                            obj.put("activeRpmCell", snap.getActiveRpmCell());
+                            obj.put("activeMapBin", snap.getActiveMapBin());
+                            obj.put("axisSource", snap.getAxisSource());
+                            obj.put("totalAcceptedSamples", snap.getTotalRecords());
+                        }
 
-            String recommendation;
+                        String recommendation;
             if (commonCells == 0) {
                 recommendation = "Insufficient overlapping data. Please drive on both Petrol and LPG to collect comparison points.";
             } else {
@@ -627,54 +623,110 @@ public class ApiServer extends NanoHTTPD {
         return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\": \"cleared\"}");
     }
 
-    private Response handleMapImport(IHTTPSession session) {
-        LiveMapStore store = liveMapStore;
-        if (store == null) {
-            return newFixedLengthResponse(Response.Status.SERVICE_UNAVAILABLE, "application/json",
-                "{\"error\": \"LiveMapStore not initialized\"}");
-        }
-
-        Map<String, String> files = new HashMap<>();
-        try {
-            session.parseBody(files);
-            String body = files.get("postData");
-            if (body == null || body.trim().isEmpty()) {
-                return newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json", "{\"error\": \"Empty body\"}");
+    /**
+         * POST /api/map/import
+         * Body JSON (same shape as GET /api/map):
+         * {
+         *   "petrolMap": { "2000_40.00": { "avg": -2.5, "hits": 10 }, ... },
+         *   "lpgMap":    { "2000_40.00": { "avg":  1.5, "hits": 12 }, ... },
+         *   "replace": true|false   // default true for petrol/lpg sides present
+         * }
+         *
+         * Keys are normalized through MapBinning so legacy ROUND keys (e.g. 750_40)
+         * land on the same cells as the live FLOOR grid. Enables AI/baseline compare:
+         * import a prior petrol session, then live-drive LPG and read /api/map deviation.
+         */
+        private Response handleMapImport(IHTTPSession session) {
+            LiveMapStore store = liveMapStore;
+            if (store == null) {
+                return newFixedLengthResponse(Response.Status.SERVICE_UNAVAILABLE, "application/json",
+                    "{\"error\": \"LiveMapStore not initialized\"}");
             }
 
-            JSONObject root = new JSONObject(body);
-
-            if (root.has("petrolMap")) {
-                JSONObject petrolJson = root.getJSONObject("petrolMap");
-                java.util.Iterator<String> keys = petrolJson.keys();
-                while (keys.hasNext()) {
-                    String key = keys.next();
-                    JSONObject cell = petrolJson.getJSONObject(key);
-                    double avg = cell.getDouble("avg");
-                    int hits = cell.getInt("hits");
-                    store.getPetrolData().put(key, new LiveMapStore.TrimData(avg * hits, hits));
+            Map<String, String> files = new HashMap<>();
+            try {
+                session.parseBody(files);
+                String body = files.get("postData");
+                if (body == null || body.trim().isEmpty()) {
+                    return newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json",
+                            "{\"error\": \"Empty body\"}");
                 }
-            }
 
-            if (root.has("lpgMap")) {
-                JSONObject lpgJson = root.getJSONObject("lpgMap");
-                java.util.Iterator<String> keys = lpgJson.keys();
-                while (keys.hasNext()) {
-                    String key = keys.next();
-                    JSONObject cell = lpgJson.getJSONObject(key);
-                    double avg = cell.getDouble("avg");
-                    int hits = cell.getInt("hits");
-                    store.getLpgData().put(key, new LiveMapStore.TrimData(avg * hits, hits));
+                JSONObject root = new JSONObject(body);
+                boolean replace = root.optBoolean("replace", true);
+                int petrolImported = 0;
+                int lpgImported = 0;
+                int skipped = 0;
+
+                if (root.has("petrolMap")) {
+                    if (replace) store.importPetrol(java.util.Collections.emptyMap(), true);
+                    JSONObject petrolJson = root.getJSONObject("petrolMap");
+                    java.util.Iterator<String> keys = petrolJson.keys();
+                    while (keys.hasNext()) {
+                        String key = keys.next();
+                        JSONObject cell = petrolJson.optJSONObject(key);
+                        if (cell == null) { skipped++; continue; }
+                        double avg = cell.optDouble("avg", Double.NaN);
+                        int hits = cell.optInt("hits", 0);
+                        if (Double.isNaN(avg) || hits < 0) { skipped++; continue; }
+                        store.putImportedCell(false, key, avg, hits);
+                        petrolImported++;
+                    }
                 }
+
+                if (root.has("lpgMap")) {
+                    if (replace) store.importLpg(java.util.Collections.emptyMap(), true);
+                    JSONObject lpgJson = root.getJSONObject("lpgMap");
+                    java.util.Iterator<String> keys = lpgJson.keys();
+                    while (keys.hasNext()) {
+                        String key = keys.next();
+                        JSONObject cell = lpgJson.optJSONObject(key);
+                        if (cell == null) { skipped++; continue; }
+                        double avg = cell.optDouble("avg", Double.NaN);
+                        int hits = cell.optInt("hits", 0);
+                        if (Double.isNaN(avg) || hits < 0) { skipped++; continue; }
+                        store.putImportedCell(true, key, avg, hits);
+                        lpgImported++;
+                    }
+                }
+
+                // Also accept compact AI export format: array of {rpm, map, avg, hits, fuel}
+                if (root.has("cells")) {
+                    org.json.JSONArray arr = root.getJSONArray("cells");
+                    for (int i = 0; i < arr.length(); i++) {
+                        JSONObject cell = arr.optJSONObject(i);
+                        if (cell == null) { skipped++; continue; }
+                        double rpm = cell.optDouble("rpm", Double.NaN);
+                        double map = cell.optDouble("map", Double.NaN);
+                        double avg = cell.optDouble("avg", Double.NaN);
+                        int hits = cell.optInt("hits", 1);
+                        String fuel = cell.optString("fuel", "petrol");
+                        if (Double.isNaN(rpm) || Double.isNaN(map) || Double.isNaN(avg)) {
+                            skipped++;
+                            continue;
+                        }
+                        String key = MapBinning.cellKey(rpm, map);
+                        boolean gaseous = FuelMode.fromString(fuel).isGaseous();
+                        store.putImportedCell(gaseous, key, avg, hits);
+                        if (gaseous) lpgImported++; else petrolImported++;
+                    }
+                }
+
+                JSONObject resp = new JSONObject();
+                resp.put("status", "imported");
+                resp.put("petrolCells", petrolImported);
+                resp.put("lpgCells", lpgImported);
+                resp.put("skipped", skipped);
+                resp.put("overlappingCells", store.snapshot().getOverlappingCellCount());
+                return newFixedLengthResponse(Response.Status.OK, "application/json", resp.toString());
+
+            } catch (IOException | ResponseException | JSONException e) {
+                e.printStackTrace();
+                String msg = e.getMessage() != null ? e.getMessage().replace("\"", "'") : "import_failed";
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json",
+                        "{\"error\": \"" + msg + "\"}");
             }
-
-            return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\": \"imported\"}");
-
-        } catch (IOException | ResponseException | JSONException e) {
-            e.printStackTrace();
-            return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\": \"" + e.getMessage() + "\"}");
         }
-    }
 
     // ═══════════════════════════════════════════════════════════════
     //  SSE Stream Handler

@@ -2483,17 +2483,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Petrol data the moment LPG logging begins, leaving Deviation/Correction
         // permanently empty. clearData(fuelMode) preserves the comparison fuel.
         if (fuelMapView != null) {
-            fuelMapView.clearData(config.fuelMode);
-            // Also clear the corresponding fuel in LiveMapStore
-            LiveMapStore clearStore = getLiveMapStore();
-            if (clearStore != null) {
-                clearStore.clear(config.fuelMode);
-            }
-            if (config.fuelMode.isGaseous()) {
-                sessionLpgData.clear();
-            } else {
-                sessionPetrolData.clear();
-            }
+                    fuelMapView.clearData(config.fuelMode);
+                    // Also clear the corresponding fuel in LiveMapStore (service or in-process)
+                    LiveMapStore clearStore = getLiveMapStore();
+                    if (clearStore != null) {
+                        clearStore.clear(config.fuelMode);
+                    }
+                    if (inProcessMapStore != null) {
+                        inProcessMapStore.clear(config.fuelMode);
+                    }
+                    if (config.fuelMode.isGaseous()) {
+                        sessionLpgData.clear();
+                    } else {
+                        sessionPetrolData.clear();
+                    }
             fuelMapView.setMapMode(config.fuelMode.isGaseous()
                     ? FuelMapView.MapMode.LPG : FuelMapView.MapMode.PETROL);
             // Also sync the toggle button in the Map tab
@@ -3041,22 +3044,29 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         }
 
                         DataRecord record = new DataRecord(
-                                iso.format(new Date()),
-                                (SystemClock.elapsedRealtime() - started) / 1000.0,
-                                config.fuelMode.getValue(),
-                                config.vehicleBrand,
-                                config.vin,
-                                samples
-                        );
+                                                        iso.format(new Date()),
+                                                        (SystemClock.elapsedRealtime() - started) / 1000.0,
+                                                        config.fuelMode.getValue(),
+                                                        config.vehicleBrand,
+                                                        config.vin,
+                                                        samples
+                                                );
 
-                        writer.writeRecord(record);
-                        completed++;
-                        // Reset retry counter on every successful record write so
-                        // transient errors don't accumulate across a long session.
-                        retryCount = 0;
-                        final int finalCompleted = completed;
-                        sessionRecordCount = finalCompleted;
-                        runOnActiveActivity(() -> {
+                                                // Enrich CSV/JSONL with map AI columns before write. For in-process
+                                                // logging the UI path also owns the LiveMapStore write (no service).
+                                                MapSampleMeta mapMeta = MapSampleMeta.from(record);
+                                                LiveMapStore store = ensureInProcessMapStore();
+                                                LiveMapStore.PushResult mapPush = store.pushFromMeta(mapMeta, config.fuelMode);
+                                                mapMeta.appendLogSamples(samples, mapPush.accepted, mapPush.reason);
+
+                                                writer.writeRecord(record);
+                                                completed++;
+                                                // Reset retry counter on every successful record write so
+                                                // transient errors don't accumulate across a long session.
+                                                retryCount = 0;
+                                                final int finalCompleted = completed;
+                                                sessionRecordCount = finalCompleted;
+                                                runOnActiveActivity(() -> {
                             MainActivity active = activeInstance;
                             if (active != null) {
                                 active.latestDataRecord = record;
@@ -3210,90 +3220,71 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void updateFuelMap(DataRecord record) {
-        if (record == null) return;
-        Double rpm = valueByKey(record, "01_0C");
-        Double map = valueByKey(record, "01_0B");
-        Double stft = valueByKey(record, "01_06");
-        Double ltft = valueByKey(record, "01_07");
-        Double ect = valueByKey(record, "01_05");
-        Double fuelStatus = valueByKey(record, "01_03");
+            if (record == null) return;
+            MapSampleMeta meta = MapSampleMeta.from(record);
+            Double ect = meta.ect;
 
-        // Fallback for the load axis: many vehicles (MAF-based, no MAP sensor) or
-        // adapters that drop MAP from a batch response leave 0x0B null. Engine Load
-        // (0x04, A*100/255 → 0-100%) maps onto the same 20-100 fuel-map X-axis range
-        // and is supported by virtually every OBD2 vehicle, so use it when MAP is
-        // unavailable rather than leaving the entire fuel map empty.
-        double loadAxis;
-        if (map != null) {
-            loadAxis = map;
-        } else {
-            Double load = valueByKey(record, "01_04");
-            loadAxis = (load != null) ? load : Double.NaN;
-        }
-
-        if (ect != null && mapEctText != null) {
-            mapEctText.setText(String.format(Locale.US, "ECT: %.0f °C", ect));
-        } else if (mapEctText != null) {
-            mapEctText.setText("ECT: Unknown");
-        }
-
-        boolean isClosedLoop = true; // Default to true if not supported so app still works
-        if (fuelStatus != null && mapLoopStatusText != null) {
-            // SAE J1979 PID 03 Fuel System Status (byte A, bit flags):
-            //   0x01 = Open loop (insufficient engine temp)
-            //   0x02 = Closed loop (using oxygen sensor feedback) ← THIS IS WHAT WE WANT
-            //   0x04 = Open loop (engine load)
-            //   0x08 = Open loop (system failure)
-            int statusVal = fuelStatus.intValue();
-            isClosedLoop = (statusVal & 0x02) != 0;
-            mapLoopStatusText.setText(isClosedLoop ? "Status: Closed Loop" : "Status: Open Loop");
-            mapLoopStatusText.setTextColor(getColorCompat(isClosedLoop ? R.color.accent : R.color.warning));
-        } else if (mapLoopStatusText != null) {
-            mapLoopStatusText.setText("Status: Unknown (Assumed Closed)");
-            mapLoopStatusText.setTextColor(getColorCompat(R.color.muted));
-        }
-
-        if (rpm != null && !Double.isNaN(loadAxis)) {
-            // Use STFT if available, otherwise LTFT, otherwise 0 (just track position)
-            double trim = 0;
-            if (stft != null) {
-                trim = stft + (ltft != null ? ltft : 0);
-            } else if (ltft != null) {
-                trim = ltft;
+            if (ect != null && mapEctText != null) {
+                mapEctText.setText(String.format(Locale.US, "ECT: %.0f °C", ect));
+            } else if (mapEctText != null) {
+                mapEctText.setText("ECT: Unknown");
             }
 
-            FuelMode mode = FuelMode.fromString(record.getFuelMode());
+            if (mapLoopStatusText != null) {
+                if (meta.fuelSystemStatus != null) {
+                    mapLoopStatusText.setText(meta.closedLoop ? "Status: Closed Loop" : "Status: Open Loop");
+                    mapLoopStatusText.setTextColor(getColorCompat(meta.closedLoop ? R.color.accent : R.color.warning));
+                } else {
+                    mapLoopStatusText.setText("Status: Unknown (Assumed Closed)");
+                    mapLoopStatusText.setTextColor(getColorCompat(R.color.muted));
+                }
+            }
 
-            // ── Push to LiveMapStore (single source of truth) ──
-            // If the LoggerService has a LiveMapStore (background path), push there.
-            // The ApiServer also pushes via setLatestData → pushToLiveMapStore, but
-            // that only runs when the API server is enabled. For in-process logging
-            // (no API server), we need to push here so the store stays populated.
             LiveMapStore store = getLiveMapStore();
-            if (store != null) {
-                store.pushSample(rpm, loadAxis, trim, mode, isClosedLoop, ect);
-            }
 
-            // ── Sync FuelMapView from the store snapshot ──
-            // This replaces the old direct pushData() + sessionPetrolData copy pattern
-            // that caused race conditions and binning mismatches.
+            // Prefer service store when background logging actively owns writes to avoid double-count.
+            boolean serviceOwnsStore = LoggerService.isLoggingActive()
+                    && LoggerService.getInstance() != null
+                    && LoggerService.getInstance().getLiveMapStore() != null;
+
+            // In-process path already pushed in the logging loop (ensureInProcessMapStore).
+            // Only skip re-push when the background service is the owner.
+            // Do not push here at all if samples were enriched with map_accepted — store is already current.
+            // UI only needs a snapshot + active cell.
+
             if (fuelMapView != null && store != null) {
                 fuelMapView.syncFromStore(store.snapshot());
-            } else if (fuelMapView != null) {
-                // Fallback: no store available (e.g. review session) — push directly
-                fuelMapView.pushData(rpm, loadAxis, trim, mode);
+            } else if (fuelMapView != null && meta.rpm != null && !Double.isNaN(meta.loadAxis)) {
+                FuelMode mode = FuelMode.fromString(record.getFuelMode());
+                if (meta.gatedEligible) {
+                    fuelMapView.pushData(meta.rpm, meta.loadAxis, meta.trimTotal, mode);
+                } else if (meta.rpmCell >= 0) {
+                    fuelMapView.setActiveCell(meta.rpmCell, meta.mapBin);
+                }
             }
         }
-    }
 
     /**
-     * Returns the LiveMapStore from LoggerService if available.
-     * Used by updateFuelMap to push samples and sync the FuelMapView.
-     */
-    private LiveMapStore getLiveMapStore() {
-        LoggerService s = LoggerService.getInstance();
-        return s != null ? s.getLiveMapStore() : null;
-    }
+         * Returns the LiveMapStore from LoggerService if available.
+         * Falls back to the in-process store for foreground-only logging.
+         */
+        private LiveMapStore getLiveMapStore() {
+            LoggerService s = LoggerService.getInstance();
+            if (s != null && s.getLiveMapStore() != null) {
+                return s.getLiveMapStore();
+            }
+            return ensureInProcessMapStore();
+        }
+
+        /** Lazy in-process store so map survives Activity recreation during foreground logging. */
+        private static LiveMapStore inProcessMapStore;
+
+        private static LiveMapStore ensureInProcessMapStore() {
+            if (inProcessMapStore == null) {
+                inProcessMapStore = new LiveMapStore();
+            }
+            return inProcessMapStore;
+        }
 
     @Override
     public void onStatus(String status, boolean isError) {

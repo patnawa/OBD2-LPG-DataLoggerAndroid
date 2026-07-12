@@ -2,7 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
-## [3.12.0] - 2026-07-11 — Gauge/Dashboard Localization + Long-press to Clear PID Slots
+## [3.13.0] - 2026-07-12 — Live Map Right-Cell + AI Log Columns + Import/Compare
+
+### Fixed — Live Map always tracks the correct cell
+- **Active cell lost on `syncFromStore`** — UI only copied cell maps, so the live neon highlight froze while driving. Snapshot now carries `activeRpmCell` / `activeMapBin`; highlight follows the real FLOOR bin every tick.
+- **Highlight required accepted samples** — Debounced / open-loop samples still update the cursor so position is never lagging behind RPM/MAP.
+- **Debounce incorrectly accepted first transients** — While the window was still filling, one-off cells were allowed. Require ≥2 same-cell sightings before storing.
+- **Double-push inflated hit counts** — `ApiServer.setLatestData` + `MainActivity.updateFuelMap` both called `pushSample`. API path no longer writes the store; sole writers are `LoggerService` (background) and the in-process loop (foreground). UI only snapshots.
+- **Hard-lock was cosmetic** — `MAX_HITS=20` only changed alpha; values kept diluting forever. Store now rejects after lock.
+- **Snapshot shared mutable TrimData** — Deep-copies on snapshot so later hits can't mutate API/UI reads mid-flight.
+
+### Added — Logs optimized for AI analysis
+- **`MapSampleMeta`** — Single enrichment helper: bin, closed-loop, warm, trim total, accept/reject reason.
+- **CSV/JSONL map AI columns** (every record):
+  `map_rpm_cell`, `map_axis_value`, `map_axis_source` (1=MAP / 2=LOAD),
+  `map_trim_total`, `map_closed_loop`, `map_warm`, `map_gated`, `map_accepted`,
+  `map_reject_code` (0=ok, 3=open-loop, 4=cold, 6=debounce, 7=locked, …).
+- Agents can rebuild LiveMapStore-quality maps from the log alone without re-deriving bin/gate rules.
+
+### Fixed / Improved — Import + Compare
+- **POST `/api/map/import`** — Normalizes cell keys through `MapBinning` (legacy `2000_40` → `2000_40.00`); supports `replace` flag and compact `cells:[{rpm,map,avg,hits,fuel}]` array format for AI import; returns counts + overlapping cell count.
+- **GET `/api/map` + `/api/map/summary`** — Export `activeCellKey`, `activeRpmCell`, `activeMapBin`, `axisSource`, `totalAcceptedSamples` for real-time AI replay.
+- **Compare / Review replay** — Uses `map_accepted` + binned map columns when present so replotted maps match live store exactly; ignores Bank-2 trim columns that previously overwrote Bank-1 headers; in-process `LiveMapStore` so compare baseline + live LPG share one source.
+- **History Compare 2 logs (Petrol vs LPG)** — still plots both fuel sides on the same FuelMapView for Deviation / Correction (multi-URI path unchanged; data quality now matches live).
+
+### Tests
+- New `LiveMapStoreTest` (binning, debounce cursor, lock, import compare, meta).
+- Full unit pass: LiveMapStore + LogReplayParser + ApiServer.
+
+## [3.12.0] - 2026-07-11 — Gauge/Dashboard Localization + Long-press to Clear PID slots
 
 ### Fixed — Localization (Thai/English now switches properly)
 - **"แตะเพื่อเพิ่ม (Tap to Add)" bilingual text** — The placeholder for empty gauge/dashboard/graph slots was a fixed bilingual literal that never switched with the app language. Now uses `R.string.tap_to_add` (EN: "Tap to Add", TH: "แตะเพื่อเพิ่ม") in `setupDashboard()`, `setupGauges()`, and `setupGraphs()`.

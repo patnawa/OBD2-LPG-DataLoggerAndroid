@@ -817,35 +817,48 @@ public final class LoggerService extends Service {
                         }
 
                         DataRecord record = new DataRecord(
-                                iso.format(new Date()),
-                                (android.os.SystemClock.elapsedRealtime() - started) / 1000.0,
-                                config.fuelMode.getValue(),
-                                config.vehicleBrand,
-                                config.vin,
-                                samples
-                        );
+                                                        iso.format(new Date()),
+                                                        (android.os.SystemClock.elapsedRealtime() - started) / 1000.0,
+                                                        config.fuelMode.getValue(),
+                                                        config.vehicleBrand,
+                                                        config.vin,
+                                                        samples
+                                                );
 
-                        localWriter.writeRecord(record);
-                        localRecordCount++;
-                        // Reset retry counter on every successful record write so
-                        // transient errors don't accumulate across a long session.
-                        // Without this, 11 scattered blips over hours permanently
-                        // kill the logger even though the connection is fine.
-                        retryCount = 0;
-                        if (currentSessionToken == sessionToken) {
-                            recordCount = localRecordCount;
-                        }
-                        publishRecord(record, localRecordCount);
+                                                // ── Single write path into LiveMapStore (before CSV) ──
+                                                // Always update active cell + apply debounce/gates here so
+                                                // the UI can snapshot (never push), hits never double-count,
+                                                // and map_ai columns match what the store actually accepted.
+                                                LiveMapStore.PushResult mapPush = null;
+                                                MapSampleMeta mapMeta = MapSampleMeta.from(record);
+                                                if (liveMapStore != null) {
+                                                    mapPush = liveMapStore.pushFromMeta(mapMeta, config.fuelMode);
+                                                }
+                                                mapMeta.appendLogSamples(samples,
+                                                        mapPush != null && mapPush.accepted,
+                                                        mapPush != null ? mapPush.reason : mapMeta.rejectReason);
 
-                        // Low-voltage watchdog: a weak alternator / battery causes lean
-                        // misfires that masquerade as fuel-trim problems — especially on
-                        // LPG. Warn once per session (transient dips ignored) when module
-                        // voltage sags below the charging floor.
-                        checkVoltageWatchdog(record);
+                                                localWriter.writeRecord(record);
+                                                localRecordCount++;
+                                                // Reset retry counter on every successful record write so
+                                                // transient errors don't accumulate across a long session.
+                                                // Without this, 11 scattered blips over hours permanently
+                                                // kill the logger even though the connection is fine.
+                                                retryCount = 0;
+                                                if (currentSessionToken == sessionToken) {
+                                                    recordCount = localRecordCount;
+                                                }
+                                                publishRecord(record, localRecordCount);
 
-                        if (localApiServer != null) {
-                            localApiServer.setLatestData(record, true);
-                        }
+                                                // Low-voltage watchdog: a weak alternator / battery cause lean
+                                                // misfires that masquerade as fuel-trim problems — especially on
+                                                // LPG. Warn once per session (transient dips ignored) when module
+                                                // voltage sags below the charging floor.
+                                                checkVoltageWatchdog(record);
+
+                                                if (localApiServer != null) {
+                                                    localApiServer.setLatestData(record, true);
+                                                }
 
                         if (localRecordCount % 10 == 0) {
                             updateNotification("Logging: " + localRecordCount + " records", localRecordCount);
