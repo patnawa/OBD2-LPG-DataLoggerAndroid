@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.16.4] - 2026-07-12 — Modern Primary Action + Balanced Status/Gauges
+
+### UI polish
+- Changed the persistent Start/Stop control to icon-only: play when idle, pause when logging, with primary/danger color states.
+- Enlarged the top connection status chip, status dot, and status typography for a balanced automotive header.
+- Enlarged the home status card and OBD protocol badge for clearer glanceability.
+- Increased Dashboard GaugeView height to 340dp so the circular gauge uses the available card area instead of appearing undersized.
+
 ## [3.16.3] - 2026-07-12 — Refined Primary Action + Gauge Sizing
 
 ### UI polish

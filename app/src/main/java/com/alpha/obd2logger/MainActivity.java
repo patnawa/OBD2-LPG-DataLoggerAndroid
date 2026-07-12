@@ -1431,7 +1431,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fabLog.setIconResource(android.R.drawable.ic_media_pause);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
             if (btnHomeConnect != null) {
-                btnHomeConnect.setText("STOP");
+                btnHomeConnect.setText("");
                 btnHomeConnect.setIconResource(android.R.drawable.ic_media_pause);
                 btnHomeConnect.setTextColor(getColorCompat(R.color.background));
                 btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
@@ -1441,7 +1441,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fabLog.setIconResource(android.R.drawable.ic_media_play);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
             if (btnHomeConnect != null) {
-                btnHomeConnect.setText("START");
+                btnHomeConnect.setText("");
                 btnHomeConnect.setIconResource(android.R.drawable.ic_media_play);
                 btnHomeConnect.setTextColor(getColorCompat(R.color.background));
                 btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
