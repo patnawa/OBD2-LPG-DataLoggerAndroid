@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.16.8] - 2026-07-12 — Detailed Multi-color Live Graph
+
+### Home scanner
+- Added a dedicated normalized multi-series Home graph for RPM, Speed, and Boost.
+- Added clear cyan/blue, green, and purple line colors with a visible legend.
+- Added rolling 60-second label, grid, time axis, and `LIVE` / `CONNECTING` / `NO LIVE DATA` state.
+- The graph clears when the vehicle disconnects.
+- Reduced the Scan FAB from 68dp to 58dp so it no longer dominates the bottom navigation.
+- Kept Settings available from the front-page top-right gear while hiding the duplicate connection chip on Home.
+
 ## [3.16.7] - 2026-07-12 — Scanner-first Navigation + Responsive Gauges
 
 ### Scanner UX

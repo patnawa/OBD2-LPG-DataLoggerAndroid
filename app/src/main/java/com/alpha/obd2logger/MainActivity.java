@@ -74,7 +74,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView txtHomeFuelEconomy, txtHomeBoost, txtHomeDpf, txtHomeDtc;
     private TextView txtHomeThrottle, txtHomeFuelTrim;
     private TextView txtHomeDiagnosticSummary, txtHomeDiagnosticMeta;
-    private GraphView homeRpmTrend;
+    private LiveMultiGraphView homeRpmTrend;
     private TextView stripBoost, stripFuel;
     private View headerStatusDot, headerApiDivider;
     private android.widget.ImageButton btnSettings;
@@ -540,11 +540,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtHomeRpm = findViewById(R.id.cockpitRpm);
         txtHomeSpeed = findViewById(R.id.cockpitSpeed);
         txtHomeCoolant = findViewById(R.id.cockpitCoolant);
-        homeRpmTrend = findViewById(R.id.cockpitRpmTrend);
-        if (homeRpmTrend != null) {
-            homeRpmTrend.setRange(0f, 7000f);
-            homeRpmTrend.setLabel("RPM trend", "");
-        }
+        homeRpmTrend = findViewById(R.id.cockpitLiveGraph);
         // Derived sensor displays
         txtHomeFuelEconomy = null;
         txtHomeBoost = findViewById(R.id.cockpitBoost);
@@ -998,9 +994,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 graph.setLineColor(primaryColor);
             }
         }
-        if (homeRpmTrend != null) {
-            homeRpmTrend.setLineColor(primaryColor);
-        }
+
     }
 
     private String[] prefGaugePids = new String[]{"01_0C", "01_0D", "01_05", "01_04"};
@@ -1489,10 +1483,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (homeBottomNav != null) {
                 homeBottomNav.setVisibility(View.VISIBLE);
             }
-            // Home owns its status and navigation surfaces; avoid duplicating
-            // the generic toolbar controls above them.
+            // Keep the top app bar on Home so Settings remains reachable,
+            // but hide its duplicate connection chip because Home has its
+            // own richer connection card.
             if (topHeader != null) {
-                topHeader.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
+                topHeader.setVisibility(View.VISIBLE);
+            }
+            View statusLayout = findViewById(R.id.statusLayout);
+            if (statusLayout != null) {
+                statusLayout.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
             }
             
             if (index == 4) {
@@ -3481,9 +3480,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (txtHomeRpm != null) {
             txtHomeRpm.setText(rpm != null ? String.format(Locale.US, "%.0f", rpm) : "---");
         }
-        if (homeRpmTrend != null && rpm != null) {
-            homeRpmTrend.pushValue(rpm.floatValue());
-        }
+
         if (txtHomeSpeed != null) {
             txtHomeSpeed.setText(speed != null ? String.format(Locale.US, "%.0f", speed) : "---");
         }
@@ -3494,6 +3491,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // ── Derived sensors: Fuel Economy + Turbo Boost ──────
         Double fuelKmL = valueByKey(record, "derived_fuel_kmL");
         Double boostPsi = valueByKey(record, "derived_boost_psi");
+        if (homeRpmTrend != null) {
+            homeRpmTrend.pushValues(rpm == null ? null : rpm.floatValue(),
+                    speed == null ? null : speed.floatValue(),
+                    boostPsi == null ? null : boostPsi.floatValue());
+        }
         Double throttle = valueByKey(record, "01_11");
         Double stft = valueByKey(record, "01_06");
         Double ltft = valueByKey(record, "01_07");
@@ -3608,6 +3610,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (cockpitStatusDot != null) {
             cockpitStatusDot.setBackgroundResource(dotRes);
         }
+        TextView graphLive = findViewById(R.id.cockpitGraphLive);
+        if (graphLive != null) {
+            graphLive.setText(state == 2 ? "● LIVE" : (state == 1 ? "● CONNECTING" : "○ NO LIVE DATA"));
+            graphLive.setTextColor(getColorCompat(state == 2 ? R.color.accent : (state == 1 ? R.color.warning : R.color.muted)));
+        }
         
         if (txtHomeProtocol != null) {
             if (state == 2) {
@@ -3625,6 +3632,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (txtHomeBoost != null) txtHomeBoost.setText("---");
                 if (txtHomeThrottle != null) txtHomeThrottle.setText("---");
                 if (txtHomeFuelTrim != null) txtHomeFuelTrim.setText("---");
+                if (homeRpmTrend != null) homeRpmTrend.clear();
             }
         }
     }

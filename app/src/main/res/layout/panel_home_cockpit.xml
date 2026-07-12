@@ -113,12 +113,35 @@
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="km/h" android:textColor="@color/muted" android:textSize="11sp" />
                 </LinearLayout>
             </LinearLayout>
-            <com.alpha.obd2logger.GraphView
-                android:id="@+id/cockpitRpmTrend"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="96dp"
-                android:layout_marginTop="8dp"
-                android:contentDescription="Live RPM trend" />
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="LIVE DATA GRAPH" android:textColor="@color/text" android:textSize="12sp" android:textStyle="bold" />
+                <TextView android:id="@+id/cockpitGraphLive" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="● LIVE" android:textColor="@color/accent" android:textSize="10sp" android:textStyle="bold" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="60-second rolling window" android:textColor="@color/muted" android:textSize="9sp" />
+                <TextView android:id="@+id/cockpitGraphRange" android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_status_chip" android:paddingStart="10dp" android:paddingTop="4dp" android:paddingEnd="10dp" android:paddingBottom="4dp" android:text="60s" android:textColor="@color/primary" android:textSize="10sp" android:textStyle="bold" />
+            </LinearLayout>
+            <com.alpha.obd2logger.LiveMultiGraphView
+                android:id="@+id/cockpitLiveGraph"
+                android:layout_width="match_parent"
+                android:layout_height="132dp"
+                android:layout_marginTop="4dp"
+                android:contentDescription="Live RPM, speed, and boost graph" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:layout_marginTop="4dp">
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="● RPM (x1000)" android:textColor="#29A8FF" android:textSize="9sp" />
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="● Speed (km/h)" android:textColor="#39D98A" android:textSize="9sp" />
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="● Boost (psi)" android:textColor="#A855F7" android:textSize="9sp" />
+            </LinearLayout>
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="horizontal">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
                     <TextView android:id="@+id/cockpitCoolant" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/warning" android:textSize="24sp" android:textStyle="bold" />
