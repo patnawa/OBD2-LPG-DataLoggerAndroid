@@ -1554,11 +1554,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         View bottomHome = findViewById(R.id.homeBottomHome);
         if (bottomHome != null) bottomHome.setOnClickListener(v -> showTab(6));
         View bottomConnect = findViewById(R.id.homeBottomConnect);
-        if (bottomConnect != null) bottomConnect.setOnClickListener(v -> showTab(5));
+        if (bottomConnect != null) bottomConnect.setOnClickListener(v -> showTab(1));
         View bottomLogs = findViewById(R.id.homeBottomLogs);
         if (bottomLogs != null) bottomLogs.setOnClickListener(v -> showTab(4));
         View bottomMore = findViewById(R.id.homeBottomMore);
-        if (bottomMore != null) bottomMore.setOnClickListener(v -> showTab(0));
+        if (bottomMore != null) bottomMore.setOnClickListener(v -> showTab(3));
     }
 
     /**
@@ -3583,7 +3583,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // Update home screen status
         if (txtHomeAdapter != null) {
-            txtHomeAdapter.setText(state != 0 && deviceName != null ? deviceName : "---");
+            txtHomeAdapter.setText(state == 2 && deviceName != null
+                    ? deviceName
+                    : (state == 1 ? "Negotiating protocol…" : "Connect an OBD2 adapter to begin live scanning"));
         }
         
         TextView txtHomeConnectionState = findViewById(R.id.txtHomeConnectionState);

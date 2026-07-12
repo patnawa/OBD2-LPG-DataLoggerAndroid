@@ -361,8 +361,8 @@
         </LinearLayout>
 
         <LinearLayout android:id="@+id/homeBottomConnect" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
-            <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_settings" app:tint="@color/muted" />
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Settings" android:textColor="@color/muted" android:textSize="11sp" />
+            <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_speed" app:tint="@color/muted" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Live Data" android:textColor="@color/muted" android:textSize="11sp" />
         </LinearLayout>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -388,8 +388,8 @@
         </LinearLayout>
 
         <LinearLayout android:id="@+id/homeBottomMore" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
-            <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_dashboard" app:tint="@color/muted" />
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Dashboard" android:textColor="@color/muted" android:textSize="11sp" />
+            <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_build" app:tint="@color/muted" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Diagnostics" android:textColor="@color/muted" android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -2419,7 +2419,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge1"
                             android:layout_width="match_parent"
-                            android:layout_height="340dp"
+                            android:layout_height="wrap_content"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -2440,7 +2440,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge2"
                             android:layout_width="match_parent"
-                            android:layout_height="340dp"
+                            android:layout_height="wrap_content"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
@@ -2469,7 +2469,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge3"
                             android:layout_width="match_parent"
-                            android:layout_height="340dp"
+                            android:layout_height="wrap_content"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -2490,7 +2490,7 @@
                         <com.alpha.obd2logger.GaugeView
                             android:id="@+id/gauge4"
                             android:layout_width="match_parent"
-                            android:layout_height="340dp"
+                            android:layout_height="wrap_content"
                             android:padding="8dp"/>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>

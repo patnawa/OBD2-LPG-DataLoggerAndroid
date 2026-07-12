@@ -458,8 +458,21 @@ public final class GaugeView extends View {
 
         int width = widthMode == MeasureSpec.EXACTLY ? widthSize :
                 (widthMode == MeasureSpec.AT_MOST ? Math.min(desiredWidth, widthSize) : desiredWidth);
-        int height = heightMode == MeasureSpec.EXACTLY ? heightSize :
-                (heightMode == MeasureSpec.AT_MOST ? Math.min(desiredHeight, heightSize) : desiredHeight);
+        int height;
+        if (heightMode == MeasureSpec.EXACTLY) {
+            height = heightSize;
+        } else {
+            // The dial reserves space below the arc for the value and unit.
+            // Derive height from measured width so two-column cards scale on
+            // small phones, foldables, and tablets without a fixed 340dp box.
+            int responsiveHeight = Math.round(width * 1.8f);
+            int minHeight = Math.round(240 * getResources().getDisplayMetrics().density);
+            int maxHeight = Math.round(360 * getResources().getDisplayMetrics().density);
+            responsiveHeight = Math.max(minHeight, Math.min(maxHeight, responsiveHeight));
+            height = heightMode == MeasureSpec.AT_MOST
+                    ? Math.min(responsiveHeight, heightSize)
+                    : responsiveHeight;
+        }
 
         setMeasuredDimension(width, height);
     }

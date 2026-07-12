@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.16.7] - 2026-07-12 — Scanner-first Navigation + Responsive Gauges
+
+### Scanner UX
+- Replaced bottom Settings and Dashboard destinations with Live Data and Diagnostics.
+- Bottom navigation now follows primary scanner workflows: Home, Live Data, Scan, Logs, Diagnostics.
+- Disconnected state now explains how to begin scanning instead of showing a generic empty adapter value.
+- Connecting state now reports `Negotiating protocol…`.
+- GaugeView now calculates its height from measured width, keeping the circular gauge proportional across phone and tablet widths.
+
 ## [3.16.6] - 2026-07-12 — Modern Icon-only Scan Action
 
 ### Primary action

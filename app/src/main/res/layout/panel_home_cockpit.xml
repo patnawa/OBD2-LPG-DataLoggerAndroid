@@ -54,7 +54,7 @@
                     android:layout_marginTop="2dp"
                     android:maxLines="1"
                     android:ellipsize="end"
-                    android:text="OBD2 adapter not selected"
+                    android:text="Connect adapter to begin scanning"
                     android:textColor="@color/muted"
                     android:textSize="12sp" />
             </LinearLayout>
