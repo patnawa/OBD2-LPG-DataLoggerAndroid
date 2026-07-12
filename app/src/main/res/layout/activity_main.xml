@@ -365,31 +365,22 @@
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Settings" android:textColor="@color/muted" android:textSize="11sp" />
         </LinearLayout>
 
-        <com.google.android.material.button.MaterialButton
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/homeBottomPrimary"
             android:layout_width="68dp"
             android:layout_height="68dp"
             android:layout_marginStart="5dp"
             android:layout_marginEnd="5dp"
             android:contentDescription="Start or stop logging"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:padding="0dp"
-            android:text=""
-            android:textColor="@color/background"
-            android:textSize="11sp"
-            android:textStyle="bold"
+            android:src="@android:drawable/ic_media_play"
+            android:scaleType="center"
+            app:fabCustomSize="68dp"
+            app:maxImageSize="32dp"
             app:backgroundTint="@color/primary"
-            app:cornerRadius="34dp"
-            app:elevation="8dp"
-            app:icon="@android:drawable/ic_media_play"
-            app:iconPadding="1dp"
-            app:iconSize="28dp"
-            app:iconTint="@color/background"
-            app:strokeColor="@color/primary"
-            app:strokeWidth="2dp" />
+            app:elevation="10dp"
+            app:hoveredFocusedTranslationZ="14dp"
+            app:pressedTranslationZ="16dp"
+            app:borderWidth="0dp" />
 
         <LinearLayout android:id="@+id/homeBottomLogs" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
             <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_list" app:tint="@color/muted" />

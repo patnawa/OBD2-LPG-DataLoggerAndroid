@@ -557,7 +557,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         stripBoost = findViewById(R.id.stripBoost);
         stripFuel = findViewById(R.id.stripFuel);
 
-        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.homeBottomPrimary);
+        com.google.android.material.floatingactionbutton.FloatingActionButton btnHomeConnect = findViewById(R.id.homeBottomPrimary);
         if (btnHomeConnect != null) {
             btnHomeConnect.setOnClickListener(v -> {
                 if (running) {
@@ -1428,15 +1428,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
      */
     private void setFabState(boolean isLogging) {
         if (fabLog == null) return;
-        com.google.android.material.button.MaterialButton btnHomeConnect = findViewById(R.id.homeBottomPrimary);
+        com.google.android.material.floatingactionbutton.FloatingActionButton btnHomeConnect = findViewById(R.id.homeBottomPrimary);
         if (isLogging) {
             fabLog.setText("STOP");
             fabLog.setIconResource(android.R.drawable.ic_media_pause);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
             if (btnHomeConnect != null) {
-                btnHomeConnect.setText("");
-                btnHomeConnect.setIconResource(android.R.drawable.ic_media_pause);
-                btnHomeConnect.setTextColor(getColorCompat(R.color.background));
+                btnHomeConnect.setImageResource(android.R.drawable.ic_media_pause);
+                btnHomeConnect.setColorFilter(getColorCompat(R.color.background));
                 btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.danger)));
             }
         } else {
@@ -1444,9 +1443,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fabLog.setIconResource(android.R.drawable.ic_media_play);
             fabLog.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
             if (btnHomeConnect != null) {
-                btnHomeConnect.setText("");
-                btnHomeConnect.setIconResource(android.R.drawable.ic_media_play);
-                btnHomeConnect.setTextColor(getColorCompat(R.color.background));
+                btnHomeConnect.setImageResource(android.R.drawable.ic_media_play);
+                btnHomeConnect.setColorFilter(getColorCompat(R.color.background));
                 btnHomeConnect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColorCompat(R.color.primary)));
             }
         }

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.16.6] - 2026-07-12 — Modern Icon-only Scan Action
+
+### Primary action
+- Removed the old MaterialButton Start/Stop styling completely.
+- Added a true icon-only Material FloatingActionButton in the persistent bottom navigation.
+- Idle state uses a play icon with the primary color.
+- Logging state uses a pause icon with the danger color.
+- Added Material elevation and press/focus translation for a modern tactile interaction.
+
 ## [3.16.5] - 2026-07-12 — Professional Scanner Home
 
 ### First-page UX
