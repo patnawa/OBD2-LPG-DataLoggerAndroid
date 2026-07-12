@@ -112,7 +112,8 @@ public final class DriverFactory {
         target.dpfMonitorEnabled = source.dpfMonitorEnabled;
         target.showAirDensity = source.showAirDensity;
         target.engineDisplacementCC = source.engineDisplacementCC;
-        target.ratedRPM = source.ratedRPM;
+                target.engineDisplacementUserSet = source.engineDisplacementUserSet;
+                target.ratedRPM = source.ratedRPM;
         target.customPidsEnabled = source.customPidsEnabled;
         target.context = source.context;
         return target;

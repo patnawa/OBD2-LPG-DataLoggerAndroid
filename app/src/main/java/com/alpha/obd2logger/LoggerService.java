@@ -358,11 +358,12 @@ public final class LoggerService extends Service {
         if (config.showAirDensity) {
             try {
                 airDensityMonitor = new AirDensityMonitor(this);
+                airDensityMonitor.startPhoneSensors();
                 // Sync fetch — LoggerService runs on background thread so this is safe.
                 // The initial fetch populates humidity (not available via OBD2) before
                 // the first logging loop iteration, so the first record has AAD/MAD/BAD.
                 // Wrapped in try/catch: network may be unavailable (e.g. unit tests,
-                // offline environments) — air density falls back to default 50% RH.
+                // offline environments) — air density falls back to last-good / default RH.
                 airDensityMonitor.refreshWeatherSync();
                 Log.i(TAG, "AirDensityMonitor initialized");
             } catch (Exception e) {
@@ -397,9 +398,9 @@ public final class LoggerService extends Service {
         // --- Auto-detect supported PIDs ---
         List<PIDDefinition> allPids;
         if (config.customPidsEnabled) {
-            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgPollSet() : PIDCatalogue.getAllWithCustom(this);
+            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgPollSet(config.showAirDensity) : PIDCatalogue.getAllWithCustom(this);
         } else {
-            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgPollSet() : PIDCatalogue.getAll();
+            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgPollSet(config.showAirDensity) : PIDCatalogue.getAll();
         }
         // Always make a mutable copy — PIDCatalogue returns unmodifiable lists,
         // and removeAll() in the logging loop would throw UnsupportedOperationException
@@ -661,136 +662,26 @@ public final class LoggerService extends Service {
                             }
                         }
 
-                        // ── Air Density (AAD/MAD/BAD) ──────────────
-                        // Computes ambient/manifold/boost air density using:
-                        //   - OBD2 PIDs (baro, ambient temp, MAP, IAT)
-                        //   - Weather API humidity (not available via OBD2)
-                        //   - Falls back gracefully if any input is missing
+                        // ── Air Density (AeroDensity Intelligence) ──
+                        // OBD + phone sensors + last-good weather; soft async refresh by TTL.
+                        // Status carries quality: ok / est / default / assumed / estimate.
                         if (config.showAirDensity && airDensityMonitor != null) {
-                            // Weather refresh is handled by cache TTL internally (10 min).
-                            // Do NOT call refreshWeatherSync() here every iteration — it
-                            // blocks the logger thread on slow networks and causes timeouts.
-                            // Feed latest OBD2 values
                             airDensityMonitor.onObdBatch(batch);
-
-                            AirDensityMonitor.AirDensityResult dr;
+                            Double rpmValue = batch.get("Engine RPM");
+                            Double lambdaValue = batch.get("Lambda (B1S1)");
+                            if (lambdaValue == null) lambdaValue = batch.get("Wideband Lambda (B1S1)");
                             try {
-                                dr = airDensityMonitor.compute();
-                            } catch (Exception computeEx) {
-                                Log.w(TAG, "Air density compute failed non-fatally", computeEx);
-                                dr = null;
-                            }
-                            if (dr != null) {
-                                if (dr.aad != null) {
-                                    samples.add(new SensorSample("derived_aad", "Ambient Air Density",
-                                            dr.aad, "lbs/1000ft3", "ok"));
-                                }
-                                if (dr.mad != null) {
-                                    samples.add(new SensorSample("derived_mad", "Manifold Air Density",
-                                            dr.mad, "lbs/1000ft3", "ok"));
-                                }
-                                if (dr.bad != null) {
-                                    samples.add(new SensorSample("derived_bad", "Boost Air Density",
-                                            dr.bad, "lbs/1000ft3", "ok"));
-                                }
-                                if (dr.densityPercent != null) {
-                                    samples.add(new SensorSample("derived_density_pct", "Air Density %",
-                                            dr.densityPercent, "%", "ok"));
-                                }
-                                if (dr.densityAltitudeFt != null) {
-                                    samples.add(new SensorSample("derived_density_alt", "Density Altitude",
-                                            (double) dr.densityAltitudeFt, "ft", "ok"));
-                                }
-                                if (dr.saeJ1349CF != null) {
-                                    samples.add(new SensorSample("derived_sae_cf", "SAE J1349 CF",
-                                            dr.saeJ1349CF, "", "ok"));
-                                }
-                                if (dr.grainsH2O != null) {
-                                    samples.add(new SensorSample("derived_grains", "Grains H2O",
-                                            dr.grainsH2O, "grains/lb", "ok"));
-                                }
-                                // Always log humidity source value for traceability
-                                samples.add(new SensorSample("derived_humidity", "Relative Humidity",
-                                        dr.humidity, "%", "ok"));
-
-                                // ── Advanced Air Density (10 formulas beyond standard) ──
-                                Double rpmValue = batch.get("Engine RPM");
-                                Double lambdaValue = batch.get("Lambda (B1S1)");
-                                if (lambdaValue == null) lambdaValue = batch.get("Wideband Lambda (B1S1)");
-
-                                try {
-                                    AdvancedAirDensity.AdvancedResult ar =
-                                        airDensityMonitor.computeAdvanced(
-                                            mafValue, rpmValue, lambdaValue,
-                                            config.fuelMode,
-                                            config.engineDisplacementCC,
-                                            config.ratedRPM);
-                                if (ar != null) {
-                                    if (ar.omdLbs != null) {
-                                        samples.add(new SensorSample("derived_omd", "Oxygen Mass Density",
-                                                ar.omdLbs, "lbs/1000ft3", "ok"));
-                                    }
-                                    if (ar.compressorEff != null) {
-                                        samples.add(new SensorSample("derived_compressor_eff",
-                                                "Compressor Efficiency", ar.compressorEff, "%", "ok"));
-                                    }
-                                    if (ar.intercoolerEff != null) {
-                                        samples.add(new SensorSample("derived_intercooler_eff",
-                                                "Intercooler Effectiveness", ar.intercoolerEff, "%", "ok"));
-                                    }
-                                    if (ar.vePct != null) {
-                                        samples.add(new SensorSample("derived_ve",
-                                                "Volumetric Efficiency", ar.vePct, "%", "ok"));
-                                    }
-                                    if (ar.dcafr != null) {
-                                        samples.add(new SensorSample("derived_dcafr",
-                                                "Density-Corrected AFR", ar.dcafr, "", "ok"));
-                                    }
-                                    if (ar.tmfGs != null) {
-                                        samples.add(new SensorSample("derived_tmf",
-                                                "Theoretical Mass Flow", ar.tmfGs, "g/s", "ok"));
-                                    }
-                                    if (ar.mafDeviationPct != null) {
-                                        samples.add(new SensorSample("derived_maf_dev",
-                                                "MAF Deviation", ar.mafDeviationPct, "%", "ok"));
-                                    }
-                                    if (ar.lvdFraction != null) {
-                                        samples.add(new SensorSample("derived_lvd",
-                                                "Vapor Displacement", ar.lvdFraction, "fraction", "ok"));
-                                    }
-                                    if (ar.effectiveDensityKgM3 != null) {
-                                        samples.add(new SensorSample("derived_eff_density",
-                                                "Effective Air Density", ar.effectiveDensityKgM3,
-                                                "kg/m3", "ok"));
-                                    }
-                                    if (ar.eccDeltaT != null) {
-                                        samples.add(new SensorSample("derived_ecc_dt",
-                                                "Evap Cooling DeltaT", ar.eccDeltaT, "C", "ok"));
-                                    }
-                                    if (ar.eccCorrectedMAD != null) {
-                                        samples.add(new SensorSample("derived_ecc_mad",
-                                                "Evap-Corrected MAD", ar.eccCorrectedMAD,
-                                                "lbs/1000ft3", "ok"));
-                                    }
-                                    if (ar.pdi != null) {
-                                        samples.add(new SensorSample("derived_pdi",
-                                                "Power Density Index", ar.pdi, "", "ok"));
-                                    }
-                                    if (ar.saeJ607CF != null) {
-                                        samples.add(new SensorSample("derived_sae_j607",
-                                                "SAE J607 CF", ar.saeJ607CF, "", "ok"));
-                                    }
-                                    if (ar.saeCFDelta != null) {
-                                        samples.add(new SensorSample("derived_sae_cf_delta",
-                                                "SAE CF Delta", ar.saeCFDelta, "", "ok"));
-                                    }
-                                }
-                                } catch (Exception advEx) {
-                                    Log.w(TAG, "Advanced air density computation failed non-fatally", advEx);
-                                }
+                                airDensityMonitor.appendSamples(
+                                        samples, mafValue, rpmValue, lambdaValue,
+                                        config.fuelMode,
+                                        config.engineDisplacementCC,
+                                        config.ratedRPM,
+                                        config.engineDisplacementUserSet);
+                            } catch (Exception densityEx) {
+                                Log.w(TAG, "Air density sample append failed non-fatally", densityEx);
                             }
                         }
-                        
+
                         if (!toRemove.isEmpty()) {
                             // Never remove ALL PIDs — keep at least a minimum set
                             // so the logger always has something to poll. Also
@@ -800,13 +691,16 @@ public final class LoggerService extends Service {
                                 toRemove.clear();
                             } else {
                                 toRemove.removeIf(p -> {
-                                    String key = p.key();
-                                    return key.contains("0100") || key.contains("010C") // RPM
-                                        || key.contains("010D") // Speed
-                                        || key.contains("0105") // Coolant
-                                        || key.contains("0104") // Load
-                                        || key.contains("010B"); // MAP
-                                });
+                                                                    String key = p.key();
+                                                                    return key.equals("01_00") || key.equals("01_0C") // RPM
+                                        || key.equals("01_0D") // Speed
+                                        || key.equals("01_05") // Coolant
+                                        || key.equals("01_04") // Load
+                                        || key.equals("01_0B") // MAP
+                                        || key.equals("01_0F") // IAT
+                                        || key.equals("01_33") // Baro
+                                        || key.equals("01_46"); // Ambient // Ambient — AeroDensity AAD
+                                                                });
                             }
                             if (!toRemove.isEmpty()) {
                                 finalPids.removeAll(toRemove);
@@ -923,14 +817,18 @@ public final class LoggerService extends Service {
                 try { localApiServer.stop(); } catch (Exception ignored) {}
             }
             if (localDriver != null) {
-                try { localDriver.disconnect(); } catch (Exception ignored) {}
-            }
-            releaseWakeLock();
+                            try { localDriver.disconnect(); } catch (Exception ignored) {}
+                        }
+                        try {
+                            if (airDensityMonitor != null) airDensityMonitor.stopPhoneSensors();
+                        } catch (Exception ignored) {}
+                        releaseWakeLock();
 
-            if (currentSessionToken == sessionToken) {
-                writer = null;
-                apiServer = null;
-                driver = null;
+                        if (currentSessionToken == sessionToken) {
+                            writer = null;
+                            apiServer = null;
+                            driver = null;
+                            airDensityMonitor = null;
                 // Keep liveMapStore alive briefly — MainActivity may still read
                 // the last snapshot when restoring after stop. It gets replaced
                 // on the next startLogging session.

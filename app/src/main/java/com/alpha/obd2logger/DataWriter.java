@@ -124,6 +124,9 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("derived_sae_cf", "SAE J1349 Correction Factor");
         registerDerived("derived_grains", "Grains H2O (grains/lb)");
         registerDerived("derived_humidity", "Relative Humidity (%)");
+        registerDerived("derived_aad_quality", "AeroDensity Quality (0=ok 1=est 2=default)");
+        registerDerived("derived_baro_src", "Baro Source (1=obd 2=sensor 3=weather 4=default)");
+        registerDerived("derived_rh_src", "RH Source (1=sensor 2=weather 3=default)");
         // Advanced Air Density (beyond standard AAD/MAD/BAD)
         registerDerived("derived_omd", "Oxygen Mass Density (lbs/1000ft3)");
         registerDerived("derived_compressor_eff", "Compressor Efficiency (%)");

@@ -33,6 +33,11 @@ public final class LoggerConfig {
     public boolean showAirDensity = true;
     /** Engine displacement in cc — required for VE/TMF/PDI calculations */
     public int engineDisplacementCC = 1998; // default ~2.0L
+    /**
+     * True once the user has confirmed / edited displacement.
+     * Advanced VE/TMF/PDI samples are still computed when false, but stamped status="assumed".
+     */
+    public boolean engineDisplacementUserSet = false;
     /** Rated peak-power RPM — used for Power Density Index normalization */
     public int ratedRPM = 6000;
     /** Load user-defined custom PIDs from SharedPreferences */

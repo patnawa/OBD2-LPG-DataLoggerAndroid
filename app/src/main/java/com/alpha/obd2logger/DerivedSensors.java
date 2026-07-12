@@ -11,6 +11,7 @@ package com.alpha.obd2logger;
  *   - Fuel Consumption (km/L) — from MAF Air Flow + Vehicle Speed
  *   - Fuel Consumption (L/100km) — inverse of km/L
  *   - Turbo Boost Pressure (kPa/psi/bar) — MAP minus Barometric Pressure
+ *   - AeroDensity Intelligence (AAD / MAD / BAD + SAE CF / DA / grains)
  */
 public final class DerivedSensors {
 
@@ -21,7 +22,7 @@ public final class DerivedSensors {
     // FuelProperties.get(fuelMode) for accuracy.
 
     /** Sea-level atmospheric pressure (kPa) — fallback when Baro PID unavailable */
-    private static final double SEA_LEVEL_PRESSURE_KPA = 101.325;
+    public static final double SEA_LEVEL_PRESSURE_KPA = 101.325;
 
     private DerivedSensors() {}
 
@@ -154,82 +155,135 @@ public final class DerivedSensors {
     //  Air Density (AeroDensity Intelligence — AAD / MAD / BAD)
     // ═══════════════════════════════════════════════════════════════
     //
-    // Air density is the most direct measurement of oxygen molecules available
-    // for combustion. Unlike boost pressure alone, it accounts for temperature
-    // effects on oxygen content — a critical element for horsepower.
-    //
-    // Formula (Ideal Gas Law + water vapor correction):
+    // Ideal gas + water vapor correction:
     //   ρ = (P_d / (R_d × T)) + (P_v / (R_v × T))
     //
-    // Where:
-    //   T   = temperature in Kelvin (°C + 273.15)
-    //   P   = total absolute pressure (Pa)
-    //   P_v = water vapor partial pressure = saturation_vp × (RH/100)
-    //   P_d = dry air partial pressure = P - P_v
-    //   R_d = 287.058 J/(kg·K) — specific gas constant for dry air
-    //   R_v = 461.495 J/(kg·K) — specific gas constant for water vapor
+    // Magnus saturation vapor pressure (hPa):
+    //   P_sat = 6.1078 × 10^(7.5×T / (T+237.3))
     //
-    // Saturation vapor pressure (Magnus formula):
-    //   P_sat(hPa) = 6.1078 × 10^(7.5×T / (T+237.3))
+    // MAD uses absolute humidity conserved from ambient conditions
+    // (RH ambient + T ambient + P ambient) → mixing ratio → Pv at MAP.
+    // Applying ambient RH at hot IAT is physically wrong under boost.
     //
-    // AeroDensity display unit: lbs/1000ft³ (typical range 0–300)
-    //   SAE J1349 standard: 14.4 psia, 77°F, 0% RH → AAD = 72.2 lbs/1000ft³
-    //   SAE J607 standard: AAD = 76.4 lbs/1000ft³
-    //
-    // Conversion: kg/m³ × 62.428 = lbs/1000ft³
+    // AeroDensity display unit: lbs/1000ft³ (kg/m³ × 62.428)
+    //   SAE J1349: 99.0 kPa dry, 25°C → ~72.2 lbs/1000ft³
+    //   SAE J607:  101.325 kPa dry, 15°C ≈ 76.4 lbs/1000ft³
 
     /** Specific gas constant for dry air, J/(kg·K) */
-    private static final double R_DRY = 287.058;
+    public static final double R_DRY = 287.058;
     /** Specific gas constant for water vapor, J/(kg·K) */
-    private static final double R_VAPOR = 461.495;
+    public static final double R_VAPOR = 461.495;
     /** kg/m³ → lbs/1000ft³ */
-    private static final double KG_M3_TO_LBS_1000FT3 = 62.428;
+    public static final double KG_M3_TO_LBS_1000FT3 = 62.428;
     /** SAE J1349 standard ambient air density (lbs/1000ft³) */
     public static final double SAE_J1349_AAD = 72.2;
     /** SAE J607 standard ambient air density (lbs/1000ft³) */
     public static final double SAE_J607_AAD = 76.4;
+    /** O2 mass fraction of dry air (~23.14%) — used by OMD */
+    public static final double O2_MASS_FRACTION_DRY = 0.2314;
+    /** Max vapor partial pressure fraction of total pressure */
+    private static final double MAX_VAPOR_FRACTION = 0.98;
 
     /**
-     * Compute air density in kg/m³ using the ideal gas law with humidity correction.
-     *
-     * @param pressureKPa  Absolute pressure in kPa
-     * @param tempC        Temperature in °C
-     * @param humidityPct  Relative humidity (0–100%), default 50 if unknown
-     * @return Air density in kg/m³, or null if inputs are invalid
+     * Magnus saturation vapor pressure in hPa for a dry-bulb temperature °C.
+     * Clamps extreme colder/hotter inputs to keep the formula stable.
+     */
+    public static double saturationVaporPressureHpa(double tempC) {
+        double t = tempC;
+        if (t < -60.0) t = -60.0;
+        if (t > 100.0) t = 100.0;
+        return 6.1078 * Math.pow(10.0, (7.5 * t) / (t + 237.3));
+    }
+
+    /**
+     * Clamp humidity to 0–100, defaulting missing to the provided fallback.
+     */
+    public static double clampHumidity(Double humidityPct, double fallback) {
+        if (humidityPct == null) return fallback;
+        if (humidityPct < 0) return 0.0;
+        if (humidityPct > 100) return 100.0;
+        return humidityPct;
+    }
+
+    /**
+     * Actual vapor pressure (hPa) from RH + temperature, clamped so Pv ≤ maxFrac * P.
+     */
+    public static double vaporPressureHpa(double tempC, double humidityPct, double totalPressureHpa) {
+        double rh = clampHumidity(humidityPct, 50.0);
+        double sat = saturationVaporPressureHpa(tempC);
+        double pv = sat * (rh / 100.0);
+        double maxPv = Math.max(0.1, totalPressureHpa * MAX_VAPOR_FRACTION);
+        if (pv > maxPv) pv = maxPv;
+        if (pv < 0) pv = 0;
+        return pv;
+    }
+
+    /**
+     * Humidity ratio w = kg water / kg dry air (dimensionless mixing ratio).
+     */
+    public static Double humidityRatio(Double pressureKPa, Double tempC, Double humidityPct) {
+        if (pressureKPa == null || tempC == null) return null;
+        if (pressureKPa <= 0) return null;
+        double pHpa = pressureKPa * 10.0;
+        double pv = vaporPressureHpa(tempC, clampHumidity(humidityPct, 50.0), pHpa);
+        double dry = pHpa - pv;
+        if (dry <= 0.1) return null;
+        return 0.62198 * pv / dry;
+    }
+
+    /**
+     * Air density in kg/m³ from absolute pressure, temperature and relative humidity.
      */
     public static Double airDensityKgM3(Double pressureKPa, Double tempC, Double humidityPct) {
         if (pressureKPa == null || tempC == null) return null;
         if (pressureKPa <= 0 || pressureKPa > 500) return null;
         if (tempC < -60 || tempC > 200) return null;
 
-        double rh = (humidityPct != null && humidityPct >= 0 && humidityPct <= 100)
-                ? humidityPct : 50.0;
+        double pHpa = pressureKPa * 10.0;
+        double pvHpa = vaporPressureHpa(tempC, clampHumidity(humidityPct, 50.0), pHpa);
+        return airDensityKgM3FromVapor(pressureKPa, tempC, pvHpa);
+    }
+
+    /**
+     * Air density in kg/m³ given vapor pressure in hPa (absolute humidity path).
+     */
+    public static Double airDensityKgM3FromVapor(Double pressureKPa, Double tempC, double vaporPressureHpa) {
+        if (pressureKPa == null || tempC == null) return null;
+        if (pressureKPa <= 0 || pressureKPa > 500) return null;
+        if (tempC < -60 || tempC > 200) return null;
 
         double tempK = tempC + 273.15;
-        double pressurePa = pressureKPa * 1000.0; // kPa → Pa
-
-        // Saturation vapor pressure (Magnus formula) in hPa
-        double satVpHpa = 6.1078 * Math.pow(10.0, (7.5 * tempC) / (tempC + 237.3));
-        // Actual vapor pressure in Pa
-        double vaporPa = satVpHpa * (rh / 100.0) * 100.0; // hPa → Pa
-        // Dry air pressure
+        double pressurePa = pressureKPa * 1000.0;
+        double vaporPa = vaporPressureHpa * 100.0;
+        double maxVaporPa = pressurePa * MAX_VAPOR_FRACTION;
+        if (vaporPa > maxVaporPa) vaporPa = maxVaporPa;
+        if (vaporPa < 0) vaporPa = 0;
         double dryPa = pressurePa - vaporPa;
+        if (dryPa <= 0) return null;
 
-        // ρ = (P_d / (R_d × T)) + (P_v / (R_v × T))
         double density = (dryPa / (R_DRY * tempK)) + (vaporPa / (R_VAPOR * tempK));
-
-        // Sanity check: typical range 0.3–5.0 kg/m³
         if (density < 0.1 || density > 10.0) return null;
         return density;
     }
 
     /**
-     * Compute air density in lbs/1000ft³ (standard display unit).
-     *
-     * @param pressureKPa  Absolute pressure in kPa
-     * @param tempC        Temperature in °C
-     * @param humidityPct  Relative humidity (0–100%)
-     * @return Air density in lbs/1000ft³, or null if inputs are invalid
+     * Dry-air-only density (kg/m³) after removing water vapor by partial pressure.
+     * Used by Oxygen Mass Density (no double humidity correction).
+     */
+    public static Double dryAirDensityKgM3(Double pressureKPa, Double tempC, Double humidityPct) {
+        if (pressureKPa == null || tempC == null) return null;
+        if (pressureKPa <= 0 || pressureKPa > 500) return null;
+        double pHpa = pressureKPa * 10.0;
+        double pvHpa = vaporPressureHpa(tempC, clampHumidity(humidityPct, 50.0), pHpa);
+        double dryHpa = pHpa - pvHpa;
+        if (dryHpa <= 0.1) return null;
+        double tempK = tempC + 273.15;
+        double dryPa = dryHpa * 100.0;
+        return dryPa / (R_DRY * tempK);
+    }
+
+    /**
+     * Air density in lbs/1000ft³ (standard display unit).
      */
     public static Double airDensityLbs1000ft3(Double pressureKPa, Double tempC, Double humidityPct) {
         Double kgM3 = airDensityKgM3(pressureKPa, tempC, humidityPct);
@@ -238,60 +292,83 @@ public final class DerivedSensors {
         return Math.round(lbs * 10.0) / 10.0;
     }
 
+    public static Double airDensityLbs1000ft3FromVapor(Double pressureKPa, Double tempC, double vaporPressureHpa) {
+        Double kgM3 = airDensityKgM3FromVapor(pressureKPa, tempC, vaporPressureHpa);
+        if (kgM3 == null) return null;
+        double lbs = kgM3 * KG_M3_TO_LBS_1000FT3;
+        return Math.round(lbs * 10.0) / 10.0;
+    }
+
     /**
      * Ambient Air Density (AAD) — air density around the vehicle.
-     *
-     * Uses:
-     *   - Barometric Pressure (PID 0x33) or weather API pressure
-     *   - Ambient Air Temp (PID 0x46) or weather API temp
-     *   - Relative Humidity from WeatherProvider (OBD2 has no humidity PID)
-     *
-     * @param baroKpa       Barometric pressure (kPa) from PID 0x33 or weather API
-     * @param ambientTempC  Ambient temperature (°C) from PID 0x46 or weather API
-     * @param humidityPct    Relative humidity (%) from WeatherProvider
-     * @return AAD in lbs/1000ft³, or null if inputs are invalid
+     * Callers should pass real baro/ambient when available; nulls indicate fallback.
      */
     public static Double ambientAirDensity(Double baroKpa, Double ambientTempC, Double humidityPct) {
-        // Fall back to sea-level pressure if baro unavailable
         double baro = (baroKpa != null && baroKpa > 50.0) ? baroKpa : SEA_LEVEL_PRESSURE_KPA;
         double temp = (ambientTempC != null) ? ambientTempC : 25.0;
         return airDensityLbs1000ft3(baro, temp, humidityPct);
     }
 
     /**
-     * Manifold Air Density (MAD) — air density inside the intake manifold.
+     * Manifold Air Density (MAD) using ambient absolute humidity conservation.
      *
-     * Uses:
-     *   - MAP (PID 0x0B) — absolute pressure in manifold
-     *   - IAT (PID 0x0F) — intake air temperature
-     *   - Relative Humidity from WeatherProvider (same ambient RH, heated air
-     *     in manifold has lower effective RH but this is a reasonable approximation)
+     * Mixing ratio is computed at ambient conditions, then converted to a vapor
+     * partial pressure at manifold absolute pressure. RH is NOT reused at IAT —
+     * heated boost air has the same absolute humidity (to first order) but much
+     * lower relative humidity.
      *
-     * @param mapKpa       Intake manifold absolute pressure (kPa)
-     * @param iatTempC     Intake air temperature (°C)
-     * @param humidityPct   Relative humidity (%) from WeatherProvider
-     * @return MAD in lbs/1000ft³, or null if inputs are invalid
+     * @param mapKpa         Intake manifold absolute pressure (kPa)
+     * @param iatTempC       Intake air temperature (°C)
+     * @param ambientBaroKpa Ambient / station barometric pressure (kPa)
+     * @param ambientTempC   Ambient temperature (°C)
+     * @param ambientRhPct   Ambient relative humidity (%)
+     */
+    public static Double manifoldAirDensity(Double mapKpa, Double iatTempC,
+                                            Double ambientBaroKpa, Double ambientTempC,
+                                            Double ambientRhPct) {
+        if (mapKpa == null) return null;
+        double temp = (iatTempC != null) ? iatTempC : ((ambientTempC != null) ? ambientTempC : 25.0);
+        double ambBaro = (ambientBaroKpa != null && ambientBaroKpa > 50.0)
+                ? ambientBaroKpa : SEA_LEVEL_PRESSURE_KPA;
+        double ambTemp = (ambientTempC != null) ? ambientTempC : temp;
+        Double w = humidityRatio(ambBaro, ambTemp, ambientRhPct);
+        if (w == null) {
+            // Fallback: direct RH path (legacy behaviour)
+            return airDensityLbs1000ft3(mapKpa, temp, ambientRhPct);
+        }
+        // Pv_map = w * P_map / (0.62198 + w)
+        double mapHpa = mapKpa * 10.0;
+        double pvMap = (w * mapHpa) / (0.62198 + w);
+        // Also never exceed saturation at IAT (condensation drop)
+        double satIat = saturationVaporPressureHpa(temp);
+        if (pvMap > satIat) pvMap = satIat;
+        return airDensityLbs1000ft3FromVapor(mapKpa, temp, pvMap);
+    }
+
+    /**
+     * Legacy MAD signature kept for older call sites / tests: approximates with RH at IAT.
+     * Prefer the absolute-humidity overload.
      */
     public static Double manifoldAirDensity(Double mapKpa, Double iatTempC, Double humidityPct) {
-        if (mapKpa == null) return null;
-        double temp = (iatTempC != null) ? iatTempC : 25.0;
-        return airDensityLbs1000ft3(mapKpa, temp, humidityPct);
+        // Delegate via absolute-humidity using MAP as ambient proxy (degraded but compatible).
+        return manifoldAirDensity(mapKpa, iatTempC, mapKpa, iatTempC, humidityPct);
+    }
+
+
+    /**
+     * Manifold density kg/m³ with absolute-humidity conservation.
+     */
+    public static Double manifoldAirDensityKgM3(Double mapKpa, Double iatTempC,
+                                                Double ambientBaroKpa, Double ambientTempC,
+                                                Double ambientRhPct) {
+        Double lbs = manifoldAirDensity(mapKpa, iatTempC, ambientBaroKpa, ambientTempC, ambientRhPct);
+        if (lbs == null) return null;
+        return lbs / KG_M3_TO_LBS_1000FT3;
     }
 
     /**
      * Boost Air Density (BAD) — additional density from forced induction.
-     *
      * BAD = MAD - AAD
-     *
-     * Positive = density gained from turbo/supercharger
-     * Zero or negative = no boost benefit (N/A engine or idle)
-     *
-     * This is a more insightful performance measurement than boost pressure alone,
-     * because it accounts for temperature's effect on oxygen content.
-     *
-     * @param mad  Manifold Air Density (lbs/1000ft³)
-     * @param aad  Ambient Air Density (lbs/1000ft³)
-     * @return BAD in lbs/1000ft³ (can be negative)
      */
     public static Double boostAirDensity(Double mad, Double aad) {
         if (mad == null || aad == null) return null;
@@ -300,14 +377,7 @@ public final class DerivedSensors {
     }
 
     /**
-     * Air Density Percentage — compared to SAE J1349 standard.
-     *
-     * 100% = standard ambient conditions (77°F, 14.4 psia, 0% RH)
-     * >100% = denser than standard (more oxygen, more power)
-     * <100% = thinner than standard (less oxygen, less power)
-     *
-     * @param aad  Ambient Air Density (lbs/1000ft³)
-     * @return percentage (0–200%), or null
+     * Air Density Percentage — compared to SAE J1349 standard (72.2 lbs/1000ft³).
      */
     public static Double airDensityPercent(Double aad) {
         if (aad == null) return null;
@@ -316,111 +386,78 @@ public final class DerivedSensors {
     }
 
     /**
-     * Density Altitude — the altitude at which standard atmosphere
-     * would have the same air density as current conditions.
+     * Density Altitude (ft) using pressure altitude + virtual-temperature ISA offset.
      *
-     * Lower DA = denser air (better performance, like being at sea level)
-     * Higher DA = thinner air (worse performance, like being at high altitude)
+     * Steps:
+     *   1) Pressure altitude (ft) from barometric station pressure
+     *   2) Virtual temperature from humidity
+     *   3) ISA temp at PA and 120 ft/°C approx density-altitude correction
      *
-     * Approximation formula (from NOAA/NWS):
-     *   DA(ft) = 145366 × (1 - (17.326 × T / (T + 273.15 - 0.5556×(1-RH)) )^0.235 )
-     *
-     * Simplified when pressure is known:
-     *   Use barometric pressure + temperature directly
-     *
-     * @param baroKpa      Barometric pressure (kPa)
-     * @param tempC        Ambient temperature (°C)
-     * @param humidityPct   Relative humidity (%)
-     * @return Density altitude in feet, or null
+     * At ISA sea level dry 15°C / 1013.25 hPa → ≈ 0 ft.
      */
     public static Double densityAltitudeFt(Double baroKpa, Double tempC, Double humidityPct) {
         if (baroKpa == null || tempC == null) return null;
+        if (baroKpa <= 0) return null;
 
-        double rh = (humidityPct != null && humidityPct >= 0 && humidityPct <= 100)
-                ? humidityPct : 50.0;
+        double rh = clampHumidity(humidityPct, 50.0);
+        double pressureHpa = baroKpa * 10.0;
 
+        // Pressure altitude (ICAO troposphere approximation)
+        double ratio = pressureHpa / 1013.25;
+        if (ratio <= 0) return null;
+        double pressureAltFt = 145366.45 * (1.0 - Math.pow(ratio, 0.190284));
+
+        // Virtual temperature (°C) for humidity correction
+        double pv = vaporPressureHpa(tempC, rh, pressureHpa);
         double tempK = tempC + 273.15;
-        double pressureHpa = baroKpa * 10.0; // kPa → hPa
+        double virtualK = tempK / (1.0 - (pv / pressureHpa) * 0.378);
+        double virtualC = virtualK - 273.15;
 
-        // Saturation vapor pressure (hPa)
-        double satVp = 6.1078 * Math.pow(10.0, (7.5 * tempC) / (tempC + 237.3));
-        double vaporPressure = satVp * (rh / 100.0);
+        // ISA temperature at pressure altitude (°C): 15 − 1.98 per 1000 ft
+        double isaTempC = 15.0 - 1.98 * (pressureAltFt / 1000.0);
 
-        // Density altitude using the full formula
-        // DA = 145366 × [1 - (P/P0)^(0.1903) × (T/T0)^(−0.5379)]
-        // where P0=1013.25 hPa, T0=288.15 K (15°C standard atmosphere)
-        // But we use the simpler approximation that includes humidity:
-        double virtualTemp = tempK / (1 - (vaporPressure / pressureHpa) * (1 - 0.378));
-        double pressureRatio = pressureHpa / 1013.25;
-        double da = 145366.0 * (1.0 - Math.pow(pressureRatio, 0.1903)
-                * Math.pow(virtualTemp / 288.15, 0.5379));
-
+        // ~120 ft per °C density altitude rule of thumb with virtual temperature
+        double da = pressureAltFt + 120.0 * (virtualC - isaTempC);
         return (double) Math.round(da);
     }
 
     /**
-     * SAE J1349 Correction Factor — normalizes horsepower to standard conditions.
-     *
-     * CF = (P_std / P_actual) × sqrt(T_actual / T_std)
-     *
-     * Where P_std = 99.0 kPa (990 hPa, dry air at SAE J1349)
-     *       T_std = 298.15 K (25°C / 77°F)
-     *
-     * @param baroKpa      Barometric pressure (kPa)
-     * @param tempC        Ambient temperature (°C)
-     * @param humidityPct   Relative humidity (%)
-     * @return Correction factor (typically 0.9–1.1), or null
+     * SAE J1349 Correction Factor — normalizes horsepower to 99.0 kPa dry / 25°C.
+     * CF = (P_std / P_dry_actual) × sqrt(T_actual / T_std)
      */
     public static Double saeJ1349CorrectionFactor(Double baroKpa, Double tempC, Double humidityPct) {
         if (baroKpa == null || tempC == null) return null;
+        if (baroKpa <= 0) return null;
 
-        double rh = (humidityPct != null && humidityPct >= 0 && humidityPct <= 100)
-                ? humidityPct : 50.0;
-
+        double rh = clampHumidity(humidityPct, 50.0);
         double tempK = tempC + 273.15;
         double pressureHpa = baroKpa * 10.0;
+        double vaporPressure = vaporPressureHpa(tempC, rh, pressureHpa);
+        double dryPressure = pressureHpa - vaporPressure;
+        if (dryPressure < 50.0) return null; // absurd
 
-        // Water vapor pressure
-        double satVp = 6.1078 * Math.pow(10.0, (7.5 * tempC) / (tempC + 237.3));
-        double vaporPressure = satVp * (rh / 100.0);
-
-        // SAE J1349 standard: 990 hPa dry, 298.15 K (25°C), 0% RH
         double pStd = 990.0; // hPa
         double tStd = 298.15; // K
-
-        // Dry pressure (actual)
-        double dryPressure = pressureHpa - vaporPressure;
-
         double cf = (pStd / dryPressure) * Math.sqrt(tempK / tStd);
-
+        if (cf < 0.5 || cf > 1.5) return null;
         return Math.round(cf * 1000.0) / 1000.0;
     }
 
     /**
-     * Grains of water per pound of dry air — a measure of absolute humidity
-     * used in engine tuning (e.g., 60–80 grains is typical; >120 is very humid).
-     *
-     * @param tempC        Ambient temperature (°C)
-     * @param humidityPct   Relative humidity (%)
-     * @param baroKpa       Barometric pressure (kPa)
-     * @return Grains H2O per lb dry air, or null
+     * Grains of water per pound of dry air (absolute humidity).
+     * Typical engine-tuning range 20–120 grains.
      */
     public static Double grainsH2O(Double tempC, Double humidityPct, Double baroKpa) {
-        if (tempC == null || humidityPct == null) return null;
-
-        double rh = (humidityPct >= 0 && humidityPct <= 100) ? humidityPct : 50.0;
+        if (tempC == null) return null;
+        double rh = clampHumidity(humidityPct, 50.0);
         double pressureHpa = (baroKpa != null && baroKpa > 50.0) ? baroKpa * 10.0 : 1013.25;
+        double vaporPressure = vaporPressureHpa(tempC, rh, pressureHpa);
+        double dry = pressureHpa - vaporPressure;
+        if (dry <= 0.1) return null;
 
-        // Saturation vapor pressure (hPa)
-        double satVp = 6.1078 * Math.pow(10.0, (7.5 * tempC) / (tempC + 237.3));
-        double vaporPressure = satVp * (rh / 100.0);
-
-        // Humidity ratio (kg water / kg dry air)
-        double humidityRatio = 0.62198 * vaporPressure / (pressureHpa - vaporPressure);
-
-        // Convert to grains per lb: 1 kg/kg = 7000 grains/lb
+        // Humidity ratio (kg water / kg dry air) → grains/lb (×7000)
+        double humidityRatio = 0.62198 * vaporPressure / dry;
         double grains = humidityRatio * 7000.0;
-
         return Math.round(grains * 10.0) / 10.0;
     }
 }

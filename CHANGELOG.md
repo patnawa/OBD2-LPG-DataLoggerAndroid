@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.15.0] - 2026-07-12 — AeroDensity Intelligence Physics + Scanner Fix
+
+### Fixed — Air density math & honesty
+- **MAD humidity physics** — stopped applying ambient RH at hot IAT. Absolute humidity (mixing ratio from ambient T/P/RH) is conserved into the manifold; Pv is also capped ≤ 98% of total pressure. Fix improves turbo / post-IC density accuracy in tropical climate.
+- **OMD double-count of humidity** — now `ρ_dry × O2_mass_fraction (0.2314)` instead of total-density × dry-frac × vol-frac.
+- **TMF / MAF Deviation tautology** — independent theoretical mass flow uses assumed VE (85% NA / 95% FI). Deviation vs measured MAF is finally meaningful for leaks/drift.
+- **Density altitude** — NOAA-style pressure altitude + virtual-temp ISA offset (near 0 ft at ISA sea level).
+- **Weather fetch failure wiped humidity** — last-good Open-Meteo cache is retained; failed refresh no longer forces silent 50% RH and fake AAD.
+- **Weather never re-fetched while logging** — soft async refresh by 10 min TTL from the OBD loop (never blocks ELM).
+- **CE / IC as “estimate”** — street cars only expose post-IC IAT; status stamped `estimate`.
+- **Displacement default 1998 / 6000 RPM** — VE/TMF/PDI stamped `assumed` until user sets prefs (`pref_engine_displacement_cc` + `pref_engine_displacement_user_set`).
+
+### Fixed — OBD2 scanner wiring for AeroDensity
+- **Ambient Air Temp (0x46) missing from LPG poll set** — AAD fell back to 25°C / weather in default `lpgOnlyMode`. Now `getLpgPollSet(showAirDensity)` keeps Ambient, IAT, MAP, Baro, MAF, Lambda.
+- **Blacklist protect** — IAT / Baro / Ambient no longer auto-removed after 3 fails (alongside MAP/RPM).
+- **Quality columns in logs** — `derived_aad_quality`, `derived_baro_src`, `derived_rh_src`; sample status `ok|est|default|assumed|estimate`.
+- **Phone sensors** — TYPE_PRESSURE / TYPE_RELATIVE_HUMIDITY registered when present.
+
+### Tests
+- New `AeroDensityTest` — SAE J1349 density+CF, DA≈0 at ISA SL, MAD abs-humidity, independent TMF, OMD, poll-set Ambient, sample quality emission.
+
 ## [3.14.0] - 2026-07-12 — Professional Fuel-Trim Analyzer (OBD2 shop-grade)
 
 ### Fixed

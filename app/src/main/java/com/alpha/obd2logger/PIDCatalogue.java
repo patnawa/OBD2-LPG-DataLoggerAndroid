@@ -42,14 +42,19 @@ public final class PIDCatalogue {
     /**
      * The actual set of PIDs to poll in LPG-only mode.
      *
-     * The old behaviour (getLpgCritical) polled only flags marked lpgCritical=true,
-     * which silently dropped Vehicle Speed, Throttle Position and other PIDs that the
-     * dashboard, derived sensors (fuel economy needs Vehicle Speed + MAF) and the live
-     * fuel map depend on. This builds the poll set as:
-     *     lpgCritical ∪ dashboard ∪ every PID a derived sensor reads.
+     * Builds the poll set as:
+     *     lpgCritical ∪ dashboard ∪ every PID a derived sensor / AeroDensity needs.
      * so lpgOnly mode stays lean but never starves a feature the UI/logging relies on.
      */
     public static List<PIDDefinition> getLpgPollSet() {
+        return getLpgPollSet(true);
+    }
+
+    /**
+     * @param includeAirDensity when true (default), keep AeroDensity OBD deps
+     *        (Ambient Air Temp / MAP / Baro / IAT / MAF / Lambda) in the poll set.
+     */
+    public static List<PIDDefinition> getLpgPollSet(boolean includeAirDensity) {
         List<PIDDefinition> poll = new ArrayList<>();
         for (PIDDefinition pid : ALL) {
             if (pid.isLpgCritical() || pid.isDashboard()) {
@@ -66,6 +71,14 @@ public final class PIDCatalogue {
         addByName(poll, "Barometric Pressure");
         // Throttle Position / Coolant are dashboard-critical for tuning readiness.
         addByName(poll, "Throttle Position");
+        if (includeAirDensity) {
+            // AeroDensity Intelligence (AAD/MAD/BAD + advanced VE/TMF/OMD):
+            // Ambient Air Temp was previously skipped (lpgCritical=false) → AAD fell back to 25°C.
+            addByName(poll, "Ambient Air Temp");
+            addByName(poll, "Intake Air Temp");
+            addByName(poll, "Lambda (B1S1)");
+            addByName(poll, "Wideband Lambda (B1S1)");
+        }
         return Collections.unmodifiableList(poll);
     }
 
