@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.20.3] - 2026-07-13 — Play Store Release Preparation
+
+- Versioned the program as `3.20.3` (`versionCode 117`).
+- Updated the release workflow to build and publish a signed Android App Bundle (`.aab`) alongside the QA APK, with APK/AAB signature verification and SHA-256 checksums.
+- Added a Play Store release checklist covering privacy, Data Safety, foreground-service declaration, closed testing, 16 KB page-size verification, store assets, and hardware smoke tests.
+
 ## [3.20.2] - 2026-07-13 — Session History & UX
 
 ### Live Map accuracy and diagnostics

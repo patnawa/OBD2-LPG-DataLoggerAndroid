@@ -77,7 +77,7 @@ jobs:
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tunermap-release.keystore"
           test -s "$RUNNER_TEMP/tunermap-release.keystore"
 
-      - name: Build signed release APK
+      - name: Build signed release APK and App Bundle
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/tunermap-release.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -85,17 +85,23 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew testDebugUnitTest lintRelease assembleRelease
+          ./gradlew testDebugUnitTest lintRelease assembleRelease bundleRelease
 
-      - name: Verify and name signed APK
+      - name: Verify and name signed Play package
         run: |
           APK="app/build/outputs/apk/release/app-release.apk"
+          AAB="app/build/outputs/bundle/release/app-release.aab"
           test -f "$APK"
+          test -f "$AAB"
           BUILD_TOOLS="$(find "$ANDROID_SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
           "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
-          OUTPUT="TunerMap-Pro-${GITHUB_REF_NAME}.apk"
-          cp "$APK" "$OUTPUT"
-          sha256sum "$OUTPUT" > "$OUTPUT.sha256"
+          jarsigner -verify -verbose -certs "$AAB" >/dev/null
+          APK_OUTPUT="TunerMap-Pro-${GITHUB_REF_NAME}.apk"
+          AAB_OUTPUT="TunerMap-Pro-${GITHUB_REF_NAME}.aab"
+          cp "$APK" "$APK_OUTPUT"
+          cp "$AAB" "$AAB_OUTPUT"
+          sha256sum "$APK_OUTPUT" > "$APK_OUTPUT.sha256"
+          sha256sum "$AAB_OUTPUT" > "$AAB_OUTPUT.sha256"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -103,4 +109,6 @@ jobs:
           files: |
             TunerMap-Pro-*.apk
             TunerMap-Pro-*.apk.sha256
+            TunerMap-Pro-*.aab
+            TunerMap-Pro-*.aab.sha256
           generate_release_notes: true

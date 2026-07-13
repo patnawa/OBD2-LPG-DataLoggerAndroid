@@ -1,8 +1,15 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.20.2** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
+**Version 3.20.3** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
+
+---
+
+## What's New in 3.20.3 — Play Store Release Preparation
+
+- Release CI now builds a signed Android App Bundle (`.aab`) for Play Console, verifies both APK/AAB signatures, and publishes SHA-256 checksums.
+- Added the [Play Store release checklist](docs/PLAY_STORE_RELEASE_CHECKLIST.md) for policy declarations, privacy, testing, security, listing assets, and hardware validation.
 
 ---
 
@@ -414,13 +421,14 @@ Requirements: JDK 17, Android SDK 35 (API 35), Gradle wrapper 9.4.1
 ```bash
 export JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-17.0.19.10-hotspot"
 export ANDROID_HOME="/c/Users/Alpha/Android/Sdk"
-./gradlew clean testDebugUnitTest lintDebug assembleDebug assembleRelease
+./gradlew clean testDebugUnitTest lintDebug assembleDebug assembleRelease bundleRelease
 ```
 
 Build outputs:
 
 - Installable debug APK: `app/build/outputs/apk/debug/app-debug.apk` (about 7.9 MB)
 - Optimized release APK: `app/build/outputs/apk/release/app-release-unsigned.apk` (must be signed with a private release keystore before distribution)
+- Play Store App Bundle: `app/build/outputs/bundle/release/app-release.aab` (must be signed with the persistent upload key)
 - APK and `.idsig` artifacts are intentionally excluded from Git history; publish signed production packages through GitHub Releases or the app store.
 
 ### Release signing
@@ -433,6 +441,8 @@ GitHub Releases are created only for `v*` tags and only when these repository se
 - `ANDROID_KEY_PASSWORD`
 
 The workflow refuses to publish when any signing secret is missing. PR debug artifacts use an ephemeral CI key and are labeled **clean-install-only**; they must not be used as upgrade packages. Never commit a keystore or its passwords.
+
+See [docs/PLAY_STORE_RELEASE_CHECKLIST.md](docs/PLAY_STORE_RELEASE_CHECKLIST.md) before creating a `v*` tag.
 
 ## Runtime Notes
 
