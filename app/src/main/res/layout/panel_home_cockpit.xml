@@ -10,7 +10,7 @@
     android:paddingEnd="14dp"
     android:paddingBottom="96dp">
 
-    <!-- One status surface only: no duplicate Connect/Disconnect action. -->
+    <!-- Adapter Flashcard — rich connection status with transport icon, signal bars, voltage -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -19,26 +19,45 @@
         app:cardCornerRadius="16dp"
         app:strokeColor="?attr/colorOutlineVariant"
         app:strokeWidth="1dp">
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="14dp"
-            android:paddingTop="10dp"
+            android:paddingTop="12dp"
             android:paddingEnd="14dp"
-            android:paddingBottom="10dp">
-            <View
-                android:id="@+id/cockpitStatusDot"
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:layout_marginEnd="10dp"
-                android:background="@drawable/bg_status_dot_off" />
+            android:paddingBottom="12dp">
+
+            <!-- Transport icon with rounded background -->
+            <FrameLayout
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="12dp">
+
+                <View
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_adapter_icon" />
+
+                <ImageView
+                    android:id="@+id/cockpitAdapterIcon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_usb"
+                    app:tint="@color/primary"
+                    android:contentDescription="Adapter type" />
+            </FrameLayout>
+
+            <!-- Center: adapter name, status, health -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical">
+
                 <TextView
                     android:id="@+id/cockpitConnection"
                     android:layout_width="wrap_content"
@@ -47,6 +66,7 @@
                     android:textColor="@color/muted"
                     android:textSize="15sp"
                     android:textStyle="bold" />
+
                 <TextView
                     android:id="@+id/cockpitAdapter"
                     android:layout_width="wrap_content"
@@ -57,6 +77,7 @@
                     android:text="@string/home_status_connect_desc"
                     android:textColor="@color/muted"
                     android:textSize="12sp" />
+
                 <TextView
                     android:id="@+id/cockpitConnectionHealth"
                     android:layout_width="wrap_content"
@@ -67,38 +88,83 @@
                     android:textColor="@color/muted"
                     android:textSize="10sp" />
             </LinearLayout>
-            <TextView
-                android:id="@+id/cockpitProtocol"
+
+            <!-- Right: signal bars, voltage, protocol badge -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_status_chip"
-                android:gravity="center"
-                    android:minHeight="34dp"
-                    android:paddingStart="12dp"
-                    android:paddingTop="4dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="4dp"
-                android:text="@string/home_status_obd2"
-                android:textColor="@color/primary"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-            <TextView
-                android:id="@+id/btnCockpitHud"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_status_chip"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                android:gravity="center"
-                android:minHeight="34dp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:text="@string/home_label_hud"
-                android:textColor="@color/muted"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+                android:gravity="end"
+                android:orientation="vertical">
+
+                <!-- Signal quality bars (4 bars, toggled in code) -->
+                <LinearLayout
+                    android:id="@+id/cockpitSignalBars"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:gravity="bottom|end"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <View
+                        android:id="@+id/signalBar1"
+                        android:layout_width="3dp"
+                        android:layout_height="6dp"
+                        android:layout_marginEnd="2dp"
+                        android:background="#39D98A" />
+
+                    <View
+                        android:id="@+id/signalBar2"
+                        android:layout_width="3dp"
+                        android:layout_height="8dp"
+                        android:layout_marginEnd="2dp"
+                        android:background="#39D98A" />
+
+                    <View
+                        android:id="@+id/signalBar3"
+                        android:layout_width="3dp"
+                        android:layout_height="10dp"
+                        android:layout_marginEnd="2dp"
+                        android:background="#39D98A" />
+
+                    <View
+                        android:id="@+id/signalBar4"
+                        android:layout_width="3dp"
+                        android:layout_height="12dp"
+                        android:background="#39D98A" />
+                </LinearLayout>
+
+                <!-- Voltage mini-readout -->
+                <TextView
+                    android:id="@+id/cockpitAdapterVoltage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="--.- V"
+                    android:textColor="@color/accent"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:visibility="gone" />
+
+                <!-- Protocol badge -->
+                <TextView
+                    android:id="@+id/cockpitProtocol"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_status_chip"
+                    android:gravity="center"
+                    android:minHeight="28dp"
+                    android:paddingStart="10dp"
+                    android:paddingTop="3dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="3dp"
+                    android:text="@string/home_status_obd2"
+                    android:textColor="@color/primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

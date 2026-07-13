@@ -40,6 +40,12 @@
         <item>Light Mode</item>
         <item>Dark Mode</item>
     </string-array>
+    <string-array name="font_size_modes">
+        <item>Small (0.85x)</item>
+        <item>Normal (1.0x)</item>
+        <item>Large (1.15x)</item>
+        <item>Extra Large (1.3x)</item>
+    </string-array>
     <string-array name="obd_protocols">
         <item>Auto (AT SP 0)</item>
         <item>SAE J1850 PWM 41.6 kbaud (AT SP 1)</item>

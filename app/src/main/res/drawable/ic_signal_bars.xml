@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 4-bar signal quality indicator (like WiFi/phone signal). Each bar is a separate View in code; this drawable is the background container shape. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Bar 1 (weakest, always visible when connected) -->
+    <item android:id="@+id/signal_bar_1">
+        <shape android:shape="rectangle">
+            <solid android:color="#39D98A" />
+            <corners android:radius="1dp" />
+            <size android:width="3dp" android:height="6dp" />
+        </shape>
+    </item>
+    <!-- Bar 2 -->
+    <item android:id="@+id/signal_bar_2" android:left="4dp" android:bottom="2dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#39D98A" />
+            <corners android:radius="1dp" />
+            <size android:width="3dp" android:height="8dp" />
+        </shape>
+    </item>
+    <!-- Bar 3 -->
+    <item android:id="@+id/signal_bar_3" android:left="8dp" android:bottom="4dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#39D98A" />
+            <corners android:radius="1dp" />
+            <size android:width="3dp" android:height="10dp" />
+        </shape>
+    </item>
+    <!-- Bar 4 (strongest) -->
+    <item android:id="@+id/signal_bar_4" android:left="12dp" android:bottom="6dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#39D98A" />
+            <corners android:radius="1dp" />
+            <size android:width="3dp" android:height="12dp" />
+        </shape>
+    </item>
+</layer-list>

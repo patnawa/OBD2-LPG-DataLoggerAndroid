@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.24.0] - 2026-07-13 — In-App Font Size Control + Adapter Flashcard
+
+- Versioned the program as `3.24.0` (`versionCode 123`).
+- Added `FontScaleHelper`: per-app font size control independent of the Android system font setting. Users can choose from 4 presets — Small (0.85x), Normal (1.0x), Large (1.15x), and Extra Large (1.3x). Applied via `attachBaseContext` context wrapping and takes effect immediately on `recreate()`.
+- Added Font Size spinner to Settings > General Preferences card, alongside Language and Theme.
+- Persisted choice in `OBD2Prefs` SharedPreferences (`font_size_index` key). Default is Normal (1.0x) — no change from previous behavior unless the user explicitly selects a different size.
+- Replaced the simple connection card on the Home screen with a rich **Adapter Flashcard**: transport-specific icon (USB/BT/WiFi/Simulation) with rounded background, 4-bar signal quality indicator (green=strong, amber=degraded), live battery voltage readout with color-coded health (red/amber/green), and protocol badge. Signal quality is derived from `DriverFactory.getLastProbeSummary()` — slow/timeout connections show fewer bars.
+- Added `bg_adapter_icon.xml` drawable (rounded square icon background), `ic_signal_bars.xml` drawable, and `pulse_connecting.xml` animation resource.
+- Removed the old `cockpitStatusDot` and `btnCockpitHud` from the connection card (replaced by the flashcard's richer icon and signal indicators).
+
 ## [3.23.0] - 2026-07-13 — Free OTA DTC Updates + Crowdsourced Unknown-Code Reporting
 
 - Versioned the program as `3.23.0` (`versionCode 122`).

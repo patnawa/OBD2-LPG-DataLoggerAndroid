@@ -71,6 +71,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // --- UI: Header ---
     private TextView headerStatus, headerVin, headerVehicle, headerFuelMode, headerApiStatus;
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
+    private ImageView cockpitAdapterIcon;
+    private View cockpitSignalBars;
+    private View signalBar1, signalBar2, signalBar3, signalBar4;
+    private TextView cockpitAdapterVoltage;
     private TextView txtHomeFuelEconomy, txtHomeBoost, txtHomeDpf, txtHomeDtc;
     private TextView txtHomeThrottle, txtHomeFuelTrim;
     private TextView txtHomeDiagnosticSummary, txtHomeDiagnosticMeta;
@@ -89,7 +93,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private android.widget.ImageButton btnGoHome;
 
     // --- UI: Settings ---
-    private Spinner languageSpinner, themeSpinner, transportSpinner, fuelSpinner, obdProtocolSpinner, bluetoothDeviceSpinner;
+    private Spinner languageSpinner, themeSpinner, fontSizeSpinner, transportSpinner, fuelSpinner, obdProtocolSpinner, bluetoothDeviceSpinner;
     private EditText wifiIpInput, wifiPortInput, baudInput, intervalInput;
     private TextView bluetoothHintText;
     private CheckBox lpgOnlyCheckbox, backgroundLoggingCheckbox, keepScreenOnCheckbox, apiServerCheckbox, fordMsCanCheckbox;
@@ -322,7 +326,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     @Override
     protected void attachBaseContext(Context newBase) {
-        super.attachBaseContext(LocaleHelper.onAttach(newBase));
+        // Apply locale first, then font scale on top of the locale-wrapped context.
+        Context localeWrapped = LocaleHelper.onAttach(newBase);
+        super.attachBaseContext(FontScaleHelper.wrap(localeWrapped));
     }
 
     @Override
@@ -632,6 +638,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtHomeVin = null; // VIN is shown on the diagnostics screen.
         txtHomeVoltage = findViewById(R.id.cockpitVoltage);
         txtHomeAdapter = findViewById(R.id.cockpitAdapter);
+        // Adapter flashcard extras
+        cockpitAdapterIcon = findViewById(R.id.cockpitAdapterIcon);
+        cockpitSignalBars = findViewById(R.id.cockpitSignalBars);
+        signalBar1 = findViewById(R.id.signalBar1);
+        signalBar2 = findViewById(R.id.signalBar2);
+        signalBar3 = findViewById(R.id.signalBar3);
+        signalBar4 = findViewById(R.id.signalBar4);
+        cockpitAdapterVoltage = findViewById(R.id.cockpitAdapterVoltage);
         txtHomeProtocol = findViewById(R.id.cockpitProtocol);
         txtHomeRpm = findViewById(R.id.cockpitRpm);
         txtHomeSpeed = findViewById(R.id.cockpitSpeed);
@@ -736,6 +750,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Settings
         languageSpinner = findViewById(R.id.languageSpinner);
         themeSpinner = findViewById(R.id.themeSpinner);
+        fontSizeSpinner = findViewById(R.id.fontSizeSpinner);
         transportSpinner = findViewById(R.id.transportSpinner);
         fuelSpinner = findViewById(R.id.fuelSpinner);
         obdProtocolSpinner = findViewById(R.id.obdProtocolSpinner);
@@ -2056,6 +2071,28 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     }
                 }
 
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
+        });
+
+        // --- Font Size spinner ---
+        int savedFontSize = FontScaleHelper.getSavedIndex(this);
+        fontSizeSpinner.setSelection(savedFontSize);
+        fontSizeSpinner.post(() -> {
+            fontSizeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                private boolean isInitial = true;
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    if (isInitial) {
+                        isInitial = false;
+                        return;
+                    }
+                    if (FontScaleHelper.getSavedIndex(MainActivity.this) != position) {
+                        FontScaleHelper.saveIndex(MainActivity.this, position);
+                        recreate();
+                    }
+                }
                 @Override
                 public void onNothingSelected(AdapterView<?> parent) {}
             });
@@ -4192,17 +4229,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (voltage != null) {
             String voltStr = String.format(Locale.US, "%.1f V", voltage);
             if (txtHomeVoltage != null) txtHomeVoltage.setText(String.format(Locale.US, "%.1f", voltage));
+            if (cockpitAdapterVoltage != null) cockpitAdapterVoltage.setText(String.format(Locale.US, "%.1f V", voltage));
             stripVoltage.setText(String.format(Locale.US, "%.1f", voltage));
             // Color-code voltage: red < 12.2, amber 12.2-12.65, green 12.65-14.7, red > 14.8
             if (voltage < 12.2 || voltage > 14.8) {
                 stripVoltage.setTextColor(getColorCompat(R.color.danger));
+                if (cockpitAdapterVoltage != null) cockpitAdapterVoltage.setTextColor(getColorCompat(R.color.danger));
             } else if (voltage < 12.65 || voltage > 14.7) {
                 stripVoltage.setTextColor(getColorCompat(R.color.warning));
+                if (cockpitAdapterVoltage != null) cockpitAdapterVoltage.setTextColor(getColorCompat(R.color.warning));
             } else {
                 stripVoltage.setTextColor(getColorCompat(R.color.accent));
+                if (cockpitAdapterVoltage != null) cockpitAdapterVoltage.setTextColor(getColorCompat(R.color.accent));
             }
         } else {
             if (txtHomeVoltage != null) txtHomeVoltage.setText("---");
+            if (cockpitAdapterVoltage != null) cockpitAdapterVoltage.setText("--.- V");
             stripVoltage.setText("--");
             stripVoltage.setTextColor(getColorCompat(R.color.text));
         }
@@ -4529,6 +4571,69 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (txtHomeThrottle != null) txtHomeThrottle.setText("---");
                 if (txtHomeFuelTrim != null) txtHomeFuelTrim.setText("---");
                 if (homeRpmTrend != null) homeRpmTrend.clear();
+            }
+        }
+
+        // --- Adapter flashcard: icon, signal bars, voltage ---
+        updateAdapterFlashcard(state, deviceName);
+    }
+
+    /** Updates the adapter flashcard on the Home screen with transport icon, signal bars, and voltage. */
+    private void updateAdapterFlashcard(int state, String deviceName) {
+        if (cockpitAdapterIcon != null) {
+            int iconRes = R.drawable.ic_usb; // default
+            int tintColor = R.color.muted;
+            String transport = DriverFactory.getLastResolvedTransport();
+            if (transport != null) {
+                String tl = transport.toLowerCase(Locale.ROOT);
+                if (tl.contains("wi-fi") || tl.contains("wifi")) {
+                    iconRes = R.drawable.ic_wifi;
+                    tintColor = state == 2 ? R.color.accent : R.color.muted;
+                } else if (tl.contains("bluetooth") || tl.contains("ble")) {
+                    iconRes = R.drawable.ic_bluetooth;
+                    tintColor = state == 2 ? R.color.accent : R.color.muted;
+                } else if (tl.contains("usb")) {
+                    iconRes = R.drawable.ic_usb;
+                    tintColor = state == 2 ? R.color.accent : R.color.muted;
+                } else if (tl.contains("simulation")) {
+                    iconRes = R.drawable.ic_speed;
+                    tintColor = state == 2 ? R.color.primary : R.color.muted;
+                }
+            }
+            cockpitAdapterIcon.setImageResource(iconRes);
+            cockpitAdapterIcon.setImageTintList(android.content.res.ColorStateList.valueOf(getColorCompat(tintColor)));
+        }
+
+        // Signal bars: show 4 bars when connected, hide when not
+        if (cockpitSignalBars != null) {
+            cockpitSignalBars.setVisibility(state == 2 ? View.VISIBLE : View.GONE);
+        }
+        if (state == 2) {
+            // Determine signal quality from probe summary latency info
+            int barCount = 4; // default full
+            String probe = DriverFactory.getLastProbeSummary();
+            if (probe != null) {
+                String pl = probe.toLowerCase(Locale.ROOT);
+                if (pl.contains("slow") || pl.contains("timeout") || pl.contains("latency")) {
+                    barCount = 2;
+                } else if (pl.contains("clone") || pl.contains("generic") || pl.contains("non-standard")) {
+                    barCount = 3;
+                }
+            }
+            int barColor = barCount >= 3 ? getColorCompat(R.color.accent) : getColorCompat(R.color.warning);
+            if (signalBar1 != null) { signalBar1.setBackgroundColor(barCount >= 1 ? barColor : getColorCompat(R.color.muted)); }
+            if (signalBar2 != null) { signalBar2.setBackgroundColor(barCount >= 2 ? barColor : getColorCompat(R.color.muted)); }
+            if (signalBar3 != null) { signalBar3.setBackgroundColor(barCount >= 3 ? barColor : getColorCompat(R.color.muted)); }
+            if (signalBar4 != null) { signalBar4.setBackgroundColor(barCount >= 4 ? barColor : getColorCompat(R.color.muted)); }
+        }
+
+        // Voltage: show when connected, hide when not
+        if (cockpitAdapterVoltage != null) {
+            if (state == 2) {
+                cockpitAdapterVoltage.setVisibility(View.VISIBLE);
+                // Voltage is updated separately in updateStatusStrip() — just ensure visibility
+            } else {
+                cockpitAdapterVoltage.setVisibility(View.GONE);
             }
         }
     }
