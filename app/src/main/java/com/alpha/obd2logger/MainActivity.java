@@ -117,6 +117,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView mapEctText, mapLoopStatusText;
     private TextView mapCoverageText, mapConfidenceText;
     private com.google.android.material.progressindicator.LinearProgressIndicator mapCoverageProgress;
+    // Cached map confidence state to prevent text flicker on every data record
+    private String lastMapConfidenceText = null;
+    private Integer lastMapConfidenceColor = null;
     private TextView txtTuningStft, txtTuningLtft, txtTuningStatus, txtTuningAdvice;
     private TextView dashTuningStatus, dashEctText;
     private com.google.android.material.progressindicator.LinearProgressIndicator dashWarmupProgress;
@@ -1091,6 +1094,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         }
                         sessionPetrolData.clear();
                         sessionLpgData.clear();
+                        lastMapConfidenceText = null; // reset cache so confidence chip updates after clear
+                        lastMapConfidenceColor = null;
                         FuelMode selectedMode = fuelSpinner != null
                                 ? fuelPositionToMode(fuelSpinner.getSelectedItemPosition())
                                 : FuelMode.PETROL;
@@ -3893,9 +3898,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 return; // accepted or locked mature cell; retain coverage/confidence status
             }
         }
-        mapConfidenceText.setText(getString(R.string.map_live_preview,
-                getString(reasonRes)));
-        mapConfidenceText.setTextColor(getColorCompat(R.color.warning));
+        setMapConfidenceText(getString(R.string.map_live_preview,
+                getString(reasonRes)), getColorCompat(R.color.warning));
+    }
+
+    /**
+     * Updates the map confidence chip only when text or color actually changes,
+     * preventing visual flicker from rapid data record callbacks.
+     */
+    private void setMapConfidenceText(String text, int color) {
+        if (mapConfidenceText == null) return;
+        if (text.equals(lastMapConfidenceText) && lastMapConfidenceColor != null
+                && lastMapConfidenceColor == color) {
+            return; // no change — skip setText to avoid flicker
+        }
+        mapConfidenceText.setText(text);
+        mapConfidenceText.setTextColor(color);
+        lastMapConfidenceText = text;
+        lastMapConfidenceColor = color;
     }
 
     private void updateMapCoverage(LiveMapStore.MapSnapshot snapshot, FuelMode mode) {
@@ -3919,8 +3939,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (mapConfidenceText != null) {
             if (!snapshot.getPetrolData().isEmpty() && !snapshot.getLpgData().isEmpty()
                     && !snapshot.isComparisonAxisCompatible()) {
-                mapConfidenceText.setText(getString(R.string.map_axis_mismatch));
-                mapConfidenceText.setTextColor(getColorCompat(R.color.danger));
+                setMapConfidenceText(getString(R.string.map_axis_mismatch), getColorCompat(R.color.danger));
                 return;
             }
             float matureRatio = cellCount > 0 ? mature / (float) cellCount : 0f;
@@ -3933,8 +3952,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             } else {
                 label = "COLLECTING"; color = R.color.muted;
             }
-            mapConfidenceText.setText(label + " • " + mature + " stable");
-            mapConfidenceText.setTextColor(getColorCompat(color));
+            setMapConfidenceText(label + " • " + mature + " stable", getColorCompat(color));
         }
     }
 

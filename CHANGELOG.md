@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.24.1] - 2026-07-13 — Flashcard Icon Polish + Map Confidence Flicker Fix
+
+- Versioned the program as `3.24.1` (`versionCode 124`).
+- Replaced the adapter flashcard transport icons (USB, WiFi, Bluetooth) with clean Material Design standard vector paths. The previous custom paths rendered as unrecognizable blobs — the new icons are pixel-perfect at 24dp and match the Material icon set used by the rest of the app.
+- Fixed the fuel map confidence chip flickering: `updateMapGateStatus` and `updateMapCoverage` were calling `setText()`/`setTextColor()` on every single data record callback (multiple times per second), causing the "LIVE PREVIEW • WAITING FOR STEADY RPM / LOAD / THROTTLE" text to visually jump/flicker. Added a `setMapConfidenceText()` helper that caches the last text+color and only calls `setText()` when the value actually changes.
+
 ## [3.24.0] - 2026-07-13 — In-App Font Size Control + Adapter Flashcard
 
 - Versioned the program as `3.24.0` (`versionCode 123`).
