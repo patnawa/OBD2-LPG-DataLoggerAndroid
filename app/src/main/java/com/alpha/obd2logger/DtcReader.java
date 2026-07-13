@@ -541,6 +541,9 @@ public final class DtcReader {
             driver.sendCommandRaw("ATCFC0");
             return new BusScanResult(stored, pending, permanent, new ArrayList<>(), false);
         }
+        // A valid Mode 01 probe proves this bus responded even when the ECU has
+        // zero DTCs or does not implement one of Modes 07/0A.
+        anyResponse = true;
 
         // Enable headers to see CAN IDs
         driver.sendCommandRaw("ATH1");
@@ -586,9 +589,6 @@ public final class DtcReader {
                     mb.permanentDtcCount = e.getValue().size();
                 }
             }
-
-            // A bus "responded" even if we just got "NO DATA" back (means it connected)
-            if (raw03 != null) anyResponse = true;
 
         } finally {
             driver.sendCommandRaw("ATH0");

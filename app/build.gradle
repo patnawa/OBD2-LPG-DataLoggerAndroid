@@ -10,8 +10,8 @@ android {
         applicationId 'com.alpha.obd2logger'
         minSdk 23
         targetSdk 35
-        versionCode 111
-        versionName '3.17.0'
+        versionCode 112
+        versionName '3.18.0'
     }
 
     buildTypes {
@@ -28,6 +28,7 @@ android {
     }
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
@@ -40,9 +41,16 @@ android {
             returnDefaultValues = true
         }
     }
+
+    lint {
+        // Untranslated keys intentionally fall back to the complete English
+        // catalogue; keep runtime/API correctness checks blocking the build.
+        disable 'MissingTranslation'
+    }
 }
 
 dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.documentfile:documentfile:1.0.1'

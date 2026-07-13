@@ -76,6 +76,40 @@ public final class BrandYearProfile {
         if (vin == null || vin.length() < 3) {
             return Brand.GENERIC;
         }
+        // One canonical WMI detector is used by PID profiles, DTC enrichment
+        // and the UI so the same VIN cannot resolve to different makes.
+        VinBrandDetector.Brand canonical = VinBrandDetector.detect(vin);
+        switch (canonical) {
+            case TOYOTA: case LEXUS: return Brand.TOYOTA;
+            case HONDA: return Brand.HONDA;
+            case ISUZU: return Brand.ISUZU;
+            case NISSAN: return Brand.NISSAN;
+            case MITSUBISHI: return Brand.MITSUBISHI;
+            case MAZDA: return Brand.MAZDA;
+            case SUBARU: return Brand.SUBARU;
+            case SUZUKI: return Brand.SUZUKI;
+            case HYUNDAI: return Brand.HYUNDAI;
+            case KIA: return Brand.KIA;
+            case FORD: return Brand.FORD;
+            case CHEVROLET: return Brand.CHEVROLET;
+            case BMW: return Brand.BMW;
+            case MERCEDES: return Brand.MERCEDES;
+            case VOLKSWAGEN: return Brand.VOLKSWAGEN;
+            case AUDI: return Brand.AUDI;
+            case PORSCHE: return Brand.PORSCHE;
+            case VOLVO: return Brand.VOLVO;
+            case PEUGEOT: return Brand.PEUGEOT;
+            case RENAULT: return Brand.RENAULT;
+            case CITROEN: return Brand.CITROEN;
+            case FIAT: return Brand.FIAT;
+            case JEEP: return Brand.JEEP;
+            case DODGE: return Brand.DODGE;
+            case CHRYSLER: return Brand.CHRYSLER;
+            case TATA: return Brand.TATA;
+            case MAHINDRA: return Brand.MAHINDRA;
+            case HINO: return Brand.HINO;
+            default: break;
+        }
         String wmi = vin.substring(0, 3).toUpperCase();
 
         // Japanese manufacturers (J)
@@ -91,12 +125,10 @@ public final class BrandYearProfile {
         if (wmi.startsWith("JS")) return Brand.SUZUKI;
         if (wmi.startsWith("JAL") || wmi.startsWith("JDA")) return Brand.ISUZU;
         if (wmi.startsWith("JH5") || wmi.startsWith("JNK")) return Brand.HINO;
-        if (wmi.startsWith("J")) return Brand.TOYOTA; // Default Japanese
 
         // Korean manufacturers (K)
         if (wmi.startsWith("KN")) return Brand.KIA;
         if (wmi.startsWith("KM")) return Brand.HYUNDAI;
-        if (wmi.startsWith("K")) return Brand.HYUNDAI; // Default Korean
 
         // US manufacturers (1, 4, 5, 2, 3)
         if (wmi.startsWith("1G1") || wmi.startsWith("1GC") || wmi.startsWith("1GN")) return Brand.CHEVROLET;
@@ -105,7 +137,6 @@ public final class BrandYearProfile {
         if (wmi.startsWith("1J") || wmi.startsWith("1C9")) return Brand.JEEP;
         if (wmi.startsWith("1D") || wmi.startsWith("2D") || wmi.startsWith("3D")) return Brand.DODGE;
         if (wmi.startsWith("1C") || wmi.startsWith("2C") || wmi.startsWith("3C")) return Brand.CHRYSLER;
-        if (wmi.startsWith("1") || wmi.startsWith("4") || wmi.startsWith("5")) return Brand.GM; // US default
 
         // German manufacturers (W, S)
         if (wmi.startsWith("WAU") || wmi.startsWith("WUA")) return Brand.AUDI;
@@ -113,7 +144,6 @@ public final class BrandYearProfile {
         if (wmi.startsWith("WBA") || wmi.startsWith("WBS") || wmi.startsWith("WBW")) return Brand.BMW;
         if (wmi.startsWith("WDB") || wmi.startsWith("WDD") || wmi.startsWith("WDC")) return Brand.MERCEDES;
         if (wmi.startsWith("WVW") || wmi.startsWith("WV1")) return Brand.VOLKSWAGEN;
-        if (wmi.startsWith("W") || wmi.startsWith("S")) return Brand.VOLKSWAGEN; // German default
 
         // European / French / Italian (V, Z, 3, Y, X)
         if (wmi.startsWith("VF1")) return Brand.RENAULT;
@@ -122,7 +152,6 @@ public final class BrandYearProfile {
         if (wmi.startsWith("VS") || wmi.startsWith("VSS")) return Brand.VOLVO;
         if (wmi.startsWith("ZFA")) return Brand.FIAT;
         if (wmi.startsWith("ZAR")) return Brand.ALFA_ROMEO;
-        if (wmi.startsWith("Z")) return Brand.FIAT; // Italian default
         
         // Indian manufacturers (M)
         if (wmi.startsWith("MAT")) return Brand.TATA;
@@ -151,6 +180,9 @@ public final class BrandYearProfile {
             return 0;
         }
         char code = vin.charAt(9);
+        int cycleAwareYear = decodeLatestModelYear(code,
+                java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) + 1);
+        if (cycleAwareYear > 0) return cycleAwareYear;
         // SAE model year codes:
         // A=2010, B=2011, ... H=2017, J=2018, K=2019, L=2020, M=2021, N=2022,
         // P=2023, R=2024, S=2025, T=2026, V=2027, W=2028, X=2029, Y=2030
@@ -189,6 +221,18 @@ public final class BrandYearProfile {
             case '9': return 2009;
             default: return 0;
         }
+    }
+
+    /** VIN year codes repeat every 30 years. Select the latest occurrence not
+     * later than next model year instead of assuming digits mean 2031-2039. */
+    static int decodeLatestModelYear(char rawCode, int latestAllowedYear) {
+        char code = Character.toUpperCase(rawCode);
+        String cycle = "ABCDEFGHJKLMNPRSTVWXY123456789";
+        int index = cycle.indexOf(code);
+        if (index < 0) return 0;
+        int year = 1980 + index;
+        while (year + 30 <= latestAllowedYear) year += 30;
+        return year;
     }
 
     /**

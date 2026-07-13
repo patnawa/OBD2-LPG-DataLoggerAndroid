@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.18.0] - 2026-07-13 — Next-generation Scanner Intelligence & Wideband Integrity
+
+### Connection, VIN & PID Discovery
+- Improved AUTO transport handling across Bluetooth Classic, BLE, Wi-Fi, USB serial, and simulation paths, including clearer failure state and reporting of the transport that actually connected.
+- Initialize the detected vehicle brand from VIN before DTC scans and API snapshots so brand-specific decoding is available immediately.
+- Added centralized per-VIN PID support caching and targeted PID probing when ECU support bitmaps are missing or malformed.
+- Expanded VIN/WMI and model-year profiles and the standardized Mode 01 catalogue while keeping live ECU detection authoritative.
+- Fixed configured Custom PIDs disappearing from LPG-only sessions.
+
+### Scanner & Settings UX
+- Added an in-app Custom PID manager with add, edit, delete, formula validation, raw-byte testing, unit/range configuration, and dashboard assignment.
+- Refined the connection/settings flow, adapter state, VIN/header layout, history rows, responsive cockpit layouts, and light/dark surface consistency.
+- Improved DTC workflow presentation and decoding safeguards, with clearer scan state and results appropriate for a diagnostic scanner.
+- Strengthened Battery Tester and Crank Test validation, status classification, and test coverage.
+- Completed missing localized resources and repaired language-switch display consistency across supported languages.
+
+### Wideband, AFR & Fuel Map Correctness
+- Corrected SAE J1979 PID `0x34`: bytes A/B now decode measured lambda and bytes C/D decode wideband O2 sensor current in mA.
+- Corrected PID `0x44` to a two-byte **Commanded Equivalence Ratio** and stopped presenting it as measured wideband lambda.
+- Added separate Actual AFR and Commanded AFR calculations using the configured fuel's stoichiometric AFR.
+- Commanded lambda can no longer drive Actual AFR, Density-Corrected AFR, vapor displacement, evaporative cooling, or corrected MAD calculations.
+- Added Actual AFR, Commanded AFR, lambda source, and AFR quality columns to CSV/JSONL output and exposed both AFR values to dashboard gauge selection.
+- Log replay now uses measured PID `0x34` only for lambda fallback; STFT/LTFT remain authoritative and PID `0x44` can no longer manufacture synthetic trim.
+- Kept live fuel-map binning and correction logic independent from O2 sensor current and commanded lambda.
+
+### Reliability & Validation
+- Generalized batch parsing for multi-byte pseudo-PIDs such as the PID `0x34` current channel.
+- Added regression coverage for transport resolution, logger configuration, VIN/PID discovery, DTC decoding, battery/crank classification, wideband parsing, AFR source integrity, and Live Map replay.
+- Enabled Java core-library desugaring for consistent runtime behavior on supported Android versions.
+
 ## [3.17.0] - 2026-07-12 — UX Polish, Localization & Code Cleanup
 
 ### Home & Core UX

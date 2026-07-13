@@ -61,7 +61,7 @@
     <string name="status_lean_translated">リーン</string>
     <string name="status_rich_translated">リッチ</string>
     
-    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\n状態: %3$s\nアドバイス: %4$s</string>
+    <string name="tuning_status_format" formatted="false">Fuel trim status</string>
 
     <!-- DTC -->
     <string name="read_dtc">DTCの読み込み</string>

@@ -257,6 +257,7 @@ public final class LoggerService extends Service {
         }
 
         if (!connectedResult) {
+            DriverFactory.markConnectionFailure("Background connection timed out or was rejected");
             if (currentSessionToken == sessionToken) {
                 running = false;
                 driver = null;
@@ -297,16 +298,30 @@ public final class LoggerService extends Service {
         // Read VIN if not already known. The config default is "UNKNOWN"
         // (not null/empty), so we must treat that as unset too — otherwise
         // the VIN is never read and logs are saved without a VIN subfolder.
+        boolean vinReadThisSession = false;
         if (config.vin == null || config.vin.isEmpty()
                 || "UNKNOWN".equalsIgnoreCase(config.vin)) {
             String vin = VinReader.readVin(localDriver);
-                if (vin != null) {
-                    config.vin = vin;
-                    LoggerCallback cb = getCallback();
-                    if (cb != null) {
-                        mainHandler.post(() -> cb.onVinRead(vin));
-                    }
-                }
+            if (vin != null) {
+                config.vin = vin;
+                vinReadThisSession = true;
+            }
+        }
+        // Brand must be initialized before the automatic DTC scan and before
+        // the API/DataRecord snapshot is created. Previously this happened in
+        // the asynchronous UI callback, leaving the service path on the
+        // generic DTC database and reporting vehicleBrand="auto".
+        if (config.vin != null && !config.vin.isEmpty()
+                && !"UNKNOWN".equalsIgnoreCase(config.vin)) {
+            String detectedBrand = DtcDatabase.initForVin(this, config.vin);
+            config.applyDetectedVehicleBrand(detectedBrand);
+        }
+        if (vinReadThisSession) {
+            LoggerCallback cb = getCallback();
+            if (cb != null) {
+                final String detectedVin = config.vin;
+                mainHandler.post(() -> cb.onVinRead(detectedVin));
+            }
         }
         
         // ── Initialize LiveMapStore (single source of truth for fuel map) ──
@@ -340,7 +355,10 @@ public final class LoggerService extends Service {
                     }
                 });
                 localApiServer.start();
-                localApiServer.setTransportMode(config.transportMode != null ? config.transportMode.getValue() : "UNKNOWN");
+                // Report the adapter actually connected by AUTO, not merely
+                // the preference value "auto". This is what an external AI
+                // agent needs to diagnose transport-specific behaviour.
+                localApiServer.setTransportMode(DriverFactory.getLastResolvedTransport());
                 localApiServer.setAdapterConnected(true);
                 localApiServer.setVehicleBrand(config.vehicleBrand);
                 localApiServer.setLiveMapStore(liveMapStore);
@@ -396,12 +414,8 @@ public final class LoggerService extends Service {
         }
 
         // --- Auto-detect supported PIDs ---
-        List<PIDDefinition> allPids;
-        if (config.customPidsEnabled) {
-            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgPollSet(config.showAirDensity) : PIDCatalogue.getAllWithCustom(this);
-        } else {
-            allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgPollSet(config.showAirDensity) : PIDCatalogue.getAll();
-        }
+        List<PIDDefinition> allPids = PIDCatalogue.getConfiguredPollSet(this,
+                config.lpgOnlyMode, config.showAirDensity, config.customPidsEnabled);
         // Always make a mutable copy — PIDCatalogue returns unmodifiable lists,
         // and removeAll() in the logging loop would throw UnsupportedOperationException
         // if PID detection fails and we end up using the original list.
@@ -432,13 +446,22 @@ public final class LoggerService extends Service {
                     cachePids(config.vin, supportedHex);
                     Log.i(TAG, "Live detection: " + pids.size() + "/" + allPids.size() + " PIDs supported");
                 } else {
-                    // Fallback: use VIN-based brand/year profile
-                    Log.w(TAG, "Live PID detection failed — trying VIN-based profile");
-                    java.util.Set<String> brandPids = BrandYearProfile.getProfileFromVin(config.vin);
-                    if (brandPids != null) {
-                        pids = PidAvailabilityChecker.filterCatalogue(
-                                new ArrayList<>(brandPids), allPids);
-                        Log.i(TAG, "VIN profile: " + pids.size() + "/" + allPids.size() + " PIDs");
+                    // Some ECUs/clones provide broken support bitmaps. Probe
+                    // each configured standard PID before resorting to hints.
+                    List<String> probed = PidAvailabilityChecker.probeCatalogue(localDriver, allPids);
+                    if (probed != null && !probed.isEmpty()) {
+                        pids = PidAvailabilityChecker.filterCatalogue(probed, allPids);
+                        detectedFromLive = true;
+                        cachePids(config.vin, probed);
+                        Log.i(TAG, "Targeted PID probe: " + pids.size() + "/" + allPids.size());
+                    } else {
+                        Log.w(TAG, "Live PID detection failed — trying VIN-based profile");
+                        java.util.Set<String> brandPids = BrandYearProfile.getProfileFromVin(config.vin);
+                        if (brandPids != null) {
+                            pids = PidAvailabilityChecker.filterCatalogue(
+                                    new ArrayList<>(brandPids), allPids);
+                            Log.i(TAG, "VIN profile: " + pids.size() + "/" + allPids.size() + " PIDs");
+                        }
                     }
                 }
             }
@@ -573,8 +596,8 @@ public final class LoggerService extends Service {
                         Double mapValue = batch.get("Intake Manifold Pressure");
                         Double baroValue = batch.get("Barometric Pressure");
                         Double dpfSoot = batch.get("DPF Soot Load");
-                        Double dpfTemp = batch.get("DPF Temperature");
-                        Double dpfDelta = batch.get("DPF Delta Pressure");
+                        Double dpfTemp = batch.get("DPF Inlet Temperature 1");
+                        Double dpfDelta = batch.get("DPF Differential Pressure 1");
                         Double dpfRegen = batch.get("DPF Regen Status");
                         Double dpfAsh = batch.get("DPF Ash Load");
 
@@ -669,10 +692,10 @@ public final class LoggerService extends Service {
                             airDensityMonitor.onObdBatch(batch);
                             Double rpmValue = batch.get("Engine RPM");
                             Double lambdaValue = batch.get("Lambda (B1S1)");
-                            if (lambdaValue == null) lambdaValue = batch.get("Wideband Lambda (B1S1)");
+                            Double commandedLambda = batch.get("Commanded Equivalence Ratio");
                             try {
                                 airDensityMonitor.appendSamples(
-                                        samples, mafValue, rpmValue, lambdaValue,
+                                        samples, mafValue, rpmValue, lambdaValue, commandedLambda,
                                         config.fuelMode,
                                         config.engineDisplacementCC,
                                         config.ratedRPM,
@@ -680,6 +703,11 @@ public final class LoggerService extends Service {
                             } catch (Exception densityEx) {
                                 Log.w(TAG, "Air density sample append failed non-fatally", densityEx);
                             }
+                        } else {
+                            AirDensityMonitor.appendAfrSamples(samples,
+                                    batch.get("Lambda (B1S1)"),
+                                    batch.get("Commanded Equivalence Ratio"),
+                                    config.fuelMode);
                         }
 
                         if (!toRemove.isEmpty()) {
@@ -957,27 +985,11 @@ public final class LoggerService extends Service {
     }
 
     private List<String> getCachedPids(String vin) {
-        if (vin == null || vin.isEmpty()) return null;
-        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
-        String cached = prefs.getString("pids_cache_" + vin, null);
-        if (cached == null || cached.isEmpty()) return null;
-        
-        List<String> list = new ArrayList<>();
-        for (String s : cached.split(",")) {
-            list.add(s.trim());
-        }
-        return list;
+        return PidSupportCache.get(this, vin);
     }
 
     private void cachePids(String vin, List<String> pids) {
-        if (vin == null || vin.isEmpty() || pids == null || pids.isEmpty()) return;
-        StringBuilder sb = new StringBuilder();
-        for (String s : pids) {
-            if (sb.length() > 0) sb.append(",");
-            sb.append(s);
-        }
-        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
-        prefs.edit().putString("pids_cache_" + vin, sb.toString()).apply();
+        PidSupportCache.put(this, vin, pids);
     }
 
     @Override

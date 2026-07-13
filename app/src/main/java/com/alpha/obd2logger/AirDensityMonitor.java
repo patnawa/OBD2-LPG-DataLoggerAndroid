@@ -259,6 +259,15 @@ public final class AirDensityMonitor implements SensorEventListener {
         if (iat != null) obdIatTempC = iat;
     }
 
+    /** Feed raw PID values when a UI record has not yet been density-enriched. */
+    public void onObdValues(Double baroKpa, Double ambientTempC,
+                            Double mapKpa, Double iatTempC) {
+        if (baroKpa != null && !Double.isNaN(baroKpa)) obdBaroKpa = baroKpa;
+        if (ambientTempC != null && !Double.isNaN(ambientTempC)) obdAmbientTempC = ambientTempC;
+        if (mapKpa != null && !Double.isNaN(mapKpa)) obdMapKpa = mapKpa;
+        if (iatTempC != null && !Double.isNaN(iatTempC)) obdIatTempC = iatTempC;
+    }
+
     /** Best humidity: phone → last-good weather → default 50%. */
     public double getHumidity() {
         if (sensorHumidity != null) return DerivedSensors.clampHumidity(sensorHumidity, 50.0);
@@ -475,6 +484,20 @@ public final class AirDensityMonitor implements SensorEventListener {
                               Double mafGs, Double rpm, Double lambda,
                               FuelMode fuelMode, double displacementCC, double ratedRPM,
                               boolean displacementUserSet) {
+        appendSamples(samples, mafGs, rpm, lambda, null, fuelMode,
+                displacementCC, ratedRPM, displacementUserSet);
+    }
+
+    /**
+     * Emit density and AFR samples while keeping measured and commanded lambda
+     * semantically separate. Commanded equivalence ratio is useful as a target,
+     * but is never allowed to drive actual-AFR, ECC, or density calculations.
+     */
+    public void appendSamples(java.util.List<SensorSample> samples,
+                              Double mafGs, Double rpm, Double actualLambda,
+                              Double commandedLambda, FuelMode fuelMode,
+                              double displacementCC, double ratedRPM,
+                              boolean displacementUserSet) {
         if (samples == null) return;
 
         // Soft async weather refresh if TTL expired (never blocks OBD thread)
@@ -532,10 +555,12 @@ public final class AirDensityMonitor implements SensorEventListener {
         samples.add(new SensorSample("derived_rh_src", "RH Source",
                 sourceCode(dr.humiditySource), "code", "ok"));
 
-        // Advanced block
+        appendAfrSamples(samples, actualLambda, commandedLambda, fuelMode);
+
+        // Advanced block. Only measured lambda may drive these calculations.
         try {
             AdvancedAirDensity.AdvancedResult ar = computeAdvanced(
-                    mafGs, rpm, lambda, fuelMode, displacementCC, ratedRPM);
+                    mafGs, rpm, actualLambda, fuelMode, displacementCC, ratedRPM);
             if (ar == null) return;
 
             String advBase = q;
@@ -600,6 +625,27 @@ public final class AirDensityMonitor implements SensorEventListener {
             }
         } catch (Exception advEx) {
             Log.w(TAG, "Advanced air density computation failed non-fatally", advEx);
+        }
+    }
+
+    /** AFR is useful independently of the optional AeroDensity panel. */
+    public static void appendAfrSamples(java.util.List<SensorSample> samples,
+                                        Double actualLambda, Double commandedLambda,
+                                        FuelMode fuelMode) {
+        if (samples == null) return;
+        Double actualAfr = AdvancedAirDensity.airFuelRatio(actualLambda, fuelMode);
+        Double commandedAfr = AdvancedAirDensity.airFuelRatio(commandedLambda, fuelMode);
+        samples.add(new SensorSample("derived_lambda_source", "Actual Lambda Source",
+                actualAfr != null ? 1.0 : 0.0, "code", actualAfr != null ? "measured" : "unavailable"));
+        samples.add(new SensorSample("derived_afr_quality", "Actual AFR Quality",
+                actualAfr != null ? 1.0 : 0.0, "code", actualAfr != null ? "measured" : "unavailable"));
+        if (actualAfr != null) {
+            samples.add(new SensorSample("derived_actual_afr", "Actual AFR",
+                    actualAfr, ":1", "measured"));
+        }
+        if (commandedAfr != null) {
+            samples.add(new SensorSample("derived_commanded_afr", "Commanded AFR",
+                    commandedAfr, ":1", "commanded"));
         }
     }
 }

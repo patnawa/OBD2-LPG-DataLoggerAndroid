@@ -61,7 +61,7 @@
     <string name="status_lean_translated">Nghèo xăng</string>
     <string name="status_rich_translated">Giàu xăng</string>
     
-    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nTrạng thái: %3$s\nLời khuyên: %4$s</string>
+    <string name="tuning_status_format" formatted="false">Fuel trim status</string>
 
     <!-- DTC -->
     <string name="read_dtc">Đọc mã lỗi (DTC)</string>

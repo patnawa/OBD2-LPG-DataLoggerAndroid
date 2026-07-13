@@ -1,5 +1,6 @@
 package com.alpha.obd2logger;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -11,6 +12,9 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+// MainActivity verifies the runtime Bluetooth permission before this driver is created;
+// all calls are also contained by the connection error handler for permission revocation.
+@SuppressLint("MissingPermission")
 public final class SerialDriver extends ElmDriver {
     private static final UUID SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 

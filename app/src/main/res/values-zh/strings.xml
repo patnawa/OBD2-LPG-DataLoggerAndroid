@@ -61,7 +61,7 @@
     <string name="status_lean_translated">偏稀</string>
     <string name="status_rich_translated">偏浓</string>
     
-    <string name="tuning_status_format">短期 STFT: %1$.1f%% | 长期 LTFT: %2$.1f%%\n状态: %3$s\n建议: %4$s</string>
+    <string name="tuning_status_format" formatted="false">Fuel trim status</string>
 
     <!-- DTC -->
     <string name="read_dtc">读取 DTC 故障码</string>

@@ -167,6 +167,23 @@ public class LogReplayParserTest {
     }
 
     @Test
+    public void parseHeader_doesNotTreatCommandedRatioAsMeasuredLambda() {
+        String header = HEADER_WITH_LAMBDA.replace(
+                "\"Lambda (B1S1) ()\"", "\"Commanded Equivalence Ratio ()\"");
+        LogReplayParser.Columns c = LogReplayParser.parseHeader(header);
+        assertEquals("commanded ratio must not drive map trim", -1, c.lambdaIdx);
+    }
+
+    @Test
+    public void parseHeader_keepsActualLambdaWhenCommandedColumnFollows() {
+        String header = HEADER_WITH_LAMBDA.replace(
+                "\"Fuel System Status ()\"",
+                "\"Commanded Equivalence Ratio ()\",\"Fuel System Status ()\"");
+        LogReplayParser.Columns c = LogReplayParser.parseHeader(header);
+        assertEquals("actual PID34 remains the selected lambda", 8, c.lambdaIdx);
+    }
+
+    @Test
     public void parseLine_lambdaFallbackWhenNoTrim() {
         // LPG log with lambda 1.05 (lean) but no STFT/LTFT columns.
         // trim should be (1.05 - 1.0) * 100 = +5.0%

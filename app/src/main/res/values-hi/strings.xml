@@ -61,7 +61,7 @@
     <string name="status_lean_translated">लीन</string>
     <string name="status_rich_translated">रिच</string>
     
-    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nस्थिति: %3$s\nसलाह: %4$s</string>
+    <string name="tuning_status_format" formatted="false">Fuel trim status</string>
 
     <!-- DTC -->
     <string name="read_dtc">खराबी कोड पढ़ें</string>

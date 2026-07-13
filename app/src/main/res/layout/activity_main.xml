@@ -65,9 +65,10 @@
                 android:id="@+id/statusLayout"
                 android:layout_width="wrap_content"
                 android:layout_height="44dp"
+                android:layout_alignParentStart="true"
                 android:layout_centerVertical="true"
-                android:layout_toEndOf="@id/btnGoHome"
-                android:layout_toStartOf="@id/fabLog"
+                android:layout_toStartOf="@id/btnHeaderAirDensity"
+                android:layout_marginEnd="4dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:background="@drawable/bg_status_chip"
@@ -98,13 +99,25 @@
                     android:layout_marginStart="8dp"
                     android:layout_marginEnd="8dp" />
 
-                <!-- Kept for background compatibility but hidden to save space -->
+                <!-- Retained for background compatibility; full VIN stays in Diagnostics. -->
                 <TextView
                     android:id="@+id/headerVin"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="VIN: ---"
                     android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/headerVehicle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxWidth="92dp"
+                    android:singleLine="true"
+                    android:text="OBD2"
+                    android:textColor="@color/text"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
 
                 <!-- Modern Fuel Mode Indicator Badge -->
                 <TextView
@@ -356,13 +369,13 @@
         app:layout_constraintEnd_toEndOf="parent">
 
         <LinearLayout android:id="@+id/homeBottomHome" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
-            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_home" app:tint="@color/primary" />
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Home" android:textColor="@color/primary" android:textSize="11sp" android:textStyle="bold" />
+            <ImageView android:id="@+id/homeBottomDriveIcon" android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_home" app:tint="@color/primary" />
+            <TextView android:id="@+id/homeBottomDriveText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="@string/home_nav_drive" android:textColor="@color/primary" android:textSize="11sp" android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout android:id="@+id/homeBottomConnect" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
-            <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_speed" app:tint="@color/muted" />
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Live Data" android:textColor="@color/muted" android:textSize="11sp" />
+            <ImageView android:id="@+id/homeBottomAnalyzeIcon" android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_speed" app:tint="@color/muted" />
+            <TextView android:id="@+id/homeBottomAnalyzeText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="@string/home_nav_analyze" android:textColor="@color/muted" android:textSize="11sp" />
         </LinearLayout>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -371,7 +384,7 @@
             android:layout_height="58dp"
             android:layout_marginStart="4dp"
             android:layout_marginEnd="4dp"
-            android:contentDescription="Start or stop logging"
+            android:contentDescription="@string/home_record_action"
             android:src="@android:drawable/ic_media_play"
             android:scaleType="center"
             app:fabCustomSize="58dp"
@@ -383,13 +396,13 @@
             app:borderWidth="0dp" />
 
         <LinearLayout android:id="@+id/homeBottomLogs" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
-            <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_list" app:tint="@color/muted" />
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Logs" android:textColor="@color/muted" android:textSize="11sp" />
+            <ImageView android:id="@+id/homeBottomLogsIcon" android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_list" app:tint="@color/muted" />
+            <TextView android:id="@+id/homeBottomLogsText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="@string/home_nav_logs" android:textColor="@color/muted" android:textSize="11sp" />
         </LinearLayout>
 
         <LinearLayout android:id="@+id/homeBottomMore" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
-            <ImageView android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_build" app:tint="@color/muted" />
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Diagnostics" android:textColor="@color/muted" android:textSize="11sp" />
+            <ImageView android:id="@+id/homeBottomScanIcon" android:layout_width="27dp" android:layout_height="27dp" android:src="@drawable/ic_build" app:tint="@color/muted" />
+            <TextView android:id="@+id/homeBottomScanText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="@string/home_nav_scan" android:textColor="@color/muted" android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -467,6 +480,44 @@
                                 android:paddingHorizontal="8dp"
                                 android:paddingVertical="3dp"/>
                         </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="6dp">
+                            <TextView
+                                android:id="@+id/mapCoverageText"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Coverage: 0 cells"
+                                android:textColor="@color/muted"
+                                android:textSize="10sp" />
+                            <TextView
+                                android:id="@+id/mapConfidenceText"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/bg_status_chip"
+                                android:paddingStart="8dp"
+                                android:paddingEnd="8dp"
+                                android:paddingTop="3dp"
+                                android:paddingBottom="3dp"
+                                android:text="COLLECTING"
+                                android:textColor="@color/warning"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/mapCoverageProgress"
+                            android:layout_width="match_parent"
+                            android:layout_height="4dp"
+                            android:max="100"
+                            android:progress="0"
+                            android:layout_marginBottom="12dp"
+                            app:indicatorColor="@color/primary"
+                            app:trackColor="@color/surface3" />
 
                         <!-- Hidden legacy text view to prevent any NullPointer or code breakage -->
                         <TextView
@@ -1060,6 +1111,61 @@
                 android:padding="16dp"
                 android:visibility="visible">
 
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dashboard_layout_title"
+                            android:textColor="@color/text"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dashboard_layout_hint"
+                            android:textColor="@color/muted"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDashboardMinus"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:minWidth="0dp"
+                        android:text="−"
+                        android:textSize="20sp"
+                        android:contentDescription="@string/dashboard_remove_slot"
+                        app:cornerRadius="22dp"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+                    <TextView
+                        android:id="@+id/dashboardSlotCountText"
+                        android:layout_width="48dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="4/4"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDashboardPlus"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:minWidth="0dp"
+                        android:text="+"
+                        android:textSize="20sp"
+                        android:contentDescription="@string/dashboard_add_slot"
+                        app:cornerRadius="22dp" />
+                </LinearLayout>
+
                 <!-- ===== FRONT PAGE AIR DENSITY PANEL ===== -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/airDensityCard"
@@ -1107,6 +1213,21 @@
                                 android:textSize="10sp"
                                 android:singleLine="true" />
                         </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/txtAirDensityQuality"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="10dp"
+                            android:background="@drawable/bg_status_chip"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:paddingTop="4dp"
+                            android:paddingBottom="4dp"
+                            android:text="DATA QUALITY: WAITING"
+                            android:textColor="@color/muted"
+                            android:textSize="9sp"
+                            android:textStyle="bold" />
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -1821,11 +1942,19 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Diagnostics"
-                    android:textColor="@color/primary"
-                    android:textSize="18sp"
+                    android:text="@string/dtc_scanner_title"
+                    android:textColor="@color/text"
+                    android:textSize="22sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="12dp" />
+                    android:layout_marginBottom="2dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/dtc_scanner_subtitle"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp"
+                    android:layout_marginBottom="14dp" />
 
                 <!-- Vehicle info card: shows detected brand + VIN -->
                 <com.google.android.material.card.MaterialCardView
@@ -1849,7 +1978,7 @@
                             android:layout_width="28dp"
                             android:layout_height="28dp"
                             android:src="@drawable/ic_build"
-                            android:tint="@color/primary"
+                            app:tint="@color/primary"
                             android:layout_marginEnd="10dp"
                             android:contentDescription="Vehicle" />
 
@@ -1877,11 +2006,88 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- At-a-glance diagnostic health. Updated after every scan. -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/dtcHealthCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="18dp"
+                    app:strokeColor="@color/border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/dtcHealthTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dtc_health_not_scanned"
+                            android:textColor="@color/text"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/dtcHealthDetail"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="@string/dtc_health_not_scanned_desc"
+                            android:textColor="@color/muted"
+                            android:textSize="12sp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="14dp"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/dtcStoredCount"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="@string/dtc_stored_zero"
+                                android:textColor="@color/danger"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/dtcPendingCount"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="@string/dtc_pending_zero"
+                                android:textColor="@color/warning"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/dtcPermanentCount"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="@string/dtc_permanent_zero"
+                                android:textColor="@color/primary"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <!-- DTC action group: Read + Clear -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="DTC Actions"
+                    android:text="@string/dtc_scan_actions"
                     android:textColor="@color/muted"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -1900,28 +2106,40 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginEnd="4dp"
-                        android:text="@string/read_dtc"
+                        android:text="@string/dtc_quick_scan"
                         app:backgroundTint="@color/primary"
                         android:textColor="@color/background"
                         app:cornerRadius="12dp" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnClearDtc"
+                        android:id="@+id/btnDeepDtc"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="4dp"
-                        android:text="@string/clear_dtc"
-                        app:backgroundTint="@color/danger"
-                        android:textColor="@color/text"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:text="@string/dtc_full_scan"
+                        android:textColor="@color/primary"
+                        app:strokeColor="@color/primary"
                         app:cornerRadius="12dp" />
                 </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnClearDtc"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    android:text="@string/clear_dtc"
+                    android:textColor="@color/danger"
+                    app:strokeColor="@color/danger"
+                    app:cornerRadius="12dp" />
 
                 <!-- Vehicle info group: VIN + Readiness -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Vehicle Info"
+                    android:text="@string/dtc_vehicle_tools"
                     android:textColor="@color/muted"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -2030,6 +2248,41 @@
                     android:textColor="@color/muted"
                     android:textSize="13sp"
                     android:layout_marginBottom="16dp" />
+                <TextView
+                    android:id="@+id/batteryWorkflowText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:background="@drawable/panel"
+                    android:padding="12dp"
+                    android:text="@string/battery_workflow_initial"
+                    android:textColor="@color/primary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCrankingTest"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="@string/battery_crank_live_start"
+                        android:textSize="11sp"
+                        android:paddingHorizontal="12dp"
+                        app:cornerRadius="18dp"/>
+                    <TextView
+                        android:id="@+id/txtCrankingStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:text="@string/battery_crank_live_idle"
+                        android:textColor="@color/muted"
+                        android:textSize="12sp"
+                        android:textStyle="bold"/>
+                </LinearLayout>
 
                 <!-- Real-time voltage graph -->
                 <com.google.android.material.card.MaterialCardView
@@ -3829,9 +4082,10 @@
                                         android:textSize="14sp" />
 
                                     <TextView
+                                        android:id="@+id/customPidSummaryText"
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
-                                        android:text="User-defined PIDs from SharedPreferences JSON"
+                                        android:text="@string/custom_pid_manage_desc"
                                         android:textColor="@color/muted"
                                         android:textSize="11sp"
                                         android:layout_marginTop="2dp" />
@@ -3842,6 +4096,14 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content" />
                             </LinearLayout>
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnManageCustomPids"
+                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="@string/custom_pid_manage" />
                         </LinearLayout>
 
                         <!-- Feature Toggles: Air Density (AAD/MAD/BAD) -->

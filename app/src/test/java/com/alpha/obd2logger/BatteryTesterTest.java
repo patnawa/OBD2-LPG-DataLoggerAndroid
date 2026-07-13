@@ -121,4 +121,24 @@ public class BatteryTesterTest {
         assertTrue(report.overallScore > 0);
         assertFalse(report.results.isEmpty());
     }
+
+    @Test
+    public void crankingVoltageUsesDocumentedBoundaries() {
+        assertEquals(BatteryTester.Severity.PASS,
+                BatteryTester.testCrankingVoltage(10.50, 12.60).severity);
+        assertEquals(BatteryTester.Severity.WARN,
+                BatteryTester.testCrankingVoltage(9.60, 12.60).severity);
+        assertEquals(BatteryTester.Severity.FAIL,
+                BatteryTester.testCrankingVoltage(9.59, 12.60).severity);
+        assertEquals(BatteryTester.Severity.FAIL,
+                BatteryTester.testCrankingVoltage(8.90, 12.60).severity);
+    }
+
+    @Test
+    public void rippleIgnoresInvalidPidSamples() {
+        List<Double> samples = Arrays.asList(null, Double.NaN, 0.0, 14.20, 14.21, 14.19, 14.22, 14.20);
+        BatteryTester.BatteryTestResult result = BatteryTester.testRipple(samples);
+        assertEquals(BatteryTester.Severity.PASS, result.severity);
+        assertTrue(result.value.contains("0.030"));
+    }
 }

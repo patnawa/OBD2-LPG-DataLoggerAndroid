@@ -61,7 +61,7 @@
     <string name="status_lean_translated">فقير</string>
     <string name="status_rich_translated">غني</string>
     
-    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nالحالة: %3$s\nنصيحة: %4$s</string>
+    <string name="tuning_status_format" formatted="false">Fuel trim status</string>
 
     <!-- DTC -->
     <string name="read_dtc">قراءة رموز الأعطال</string>

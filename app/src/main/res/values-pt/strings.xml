@@ -61,7 +61,7 @@
     <string name="status_lean_translated">Pobre</string>
     <string name="status_rich_translated">Rico</string>
     
-    <string name="tuning_status_format">STFT: %1$.1f%% | LTFT: %2$.1f%%\nStatus: %3$s\nConselho: %4$s</string>
+    <string name="tuning_status_format" formatted="false">Fuel trim status</string>
 
     <!-- DTC -->
     <string name="read_dtc">Ler DTCs</string>

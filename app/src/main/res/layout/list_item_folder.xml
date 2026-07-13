@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
@@ -14,7 +15,7 @@
         android:layout_width="32dp"
         android:layout_height="32dp"
         android:src="@drawable/ic_folder"
-        android:tint="@color/primary"
+        app:tint="@color/primary"
         android:contentDescription="Folder" />
 
     <!-- Folder Info -->
@@ -51,7 +52,7 @@
         android:layout_height="40dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@android:drawable/ic_menu_delete"
-        android:tint="@color/danger"
+        app:tint="@color/danger"
         android:contentDescription="Delete Folder"
         android:focusable="false"
         android:clickable="true"
@@ -62,6 +63,6 @@
         android:layout_width="20dp"
         android:layout_height="20dp"
         android:src="@android:drawable/ic_media_play"
-        android:tint="@color/muted"
+        app:tint="@color/muted"
         android:contentDescription="Enter folder" />
 </LinearLayout>

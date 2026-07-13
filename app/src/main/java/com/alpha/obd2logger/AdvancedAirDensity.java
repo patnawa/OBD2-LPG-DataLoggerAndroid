@@ -43,6 +43,14 @@ public final class AdvancedAirDensity {
     private static double stoichAFR(FuelMode fuel) {
         return FuelProperties.get(fuel).stoichAFR;
     }
+
+    /** Convert an equivalence ratio to AFR for the selected fuel. */
+    public static Double airFuelRatio(Double lambda, FuelMode fuel) {
+        if (lambda == null || !Double.isFinite(lambda) || lambda <= 0 || lambda >= 3) {
+            return null;
+        }
+        return Math.round(lambda * stoichAFR(fuel) * 100.0) / 100.0;
+    }
     private static double lhvVaporization(FuelMode fuel) {
         return FuelProperties.get(fuel).lhvVapKJkg;
     }

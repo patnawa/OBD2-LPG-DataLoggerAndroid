@@ -132,8 +132,21 @@ public abstract class ElmDriver extends BaseDriver {
     }
 
     protected Double queryPidResponse(PIDDefinition pidDef, String response) {
-        String header = "4" + pidDef.getService().substring(1) + pidDef.getPidHex();
+        // Positive OBD response = request service + 0x40.  Building it as
+        // "4" + the last character only worked for Mode 01..0F and made
+        // manufacturer services such as 22 F405 look for 42F405 instead of
+        // the real 62F405 response.
+        String header = positiveResponseService(pidDef.getService()) + pidDef.getPidHex();
         return PIDParser.extractAndParse(pidDef, response, header);
+    }
+
+    private static String positiveResponseService(String service) {
+        try {
+            return String.format(java.util.Locale.US, "%02X",
+                    Integer.parseInt(service, 16) + 0x40);
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
     protected boolean isFatalElmResponse(String response) {
@@ -154,8 +167,21 @@ public abstract class ElmDriver extends BaseDriver {
 
         // Group PIDs by Service (Mode)
         Map<String, List<PIDDefinition>> byMode = new HashMap<>();
+        Map<String, List<PIDDefinition>> pseudoByMode = new HashMap<>();
+        List<PIDDefinition> individualOnly = new ArrayList<>();
         for (PIDDefinition pid : pids) {
-            byMode.computeIfAbsent(pid.getService(), k -> new ArrayList<>()).add(pid);
+            // Multi-PID responses identify standard PIDs with one byte. A
+            // manufacturer DID (for example 22 F405) has a multi-byte ID,
+            // so send it individually and parse its complete positive header.
+            // Keep pseudo PIDs in the regular chunk; they are derived from a
+            // parent PID response and must never be sent on their own.
+            if (pid.getPidHex().contains("_")) {
+                pseudoByMode.computeIfAbsent(pid.getService(), k -> new ArrayList<>()).add(pid);
+            } else if (pid.getPidHex().length() != 2) {
+                individualOnly.add(pid);
+            } else {
+                byMode.computeIfAbsent(pid.getService(), k -> new ArrayList<>()).add(pid);
+            }
         }
 
         // Use vLinker-optimized chunk size (6 for vLinker, 4 for generic clones)
@@ -169,6 +195,17 @@ public abstract class ElmDriver extends BaseDriver {
             for (int i = 0; i < modePids.size(); i += chunkSize) {
                 int end = Math.min(i + chunkSize, modePids.size());
                 List<PIDDefinition> chunk = modePids.subList(i, end);
+                List<PIDDefinition> parseChunk = new ArrayList<>(chunk);
+                for (PIDDefinition pseudo : pseudoByMode.getOrDefault(mode,
+                        java.util.Collections.emptyList())) {
+                    String parent = pseudo.getPidHex().substring(0, pseudo.getPidHex().indexOf('_'));
+                    for (PIDDefinition real : chunk) {
+                        if (real.getPidHex().equalsIgnoreCase(parent)) {
+                            parseChunk.add(pseudo);
+                            break;
+                        }
+                    }
+                }
 
                 // Build command with only real PIDs (skip pseudo-PIDs like "14_B"
                 // which are not valid hex and would cause ELM327 to reject the
@@ -183,7 +220,7 @@ public abstract class ElmDriver extends BaseDriver {
 
                 String response = sendCommand(cmd.toString());
                 if (!isFatalElmResponse(response) && response != null && !response.isEmpty()) {
-                    PIDParser.extractMulti(chunk, response, results);
+                    PIDParser.extractMulti(parseChunk, response, results);
                 }
 
                 // Retry failed PIDs individually (single-PID query) if the batch
@@ -199,15 +236,23 @@ public abstract class ElmDriver extends BaseDriver {
                         String retryCmd = pid.getService() + " " + pid.getPidHex();
                         String retryResp = sendCommand(retryCmd);
                         if (!isFatalElmResponse(retryResp) && retryResp != null && !retryResp.isEmpty()) {
-                            PIDParser.extractMulti(
-                                java.util.Collections.singletonList(pid),
-                                retryResp,
-                                results
-                            );
+                            List<PIDDefinition> retryParse = new ArrayList<>();
+                            retryParse.add(pid);
+                            for (PIDDefinition pseudo : pseudoByMode.getOrDefault(mode,
+                                    java.util.Collections.emptyList())) {
+                                if (pseudo.getPidHex().startsWith(pid.getPidHex() + "_")) {
+                                    retryParse.add(pseudo);
+                                }
+                            }
+                            PIDParser.extractMulti(retryParse, retryResp, results);
                         }
                     }
                 }
             }
+        }
+        for (PIDDefinition pid : individualOnly) {
+            Double value = queryPid(pid);
+            if (value != null) results.put(pid.getName(), value);
         }
         return results;
     }

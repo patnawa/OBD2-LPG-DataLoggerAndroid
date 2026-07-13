@@ -132,6 +132,10 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("derived_compressor_eff", "Compressor Efficiency (%)");
         registerDerived("derived_intercooler_eff", "Intercooler Effectiveness (%)");
         registerDerived("derived_ve", "Volumetric Efficiency (%)");
+        registerDerived("derived_actual_afr", "Actual AFR (:1)");
+        registerDerived("derived_commanded_afr", "Commanded AFR (:1)");
+        registerDerived("derived_lambda_source", "Actual Lambda Source (1=PID34 0=unavailable)");
+        registerDerived("derived_afr_quality", "Actual AFR Quality (1=measured 0=unavailable)");
         registerDerived("derived_dcafr", "Density-Corrected AFR");
         registerDerived("derived_tmf", "Theoretical Mass Flow (g/s)");
         registerDerived("derived_maf_dev", "MAF Deviation (%)");
@@ -444,16 +448,27 @@ public final class DataWriter implements AutoCloseable {
             values.put(MediaStore.Downloads.RELATIVE_PATH, path);
             Uri uri = context.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
             if (uri != null) {
-                return new DownloadTarget(null, uri) {
-                    @Override
-                    OutputStream openOutputStream() throws IOException {
-                        OutputStream stream = context.getContentResolver().openOutputStream(uri, "w");
-                        if (stream == null) {
-                            throw new IOException("Could not open Download output stream: " + uri);
-                        }
-                        return stream;
+                // Validate the provider now. Some restricted profiles return a
+                // non-null URI but throw when it is opened; logging must fall back
+                // to a file instead of failing after the session has started.
+                try (OutputStream probe = context.getContentResolver().openOutputStream(uri, "w")) {
+                    if (probe != null) {
+                        return new DownloadTarget(null, uri) {
+                            @Override
+                            OutputStream openOutputStream() throws IOException {
+                                OutputStream stream = context.getContentResolver().openOutputStream(uri, "w");
+                                if (stream == null) {
+                                    throw new IOException("Could not open Download output stream: " + uri);
+                                }
+                                return stream;
+                            }
+                        };
                     }
-                };
+                } catch (Exception providerError) {
+                    Log.w(TAG, "MediaStore URI was not writable; using file fallback", providerError);
+                    try { context.getContentResolver().delete(uri, null, null); }
+                    catch (Exception ignored) {}
+                }
             }
             // MediaStore.insert() returned null (some emulators / restricted storage
             // profiles do this). Fall through to a direct file under Downloads so

@@ -36,7 +36,7 @@ public final class PIDParser {
         }
         
         String modeStr = chunk.get(0).getService(); // e.g. "01"
-        String respMode = "4" + modeStr.substring(1); // e.g. "41"
+        String respMode = positiveResponseService(modeStr); // e.g. "41"
         
         String cleanResp = normalizeResponse(response);
         
@@ -79,15 +79,16 @@ public final class PIDParser {
                     if (value != null && !results.containsKey(matchedPid.getName())) {
                         results.put(matchedPid.getName(), value);
                     }
-                    // Parse any "_B" pseudo-PID that shares this PID's hex (e.g. O2 sensor STFT).
-                    String bKey = matchedPid.getPidHex() + "_B";
+                    // Parse all derived fields sharing the same parent response
+                    // (for example 14_B fuel trim or 34_CD sensor current).
+                    String pseudoPrefix = matchedPid.getPidHex() + "_";
                     for (PIDDefinition p : chunk) {
-                        if (p.getPidHex().equalsIgnoreCase(bKey)) {
-                            Double bValue = parse(p, dataHex);
-                            if (bValue != null && !results.containsKey(p.getName())) {
-                                results.put(p.getName(), bValue);
+                        if (p.getPidHex().toUpperCase(java.util.Locale.US)
+                                .startsWith(pseudoPrefix.toUpperCase(java.util.Locale.US))) {
+                            Double derivedValue = parse(p, dataHex);
+                            if (derivedValue != null && !results.containsKey(p.getName())) {
+                                results.put(p.getName(), derivedValue);
                             }
-                            break;
                         }
                     }
                     idx += dataChars;
@@ -122,6 +123,15 @@ public final class PIDParser {
             return null;
         } catch (Exception ignored) {
             return null;
+        }
+    }
+
+    private static String positiveResponseService(String service) {
+        try {
+            return String.format(java.util.Locale.US, "%02X",
+                    Integer.parseInt(service, 16) + 0x40);
+        } catch (Exception ignored) {
+            return "";
         }
     }
 

@@ -65,4 +65,22 @@ public final class LoggerConfig {
         this.enableApiServer = false;
         this.fordMsCanEnabled = false;
     }
+
+    /**
+     * Keep an explicit user-selected brand intact, but replace an automatic
+     * placeholder once a VIN produces a trustworthy manufacturer result.
+     */
+    public boolean applyDetectedVehicleBrand(String detectedBrand) {
+        if (!isAutoVehicleBrand(vehicleBrand) || detectedBrand == null) return false;
+        String normalized = detectedBrand.trim();
+        if (normalized.isEmpty() || "unknown".equalsIgnoreCase(normalized)) return false;
+        vehicleBrand = normalized;
+        return true;
+    }
+
+    public static boolean isAutoVehicleBrand(String brand) {
+        return brand == null || brand.trim().isEmpty()
+                || "auto".equalsIgnoreCase(brand.trim())
+                || "unknown".equalsIgnoreCase(brand.trim());
+    }
 }

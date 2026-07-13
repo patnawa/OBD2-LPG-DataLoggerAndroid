@@ -83,7 +83,7 @@
         <string name="status_perfect_translated">สมบูรณ์ (PERFECT)</string>
         <string name="status_lean_translated">บางไป (LEAN)</string>
         <string name="status_rich_translated">หนาไป (RICH)</string>
-        <string name="tuning_status_format">STFT: %1$s | LTFT: %2$s\nสถานะ: %3$s (มั่นใจ %4$d%%)\nคำแนะนำ: %5$s</string>
+    <string name="tuning_status_format" formatted="false">Fuel trim status</string>
 
     <string name="read_dtc">อ่านโค้ด DTC</string>
     <string name="clear_dtc">ลบโค้ด DTC</string>
@@ -91,6 +91,32 @@
     <string name="read_readiness">เช็คความพร้อม</string>
     <string name="no_dtcs">ไม่พบรหัสปัญหา (DTC)</string>
     <string name="dtc_count">พบปัญหา: %1$d</string>
+    <string name="dtc_scanner_title">วิเคราะห์ระบบรถยนต์</string>
+    <string name="dtc_scanner_subtitle">สแกนรหัส SAE OBD-II ตรวจ Readiness และหลักฐาน Freeze Frame</string>
+    <string name="dtc_scan_actions">การสแกน</string>
+    <string name="dtc_vehicle_tools">เครื่องมือรถยนต์</string>
+    <string name="dtc_quick_scan">สแกนด่วน</string>
+    <string name="dtc_full_scan">สแกนครบระบบ</string>
+    <string name="dtc_health_not_scanned">พร้อมตรวจวิเคราะห์</string>
+    <string name="dtc_health_not_scanned_desc">เชื่อมต่ออะแดปเตอร์แล้วเริ่มสแกนด่วน ใช้สแกนครบระบบเมื่อต้องการตรวจบัสเพิ่มเติม</string>
+    <string name="dtc_health_scanning">กำลังสแกนกล่องควบคุม…</string>
+    <string name="dtc_health_scanning_desc">เปิดสวิตช์กุญแจ ON และอย่าถอดอะแดปเตอร์ระหว่างสแกน</string>
+    <string name="dtc_health_failed">สแกนไม่สมบูรณ์</string>
+    <string name="dtc_health_failed_desc">อะแดปเตอร์หรือ ECU หยุดตอบสนอง ตรวจสวิตช์กุญแจและการเชื่อมต่อแล้วลองใหม่</string>
+    <string name="dtc_health_clear">ไม่พบรหัสปัญหา</string>
+    <string name="dtc_health_clear_desc">รถไม่รายงานรหัส Stored, Pending หรือ Permanent</string>
+    <string name="dtc_health_attention">พบจุดที่ควรตรวจสอบ</string>
+    <string name="dtc_health_attention_desc">ตรวจรหัส Active ก่อน แตะรหัสเพื่อดูแนวทางวิเคราะห์</string>
+    <string name="dtc_health_critical">พบปัญหาระดับวิกฤต</string>
+    <string name="dtc_health_critical_desc">หลีกเลี่ยงการขับหนักจนกว่าจะตรวจระบบเครื่องยนต์หรือระบบความปลอดภัย</string>
+    <string name="dtc_stored_zero">0\nบันทึกแล้ว</string>
+    <string name="dtc_pending_zero">0\nรอยืนยัน</string>
+    <string name="dtc_permanent_zero">0\nถาวร</string>
+    <string name="dtc_stored_count">%1$d\nบันทึกแล้ว</string>
+    <string name="dtc_pending_count">%1$d\nรอยืนยัน</string>
+    <string name="dtc_permanent_count">%1$d\nถาวร</string>
+    <string name="dtc_tap_guidance">แตะเพื่อดูแนวทางวิเคราะห์</string>
+    <string name="dtc_hide_guidance">แตะเพื่อซ่อนคำแนะนำ</string>
 
     <string name="perf_arm">เตรียมจับเวลา 0-100</string>
     <string name="perf_reset">รีเซ็ต</string>
@@ -194,6 +220,22 @@
     <string name="battery_crank_start">เริ่มทดสอบ</string>
     <string name="battery_crank_sampling">กำลังสุ่มตัวอย่างแรงดันขณะสตาร์ท — สตาร์ทเครื่องยนต์เดี๋ยวนี้!</string>
     <string name="battery_crank_failed">ไม่สามารถอ่านค่าแรงดันขณะสตาร์ทได้</string>
+    <string name="battery_crank_live_start">เริ่มทดสอบการสตาร์ท</string>
+    <string name="battery_crank_live_reset">เริ่มทดสอบใหม่</string>
+    <string name="battery_crank_live_idle">กดเริ่มเพื่อทดสอบ</string>
+    <string name="battery_crank_connect_first">กรุณาเชื่อมต่อกับรถก่อน</string>
+    <string name="battery_crank_live_ready">พร้อมแล้ว — สตาร์ทเครื่องยนต์ตอนนี้</string>
+    <string name="battery_crank_live_detected">ตรวจพบการสตาร์ท — ให้เครื่องยนต์ทำงานต่อ</string>
+    <string name="battery_crank_result_pass">แรงดันขณะสตาร์ทแข็งแรง: %1$.2f V</string>
+    <string name="battery_crank_result_warn">แรงดันขณะสตาร์ทอยู่ในระดับเฝ้าระวัง: %1$.2f V</string>
+    <string name="battery_crank_result_fail">แรงดันขณะสตาร์ทต่ำ: %1$.2f V</string>
+    <string name="battery_workflow_initial">1 เชื่อมต่อ  •  2 เลือกชนิดแบตเตอรี่  •  3 เริ่มการทดสอบ</string>
+    <string name="battery_workflow_connected">เชื่อมต่อแล้ว • เลือกชนิดแบตเตอรี่ • เลือกการทดสอบเต็มรูปแบบหรือเฉพาะจุด</string>
+    <string name="battery_workflow_connect">ขั้นตอน 1 • เชื่อมต่ออะแดปเตอร์ OBD2 เพื่อเริ่มต้น</string>
+    <string name="battery_workflow_cranking">ทดสอบการสตาร์ท • กรุณาสตาร์ทเครื่องยนต์ภายใน 10 วินาที</string>
+    <string name="battery_workflow_test_complete">ทดสอบเสร็จแล้ว • ตรวจสอบค่าแรงดันต่ำสุดด้านล่าง</string>
+    <string name="battery_workflow_running">กำลังตรวจสอบแบบแนะนำ • จอดรถในพื้นที่ปลอดภัย</string>
+    <string name="battery_workflow_complete">ตรวจสอบเสร็จแล้ว • คะแนนรวม %1$d%%</string>
     <string name="battery_ripple_sampling">กำลังสุ่มตัวอย่างแรงดันสำหรับการทดสอบริปเปิล (2 วินาที)...</string>
     <string name="battery_ripple_insufficient">ตัวอย่างข้อมูลไม่เพียงพอสำหรับการทดสอบริปเปิล</string>
     <string name="battery_full_running">กำลังดำเนินการตรวจวินิจฉัยแบตเตอรี่แบบครอบคลุม...\nประเภทแบตเตอรี่: %1$s</string>
@@ -272,16 +314,28 @@
     <string name="custom_pid_add">เพิ่ม PID</string>
     <string name="custom_pid_remove">ลบ</string>
     <string name="custom_pid_name">ชื่อ</string>
-    <string name="custom_pid_service">Mode (01/02/09)</string>
-    <string name="custom_pid_hex">PID Hex (0C, 5E)</string>
+    <string name="custom_pid_service">Service / Mode (01, 22)</string>
+    <string name="custom_pid_hex">PID / DID Hex (0C, F405)</string>
     <string name="custom_pid_formula">สูตร (A-40, (A*256+B)/4)</string>
     <string name="custom_pid_unit">หน่วย (°C, %, kPa)</string>
     <string name="custom_pid_bytes">Data Bytes</string>
+    <string name="custom_pid_min">ค่าต่ำสุด</string>
+    <string name="custom_pid_max">ค่าสูงสุด</string>
     <string name="custom_pid_test">ทดสอบ</string>
     <string name="custom_pid_test_data">ป้อน raw hex</string>
     <string name="custom_pid_test_result">ผลลัพธ์: %1$s</string>
     <string name="custom_pid_save">บันทึก</string>
     <string name="custom_pid_manage">จัดการ Custom PID</string>
+    <string name="custom_pid_manage_desc">เพิ่ม PID ผู้ผลิตหรืออุปกรณ์ภายนอก การเปลี่ยนแปลงจะใช้เมื่อเริ่มบันทึกครั้งถัดไป</string>
+    <string name="custom_pid_none">ยังไม่มี Custom PID เพิ่มเมื่อทราบคำสั่ง ECU และสูตรคำนวณเท่านั้น</string>
+    <string name="custom_pid_example">ตัวอย่าง: Mode 22, PID F405, สูตร A-40</string>
+    <string name="custom_pid_dashboard">แสดงบนหน้าปัด</string>
+    <string name="custom_pid_invalid">กรอกชื่อ Service/PID แบบ Hex สูตรคำนวณ และจำนวนไบต์ 1–8 ให้ครบ</string>
+    <string name="custom_pid_saved">บันทึก Custom PID แล้ว จะใช้เมื่อเริ่มบันทึกครั้งถัดไป</string>
+    <string name="custom_pid_deleted">ลบ Custom PID แล้ว</string>
+    <string name="custom_pid_raw_hint">ข้อมูล Hex สำหรับทดสอบสูตร เช่น 5A</string>
+    <string name="custom_pid_edit">แก้ไข Custom PID</string>
+    <string name="custom_pid_summary">บันทึก PID แล้ว %1$d รายการ • ใช้เมื่อเริ่มบันทึกครั้งถัดไป</string>
     
     <string name="feature_turbo_boost">คำนวณบูสต์เทอร์โบ</string>
     <string name="feature_fuel_economy">คำนวณอัตราสิ้นเปลือง</string>
@@ -291,6 +345,12 @@
 
     <!-- Gauge / Dashboard / Graph slot strings -->
     <string name="tap_to_add">แตะเพื่อเพิ่ม</string>
+    <string name="dashboard_layout_title">การ์ดหน้าปัด</string>
+    <string name="dashboard_layout_hint">ใช้ปุ่ม − / + เพื่อลดหรือเพิ่มจำนวนการ์ดข้อมูลสด</string>
+    <string name="dashboard_remove_slot">ลดจำนวนการ์ดหน้าปัด</string>
+    <string name="dashboard_add_slot">เพิ่มจำนวนการ์ดหน้าปัด</string>
+    <string name="language_english">English</string>
+    <string name="language_thai">ภาษาไทย</string>
     <string name="live_graphs">กราฟเรียลไทม์</string>
     <string name="data_slot">ข้อมูล %1$d</string>
     <string name="records_count">บันทึก: %1$d</string>
@@ -326,6 +386,29 @@
     <string name="home_label_boost_psi">บูสต์ psi</string>
     <string name="home_label_throttle_pct">ลิ้นเร่ง %</string>
     <string name="home_label_fuel_trim_pct">ค่าปรับ Trim %</string>
+    <string name="home_label_hud">HUD</string>
+    <string name="home_toggle_rpm_graph">เปิดหรือปิดเส้นกราฟรอบเครื่องยนต์</string>
+    <string name="home_toggle_speed_graph">เปิดหรือปิดเส้นกราฟความเร็ว</string>
+    <string name="home_toggle_boost_graph">เปิดหรือปิดเส้นกราฟบูสต์</string>
+    <string name="home_title_ai_insight">สรุปข้อมูลการขับขี่</string>
+    <string name="home_ai_insight_collecting">กำลังสร้างโปรไฟล์การขับขี่</string>
+    <string name="home_ai_insight_collecting_detail">ระบบจะสรุปข้อมูลเมื่อเครื่องยนต์เริ่มส่งข้อมูลสด</string>
+    <string name="home_ai_insight_stable">ค่าหลักของรถอยู่ในเกณฑ์ปกติ</string>
+    <string name="home_ai_insight_stable_detail">เครื่องยนต์ แรงดันไฟ และการปรับเชื้อเพลิงอยู่ในช่วงปกติ</string>
+    <string name="home_ai_insight_dtc">ควรตรวจสอบรหัสปัญหา</string>
+    <string name="home_ai_insight_dtc_detail">พบรหัสปัญหา %1$d รายการ แตะสถานะการวิเคราะห์เพื่อตรวจสอบ</string>
+    <string name="home_ai_insight_hot">อุณหภูมิน้ำหล่อเย็นสูง</string>
+    <string name="home_ai_insight_hot_detail">น้ำหล่อเย็น %1$.0f°C ลดภาระเครื่องยนต์และตรวจระบบระบายความร้อน</string>
+    <string name="home_ai_insight_voltage">แรงดันแบตเตอรี่ควรตรวจสอบ</string>
+    <string name="home_ai_insight_voltage_detail">แรงดันระบบ %1$.1f V ตรวจแบตเตอรี่และระบบชาร์จ</string>
+    <string name="home_ai_insight_trim">การปรับเชื้อเพลิงสูง</string>
+    <string name="home_ai_insight_trim_detail">Fuel Trim รวม %1$+.1f%% ควรเก็บข้อมูลช่วงวิ่งคงที่เพิ่มก่อนปรับจูน</string>
+    <string name="home_ai_insight_local">วิเคราะห์ในเครื่อง • ข้อมูลสด</string>
+    <string name="home_nav_drive">ขับรถ</string>
+    <string name="home_nav_analyze">วิเคราะห์</string>
+    <string name="home_nav_logs">บันทึก</string>
+    <string name="home_nav_scan">สแกน</string>
+    <string name="home_record_action">เริ่มหรือหยุดบันทึกข้อมูล</string>
     <string name="home_title_diagnostic_health">สถานะการวิเคราะห์ปัญหา</string>
     <string name="home_diagnostic_no_codes">ไม่พบรหัสความผิดปกติ</string>
     <string name="home_diagnostic_ready_scan">พร้อมทำการสแกนเต็มรูปแบบ</string>
@@ -359,4 +442,5 @@
     <string name="status_negotiating">กำลังยืนยันโปรโตคอล...</string>
     <string name="status_connect_adapter_prompt">เชื่อมต่ออะแดปเตอร์เพื่อเริ่มต้นสแกน</string>
     <string name="status_no_live_data">● ไม่มีข้อมูลสด</string>
+    <string name="fuel_economy">อัตราสิ้นเปลืองเชื้อเพลิง</string>
 </resources>

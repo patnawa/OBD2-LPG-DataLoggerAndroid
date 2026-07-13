@@ -602,10 +602,19 @@ public final class BatteryTester {
                     Severity.INFO, "Need at least 5 fast samples", 0);
         }
 
-        double min = Double.MAX_VALUE, max = Double.MIN_VALUE;
-        for (double v : samples) {
+        double min = Double.MAX_VALUE, max = -Double.MAX_VALUE;
+        int valid = 0;
+        for (Double sample : samples) {
+            if (sample == null) continue;
+            double v = sample;
+            if (!Double.isFinite(v) || v < 6.0 || v > 18.0) continue;
             if (v < min) min = v;
             if (v > max) max = v;
+            valid++;
+        }
+        if (valid < 5) {
+            return new BatteryTestResult("Voltage Stability", "Insufficient valid data",
+                    Severity.INFO, "Need at least 5 valid OBD voltage samples", 0);
         }
         double ripplePP = max - min;
         Severity sev;

@@ -5,6 +5,8 @@ import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -69,12 +71,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private androidx.activity.OnBackPressedCallback onBackPressedCallback;
     private boolean isTabChanging = false;
     // --- UI: Header ---
-    private TextView headerStatus, headerVin, headerFuelMode, headerApiStatus;
+    private TextView headerStatus, headerVin, headerVehicle, headerFuelMode, headerApiStatus;
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
     private TextView txtHomeFuelEconomy, txtHomeBoost, txtHomeDpf, txtHomeDtc;
     private TextView txtHomeThrottle, txtHomeFuelTrim;
     private TextView txtHomeDiagnosticSummary, txtHomeDiagnosticMeta;
     private View cardHomeDiagnostics;
+    private com.google.android.material.card.MaterialCardView cockpitInsightCard;
+    private TextView cockpitInsightTitle, cockpitInsightMessage, cockpitInsightMeta;
     private android.widget.ImageView imgHomeDiagnostics;
     private LiveMultiGraphView homeRpmTrend;
     private TextView stripBoost, stripFuel;
@@ -92,15 +96,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private CheckBox turboBoostCheckbox, fuelEconomyCheckbox, dpfMonitorCheckbox, customPidCheckbox;
     private CheckBox airDensityCheckbox;
     private TextView apiServerIpText;
+    private TextView customPidSummaryText;
     private TextView customLogFolderText;
     private Button btnSelectLogFolder;
+    private MaterialButton btnManageCustomPids;
 
     // --- UI: Dashboard ---
     private TextView statusText, countText;
     private TextView dashTitle1, dashValue1, dashTitle2, dashValue2, dashTitle3, dashValue3, dashTitle4, dashValue4;
     private GaugeView gauge1, gauge2, gauge3, gauge4;
+    private MaterialButton btnDashboardMinus, btnDashboardPlus;
+    private TextView dashboardSlotCountText;
+    private int dashboardSlotCount = 4;
     private TextView tuningStatusText;
     private TextView mapEctText, mapLoopStatusText;
+    private TextView mapCoverageText, mapConfidenceText;
+    private com.google.android.material.progressindicator.LinearProgressIndicator mapCoverageProgress;
     private TextView txtTuningStft, txtTuningLtft, txtTuningStatus, txtTuningAdvice;
     private TextView dashTuningStatus, dashEctText;
     private com.google.android.material.progressindicator.LinearProgressIndicator dashWarmupProgress;
@@ -109,8 +120,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private GraphView graph1, graph2, graph3, graph4, graph5;
 
     // --- UI: DTC tab ---
-    private Button btnReadDtc, btnClearDtc, btnReadVin, btnReadiness;
-    private TextView dtcStatusText;
+    private Button btnReadDtc, btnDeepDtc, btnClearDtc, btnReadVin, btnReadiness;
+    private TextView dtcStatusText, dtcHealthTitle, dtcHealthDetail;
+    private TextView dtcStoredCount, dtcPendingCount, dtcPermanentCount;
     private LinearLayout dtcListContainer, readinessContainer;
     private com.google.android.material.card.MaterialCardView dtcVehicleCard;
     private TextView dtcVehicleBrand, dtcVehicleVin;
@@ -139,6 +151,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private volatile double postLoadVoltage = -1;
     private volatile double recoveredVoltage = -1;
     private volatile double recoveryDelta = -1;
+    private com.google.android.material.button.MaterialButton btnCrankingTest;
+    private TextView txtCrankingStatus, batteryWorkflowText;
+    private boolean isCrankTestActive = false;
+    private double crankTestMinV = 99.0;
+    private long crankTestStartTime = 0;
+    private int crankTestState = 0; // 0 = idle, 1 = armed, 2 = measuring
+    private boolean isHudModeActive = false;
 
     // --- UI: Logs tab ---
     private TextView txtSessionDuration, txtSessionRecords, txtSessionRate, sessionStatusText;
@@ -179,7 +198,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // --- UI: Air Density Panel ---
     private View airDensityCard;
     private TextView txtAAD, txtMAD, txtBAD, txtDensityPct, txtDensityAlt, txtSAECF;
-    private TextView txtOMD, txtCompEff, txtICEff, txtVE, txtPDI, txtGrains, txtAirDensityWeather;
+    private TextView txtOMD, txtCompEff, txtICEff, txtVE, txtPDI, txtGrains, txtAirDensityWeather, txtAirDensityQuality;
 
     // --- UI: History tab ---
 
@@ -254,6 +273,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private boolean pendingStartLoggingAfterFolderSelect = false;
     private static volatile boolean isConnecting = false;
     private static volatile boolean pendingStartLoggingAfterPermission = false;
+    private boolean pendingStartLoggingAfterUsbPermission = false;
+    private static final String ACTION_USB_PERMISSION = "com.alpha.obd2logger.USB_PERMISSION";
+    private final BroadcastReceiver usbPermissionReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (!ACTION_USB_PERMISSION.equals(intent.getAction())) return;
+            boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
+            boolean shouldStart = pendingStartLoggingAfterUsbPermission;
+            pendingStartLoggingAfterUsbPermission = false;
+            isConnecting = false;
+            if (granted && shouldStart) {
+                if (startLogging()) setFabState(true);
+            } else if (!granted) {
+                setStatus("USB permission denied.", R.color.danger);
+                updateStatusStripConnection(0, "USB permission denied");
+                setFabState(false);
+            }
+        }
+    };
     public static volatile boolean isPaused = false;
     private boolean lastDtcScanWasDeep = false; // tracks whether last scan was deep
 
@@ -274,6 +311,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_main);
+            androidx.core.content.ContextCompat.registerReceiver(
+                    this, usbPermissionReceiver, new IntentFilter(ACTION_USB_PERMISSION),
+                    androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED);
 
             // First-run: guide the user through adapter connection before the
             // main UI. Pure UI; writes transport prefs, touches no map logic.
@@ -496,6 +536,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Header
         headerStatus = findViewById(R.id.headerStatus);
         headerVin = findViewById(R.id.headerVin);
+        headerVehicle = findViewById(R.id.headerVehicle);
         headerFuelMode = findViewById(R.id.headerFuelMode);
         headerApiStatus = findViewById(R.id.headerApiStatus);
         headerApiDivider = findViewById(R.id.headerApiDivider);
@@ -558,6 +599,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtHomeDiagnosticMeta = findViewById(R.id.cockpitDiagnosticMeta);
         cardHomeDiagnostics = findViewById(R.id.cockpitDiagnostics);
         imgHomeDiagnostics = findViewById(R.id.cockpitDiagnosticIcon);
+        cockpitInsightCard = findViewById(R.id.cockpitInsightCard);
+        cockpitInsightTitle = findViewById(R.id.cockpitInsightTitle);
+        cockpitInsightMessage = findViewById(R.id.cockpitInsightMessage);
+        cockpitInsightMeta = findViewById(R.id.cockpitInsightMeta);
 
         txtHomeDtc = null;
         stripBoost = findViewById(R.id.stripBoost);
@@ -614,6 +659,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         btnBatteryFull = findViewById(R.id.btnBatteryFull);
         batteryTypeSpinner = findViewById(R.id.batteryTypeSpinner);
         batteryAgeInput = findViewById(R.id.batteryAgeInput);
+        btnCrankingTest = findViewById(R.id.btnCrankingTest);
+        txtCrankingStatus = findViewById(R.id.txtCrankingStatus);
+        batteryWorkflowText = findViewById(R.id.batteryWorkflowText);
+        if (btnCrankingTest != null) {
+            btnCrankingTest.setOnClickListener(v -> startLiveCrankingTest());
+        }
         // Populate battery type dropdown from localized resources
         String[] batteryTypes = getResources().getStringArray(R.array.battery_chemistry_types);
         java.util.List<String> typeList = new java.util.ArrayList<>(java.util.Arrays.asList(batteryTypes));
@@ -660,6 +711,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         fuelEconomyCheckbox = findViewById(R.id.fuelEconomyCheckbox);
         dpfMonitorCheckbox = findViewById(R.id.dpfMonitorCheckbox);
         customPidCheckbox = findViewById(R.id.customPidCheckbox);
+        customPidSummaryText = findViewById(R.id.customPidSummaryText);
+        btnManageCustomPids = findViewById(R.id.btnManageCustomPids);
         airDensityCheckbox = findViewById(R.id.airDensityCheckbox);
 
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
@@ -678,9 +731,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 prefs.edit().putBoolean("pref_dpf_monitor", checked).apply());
         }
         if (customPidCheckbox != null) {
-            customPidCheckbox.setOnCheckedChangeListener((btn, checked) ->
-                prefs.edit().putBoolean("pref_custom_pid", checked).apply());
+            customPidCheckbox.setOnCheckedChangeListener((btn, checked) -> {
+                prefs.edit().putBoolean("pref_custom_pid", checked).apply();
+                if (activeInProcessConfig != null) activeInProcessConfig.customPidsEnabled = checked;
+                LoggerService svc = LoggerService.getInstance();
+                if (svc != null && svc.getConfig() != null) svc.getConfig().customPidsEnabled = checked;
+            });
         }
+        if (btnManageCustomPids != null) {
+            btnManageCustomPids.setOnClickListener(v -> showCustomPidManager());
+        }
+        updateCustomPidSummary();
         if (airDensityCheckbox != null) {
             airDensityCheckbox.setOnCheckedChangeListener((btn, checked) -> {
                 prefs.edit().putBoolean("pref_air_density", checked).apply();
@@ -725,8 +786,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
 
-        // Reflect current language on the Home shortcut card.
-        updateHomeLanguageLabel();
+
 
         // Dashboard
         fabLog = findViewById(R.id.fabLog);
@@ -764,6 +824,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtPDI = findViewById(R.id.txtPDI);
         txtGrains = findViewById(R.id.txtGrains);
         txtAirDensityWeather = findViewById(R.id.txtAirDensityWeather);
+        txtAirDensityQuality = findViewById(R.id.txtAirDensityQuality);
 
         fuelSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -835,6 +896,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dashValue3 = findViewById(R.id.dashValue3);
         dashTitle4 = findViewById(R.id.dashTitle4);
         dashValue4 = findViewById(R.id.dashValue4);
+        btnDashboardMinus = findViewById(R.id.btnDashboardMinus);
+        btnDashboardPlus = findViewById(R.id.btnDashboardPlus);
+        dashboardSlotCountText = findViewById(R.id.dashboardSlotCountText);
+        dashboardSlotCount = Math.max(1, Math.min(4,
+                getSharedPreferences("OBD2Prefs", MODE_PRIVATE).getInt("dashboard_slot_count", 4)));
+        if (btnDashboardMinus != null) {
+            btnDashboardMinus.setOnClickListener(v -> changeDashboardSlotCount(-1));
+        }
+        if (btnDashboardPlus != null) {
+            btnDashboardPlus.setOnClickListener(v -> changeDashboardSlotCount(1));
+        }
         
         gauge1 = findViewById(R.id.gauge1);
         gauge2 = findViewById(R.id.gauge2);
@@ -844,6 +916,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         tuningStatusText = findViewById(R.id.tuningStatusText);
         mapEctText = findViewById(R.id.mapEctText);
         mapLoopStatusText = findViewById(R.id.mapLoopStatusText);
+        mapCoverageText = findViewById(R.id.mapCoverageText);
+        mapConfidenceText = findViewById(R.id.mapConfidenceText);
+        mapCoverageProgress = findViewById(R.id.mapCoverageProgress);
         txtTuningStft = findViewById(R.id.txtTuningStft);
         txtTuningLtft = findViewById(R.id.txtTuningLtft);
         txtTuningStatus = findViewById(R.id.txtTuningStatus);
@@ -858,10 +933,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // DTC tab
         btnReadDtc = findViewById(R.id.btnReadDtc);
+        btnDeepDtc = findViewById(R.id.btnDeepDtc);
         btnClearDtc = findViewById(R.id.btnClearDtc);
         btnReadVin = findViewById(R.id.btnReadVin);
         btnReadiness = findViewById(R.id.btnReadiness);
         dtcStatusText = findViewById(R.id.dtcStatusText);
+        dtcHealthTitle = findViewById(R.id.dtcHealthTitle);
+        dtcHealthDetail = findViewById(R.id.dtcHealthDetail);
+        dtcStoredCount = findViewById(R.id.dtcStoredCount);
+        dtcPendingCount = findViewById(R.id.dtcPendingCount);
+        dtcPermanentCount = findViewById(R.id.dtcPermanentCount);
         dtcListContainer = findViewById(R.id.dtcListContainer);
         readinessContainer = findViewById(R.id.readinessContainer);
         dtcVehicleCard = findViewById(R.id.dtcVehicleCard);
@@ -913,6 +994,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     .setMessage("Clear ALL Petrol and LPG map data? This starts a fresh Tune Assist comparison and cannot be undone.")
                     .setPositiveButton("Clear All", (d, w) -> {
                         fuelMapView.clearData();
+                        LiveMapStore store = getLiveMapStore();
+                        if (store != null) store.clear();
+                        if (inProcessMapStore != null && inProcessMapStore != store) {
+                            inProcessMapStore.clear();
+                        }
+                        sessionPetrolData.clear();
+                        sessionLpgData.clear();
+                        FuelMode selectedMode = fuelSpinner != null
+                                ? fuelPositionToMode(fuelSpinner.getSelectedItemPosition())
+                                : FuelMode.PETROL;
+                        if (store != null) updateMapCoverage(store.snapshot(), selectedMode);
                         setStatus("Fuel map cleared.", R.color.muted);
                     })
                     .setNegativeButton("Cancel", null)
@@ -1160,7 +1252,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         root.addView(hint);
 
         // Populate items
-        java.util.List<PIDDefinition> allPids = PIDCatalogue.getAll();
+        // Include saved external/custom PIDs so a dashboard, gauge or graph can select them.
+        java.util.List<PIDDefinition> allPids = PIDCatalogue.getAllWithCustom(this);
         java.util.List<Object> items = new java.util.ArrayList<>();
         items.add("none");
         items.addAll(allPids);
@@ -1376,7 +1469,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 values[i].setText("+");
                 values[i].setTextColor(getColorCompat(R.color.muted));
             } else {
-                PIDDefinition pid = PIDDefinition.findByKey(pidKey);
+                PIDDefinition pid = findPidDefinition(pidKey);
                 if (pid != null) {
                     titles[i].setText(pid.getName());
                     titles[i].setTextColor(getColorCompat(R.color.text));
@@ -1385,6 +1478,42 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 }
             }
         }
+        applyDashboardSlotCount();
+    }
+
+    /** Built-in lookup plus Settings-defined PIDs for dashboard presentation. */
+    private PIDDefinition findPidDefinition(String key) {
+        if (key == null) return null;
+        for (PIDDefinition pid : PIDCatalogue.getAllWithCustom(this)) {
+            if (key.equalsIgnoreCase(pid.key())) return pid;
+        }
+        return null;
+    }
+
+    private void changeDashboardSlotCount(int delta) {
+        int next = Math.max(1, Math.min(4, dashboardSlotCount + delta));
+        if (next == dashboardSlotCount) return;
+        dashboardSlotCount = next;
+        getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit()
+                .putInt("dashboard_slot_count", dashboardSlotCount).apply();
+        applyDashboardSlotCount();
+    }
+
+    private void applyDashboardSlotCount() {
+        View[] gaugeCards = {findViewById(R.id.gaugeCard1), findViewById(R.id.gaugeCard2),
+                findViewById(R.id.gaugeCard3), findViewById(R.id.gaugeCard4)};
+        View[] dashCards = {findViewById(R.id.dashCard1), findViewById(R.id.dashCard2),
+                findViewById(R.id.dashCard3), findViewById(R.id.dashCard4)};
+        for (int i = 0; i < 4; i++) {
+            int visibility = i < dashboardSlotCount ? View.VISIBLE : View.GONE;
+            if (gaugeCards[i] != null) gaugeCards[i].setVisibility(visibility);
+            if (dashCards[i] != null) dashCards[i].setVisibility(visibility);
+        }
+        if (dashboardSlotCountText != null) {
+            dashboardSlotCountText.setText(dashboardSlotCount + "/4");
+        }
+        if (btnDashboardMinus != null) btnDashboardMinus.setEnabled(dashboardSlotCount > 1);
+        if (btnDashboardPlus != null) btnDashboardPlus.setEnabled(dashboardSlotCount < 4);
     }
 
     private void updateApiServerIpText(boolean isEnabled) {
@@ -1493,15 +1622,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (homeBottomNav != null) {
                 homeBottomNav.setVisibility(View.VISIBLE);
             }
-            // Keep the top app bar on Home so Settings remains reachable,
-            // but hide its duplicate connection chip because Home has its
-            // own richer connection card.
+            updateHomeBottomNavigation(index);
+            // Keep the compact status in the top bar on every screen. It is
+            // the glanceable connection / vehicle / fuel summary; the Home
+            // card can retain the longer adapter diagnostics below it.
             if (topHeader != null) {
                 topHeader.setVisibility(View.VISIBLE);
             }
             View statusLayout = findViewById(R.id.statusLayout);
             if (statusLayout != null) {
-                statusLayout.setVisibility(index == 6 ? View.GONE : View.VISIBLE);
+                statusLayout.setVisibility(View.VISIBLE);
             }
             
             if (index == 4) {
@@ -1551,17 +1681,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             cardBattery.setOnClickListener(v -> showTab(7));
         }
 
-        // Home language shortcut -> jump straight to Settings (language spinner).
-        View cardLanguage = findViewById(R.id.cockpitLanguage);
-        if (cardLanguage != null) {
-            cardLanguage.setOnClickListener(v -> showTab(5));
+        // Home Cockpit HUD Mode Toggle
+        View btnCockpitHud = findViewById(R.id.btnCockpitHud);
+        if (btnCockpitHud != null) {
+            btnCockpitHud.setOnClickListener(v -> toggleCockpitHud());
         }
 
 
         View bottomHome = findViewById(R.id.homeBottomHome);
         if (bottomHome != null) bottomHome.setOnClickListener(v -> showTab(6));
         View bottomConnect = findViewById(R.id.homeBottomConnect);
-        if (bottomConnect != null) bottomConnect.setOnClickListener(v -> showTab(1));
+        if (bottomConnect != null) bottomConnect.setOnClickListener(v -> showTab(0));
         View bottomLogs = findViewById(R.id.homeBottomLogs);
         if (bottomLogs != null) bottomLogs.setOnClickListener(v -> showTab(4));
         View bottomMore = findViewById(R.id.homeBottomMore);
@@ -1589,6 +1719,48 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (legendBoost != null && homeRpmTrend != null) legendBoost.setOnClickListener(v -> homeRpmTrend.toggleSeries(2));
     }
 
+    /** Keep the fixed cockpit navigation honest about the visible destination. */
+    private void updateHomeBottomNavigation(int tabIndex) {
+        int selected;
+        if (tabIndex == 6) {
+            selected = 0; // Drive
+        } else if (tabIndex == 4) {
+            selected = 2; // Logs
+        } else if (tabIndex == 3 || tabIndex == 7 || tabIndex == 5) {
+            selected = 3; // Scan / diagnostics / battery / settings
+        } else {
+            selected = 1; // Analyze: dashboard, gauges, tuning map
+        }
+
+        int[] textIds = {R.id.homeBottomDriveText, R.id.homeBottomAnalyzeText,
+                R.id.homeBottomLogsText, R.id.homeBottomScanText};
+        int[] iconIds = {R.id.homeBottomDriveIcon, R.id.homeBottomAnalyzeIcon,
+                R.id.homeBottomLogsIcon, R.id.homeBottomScanIcon};
+        for (int i = 0; i < textIds.length; i++) {
+            int color = getColorCompat(i == selected ? R.color.primary : R.color.muted);
+            TextView label = findViewById(textIds[i]);
+            if (label != null) {
+                label.setTextColor(color);
+                label.setTypeface(null, i == selected ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+            }
+            android.widget.ImageView icon = findViewById(iconIds[i]);
+            if (icon != null) {
+                icon.setImageTintList(android.content.res.ColorStateList.valueOf(color));
+            }
+        }
+    }
+
+    private void toggleCockpitHud() {
+        isHudModeActive = !isHudModeActive;
+        if (panelHome != null) {
+            panelHome.setScaleX(isHudModeActive ? -1f : 1f);
+        }
+        TextView btnHud = findViewById(R.id.btnCockpitHud);
+        if (btnHud != null) {
+            btnHud.setTextColor(getColorCompat(isHudModeActive ? R.color.accent : R.color.muted));
+        }
+    }
+
     /**
      * Provides range/label/unit for derived-sensor keys that have no
      * PIDDefinition. Without this, gauges/graphs assigned to derived keys
@@ -1605,6 +1777,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private static DerivedGaugeConfig getDerivedGaugeConfig(String key) {
         if (key == null) return null;
         switch (key) {
+            case "derived_actual_afr": return new DerivedGaugeConfig(5f, 25f, "Actual AFR", ":1");
+            case "derived_commanded_afr": return new DerivedGaugeConfig(5f, 25f, "Commanded AFR", ":1");
             case "derived_dcafr":      return new DerivedGaugeConfig(8f, 20f, "DCAFR", ":1");
             case "derived_fuel_kmL":   return new DerivedGaugeConfig(0f, 30f, "Fuel Econ", "km/L");
             case "derived_fuel_l100":  return new DerivedGaugeConfig(0f, 30f, "Fuel Econ", "L/100");
@@ -1654,7 +1828,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 gauges[i].setUnit("+");
                 gauges[i].setValue(0f);
             } else {
-                PIDDefinition pid = PIDDefinition.findByKey(pidKey);
+                PIDDefinition pid = findPidDefinition(pidKey);
                 if (pid != null) {
                     gauges[i].setRange((float)pid.getMinVal(), (float)pid.getMaxVal());
                     gauges[i].setLabel(pid.getName());
@@ -1689,7 +1863,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 graphs[i].setLabel(getString(R.string.tap_to_add), "+");
                 graphs[i].setRange(0f, 100f);
             } else {
-                PIDDefinition pid = PIDDefinition.findByKey(pidKey);
+                PIDDefinition pid = findPidDefinition(pidKey);
                 if (pid != null) {
                     graphs[i].setLabel(pid.getName(), pid.getUnit());
                     graphs[i].setRange((float)pid.getMinVal(), (float)pid.getMaxVal());
@@ -1710,17 +1884,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void setupListeners() {
         // Init language spinner
         final String[] langCodes = {
-            LocaleHelper.LANG_SYSTEM,
             LocaleHelper.LANG_ENGLISH,
             LocaleHelper.LANG_THAI
         };
+        languageSpinner.setAdapter(new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_dropdown_item,
+                new String[]{getString(R.string.language_english), getString(R.string.language_thai)}));
         String currentLang = LocaleHelper.getLanguage(this);
-        int langIndex = 0; // Default to System Default
+        int langIndex = 0;
+        boolean languageSupported = false;
         for (int i = 0; i < langCodes.length; i++) {
             if (langCodes[i].equals(currentLang)) {
                 langIndex = i;
+                languageSupported = true;
                 break;
             }
+        }
+        // Older builds exposed incomplete locale packs. Normalize a persisted
+        // legacy choice so the spinner and the resources cannot disagree.
+        if (!languageSupported) {
+            currentLang = LocaleHelper.LANG_ENGLISH;
+            LocaleHelper.setLocale(this, currentLang);
         }
         languageSpinner.setSelection(langIndex);
         languageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -1729,7 +1913,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 String selectedLang = langCodes[position];
                 if (!selectedLang.equals(LocaleHelper.getLanguage(MainActivity.this))) {
                     LocaleHelper.setLocale(MainActivity.this, selectedLang);
-                    recreate();
                 }
             }
 
@@ -1781,7 +1964,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         transportSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                boolean needsBluetooth = position == 2 || position == 3 || position == 4;
+                // AUTO may use a preferred paired adapter after USB/Wi-Fi
+                // probes, while USB itself does not require a Bluetooth choice.
+                boolean needsBluetooth = position == 2 || position == 3 || position == 5;
                 bluetoothDeviceSpinner.setEnabled(needsBluetooth);
                 bluetoothHintText.setEnabled(needsBluetooth);
                 if (needsBluetooth && ensureBluetoothPermissions()) {
@@ -1808,10 +1993,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // DTC
         btnReadDtc.setOnClickListener(v -> readDtcs());
-        btnReadDtc.setOnLongClickListener(v -> {
-            readDtcsDeep();
-            return true;
-        });
+        btnDeepDtc.setOnClickListener(v -> readDtcsDeep());
         btnClearDtc.setOnClickListener(v -> {
             new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
                 .setTitle(R.string.clear_dtc_confirm_title)
@@ -2536,10 +2718,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (!availableDrivers.isEmpty()) {
                 UsbSerialDriver driver = availableDrivers.get(0);
                 if (!manager.hasPermission(driver.getDevice())) {
-                    PendingIntent pi = PendingIntent.getBroadcast(this, 0, new Intent("com.alpha.obd2logger.USB_PERMISSION"), PendingIntent.FLAG_IMMUTABLE);
+                    Intent permissionIntent = new Intent(ACTION_USB_PERMISSION).setPackage(getPackageName());
+                    PendingIntent pi = PendingIntent.getBroadcast(this, 0, permissionIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                    pendingStartLoggingAfterUsbPermission = true;
                     manager.requestPermission(driver.getDevice(), pi);
                     setStatus("Requesting USB permission...", R.color.warning);
-                    return true;
+                    isConnecting = false;
+                    return false;
                 }
             } else if (config.transportMode == TransportMode.USB) {
                 isConnecting = false;
@@ -2700,6 +2886,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         currentDriver = driver;
 
         if (!driver.isConnected() && !driver.connect()) {
+            DriverFactory.markConnectionFailure("Check adapter power, pairing and protocol");
             running = false;
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
@@ -2742,9 +2929,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (active != null) active.updateStatusStripConnection(2, "Connected " + config.transportMode.getValue());
         });
 
-        // Try to read VIN
-        String vin = VinReader.readVin(driver);
-        if (vin != null) {
+        // Try to read VIN unless a valid one was already supplied to this session.
+        String vin = config.vin;
+        if (vin == null || vin.isEmpty() || "UNKNOWN".equalsIgnoreCase(vin)) {
+            vin = VinReader.readVin(driver);
+        }
+        if (vin != null && !vin.isEmpty() && !"UNKNOWN".equalsIgnoreCase(vin)) {
             config.vin = vin;
             // Load brand-specific DTC database and set the brand in DtcReader
             // so ECU module names use the correct manufacturer labels.
@@ -2752,15 +2942,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             // in-process path bypasses the callback.)
             VinBrandDetector.Brand brand = VinBrandDetector.detect(vin);
             DtcReader.setBrand(brand);
-            DtcDatabase.initForVin(this, vin);
+            String detectedBrand = DtcDatabase.initForVin(this, vin);
+            config.applyDetectedVehicleBrand(detectedBrand);
+            final String sessionVin = vin;
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
                 if (active != null) {
-                    active.headerVin.setText("VIN: " + vin);
-                    if (active.txtHomeVin != null) active.txtHomeVin.setText(vin);
+                    active.headerVin.setText("VIN: " + sessionVin);
+                    active.updateHeaderVehicle(sessionVin);
+                    if (active.txtHomeVin != null) active.txtHomeVin.setText(sessionVin);
                     // Auto-detect diesel on first run (same as onVinRead callback)
-                    if (!vin.equals("UNKNOWN")) {
-                        String brandName = DtcDatabase.initForVin(active, vin);
+                    if (!sessionVin.equals("UNKNOWN")) {
+                        String brandName = DtcDatabase.initForVin(active, sessionVin);
+                        config.applyDetectedVehicleBrand(brandName);
                         if (brandName != null && !"Unknown".equals(brandName)) {
                             Toast.makeText(active, "Brand: " + brandName, Toast.LENGTH_SHORT).show();
                         }
@@ -2769,7 +2963,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         if (active.dtcVehicleBrand != null)
                             active.dtcVehicleBrand.setText(brandName != null ? brandName : "Unknown Brand");
                         if (active.dtcVehicleVin != null)
-                            active.dtcVehicleVin.setText("VIN: " + vin);
+                            active.dtcVehicleVin.setText("VIN: " + sessionVin);
                     }
                 }
             });
@@ -2778,7 +2972,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         DataWriter writer = null;
         int completed = 0;
         long started = SystemClock.elapsedRealtime();
-        List<PIDDefinition> allPids = config.lpgOnlyMode ? PIDCatalogue.getLpgPollSet(config.showAirDensity) : PIDCatalogue.getAll();
+        List<PIDDefinition> allPids = PIDCatalogue.getConfiguredPollSet(this,
+                config.lpgOnlyMode, config.showAirDensity, config.customPidsEnabled);
         List<PIDDefinition> pids = new ArrayList<>(allPids);
         boolean detectedFromLive = false;
 
@@ -2807,13 +3002,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     cachePids(config.vin, supportedHex);
                     Log.i("OBD2Logger", "Live detection: " + pids.size() + "/" + allPids.size() + " PIDs supported");
                 } else {
-                    // Fallback: use VIN-based brand/year profile
-                    Log.w("OBD2Logger", "Live PID detection failed — trying VIN-based profile");
-                    java.util.Set<String> brandPids = BrandYearProfile.getProfileFromVin(config.vin);
-                    if (brandPids != null) {
-                        pids = PidAvailabilityChecker.filterCatalogue(
-                                new ArrayList<>(brandPids), allPids);
-                        Log.i("OBD2Logger", "VIN profile: " + pids.size() + "/" + allPids.size() + " PIDs");
+                    List<String> probed = PidAvailabilityChecker.probeCatalogue(driver, allPids);
+                    if (probed != null && !probed.isEmpty()) {
+                        pids = PidAvailabilityChecker.filterCatalogue(probed, allPids);
+                        detectedFromLive = true;
+                        cachePids(config.vin, probed);
+                        Log.i("OBD2Logger", "Targeted PID probe: " + pids.size() + "/" + allPids.size());
+                    } else {
+                        Log.w("OBD2Logger", "Live PID detection failed — trying VIN-based profile");
+                        java.util.Set<String> brandPids = BrandYearProfile.getProfileFromVin(config.vin);
+                        if (brandPids != null) {
+                            pids = PidAvailabilityChecker.filterCatalogue(
+                                    new ArrayList<>(brandPids), allPids);
+                            Log.i("OBD2Logger", "VIN profile: " + pids.size() + "/" + allPids.size() + " PIDs");
+                        }
                     }
                 }
             }
@@ -3019,10 +3221,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             airDensityMonitor.onObdBatch(batch);
                             Double rpmValue = batch.get("Engine RPM");
                             Double lambdaValue = batch.get("Lambda (B1S1)");
-                            if (lambdaValue == null) lambdaValue = batch.get("Wideband Lambda (B1S1)");
+                            Double commandedLambda = batch.get("Commanded Equivalence Ratio");
                             try {
                                 airDensityMonitor.appendSamples(
-                                        samples, mafValue, rpmValue, lambdaValue,
+                                        samples, mafValue, rpmValue, lambdaValue, commandedLambda,
                                         config.fuelMode,
                                         config.engineDisplacementCC,
                                         config.ratedRPM,
@@ -3030,6 +3232,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             } catch (Exception densityEx) {
                                 Log.w("OBD2Logger", "Air density sample append failed non-fatally", densityEx);
                             }
+                        } else {
+                            AirDensityMonitor.appendAfrSamples(samples,
+                                    batch.get("Lambda (B1S1)"),
+                                    batch.get("Commanded Equivalence Ratio"),
+                                    config.fuelMode);
                         }
 
 
@@ -3247,7 +3454,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             // UI only needs a snapshot + active cell.
 
             if (fuelMapView != null && store != null) {
-                fuelMapView.syncFromStore(store.snapshot());
+                LiveMapStore.MapSnapshot snapshot = store.snapshot();
+                fuelMapView.syncFromStore(snapshot);
+                updateMapCoverage(snapshot, FuelMode.fromString(record.getFuelMode()));
             } else if (fuelMapView != null && meta.rpm != null && !Double.isNaN(meta.loadAxis)) {
                 FuelMode mode = FuelMode.fromString(record.getFuelMode());
                 if (meta.gatedEligible) {
@@ -3257,6 +3466,40 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 }
             }
         }
+
+    private void updateMapCoverage(LiveMapStore.MapSnapshot snapshot, FuelMode mode) {
+        if (snapshot == null) return;
+        boolean gaseous = mode != null && mode.isGaseous();
+        java.util.Map<String, LiveMapStore.TrimData> active = gaseous
+                ? snapshot.getLpgData() : snapshot.getPetrolData();
+        int totalCells = MapBinning.getRpmCount() * MapBinning.MAP_BINS.length;
+        int cellCount = active.size();
+        int mature = 0;
+        for (LiveMapStore.TrimData cell : active.values()) {
+            if (cell != null && cell.getHitCount() >= 5) mature++;
+        }
+        int coverage = totalCells > 0 ? Math.min(100, Math.round(cellCount * 100f / totalCells)) : 0;
+        if (mapCoverageProgress != null) mapCoverageProgress.setProgressCompat(coverage, true);
+        if (mapCoverageText != null) {
+            mapCoverageText.setText(String.format(Locale.US, "%s: %d/%d cells (%d%%) • overlap %d",
+                    gaseous ? "LPG" : "PETROL", cellCount, totalCells, coverage,
+                    snapshot.getOverlappingCellCount()));
+        }
+        if (mapConfidenceText != null) {
+            float matureRatio = cellCount > 0 ? mature / (float) cellCount : 0f;
+            String label;
+            int color;
+            if (cellCount >= 8 && matureRatio >= 0.60f) {
+                label = "HIGH CONFIDENCE"; color = R.color.accent;
+            } else if (cellCount >= 3) {
+                label = "BUILDING"; color = R.color.warning;
+            } else {
+                label = "COLLECTING"; color = R.color.muted;
+            }
+            mapConfidenceText.setText(label + " • " + mature + " stable");
+            mapConfidenceText.setTextColor(getColorCompat(color));
+        }
+    }
 
     /**
          * Returns the LiveMapStore from LoggerService if available.
@@ -3329,12 +3572,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     public void onVinRead(String vin) {
         runOnUiThread(() -> {
             headerVin.setText("VIN: " + vin);
+            updateHeaderVehicle(vin);
             if (txtHomeVin != null) txtHomeVin.setText(vin);
 
             // ── Auto-detect diesel: enable DPF + Deep Scan on first run ──
             if (vin != null && !vin.isEmpty() && !vin.equals("UNKNOWN")) {
                 // Load brand-specific DTC database based on VIN
                 String brandName = DtcDatabase.initForVin(this, vin);
+                LoggerService service = LoggerService.getInstance();
+                LoggerConfig activeConfig = service != null ? service.getConfig() : activeInProcessConfig;
+                if (activeConfig != null) {
+                    activeConfig.applyDetectedVehicleBrand(brandName);
+                }
+                updateHeaderVehicle(vin);
                 if (brandName != null && !"Unknown".equals(brandName)) {
                     Toast.makeText(this, "Brand: " + brandName, Toast.LENGTH_SHORT).show();
                 }
@@ -3541,6 +3791,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         Double throttle = valueByKey(record, "01_11");
         Double stft = valueByKey(record, "01_06");
         Double ltft = valueByKey(record, "01_07");
+        Double totalTrim = stft != null && ltft != null ? stft + ltft : (ltft != null ? ltft : stft);
         Double dpfSoot = valueByKey(record, "01_7A");
 
         if (txtHomeFuelEconomy != null) {
@@ -3553,7 +3804,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             txtHomeThrottle.setText(throttle != null ? String.format(Locale.US, "%.0f", throttle) : "---");
         }
         if (txtHomeFuelTrim != null) {
-            Double totalTrim = stft != null && ltft != null ? stft + ltft : (ltft != null ? ltft : stft);
             txtHomeFuelTrim.setText(totalTrim != null ? String.format(Locale.US, "%+.1f", totalTrim) : "---");
         }
         if (txtHomeDpf != null) {
@@ -3592,6 +3842,74 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             // Severity-tint the whole card so fault state is obvious at a glance.
             applyDiagnosticSeverity(dtcCount);
         }
+        updateCockpitInsight(rpm, coolant, voltage, totalTrim);
+    }
+
+    /**
+     * A deterministic, on-device Drive Insight summary. It deliberately
+     * uses the same current record as the dashboard: no network call, no delayed
+     * AI response, and no vehicle control action.
+     */
+    private void updateCockpitInsight(Double rpm, Double coolant, Double voltage, Double totalTrim) {
+        if (cockpitInsightTitle == null || cockpitInsightMessage == null) return;
+
+        int dtcCount = LoggerService.lastStoredDtcs.size() + LoggerService.lastPendingDtcs.size();
+        int tone = R.color.accent;
+        int titleRes;
+        String message;
+
+        if (rpm == null) {
+            titleRes = R.string.home_ai_insight_collecting;
+            message = getString(R.string.home_ai_insight_collecting_detail);
+            tone = R.color.muted;
+        } else if (dtcCount > 0) {
+            titleRes = R.string.home_ai_insight_dtc;
+            message = getString(R.string.home_ai_insight_dtc_detail, dtcCount);
+            tone = R.color.danger;
+        } else if (coolant != null && coolant >= 105.0) {
+            titleRes = R.string.home_ai_insight_hot;
+            message = getString(R.string.home_ai_insight_hot_detail, coolant);
+            tone = R.color.danger;
+        } else if (voltage != null && rpm >= 500.0 && (voltage < 13.0 || voltage > 14.9)) {
+            titleRes = R.string.home_ai_insight_voltage;
+            message = getString(R.string.home_ai_insight_voltage_detail, voltage);
+            tone = R.color.warning;
+        } else if (totalTrim != null && Math.abs(totalTrim) >= 10.0) {
+            titleRes = R.string.home_ai_insight_trim;
+            message = getString(R.string.home_ai_insight_trim_detail, totalTrim);
+            tone = R.color.warning;
+        } else {
+            titleRes = R.string.home_ai_insight_stable;
+            message = getString(R.string.home_ai_insight_stable_detail);
+        }
+
+        boolean needsAttention = tone == R.color.warning || tone == R.color.danger;
+        cockpitInsightTitle.setText(titleRes);
+        cockpitInsightTitle.setTextColor(getColorCompat(needsAttention ? tone : R.color.primary));
+        cockpitInsightMessage.setText(message);
+        if (cockpitInsightMeta != null) cockpitInsightMeta.setText(R.string.home_ai_insight_local);
+        if (cockpitInsightCard != null) {
+            cockpitInsightCard.setStrokeColor(getColorCompat(needsAttention ? tone : R.color.border));
+        }
+    }
+
+    /** Keep the compact header useful without exposing the full VIN at a glance. */
+    private void updateHeaderVehicle(String vin) {
+        if (headerVehicle == null) return;
+
+        String label = null;
+        LoggerConfig config = activeInProcessConfig;
+        if (config != null && config.vehicleBrand != null) {
+            String brand = config.vehicleBrand.trim();
+            if (!brand.isEmpty() && !"auto".equalsIgnoreCase(brand) && !"unknown".equalsIgnoreCase(brand)) {
+                label = brand;
+            }
+        }
+
+        // A full VIN is important diagnostic data but it is too long for a
+        // glanceable header and can collide with the fuel badge on small phones.
+        // Keep it in the DTC/vehicle detail UI, not in this compact row.
+        headerVehicle.setText(label != null ? label : "OBD2");
     }
 
     /**
@@ -3648,14 +3966,28 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             headerStatus.setText(state == 2 ? getString(R.string.status_connected) : (state == 1 ? getString(R.string.status_connecting) : getString(R.string.status_offline)));
             headerStatus.setTextColor(getColorCompat(textColor));
         }
+        updateHeaderVehicle(null);
 
         // Update home screen status
         if (txtHomeAdapter != null) {
-            txtHomeAdapter.setText(state == 2 && displayDeviceName != null
-                    ? displayDeviceName
+            txtHomeAdapter.setText(state == 2
+                    ? DriverFactory.getLastResolvedTransport()
                     : (state == 1 ? getString(R.string.status_negotiating) : getString(R.string.status_connect_adapter_prompt)));
         }
-        
+
+        TextView connectionHealth = findViewById(R.id.cockpitConnectionHealth);
+        if (connectionHealth != null) {
+            if (state == 2) {
+                connectionHealth.setText("HEALTHY • " + DriverFactory.getLastProbeSummary());
+                connectionHealth.setTextColor(getColorCompat(R.color.accent));
+            } else if (state == 1) {
+                connectionHealth.setText("Checking adapter, protocol and permissions…");
+                connectionHealth.setTextColor(getColorCompat(R.color.warning));
+            } else {
+                connectionHealth.setText(DriverFactory.getLastProbeSummary());
+                connectionHealth.setTextColor(getColorCompat(R.color.muted));
+            }
+        }
 
 
         TextView cockpitConnection = findViewById(R.id.cockpitConnection);
@@ -3719,21 +4051,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
      * pending only -> amber (warning)
      * stored 1-2 -> red (danger)
      */
-    /**
-     * Show the active language on the Home shortcut card (UI-only).
-     */
-    private void updateHomeLanguageLabel() {
-        TextView label = findViewById(R.id.cockpitLanguageValue);
-        if (label == null) return;
-        String lang = LocaleHelper.getLanguage(this);
-        if (LocaleHelper.LANG_THAI.equals(lang)) {
-            label.setText("ไทย (Thai)");
-        } else if (LocaleHelper.LANG_ENGLISH.equals(lang)) {
-            label.setText("English");
-        } else {
-            label.setText("System Default");
-        }
-    }
+
 
     private void applyDiagnosticSeverity(int dtcCount) {
         if (cardHomeDiagnostics == null) return;
@@ -3767,7 +4085,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             Double val = valueByKey(record, prefDashPids[i]);
             if (val != null && values[i] != null) {
-                PIDDefinition pid = PIDDefinition.findByKey(prefDashPids[i]);
+                PIDDefinition pid = findPidDefinition(prefDashPids[i]);
                 values[i].setText(String.format(Locale.US, "%.2f %s", val, pid != null ? pid.getUnit() : ""));
             }
         }
@@ -3863,12 +4181,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         if (tuningStatusText != null) {
             tuningStatusText.setTextColor(getColorCompat(colorRes));
-            tuningStatusText.setText(String.format(Locale.US,
-                    getString(R.string.tuning_status_format),
-                    stftTxt, ltftTxt,
-                    result.getStatus(),
-                    result.getConfidence(),
-                    result.getRecommendation()));
+            // Build this safely instead of formatting translated resources whose
+            // placeholder types may differ across older translation bundles.
+            tuningStatusText.setText(stftTxt + " | " + ltftTxt
+                    + "\n" + result.getStatus() + " (" + result.getConfidence() + "%)"
+                    + "\n" + result.getRecommendation());
         }
 
         if (txtTuningStft != null) {
@@ -3956,8 +4273,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void updateBatteryMonitor(double v) {
         if (v <= 0) return;
         lastBatteryVoltage = v;
+        if (batteryWorkflowText != null && !isCrankTestActive) {
+            batteryWorkflowText.setText(R.string.battery_workflow_connected);
+            batteryWorkflowText.setTextColor(getColorCompat(R.color.accent));
+        }
         if (batteryTestView != null) {
             batteryTestView.addSample((float) v);
+        }
+        if (isCrankTestActive) {
+            runCrankingTestStep(v);
         }
         // Get selected chemistry for accurate SoC
         BatteryTester.Chemistry chem = getSelectedChemistry();
@@ -4263,6 +4587,102 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         });
     }
 
+    private void startLiveCrankingTest() {
+        if (isCrankTestActive) {
+            isCrankTestActive = false;
+            crankTestState = 0;
+            if (btnCrankingTest != null) {
+                btnCrankingTest.setText(R.string.battery_crank_live_start);
+            }
+            if (txtCrankingStatus != null) {
+                txtCrankingStatus.setText(R.string.battery_crank_live_idle);
+                txtCrankingStatus.setTextColor(getColorCompat(R.color.muted));
+            }
+        } else {
+            final BaseDriver activeDriver = getActiveDriver();
+            if (activeDriver == null || !activeDriver.isConnected()) {
+                if (txtCrankingStatus != null) {
+                    txtCrankingStatus.setText(R.string.battery_crank_connect_first);
+                    txtCrankingStatus.setTextColor(getColorCompat(R.color.danger));
+                }
+                if (batteryWorkflowText != null) {
+                    batteryWorkflowText.setText(R.string.battery_workflow_connect);
+                    batteryWorkflowText.setTextColor(getColorCompat(R.color.danger));
+                }
+                return;
+            }
+            isCrankTestActive = true;
+            crankTestState = 1; // armed
+            crankTestMinV = 99.0;
+            if (btnCrankingTest != null) {
+                btnCrankingTest.setText(R.string.battery_crank_live_reset);
+            }
+            if (txtCrankingStatus != null) {
+                txtCrankingStatus.setText(R.string.battery_crank_live_ready);
+                txtCrankingStatus.setTextColor(getColorCompat(R.color.warning));
+            }
+            if (batteryWorkflowText != null) {
+                batteryWorkflowText.setText(R.string.battery_workflow_cranking);
+                batteryWorkflowText.setTextColor(getColorCompat(R.color.warning));
+            }
+            if (activeDriver instanceof SimulationDriver) {
+                ((SimulationDriver) activeDriver).setSimState(SimulationDriver.SimState.CRANKING);
+            }
+        }
+    }
+
+    private void runCrankingTestStep(double v) {
+        if (crankTestState == 1) { // armed
+            if (v < 11.5) {
+                crankTestState = 2; // measuring
+                crankTestMinV = v;
+                crankTestStartTime = System.currentTimeMillis();
+                if (txtCrankingStatus != null) {
+                    txtCrankingStatus.setText(R.string.battery_crank_live_detected);
+                    txtCrankingStatus.setTextColor(getColorCompat(R.color.warning));
+                }
+            }
+        } else if (crankTestState == 2) { // measuring
+            if (v < crankTestMinV) {
+                crankTestMinV = v;
+            }
+            long elapsed = System.currentTimeMillis() - crankTestStartTime;
+            if ((v > 13.0 && elapsed > 1000) || elapsed > 5000) {
+                isCrankTestActive = false;
+                crankTestState = 0;
+                double rest = restingVoltage > 0 ? restingVoltage : 12.6;
+                BatteryTester.BatteryTestResult result =
+                        BatteryTester.testCrankingVoltage(crankTestMinV, rest);
+                final String statusText = getString(
+                        result.severity == BatteryTester.Severity.PASS
+                                ? R.string.battery_crank_result_pass
+                                : result.severity == BatteryTester.Severity.WARN
+                                ? R.string.battery_crank_result_warn
+                                : R.string.battery_crank_result_fail,
+                        crankTestMinV);
+                final int textColor = result.severity == BatteryTester.Severity.PASS
+                        ? R.color.accent
+                        : result.severity == BatteryTester.Severity.WARN
+                        ? R.color.warning : R.color.danger;
+                if (btnCrankingTest != null) {
+                    btnCrankingTest.setText(R.string.battery_crank_live_start);
+                }
+                if (txtCrankingStatus != null) {
+                    txtCrankingStatus.setText(statusText);
+                    txtCrankingStatus.setTextColor(getColorCompat(textColor));
+                }
+                if (batteryWorkflowText != null) {
+                    batteryWorkflowText.setText(R.string.battery_workflow_test_complete);
+                    batteryWorkflowText.setTextColor(getColorCompat(textColor));
+                }
+                BaseDriver activeDriver = getActiveDriver();
+                if (activeDriver instanceof SimulationDriver) {
+                    ((SimulationDriver) activeDriver).setSimState(SimulationDriver.SimState.RUNNING);
+                }
+            }
+        }
+    }
+
     /** Test 6: Cranking voltage — minimum voltage during engine crank. */
     private void testBatteryCranking() {
         final BaseDriver activeDriver = getActiveDriver();
@@ -4354,6 +4774,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             ageMonths = -1;
         }
         batteryStatusText.setText(getString(R.string.battery_full_running, chem.getDisplayName(this)));
+        if (batteryWorkflowText != null) {
+            batteryWorkflowText.setText(R.string.battery_workflow_running);
+            batteryWorkflowText.setTextColor(getColorCompat(R.color.warning));
+        }
         batteryScoreCard.setVisibility(View.GONE);
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
@@ -4414,6 +4838,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 batteryScoreCard.setVisibility(View.VISIBLE);
                 batteryGradeText.setText(String.format(Locale.US, "%s  (%d%%)", report.grade, report.overallScore));
                 batterySummaryText.setText(report.summary);
+                if (batteryWorkflowText != null) {
+                    batteryWorkflowText.setText(getString(R.string.battery_workflow_complete, report.overallScore));
+                    batteryWorkflowText.setTextColor(getColorCompat(
+                            report.overallScore >= 80 ? R.color.accent
+                                    : report.overallScore >= 60 ? R.color.warning : R.color.danger));
+                }
 
                 // Find SOH and Life results for the summary cards
                 for (BatteryTester.BatteryTestResult r : report.results) {
@@ -4498,6 +4928,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         setDtcButtonsEnabled(false);
         dtcStatusText.setText("Reading DTCs...");
         dtcStatusText.setTextColor(getColorCompat(R.color.muted));
+        showDtcScanningState();
         if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
         lastDtcScanWasDeep = false;
         dtcListContainer.removeAllViews();
@@ -4517,21 +4948,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 List<DtcCode> permanent = scanResult.permanentDtcs;
                 
                 // Read Mode 06 — on-board monitor test results
-                List<Mode06Result> mode06Results = Mode06Reader.readDiagnostic(activeDriver);
+                // Quick Scan limits traffic to Modes 03/07/0A. Evidence such as
+                // Mode 06, freeze frames and calibration IDs is collected by Full Scan.
+                List<Mode06Result> mode06Results = new ArrayList<>();
                 lastMode06Results.clear();
                 lastMode06Results.addAll(mode06Results);
                 
                 // Read per-DTC freeze frames
-                List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames = FreezeFrameReader.readAllFreezeFrames(activeDriver);
+                List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames = new ArrayList<>();
                 
                 // Read Mode 09 — Cal-ID and CVN
-                List<Mode09Reader.CalIdEntry> calIds = Mode09Reader.readCalIds(activeDriver);
-                List<Mode09Reader.CvnEntry> cvns = Mode09Reader.readCvns(activeDriver);
+                List<Mode09Reader.CalIdEntry> calIds = new ArrayList<>();
+                List<Mode09Reader.CvnEntry> cvns = new ArrayList<>();
                 
                 FreezeFrameData ffData = null;
-                if (!stored.isEmpty() || !pending.isEmpty()) {
-                    ffData = FreezeFrameReader.readFreezeFrame(activeDriver);
-                }
                 lastFreezeFrame = ffData;
                 
                 // Scan comparison — compare with previous scan
@@ -4563,7 +4993,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
                     displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
                     updateDtcBadge(stored.size(), pending.size(), permanent.size());
-                    displayProFeatures();
+                });
+            } catch (Exception e) {
+                Log.e("OBD2Logger", "DTC scan failed", e);
+                runOnUiThread(() -> {
+                    if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
+                    dtcStatusText.setText("DTC scan failed: "
+                            + (e.getMessage() != null ? e.getMessage() : "adapter did not respond"));
+                    dtcStatusText.setTextColor(getColorCompat(R.color.danger));
+                    showDtcErrorState();
                 });
             } finally {
                 if (!wasPaused) {
@@ -4582,6 +5020,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                               DtcComparison comparison) {
         dtcListContainer.removeAllViews();
         int total = stored.size() + pending.size() + permanent.size();
+        updateDtcHealthSummary(stored, pending, permanent);
 
         if (stored.isEmpty() && pending.isEmpty() && permanent.isEmpty()) {
             dtcStatusText.setText(getString(R.string.no_dtcs));
@@ -5053,6 +5492,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         setDtcButtonsEnabled(false);
         dtcStatusText.setText("🔬 Deep Scan: probing all protocols...");
         dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+        showDtcScanningState();
         if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
         lastDtcScanWasDeep = true;
         dtcListContainer.removeAllViews();
@@ -5106,6 +5546,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
                     updateDtcBadge(stored.size(), pending.size(), permanent.size());
                     displayProFeatures();
+                });
+            } catch (Exception e) {
+                Log.e("OBD2Logger", "Deep DTC scan failed", e);
+                runOnUiThread(() -> {
+                    if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
+                    dtcStatusText.setText("Deep scan failed: "
+                            + (e.getMessage() != null ? e.getMessage() : "adapter did not respond"));
+                    dtcStatusText.setTextColor(getColorCompat(R.color.danger));
+                    showDtcErrorState();
                 });
             } finally {
                 if (!wasPaused) {
@@ -5250,6 +5699,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             codeView.setFocusable(true);
             cardLayout.addView(codeView);
 
+            TextView guidanceHint = new TextView(this);
+            guidanceHint.setText(R.string.dtc_tap_guidance);
+            guidanceHint.setTextColor(getColorCompat(R.color.muted));
+            guidanceHint.setTextSize(10);
+            guidanceHint.setPadding(0, dpToPx(4), 0, 0);
+            cardLayout.addView(guidanceHint);
+
+            // Keep dense workshop information collapsed until requested. This
+            // makes a multi-code scan readable without removing expert detail.
+            LinearLayout detailsLayout = new LinearLayout(this);
+            detailsLayout.setOrientation(LinearLayout.VERTICAL);
+            detailsLayout.setVisibility(View.GONE);
+            detailsLayout.setPadding(0, dpToPx(4), 0, 0);
+            cardLayout.addView(detailsLayout);
+
             // Show enrichment data if available (causes + fixes)
             if (enrich != null) {
                 // Causes
@@ -5264,7 +5728,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     causesView.setTextColor(getColorCompat(R.color.text));
                     causesView.setTextSize(11);
                     causesView.setPadding(0, dpToPx(4), 0, dpToPx(2));
-                    cardLayout.addView(causesView);
+                    detailsLayout.addView(causesView);
                 }
 
                 // Fixes
@@ -5279,7 +5743,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     fixesView.setTextColor(getColorCompat(R.color.accent));
                     fixesView.setTextSize(11);
                     fixesView.setPadding(0, dpToPx(2), 0, dpToPx(4));
-                    cardLayout.addView(fixesView);
+                    detailsLayout.addView(fixesView);
                 }
 
                 // Drive cycles to clear
@@ -5289,12 +5753,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     dcView.setTextColor(getColorCompat(R.color.muted));
                     dcView.setTextSize(10);
                     dcView.setPadding(0, dpToPx(2), 0, 0);
-                    cardLayout.addView(dcView);
+                    detailsLayout.addView(dcView);
                 }
             }
 
-            // Tap to Google search
+            // Tap expands local diagnostic evidence; long-press opens an optional web search.
             cardLayout.setOnClickListener(v -> {
+                boolean expand = detailsLayout.getVisibility() != View.VISIBLE;
+                detailsLayout.setVisibility(expand ? View.VISIBLE : View.GONE);
+                guidanceHint.setText(expand ? R.string.dtc_hide_guidance : R.string.dtc_tap_guidance);
+            });
+            cardLayout.setOnLongClickListener(v -> {
                 String rawVin = headerVin.getText().toString().replace("VIN: ", "").trim();
                 String vin = (rawVin.isEmpty() || "Unknown".equalsIgnoreCase(rawVin)) ? "" : rawVin;
                 BrandYearProfile.Brand brand = BrandYearProfile.brandFromVin(vin);
@@ -5313,6 +5782,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                 startActivity(browserIntent);
                 Toast.makeText(this, "Searching " + dtc.getCode() + " details on Google...", Toast.LENGTH_SHORT).show();
+                return true;
             });
 
             sectionContent.addView(cardLayout);
@@ -5377,9 +5847,67 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void setDtcButtonsEnabled(boolean enabled) {
         if (btnReadDtc != null) btnReadDtc.setEnabled(enabled);
+        if (btnDeepDtc != null) btnDeepDtc.setEnabled(enabled);
         if (btnClearDtc != null) btnClearDtc.setEnabled(enabled);
         if (btnReadVin != null) btnReadVin.setEnabled(enabled);
         if (btnReadiness != null) btnReadiness.setEnabled(enabled);
+    }
+
+    private void showDtcScanningState() {
+        if (dtcHealthTitle != null) {
+            dtcHealthTitle.setText(R.string.dtc_health_scanning);
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.primary));
+        }
+        if (dtcHealthDetail != null) dtcHealthDetail.setText(R.string.dtc_health_scanning_desc);
+    }
+
+    private void showDtcErrorState() {
+        if (dtcHealthTitle != null) {
+            dtcHealthTitle.setText(R.string.dtc_health_failed);
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.danger));
+        }
+        if (dtcHealthDetail != null) dtcHealthDetail.setText(R.string.dtc_health_failed_desc);
+    }
+
+    private void updateDtcHealthSummary(List<DtcCode> stored, List<DtcCode> pending,
+                                        List<DtcCode> permanent) {
+        int storedSize = stored == null ? 0 : stored.size();
+        int pendingSize = pending == null ? 0 : pending.size();
+        int permanentSize = permanent == null ? 0 : permanent.size();
+        if (dtcStoredCount != null) {
+            dtcStoredCount.setText(getString(R.string.dtc_stored_count, storedSize));
+        }
+        if (dtcPendingCount != null) {
+            dtcPendingCount.setText(getString(R.string.dtc_pending_count, pendingSize));
+        }
+        if (dtcPermanentCount != null) {
+            dtcPermanentCount.setText(getString(R.string.dtc_permanent_count, permanentSize));
+        }
+
+        boolean critical = false;
+        if (stored != null) {
+            for (DtcCode code : stored) {
+                if (code.getSeverity() == DtcCode.Severity.CRITICAL) {
+                    critical = true;
+                    break;
+                }
+            }
+        }
+        int total = storedSize + pendingSize + permanentSize;
+        if (dtcHealthTitle == null || dtcHealthDetail == null) return;
+        if (total == 0) {
+            dtcHealthTitle.setText(R.string.dtc_health_clear);
+            dtcHealthDetail.setText(R.string.dtc_health_clear_desc);
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.accent));
+        } else if (critical) {
+            dtcHealthTitle.setText(R.string.dtc_health_critical);
+            dtcHealthDetail.setText(R.string.dtc_health_critical_desc);
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.danger));
+        } else {
+            dtcHealthTitle.setText(R.string.dtc_health_attention);
+            dtcHealthDetail.setText(R.string.dtc_health_attention_desc);
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.warning));
+        }
     }
 
     private void clearDtcs() {
@@ -5398,21 +5926,42 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             try {
                 boolean success = DtcReader.clearDtcs(activeDriver);
+                List<DtcCode> remainingPending = new ArrayList<>();
+                List<DtcCode> remainingPermanent = new ArrayList<>();
                 if (success) {
+                    // Mode 04 does not erase permanent DTCs. Re-read the ECU so
+                    // the UI never reports a false all-clear after a code clear.
+                    remainingPending.addAll(DtcReader.readPendingDtcs(activeDriver));
+                    remainingPermanent.addAll(DtcReader.readPermanentDtcs(activeDriver));
                     lastStoredDtcs.clear();
                     lastPendingDtcs.clear();
+                    lastPendingDtcs.addAll(remainingPending);
                     lastPermanentDtcs.clear();
+                    lastPermanentDtcs.addAll(remainingPermanent);
                     lastFreezeFrame = null;
                     LoggerService.lastStoredDtcs.clear();
                     LoggerService.lastPendingDtcs.clear();
+                    LoggerService.lastPendingDtcs.addAll(remainingPending);
                     LoggerService.lastPermanentDtcs.clear();
+                    LoggerService.lastPermanentDtcs.addAll(remainingPermanent);
                 }
                 runOnUiThread(() -> {
                     if (success) {
-                        dtcStatusText.setText("DTCs cleared. MIL should reset after next drive cycle.");
+                        int retained = remainingPending.size() + remainingPermanent.size();
+                        dtcStatusText.setText(retained == 0
+                                ? "Stored DTCs cleared and verified. Readiness monitors were reset."
+                                : "Stored DTCs cleared. Permanent codes remain until the ECU verifies the repair.");
                         dtcStatusText.setTextColor(getColorCompat(R.color.accent));
                         dtcListContainer.removeAllViews();
-                        updateDtcBadge(0, 0, 0);
+                        if (!remainingPending.isEmpty()) {
+                            addDtcSection("Pending DTCs", remainingPending, R.color.warning, "PENDING");
+                        }
+                        if (!remainingPermanent.isEmpty()) {
+                            addDtcSection("Permanent DTCs", remainingPermanent, R.color.primary, "PERM");
+                        }
+                        updateDtcHealthSummary(java.util.Collections.emptyList(), remainingPending,
+                                remainingPermanent);
+                        updateDtcBadge(0, remainingPending.size(), remainingPermanent.size());
                     } else {
                         dtcStatusText.setText("Failed to clear DTCs.");
                         dtcStatusText.setTextColor(getColorCompat(R.color.danger));
@@ -5447,6 +5996,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 runOnUiThread(() -> {
                     if (vin != null) {
                         headerVin.setText("VIN: " + vin);
+                        updateHeaderVehicle(vin);
                         dtcStatusText.setText("VIN: " + vin);
                         dtcStatusText.setTextColor(getColorCompat(R.color.accent));
                     } else {
@@ -5930,13 +6480,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (fuelEconomyCheckbox != null) fuelEconomyCheckbox.setEnabled(enabled);
         if (dpfMonitorCheckbox != null) dpfMonitorCheckbox.setEnabled(enabled);
         if (customPidCheckbox != null) customPidCheckbox.setEnabled(enabled);
+        if (btnManageCustomPids != null) btnManageCustomPids.setEnabled(enabled);
         if (airDensityCheckbox != null) airDensityCheckbox.setEnabled(enabled);
         if (btnSelectLogFolder != null) btnSelectLogFolder.setEnabled(enabled);
         
         if (bluetoothDeviceSpinner != null) {
             if (enabled) {
                 int pos = transportSpinner != null ? transportSpinner.getSelectedItemPosition() : 0;
-                bluetoothDeviceSpinner.setEnabled(pos == 2 || pos == 3 || pos == 4);
+                bluetoothDeviceSpinner.setEnabled(pos == 2 || pos == 3 || pos == 5);
             } else {
                 bluetoothDeviceSpinner.setEnabled(false);
             }
@@ -5944,7 +6495,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (bluetoothHintText != null) {
             if (enabled) {
                 int pos = transportSpinner != null ? transportSpinner.getSelectedItemPosition() : 0;
-                bluetoothHintText.setEnabled(pos == 2 || pos == 3 || pos == 4);
+                bluetoothHintText.setEnabled(pos == 2 || pos == 3 || pos == 5);
             } else {
                 bluetoothHintText.setEnabled(false);
             }
@@ -5961,6 +6512,246 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (btnBatteryCrank != null) btnBatteryCrank.setEnabled(true);
         if (btnBatteryRipple != null) btnBatteryRipple.setEnabled(true);
         if (btnBatteryFull != null) btnBatteryFull.setEnabled(true);
+    }
+
+    /** Keeps the Settings copy of the custom PID state informative without opening the editor. */
+    private void updateCustomPidSummary() {
+        if (customPidSummaryText == null) return;
+        int count = CustomPidManager.load(this).size();
+        customPidSummaryText.setText(getString(R.string.custom_pid_summary, count)
+                + "\n" + getString(R.string.custom_pid_manage_desc));
+    }
+
+    /**
+     * Custom PIDs are intentionally managed in a small dedicated list rather than as a JSON field.
+     * This makes manufacturer Mode 22 DIDs practical to add, check and remove on a phone.
+     */
+    private void showCustomPidManager() {
+        com.google.android.material.bottomsheet.BottomSheetDialog dialog =
+                new com.google.android.material.bottomsheet.BottomSheetDialog(this);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(getColorCompat(R.color.surface));
+        int pad = dpToPx(20);
+        root.setPadding(pad, pad, pad, pad);
+
+        TextView title = new TextView(this);
+        title.setText(R.string.custom_pid_title);
+        title.setTextColor(getColorCompat(R.color.text));
+        title.setTextSize(20);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        root.addView(title);
+
+        TextView hint = new TextView(this);
+        hint.setText(getString(R.string.custom_pid_manage_desc) + "\n" + getString(R.string.custom_pid_example));
+        hint.setTextColor(getColorCompat(R.color.muted));
+        hint.setTextSize(12);
+        hint.setPadding(0, dpToPx(4), 0, dpToPx(12));
+        root.addView(hint);
+
+        MaterialButton addButton = new MaterialButton(this, null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        addButton.setText(R.string.custom_pid_add);
+        addButton.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        addButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            showCustomPidEditor(null);
+        });
+        root.addView(addButton);
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        LinearLayout rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        rows.setPadding(0, dpToPx(8), 0, 0);
+        scroll.addView(rows);
+        root.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(360)));
+
+        List<PIDDefinition> customPids = CustomPidManager.load(this);
+        if (customPids.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText(R.string.custom_pid_none);
+            empty.setTextColor(getColorCompat(R.color.muted));
+            empty.setTextSize(13);
+            empty.setPadding(0, dpToPx(18), 0, dpToPx(18));
+            rows.addView(empty);
+        } else {
+            for (PIDDefinition pid : customPids) {
+                rows.addView(createCustomPidRow(dialog, pid));
+            }
+        }
+        dialog.setContentView(root);
+        dialog.show();
+    }
+
+    private View createCustomPidRow(com.google.android.material.bottomsheet.BottomSheetDialog manager,
+                                    PIDDefinition pid) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackgroundResource(R.drawable.panel);
+        card.setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10));
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.bottomMargin = dpToPx(8);
+        card.setLayoutParams(cardParams);
+
+        TextView name = new TextView(this);
+        name.setText(pid.getName() + "  •  " + pid.key());
+        name.setTextColor(getColorCompat(R.color.text));
+        name.setTextSize(15);
+        name.setTypeface(null, android.graphics.Typeface.BOLD);
+        card.addView(name);
+
+        TextView details = new TextView(this);
+        String dashboard = pid.isDashboard() ? " • " + getString(R.string.custom_pid_dashboard) : "";
+        details.setText(pid.getFormula() + "  |  " + pid.getDataBytes() + " byte(s)  |  "
+                + pid.getUnit() + dashboard);
+        details.setTextColor(getColorCompat(R.color.muted));
+        details.setTextSize(12);
+        details.setPadding(0, dpToPx(2), 0, dpToPx(4));
+        card.addView(details);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        MaterialButton edit = new MaterialButton(this, null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        edit.setText(R.string.custom_pid_edit);
+        edit.setOnClickListener(v -> {
+            manager.dismiss();
+            showCustomPidEditor(pid);
+        });
+        actions.addView(edit);
+        MaterialButton remove = new MaterialButton(this, null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        remove.setText(R.string.custom_pid_remove);
+        LinearLayout.LayoutParams removeParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        removeParams.leftMargin = dpToPx(8);
+        remove.setLayoutParams(removeParams);
+        remove.setOnClickListener(v -> new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.custom_pid_remove)
+                .setMessage(pid.getName() + " (" + pid.key() + ")")
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.custom_pid_remove, (d, ignored) -> {
+                    CustomPidManager.remove(this, pid.key());
+                    updateCustomPidSummary();
+                    Toast.makeText(this, R.string.custom_pid_deleted, Toast.LENGTH_SHORT).show();
+                    manager.dismiss();
+                    showCustomPidManager();
+                }).show());
+        actions.addView(remove);
+        card.addView(actions);
+        return card;
+    }
+
+    private void showCustomPidEditor(PIDDefinition existing) {
+        View content = getLayoutInflater().inflate(R.layout.dialog_custom_pid_editor, null);
+        EditText nameInput = content.findViewById(R.id.customPidNameInput);
+        EditText serviceInput = content.findViewById(R.id.customPidServiceInput);
+        EditText hexInput = content.findViewById(R.id.customPidHexInput);
+        EditText formulaInput = content.findViewById(R.id.customPidFormulaInput);
+        EditText unitInput = content.findViewById(R.id.customPidUnitInput);
+        EditText bytesInput = content.findViewById(R.id.customPidBytesInput);
+        CheckBox dashboardCheck = content.findViewById(R.id.customPidDashboardCheck);
+        EditText minInput = content.findViewById(R.id.customPidMinInput);
+        EditText maxInput = content.findViewById(R.id.customPidMaxInput);
+        EditText rawInput = content.findViewById(R.id.customPidRawInput);
+        TextView testResult = content.findViewById(R.id.customPidTestResult);
+
+        if (existing == null) {
+            serviceInput.setText("01");
+            formulaInput.setText("A");
+            bytesInput.setText("1");
+            minInput.setText("0");
+            maxInput.setText("65535");
+        } else {
+            nameInput.setText(existing.getName());
+            serviceInput.setText(existing.getService());
+            hexInput.setText(existing.getPidHex());
+            formulaInput.setText(existing.getFormula());
+            unitInput.setText(existing.getUnit());
+            bytesInput.setText(String.valueOf(existing.getDataBytes()));
+            dashboardCheck.setChecked(existing.isDashboard());
+            minInput.setText(String.valueOf(existing.getMinVal()));
+            maxInput.setText(String.valueOf(existing.getMaxVal()));
+        }
+
+        content.findViewById(R.id.btnTestCustomPid).setOnClickListener(v -> {
+            String raw = normaliseHex(rawInput.getText().toString());
+            Double value = isEvenHex(raw) ? CustomPidManager.testFormula(
+                    formulaInput.getText().toString().trim(), raw) : null;
+            testResult.setText(value == null ? getString(R.string.custom_pid_invalid)
+                    : getString(R.string.custom_pid_test_result, String.format(Locale.getDefault(), "%.3f", value)));
+        });
+
+        androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(existing == null ? R.string.custom_pid_add : R.string.custom_pid_edit)
+                .setView(content)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.custom_pid_save, null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String name = nameInput.getText().toString().trim();
+                    String service = normaliseHex(serviceInput.getText().toString());
+                    String pidHex = normaliseHex(hexInput.getText().toString());
+                    String formula = formulaInput.getText().toString().trim();
+                    String unit = unitInput.getText().toString().trim();
+                    int bytes = parseInt(bytesInput.getText().toString(), -1);
+                    double min = parseDouble(minInput.getText().toString(), 0d);
+                    double max = parseDouble(maxInput.getText().toString(), 65535d);
+                    if (name.isEmpty() || !isHexWithLength(service, 2, 2)
+                            || !isHexWithLength(pidHex, 2, 6) || formula.isEmpty()
+                            || bytes < 1 || bytes > 8 || !Double.isFinite(min)
+                            || !Double.isFinite(max) || min > max) {
+                        Toast.makeText(this, R.string.custom_pid_invalid, Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    PIDDefinition pid = new PIDDefinition(name, service, pidHex, unit, formula,
+                            min, max, false, bytes, dashboardCheck.isChecked());
+                    if (existing != null) CustomPidManager.remove(this, existing.key());
+                    CustomPidManager.add(this, pid);
+                    if (customPidCheckbox != null) customPidCheckbox.setChecked(true);
+                    getSharedPreferences("OBD2Prefs", MODE_PRIVATE).edit()
+                            .putBoolean("pref_custom_pid", true).apply();
+                    if (activeInProcessConfig != null) activeInProcessConfig.customPidsEnabled = true;
+                    LoggerService svc = LoggerService.getInstance();
+                    if (svc != null && svc.getConfig() != null) svc.getConfig().customPidsEnabled = true;
+                    updateCustomPidSummary();
+                    Toast.makeText(this, R.string.custom_pid_saved, Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                }));
+        dialog.show();
+    }
+
+    private String normaliseHex(String value) {
+        return value == null ? "" : value.replaceAll("\\s+", "").toUpperCase(Locale.ROOT);
+    }
+
+    private boolean isEvenHex(String value) {
+        return value != null && value.length() > 0 && value.length() % 2 == 0
+                && value.matches("[0-9A-F]+");
+    }
+
+    private boolean isHexWithLength(String value, int minLength, int maxLength) {
+        return isEvenHex(value) && value.length() >= minLength && value.length() <= maxLength;
+    }
+
+    private int parseInt(String value, int fallback) {
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private double parseDouble(String value, double fallback) {
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (Exception ignored) {
+            return fallback;
+        }
     }
 
     private ObdProtocol obdProtocolFromSpinner(int position) {
@@ -6088,6 +6879,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         derivedKeys.add("derived_compressor_eff");
         derivedKeys.add("derived_intercooler_eff");
         derivedKeys.add("derived_ve");
+        derivedKeys.add("derived_actual_afr");
+        derivedKeys.add("derived_commanded_afr");
         derivedKeys.add("derived_dcafr");
         derivedKeys.add("derived_tmf");
         derivedKeys.add("derived_maf_dev");
@@ -6260,6 +7053,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         Double aad = null, mad = null, bad = null, densPct = null, densAlt = null, saeCF = null;
         Double omd = null, compEff = null, icEff = null, ve = null, pdi = null, grains = null;
         Double humidity = null;
+        Double qualityCode = null;
+        Double rawBaro = null, rawAmbient = null, rawMap = null, rawIat = null;
+        String computedQuality = null;
 
         if (record != null && record.getSamples() != null) {
             for (SensorSample s : record.getSamples()) {
@@ -6279,6 +7075,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     case "derived_pdi": pdi = s.getValue(); break;
                     case "derived_grains": grains = s.getValue(); break;
                     case "derived_humidity": humidity = s.getValue(); break;
+                    case "derived_aad_quality": qualityCode = s.getValue(); break;
+                    case "01_33": rawBaro = s.getValue(); break;
+                    case "01_46": rawAmbient = s.getValue(); break;
+                    case "01_0B": rawMap = s.getValue(); break;
+                    case "01_0F": rawIat = s.getValue(); break;
                 }
             }
         }
@@ -6288,6 +7089,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 airDensityMonitor = new AirDensityMonitor(this);
                 airDensityMonitor.refreshWeather();
             }
+            airDensityMonitor.onObdValues(rawBaro, rawAmbient, rawMap, rawIat);
             AirDensityMonitor.AirDensityResult res = airDensityMonitor.compute();
             if (res != null) {
                 aad = res.aad;
@@ -6298,7 +7100,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 saeCF = res.saeJ1349CF;
                 grains = res.grainsH2O;
                 humidity = res.humidity;
+                computedQuality = res.qualityStatus + " • " + res.baroSource
+                        + " BARO • " + res.ambientTempSource + " TEMP"
+                        + (res.mapFromObd ? " • OBD MAP" : " • EST MAP");
             }
+        }
+
+        if (txtAirDensityQuality != null) {
+            int quality = qualityCode != null ? qualityCode.intValue()
+                    : "ok".equals(computedQuality != null ? computedQuality.split(" • ")[0] : "") ? 0
+                    : "est".equals(computedQuality != null ? computedQuality.split(" • ")[0] : "") ? 1 : 2;
+            String label = computedQuality != null ? computedQuality.toUpperCase(Locale.US)
+                    : quality == 0 ? "DATA QUALITY: MEASURED"
+                    : quality == 1 ? "DATA QUALITY: ESTIMATED" : "DATA QUALITY: DEFAULT INPUTS";
+            txtAirDensityQuality.setText(label);
+            txtAirDensityQuality.setTextColor(getColorCompat(
+                    quality == 0 ? R.color.accent : quality == 1 ? R.color.warning : R.color.danger));
         }
 
         if (txtAAD != null) txtAAD.setText(aad != null ? String.format(Locale.US, "%.1f", aad) : "--");
@@ -7123,6 +7940,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (customPidCheckbox != null) {
             customPidCheckbox.setChecked(prefs.getBoolean("pref_custom_pid", false));
         }
+        updateCustomPidSummary();
         updateAirDensityPanel(latestDataRecord);
     }
 
@@ -7141,7 +7959,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             applyKeepScreenOn(keepScreenOnCheckbox.isChecked());
         }
         int pos = transportSpinner.getSelectedItemPosition();
-        if (pos == 2 || pos == 3 || pos == 4) {
+        if (pos == 2 || pos == 3 || pos == 5) {
             refreshBluetoothDevices();
         }
         if (currentTabIndex == 4) {
@@ -7183,6 +8001,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         if (activeInstance == this) {
             activeInstance = null;
+        }
+        try {
+            unregisterReceiver(usbPermissionReceiver);
+        } catch (IllegalArgumentException ignored) {
+            // Receiver was not registered because activity initialization failed.
         }
         super.onDestroy();
     }
@@ -7307,26 +8130,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private List<String> getCachedPids(String vin) {
-        if (vin == null || vin.isEmpty()) return null;
-        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
-        String cached = prefs.getString("pids_cache_" + vin, null);
-        if (cached == null || cached.isEmpty()) return null;
-        
-        List<String> list = new ArrayList<>();
-        for (String s : cached.split(",")) {
-            list.add(s.trim());
-        }
-        return list;
+        return PidSupportCache.get(this, vin);
     }
 
     private void cachePids(String vin, List<String> pids) {
-        if (vin == null || vin.isEmpty() || pids == null || pids.isEmpty()) return;
-        StringBuilder sb = new StringBuilder();
-        for (String s : pids) {
-            if (sb.length() > 0) sb.append(",");
-            sb.append(s);
-        }
-        android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
-        prefs.edit().putString("pids_cache_" + vin, sb.toString()).apply();
+        PidSupportCache.put(this, vin, pids);
     }
 }

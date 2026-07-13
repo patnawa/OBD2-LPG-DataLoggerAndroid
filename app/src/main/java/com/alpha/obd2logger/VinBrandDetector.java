@@ -15,13 +15,42 @@ public final class VinBrandDetector {
     public enum Brand {
         TOYOTA, LEXUS, HONDA, ISUZU, NISSAN, MITSUBISHI, MAZDA,
         SUZUKI, FORD, CHEVROLET, HYUNDAI, KIA, VOLVO, BMW, MERCEDES,
+        SUBARU, VOLKSWAGEN, AUDI, PORSCHE, RENAULT, PEUGEOT, CITROEN,
+        FIAT, JEEP, DODGE, CHRYSLER, LAND_ROVER, TATA, MAHINDRA, HINO,
         BYD, GWM, NETA, AION, DEEPAL, MG, TESLA, UNKNOWN
     }
 
     /** Detect brand from VIN. Returns UNKNOWN if not recognized. */
     public static Brand detect(String vin) {
-        if (vin == null || vin.length() < 3) return Brand.UNKNOWN;
-        String wmi = vin.substring(0, 3).toUpperCase();
+        // WMI identification also accepts a partial VIN; the full VIN reader
+        // separately enforces the 17-character structure before persistence.
+        if (vin == null || vin.trim().length() < 3) return Brand.UNKNOWN;
+        String wmi = getWmi(vin);
+
+        // High-specificity rules precede legacy families. This prevents broad
+        // prefixes (JM, MM, KN and LG) from stealing another make's WMI.
+        if (isOneOf(wmi, "JTH", "JTJ", "2T2")) return Brand.LEXUS;
+        if (isOneOf(wmi, "MNT", "MNF", "SNJ")) return Brand.NISSAN;
+        if (isOneOf(wmi, "JM1", "JM3", "JM7", "JMZ", "MM6", "MM7", "MM8")) return Brand.MAZDA;
+        if (wmi.startsWith("KN") || isOneOf(wmi, "5XX", "5XY")) return Brand.KIA;
+        if (isOneOf(wmi, "LGW", "LGB", "LGA")) return Brand.GWM;
+        if (isOneOf(wmi, "L6G", "LGG")) return Brand.AION;
+        if (isOneOf(wmi, "LGX")) return Brand.BYD;
+        if (wmi.startsWith("JF") || isOneOf(wmi, "4S3", "4S4")) return Brand.SUBARU;
+        if (isOneOf(wmi, "WAU", "WUA", "TRU")) return Brand.AUDI;
+        if (isOneOf(wmi, "WP0", "WP1")) return Brand.PORSCHE;
+        if (wmi.startsWith("WVW") || isOneOf(wmi, "WV1", "WV2", "LFV")) return Brand.VOLKSWAGEN;
+        if (isOneOf(wmi, "VF1")) return Brand.RENAULT;
+        if (isOneOf(wmi, "VF3")) return Brand.PEUGEOT;
+        if (isOneOf(wmi, "VF7")) return Brand.CITROEN;
+        if (isOneOf(wmi, "ZFA", "3C3")) return Brand.FIAT;
+        if (wmi.startsWith("1J") || isOneOf(wmi, "1C4")) return Brand.JEEP;
+        if (wmi.startsWith("1D") || wmi.startsWith("2D") || wmi.startsWith("3D")) return Brand.DODGE;
+        if (wmi.startsWith("1C") || wmi.startsWith("2C")) return Brand.CHRYSLER;
+        if (isOneOf(wmi, "SAL", "SAD")) return Brand.LAND_ROVER;
+        if (isOneOf(wmi, "MAT")) return Brand.TATA;
+        if (isOneOf(wmi, "MA1")) return Brand.MAHINDRA;
+        if (isOneOf(wmi, "JH5")) return Brand.HINO;
 
         // ── Toyota ──
         // Thailand: JTH, JTN, MNH, MNT | Japan: JT | Turkey: NLT | France: JTE
@@ -84,7 +113,7 @@ public final class VinBrandDetector {
 
         // ── BYD ──
         // China: LGXCHE, LGX | VIN starts with LGX
-        if (wmi.startsWith("LG")) return Brand.BYD;
+        if (wmi.equals("LGX")) return Brand.BYD;
 
         // ── GWM (Great Wall Motors / Haval / Ora) ──
         // China: LGB, LGA
@@ -104,7 +133,7 @@ public final class VinBrandDetector {
 
         // ── MG (SAIC) ──
         // China: LSG, LJS
-        if (wmi.startsWith("LSG") || wmi.startsWith("LSJ") || wmi.startsWith("LJS")) return Brand.MG;
+        if (wmi.startsWith("LSJ") || wmi.startsWith("LJS")) return Brand.MG;
 
         // ── Tesla ──
         // USA: 5YJ, 7SA | China: LRW | Germany: XP7
@@ -114,6 +143,58 @@ public final class VinBrandDetector {
         if (wmi.startsWith("L")) return Brand.UNKNOWN;
 
         return Brand.UNKNOWN;
+    }
+
+    public static String getWmi(String vin) {
+        if (vin == null || vin.length() < 3) return "";
+        return vin.substring(0, 3).trim().toUpperCase(java.util.Locale.US);
+    }
+
+    /** Validates the 17-character VIN alphabet. Check-digit validation is kept
+     * separate because position 9 is not mandatory in every sales region. */
+    public static boolean isStructurallyValid(String vin) {
+        if (vin == null) return false;
+        String normalized = vin.trim().toUpperCase(java.util.Locale.US);
+        return normalized.length() == 17 && normalized.matches("[A-HJ-NPR-Z0-9]{17}");
+    }
+
+    /** Validates the ISO/North-American VIN check digit at position 9. */
+    public static boolean hasValidCheckDigit(String vin) {
+        if (!isStructurallyValid(vin)) return false;
+        String s = vin.trim().toUpperCase(java.util.Locale.US);
+        int[] weights = {8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2};
+        int sum = 0;
+        for (int i = 0; i < s.length(); i++) {
+            int value = vinValue(s.charAt(i));
+            if (value < 0) return false;
+            sum += value * weights[i];
+        }
+        int remainder = sum % 11;
+        char expected = remainder == 10 ? 'X' : (char) ('0' + remainder);
+        return s.charAt(8) == expected;
+    }
+
+    private static int vinValue(char c) {
+        if (c >= '0' && c <= '9') return c - '0';
+        switch (c) {
+            case 'A': case 'J': return 1;
+            case 'B': case 'K': case 'S': return 2;
+            case 'C': case 'L': case 'T': return 3;
+            case 'D': case 'M': case 'U': return 4;
+            case 'E': case 'N': case 'V': return 5;
+            case 'F': case 'W': return 6;
+            case 'G': case 'P': case 'X': return 7;
+            case 'H': case 'Y': return 8;
+            case 'R': case 'Z': return 9;
+            default: return -1;
+        }
+    }
+
+    private static boolean isOneOf(String value, String... candidates) {
+        for (String candidate : candidates) {
+            if (candidate.equals(value)) return true;
+        }
+        return false;
     }
 
     /** Get the DTC database asset filename for a brand. */
@@ -163,6 +244,21 @@ public final class VinBrandDetector {
             case VOLVO:      return "Volvo";
             case BMW:        return "BMW";
             case MERCEDES:   return "Mercedes-Benz";
+            case SUBARU:     return "Subaru";
+            case VOLKSWAGEN: return "Volkswagen";
+            case AUDI:       return "Audi";
+            case PORSCHE:    return "Porsche";
+            case RENAULT:    return "Renault";
+            case PEUGEOT:    return "Peugeot";
+            case CITROEN:    return "Citroën";
+            case FIAT:       return "Fiat";
+            case JEEP:       return "Jeep";
+            case DODGE:      return "Dodge";
+            case CHRYSLER:   return "Chrysler";
+            case LAND_ROVER: return "Land Rover";
+            case TATA:       return "Tata";
+            case MAHINDRA:   return "Mahindra";
+            case HINO:       return "Hino";
             case BYD:        return "BYD";
             case GWM:        return "GWM (Haval/Ora)";
             case NETA:       return "NETA (Hozon)";

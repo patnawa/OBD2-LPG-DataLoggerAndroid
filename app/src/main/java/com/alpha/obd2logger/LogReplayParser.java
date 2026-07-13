@@ -34,7 +34,7 @@ public final class LogReplayParser {
         public static final class Columns {
             public int fuelModeIdx = -1, loopStatusIdx = -1, fuelSystemStatusIdx = -1;
             public int rpmIdx = -1, mapIdx = -1, loadIdx = -1, stftIdx = -1, ltftIdx = -1;
-            public int lambdaIdx = -1;  // PID 0x34 or 0x44 — for LPG vehicles without STFT/LTFT
+            public int lambdaIdx = -1;  // measured PID 0x34 only; never commanded PID 0x44
             // Optional ≥3.13 AI map columns (used when present to prefer accepted samples)
             public int mapRpmCellIdx = -1, mapAxisValueIdx = -1, mapAcceptedIdx = -1, mapTrimTotalIdx = -1;
             public int axisIdx() { return (mapIdx != -1) ? mapIdx : loadIdx; }
@@ -105,7 +105,11 @@ public final class LogReplayParser {
                 // Only Bank 1 trims for the map (Bank 2 columns would overwrite incorrectly)
                 else if (h.contains("short term fuel trim") && !h.contains("bank 2") && c.stftIdx == -1) c.stftIdx = i;
                 else if (h.contains("long term fuel trim") && !h.contains("bank 2") && c.ltftIdx == -1) c.ltftIdx = i;
-                else if (h.contains("lambda") || h.contains("wideband lambda") || h.contains("equivalence ratio")) c.lambdaIdx = i;
+                // PID 0x44 is a commanded target, not a sensor measurement. Using it
+                // here would manufacture a fuel trim that merely tracks ECU intent.
+                else if (!h.contains("commanded")
+                        && (h.contains("lambda (b1s1)") || h.contains("actual lambda"))
+                        && c.lambdaIdx == -1) c.lambdaIdx = i;
                 // Optional precomputed map fields from ≥3.13 logs (AI-friendly)
                 else if (h.contains("map rpm cell")) c.mapRpmCellIdx = i;
                 else if (h.contains("map axis value")) c.mapAxisValueIdx = i;
@@ -236,7 +240,7 @@ public final class LogReplayParser {
                 }
                 trim = stft + ltft;
                 // Lambda fallback: LPG/CNG vehicles often have no STFT/LTFT PIDs but
-                // DO have a wideband lambda (PID 0x34 or 0x44). When both trims are
+                // DO have measured wideband lambda (PID 0x34). When both trims are
                 // absent (0), derive a "synthetic trim" from lambda deviation:
                 //   trim% = (lambda - 1.0) * 100
                 if (stft == 0.0 && ltft == 0.0 && c.lambdaIdx != -1 && parts.length > c.lambdaIdx) {

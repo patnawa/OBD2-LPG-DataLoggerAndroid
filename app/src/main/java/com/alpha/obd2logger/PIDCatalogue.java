@@ -77,9 +77,35 @@ public final class PIDCatalogue {
             addByName(poll, "Ambient Air Temp");
             addByName(poll, "Intake Air Temp");
             addByName(poll, "Lambda (B1S1)");
-            addByName(poll, "Wideband Lambda (B1S1)");
+            addByName(poll, "Commanded Equivalence Ratio");
         }
         return Collections.unmodifiableList(poll);
+    }
+
+    /**
+     * Single poll-set builder used by both in-process and background logging.
+     * User-defined PIDs are deliberately retained in LPG-only mode too: a
+     * setting named "Custom PIDs" must not silently disappear when the user
+     * also enables the lean LPG poll profile.
+     */
+    public static List<PIDDefinition> getConfiguredPollSet(Context context, boolean lpgOnly,
+                                                            boolean includeAirDensity,
+                                                            boolean includeCustom) {
+        List<PIDDefinition> result = new ArrayList<>(
+                lpgOnly ? getLpgPollSet(includeAirDensity) : ALL);
+        if (includeCustom && context != null) {
+            for (PIDDefinition custom : CustomPidManager.load(context)) {
+                boolean exists = false;
+                for (PIDDefinition current : result) {
+                    if (current.key().equals(custom.key())) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) result.add(custom);
+            }
+        }
+        return Collections.unmodifiableList(result);
     }
 
     private static void addByName(List<PIDDefinition> list, String name) {
@@ -122,10 +148,11 @@ public final class PIDCatalogue {
         list.add(new PIDDefinition("Long Term Fuel Trim", "01", "07", "%", "(A-128)*100/128", -100, 99.22, true, 1, true));
         list.add(new PIDDefinition("STFT Bank 2", "01", "08", "%", "(A-128)*100/128", -100, 99.22, true, 1, false));
         list.add(new PIDDefinition("LTFT Bank 2", "01", "09", "%", "(A-128)*100/128", -100, 99.22, true, 1, false));
-        // SAE J1979: PIDs 0x34 and 0x44 return 4 data bytes: A=sensor index, B,C=lambda value, D=oxygen.
-        // Formula uses (B*256+C)/32768, NOT (A*256+B)/32768 which mixes the sensor index byte into the value.
-        list.add(new PIDDefinition("Lambda (B1S1)", "01", "34", "", "(B*256+C)/32768", 0, 2, true, 4, false));
-        list.add(new PIDDefinition("Wideband Lambda (B1S1)", "01", "44", "", "(B*256+C)/32768", 0, 2, true, 4, false));
+        // SAE J1979 PID 0x34: A,B = measured equivalence ratio; C,D = sensor current.
+        // PID 0x44 is a separate two-byte COMMAND value and must never be treated as measured lambda.
+        list.add(new PIDDefinition("Lambda (B1S1)", "01", "34", "", "(A*256+B)/32768", 0, 2, true, 4, false));
+        list.add(new PIDDefinition("O2 Sensor B1S1 Current", "01", "34_CD", "mA", "(C*256+D)/256-128", -128, 128, false, 4, false));
+        list.add(new PIDDefinition("Commanded Equivalence Ratio", "01", "44", "", "(A*256+B)/32768", 0, 2, true, 2, false));
         // --- Oxygen sensors (Mode 01 PIDs 0x14-0x1B) ---
         // Each O2 sensor PID returns 2 data bytes: A = voltage (A/200), B = short-term fuel trim.
         // B1S1 (PID 0x14) is already listed above; here we add the remaining 7 sensors.
@@ -148,12 +175,11 @@ public final class PIDCatalogue {
         // lpgCritical=true: needed for turbo boost calculation (MAP - Baro)
         list.add(new PIDDefinition("Barometric Pressure", "01", "33", "kPa", "A", 0, 255, true, 1, false));
 
-        // --- DPF (Diesel Particulate Filter) — Thai-market diesel vehicles ---
-        list.add(new PIDDefinition("DPF Soot Load", "01", "7A", "%", "A*100/255", 0, 100, false, 1, false));
-        list.add(new PIDDefinition("DPF Temperature", "01", "7B", "°C", "(A*256+B)/10-40", -40, 6513.5, false, 2, false));
-        list.add(new PIDDefinition("DPF Delta Pressure", "01", "85", "kPa", "(A*256+B)*0.01", 0, 655.35, false, 2, false));
-        list.add(new PIDDefinition("DPF Regen Status", "01", "8C", "", "A", 0, 255, false, 1, false));
-        list.add(new PIDDefinition("DPF Ash Load", "01", "8B", "g", "A*100/255", 0, 100, false, 1, false));
+        // Standard PID 7A is differential pressure, not soot percentage.
+        // Manufacturer soot/ash/regeneration values must come from a verified
+        // brand-specific Mode 22 profile rather than being mislabeled as SAE data.
+        list.add(new PIDDefinition("DPF Differential Pressure 1", "01", "7A", "kPa", "(A*256+B)/100", 0, 655.35, false, 4, false));
+        list.add(new PIDDefinition("DPF Inlet Temperature 1", "01", "7B", "°C", "(B*256+C)/10-40", -40, 6513.5, false, 9, false));
 
         // --- Timing & fuel ---
         list.add(new PIDDefinition("Timing Advance", "01", "0E", "deg", "A/2-64", -64, 63.5, true, 1, false));
@@ -169,6 +195,26 @@ public final class PIDCatalogue {
         // a failing alternator or weak battery causes lean misfire that masquerades as
         // a fuel trim problem. Must be polled in LPG-only mode.
         list.add(new PIDDefinition("Control Module Voltage", "01", "42", "V", "(A*256+B)/1000", 0, 65.535, true, 2, true));
+
+        // --- Extended standardized Mode 01 data ---
+        list.add(new PIDDefinition("Commanded EGR", "01", "2C", "%", "A*100/255", 0, 100, false, 1, false));
+        list.add(new PIDDefinition("EGR Error", "01", "2D", "%", "(A-128)*100/128", -100, 99.22, false, 1, false));
+        list.add(new PIDDefinition("Warm-ups Since DTC Clear", "01", "30", "cycles", "A", 0, 255, false, 1, false));
+        list.add(new PIDDefinition("Relative Throttle Position", "01", "45", "%", "A*100/255", 0, 100, false, 1, false));
+        list.add(new PIDDefinition("Absolute Throttle Position B", "01", "47", "%", "A*100/255", 0, 100, false, 1, false));
+        list.add(new PIDDefinition("Absolute Throttle Position C", "01", "48", "%", "A*100/255", 0, 100, false, 1, false));
+        list.add(new PIDDefinition("Accelerator Pedal Position D", "01", "49", "%", "A*100/255", 0, 100, false, 1, false));
+        list.add(new PIDDefinition("Accelerator Pedal Position E", "01", "4A", "%", "A*100/255", 0, 100, false, 1, false));
+        list.add(new PIDDefinition("Accelerator Pedal Position F", "01", "4B", "%", "A*100/255", 0, 100, false, 1, false));
+        list.add(new PIDDefinition("Commanded Throttle Actuator", "01", "4C", "%", "A*100/255", 0, 100, false, 1, false));
+        list.add(new PIDDefinition("Time With MIL On", "01", "4D", "min", "A*256+B", 0, 65535, false, 2, false));
+        list.add(new PIDDefinition("Time Since DTC Cleared", "01", "4E", "min", "A*256+B", 0, 65535, false, 2, false));
+        list.add(new PIDDefinition("Relative Accelerator Position", "01", "5A", "%", "A*100/255", 0, 100, false, 1, false));
+        list.add(new PIDDefinition("Hybrid Battery Remaining Life", "01", "5B", "%", "A*100/255", 0, 100, false, 1, false));
+        list.add(new PIDDefinition("Engine Oil Temperature", "01", "5C", "C", "A-40", -40, 215, false, 1, false));
+        list.add(new PIDDefinition("Driver Demand Engine Torque", "01", "61", "%", "A-125", -125, 130, false, 1, false));
+        list.add(new PIDDefinition("Actual Engine Torque", "01", "62", "%", "A-125", -125, 130, false, 1, false));
+        list.add(new PIDDefinition("Engine Reference Torque", "01", "63", "Nm", "A*256+B", 0, 65535, false, 2, false));
 
         // --- Time & distance ---
         list.add(new PIDDefinition("Run Time Since Start", "01", "1F", "s", "(A*256+B)", 0, 65535, false, 2, false));

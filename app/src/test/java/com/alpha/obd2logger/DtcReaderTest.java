@@ -150,4 +150,57 @@ public class DtcReaderTest {
         List<DtcCode> codes = DtcReader.parseDtcResponse("NO DATA\n43 02 01 71 03 00", "43");
         assertEquals("Should parse 2 DTCs from the valid line, ignoring NO DATA", 2, codes.size());
     }
+
+    @Test
+    public void testScanSeparatesStoredPendingAndPermanentCodes() {
+        BaseDriver mockDriver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                if ("0100".equals(command)) return "41 00 BE 3E B8 13";
+                if ("03".equals(command)) return "43 01 01 71";
+                if ("07".equals(command)) return "47 01 03 01";
+                if ("0A".equals(command)) return "4A 01 04 20";
+                return "OK";
+            }
+        };
+        mockDriver.connect();
+
+        DtcReader.DtcScanResult result = DtcReader.readAllDtcs(mockDriver, false);
+
+        assertEquals("P0171", result.storedDtcs.get(0).getCode());
+        assertEquals("P0301", result.pendingDtcs.get(0).getCode());
+        assertEquals("P0420", result.permanentDtcs.get(0).getCode());
+        assertEquals(1, result.protocolsResponded);
+    }
+
+    @Test
+    public void testClearDtcsRequiresAckAndVerifiesStoredCodesAreGone() {
+        BaseDriver clearedDriver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                if ("04".equals(command)) return "44";
+                if ("03".equals(command)) return "43 00 00 00";
+                return "";
+            }
+        };
+        clearedDriver.connect();
+        assertTrue(DtcReader.clearDtcs(clearedDriver));
+
+        BaseDriver unclearedDriver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                if ("04".equals(command)) return "44";
+                if ("03".equals(command)) return "43 01 01 71";
+                return "";
+            }
+        };
+        unclearedDriver.connect();
+        assertFalse(DtcReader.clearDtcs(unclearedDriver));
+    }
 }

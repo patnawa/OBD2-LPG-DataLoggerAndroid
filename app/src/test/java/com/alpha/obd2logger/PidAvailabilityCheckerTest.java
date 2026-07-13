@@ -56,6 +56,21 @@ public class PidAvailabilityCheckerTest {
     }
 
     @Test
+    public void filterCatalogueKeepsManufacturerCustomServices() {
+        PIDDefinition manufacturerPid = new PIDDefinition(
+                "Oil Temperature", "22", "F405", "°C", "A-40",
+                -40, 215, false, 1, false);
+        List<PIDDefinition> catalogue = Arrays.asList(
+                PIDCatalogue.getAll().get(0), manufacturerPid);
+
+        List<PIDDefinition> filtered = PidAvailabilityChecker.filterCatalogue(
+                Arrays.asList("0C"), catalogue);
+
+        assertTrue("Mode 22 custom PID must survive Mode 01 bitmap filtering",
+                filtered.contains(manufacturerPid));
+    }
+
+    @Test
     public void filterCatalogueExcludesUnsupportedPids() {
         // If only 0x0C is supported, a non-force-included PID like 0x0E
         // (Timing Advance) should NOT be in the filtered list.
@@ -70,6 +85,63 @@ public class PidAvailabilityCheckerTest {
                     : pid.getPidHex();
             assertFalse("Unsupported PID 0E should not be in filtered list", baseHex.equals("0E"));
         }
+    }
+
+    @Test
+    public void liveCapabilityDoesNotForceFeatureDependencies() {
+        List<PIDDefinition> filtered = PidAvailabilityChecker.filterCatalogue(
+                Arrays.asList("0C"), PIDCatalogue.getAll());
+        for (PIDDefinition pid : filtered) {
+            if (!"01".equals(pid.getService())) continue;
+            assertEquals("Only the ECU-advertised PID may be polled", "0C",
+                    pid.getPidHex().split("_")[0]);
+        }
+    }
+
+    @Test
+    public void bitmapDiscoveryStopsWhenNextBankIsNotAdvertised() {
+        final List<String> commands = new ArrayList<>();
+        ElmDriver driver = bitmapDriver(commands, false);
+        List<String> supported = PidAvailabilityChecker.querySupportedPids(driver);
+        assertNotNull(supported);
+        assertTrue(supported.contains("0C"));
+        assertEquals(Arrays.asList("0100"), commands);
+    }
+
+    @Test
+    public void bitmapDiscoveryFollowsAdvertisedContinuationBank() {
+        final List<String> commands = new ArrayList<>();
+        ElmDriver driver = bitmapDriver(commands, true);
+        List<String> supported = PidAvailabilityChecker.querySupportedPids(driver);
+        assertNotNull(supported);
+        assertTrue(supported.contains("20"));
+        assertEquals(Arrays.asList("0100", "0120"), commands);
+    }
+
+    @Test
+    public void targetedProbeRequiresPositiveResponseNotCommandEcho() {
+        assertTrue(PidAvailabilityChecker.hasPositiveResponse(
+                "010C\r7E8 04 41 0C 1A F8\r>", "410C"));
+        assertFalse(PidAvailabilityChecker.hasPositiveResponse("010C\rNO DATA\r>", "410C"));
+        assertFalse(PidAvailabilityChecker.hasPositiveResponse("7F 01 12", "410C"));
+    }
+
+    private static ElmDriver bitmapDriver(final List<String> commands, final boolean continueTo20) {
+        ElmDriver driver = new ElmDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override protected String sendCommand(String command) {
+                commands.add(command);
+                if ("0100".equals(command)) {
+                    return continueTo20 ? "41 00 00 10 00 01" : "41 00 00 10 00 00";
+                }
+                if ("0120".equals(command)) return "41 20 00 00 00 00";
+                return "NO DATA";
+            }
+        };
+        driver.connect();
+        return driver;
     }
 
     @Test
@@ -126,6 +198,26 @@ public class PidAvailabilityCheckerTest {
     }
 
     @Test
+    public void canonicalVinDetectionHandlesPreviouslyShadowedMakes() {
+        assertEquals(VinBrandDetector.Brand.NISSAN,
+                VinBrandDetector.detect("MNTABCD12EF123456"));
+        assertEquals(VinBrandDetector.Brand.MAZDA,
+                VinBrandDetector.detect("JM1ABCD12EF123456"));
+        assertEquals(VinBrandDetector.Brand.KIA,
+                VinBrandDetector.detect("KNAABCD12EF123456"));
+        assertEquals(VinBrandDetector.Brand.GWM,
+                VinBrandDetector.detect("LGBABCD12EF123456"));
+    }
+
+    @Test
+    public void vinValidationSupportsStructureAndCheckDigit() {
+        String knownValidVin = "1HGCM82633A004352";
+        assertTrue(VinBrandDetector.isStructurallyValid(knownValidVin));
+        assertTrue(VinBrandDetector.hasValidCheckDigit(knownValidVin));
+        assertFalse(VinBrandDetector.isStructurallyValid("1HGCM826I3A004352"));
+    }
+
+    @Test
     public void brandFromVinReturnsGenericForNull() {
         assertEquals(BrandYearProfile.Brand.GENERIC,
                 BrandYearProfile.brandFromVin(null));
@@ -159,6 +251,12 @@ public class PidAvailabilityCheckerTest {
     public void yearFromVinDecodes2008() {
         // '8' = 2008
         assertEquals(2008, BrandYearProfile.yearFromVin("XXXXXXXXX8XXXXXXX"));
+    }
+
+    @Test
+    public void repeatedYearCodeUsesCurrentThirtyYearCycle() {
+        assertEquals(2001, BrandYearProfile.decodeLatestModelYear('1', 2027));
+        assertEquals(2026, BrandYearProfile.decodeLatestModelYear('T', 2027));
     }
 
     @Test
@@ -221,7 +319,7 @@ public class PidAvailabilityCheckerTest {
     @Test
     public void getProfileFromVinCombinesBrandAndYear() {
         // BMW with model year 'G' = 2016
-        Set<String> pids = BrandYearProfile.getProfileFromVin("WBAAA3XXXXGXXXXXXX");
+        Set<String> pids = BrandYearProfile.getProfileFromVin("WBAAA3XXXGXXXXXXX");
         assertNotNull(pids);
         assertTrue("BMW 2016 should include PID 0x34 (wideband lambda)", pids.contains("34"));
         assertTrue("BMW 2016 should include PID 0x0C (RPM)", pids.contains("0C"));

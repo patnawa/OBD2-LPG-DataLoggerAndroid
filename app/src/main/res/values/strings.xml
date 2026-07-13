@@ -87,7 +87,7 @@
         <string name="status_lean_translated">Lean</string>
         <string name="status_rich_translated">Rich</string>
 
-        <string name="tuning_status_format">STFT: %1$s | LTFT: %2$s\nStatus: %3$s (conf %4$d%%)\nAdvice: %5$s</string>
+    <string name="tuning_status_format" formatted="false">Fuel trim status</string>
 
     <!-- DTC -->
     <string name="read_dtc">Read DTCs</string>
@@ -96,6 +96,32 @@
     <string name="read_readiness">Check Readiness</string>
     <string name="no_dtcs">No DTCs stored.</string>
     <string name="dtc_count">DTC count: %1$d</string>
+    <string name="dtc_scanner_title">Vehicle diagnostics</string>
+    <string name="dtc_scanner_subtitle">SAE OBD-II fault scan, ECU readiness and freeze-frame evidence</string>
+    <string name="dtc_scan_actions">SCAN</string>
+    <string name="dtc_vehicle_tools">VEHICLE TOOLS</string>
+    <string name="dtc_quick_scan">Quick scan</string>
+    <string name="dtc_full_scan">Full scan</string>
+    <string name="dtc_health_not_scanned">Ready to diagnose</string>
+    <string name="dtc_health_not_scanned_desc">Connect the adapter and run Quick scan. Use Full scan for additional vehicle buses.</string>
+    <string name="dtc_health_scanning">Scanning control modules…</string>
+    <string name="dtc_health_scanning_desc">Keep the ignition ON and do not unplug the adapter.</string>
+    <string name="dtc_health_failed">Scan incomplete</string>
+    <string name="dtc_health_failed_desc">The adapter or ECU stopped responding. Check ignition and connection, then retry.</string>
+    <string name="dtc_health_clear">No faults detected</string>
+    <string name="dtc_health_clear_desc">No stored, pending or permanent OBD-II codes were reported.</string>
+    <string name="dtc_health_attention">Attention required</string>
+    <string name="dtc_health_attention_desc">Review active faults first. Tap a code to show diagnostic guidance.</string>
+    <string name="dtc_health_critical">Critical faults detected</string>
+    <string name="dtc_health_critical_desc">Avoid hard driving until critical powertrain or safety faults are diagnosed.</string>
+    <string name="dtc_stored_zero">0\nSTORED</string>
+    <string name="dtc_pending_zero">0\nPENDING</string>
+    <string name="dtc_permanent_zero">0\nPERMANENT</string>
+    <string name="dtc_stored_count">%1$d\nSTORED</string>
+    <string name="dtc_pending_count">%1$d\nPENDING</string>
+    <string name="dtc_permanent_count">%1$d\nPERMANENT</string>
+    <string name="dtc_tap_guidance">Tap for diagnostic guidance</string>
+    <string name="dtc_hide_guidance">Tap to hide guidance</string>
 
     <!-- Performance -->
     <string name="perf_arm">Arm 0-100 Timer</string>
@@ -217,6 +243,22 @@
     <string name="battery_crank_start">Start</string>
     <string name="battery_crank_sampling">Sampling crank voltage — crank the engine NOW!</string>
     <string name="battery_crank_failed">Failed to read crank voltage.</string>
+    <string name="battery_crank_live_start">Start crank test</string>
+    <string name="battery_crank_live_reset">Reset test</string>
+    <string name="battery_crank_live_idle">Press start to begin the test</string>
+    <string name="battery_crank_connect_first">Connect to the vehicle first</string>
+    <string name="battery_crank_live_ready">Ready — start the engine now</string>
+    <string name="battery_crank_live_detected">Cranking detected — keep the engine running</string>
+    <string name="battery_crank_result_pass">Strong cranking voltage: %1$.2f V</string>
+    <string name="battery_crank_result_warn">Marginal cranking voltage: %1$.2f V</string>
+    <string name="battery_crank_result_fail">Low cranking voltage: %1$.2f V</string>
+    <string name="battery_workflow_initial">1 CONNECT  •  2 SELECT BATTERY  •  3 RUN GUIDED TEST</string>
+    <string name="battery_workflow_connected">CONNECTED • Select chemistry • Choose Full Diagnostic or a focused test</string>
+    <string name="battery_workflow_connect">STEP 1 • Connect an OBD2 adapter to begin</string>
+    <string name="battery_workflow_cranking">CRANKING TEST • Start the engine within 10 seconds</string>
+    <string name="battery_workflow_test_complete">TEST COMPLETE • Review the minimum voltage result below</string>
+    <string name="battery_workflow_running">GUIDED DIAGNOSTIC RUNNING • Keep the vehicle safely parked</string>
+    <string name="battery_workflow_complete">DIAGNOSTIC COMPLETE • Overall score %1$d%%</string>
     <string name="battery_ripple_sampling">Sampling voltage for ripple test (2 seconds)...</string>
     <string name="battery_ripple_insufficient">Insufficient samples for ripple test.</string>
     <string name="battery_full_running">Running full battery diagnostic...\nType: %1$s</string>
@@ -298,16 +340,28 @@
     <string name="custom_pid_add">Add PID</string>
     <string name="custom_pid_remove">Remove</string>
     <string name="custom_pid_name">Name</string>
-    <string name="custom_pid_service">Mode (01/02/09)</string>
-    <string name="custom_pid_hex">PID Hex (0C, 5E)</string>
+    <string name="custom_pid_service">Service / Mode (01, 22)</string>
+    <string name="custom_pid_hex">PID / DID Hex (0C, F405)</string>
     <string name="custom_pid_formula">Formula (A-40, (A*256+B)/4)</string>
     <string name="custom_pid_unit">Unit (C, %, kPa)</string>
     <string name="custom_pid_bytes">Data Bytes</string>
+    <string name="custom_pid_min">Minimum</string>
+    <string name="custom_pid_max">Maximum</string>
     <string name="custom_pid_test">Test</string>
     <string name="custom_pid_test_data">Enter raw hex</string>
     <string name="custom_pid_test_result">Result: %1$s</string>
     <string name="custom_pid_save">Save</string>
     <string name="custom_pid_manage">Manage Custom PIDs</string>
+    <string name="custom_pid_manage_desc">Add manufacturer or external PIDs. Changes apply when the next logging session starts.</string>
+    <string name="custom_pid_none">No custom PIDs yet. Add one only when you know the ECU command and formula.</string>
+    <string name="custom_pid_example">Example: Mode 22, PID F405, formula A-40</string>
+    <string name="custom_pid_dashboard">Show on dashboard</string>
+    <string name="custom_pid_invalid">Enter a name, hex service/PID, formula, and 1–8 data bytes.</string>
+    <string name="custom_pid_saved">Custom PID saved. It will be used on the next logging session.</string>
+    <string name="custom_pid_deleted">Custom PID removed.</string>
+    <string name="custom_pid_raw_hint">Raw reply for formula test (example: 5A)</string>
+    <string name="custom_pid_edit">Edit custom PID</string>
+    <string name="custom_pid_summary">%1$d saved PID(s) • applies next session</string>
     
     <!-- Feature Toggles -->
     <string name="feature_turbo_boost">Turbo Boost Calculation</string>
@@ -318,6 +372,12 @@
 
     <!-- Gauge / Dashboard / Graph slot strings -->
     <string name="tap_to_add">Tap to Add</string>
+    <string name="dashboard_layout_title">Dashboard cards</string>
+    <string name="dashboard_layout_hint">Use − / + to show fewer or more live cards</string>
+    <string name="dashboard_remove_slot">Show fewer dashboard cards</string>
+    <string name="dashboard_add_slot">Show more dashboard cards</string>
+    <string name="language_english">English</string>
+    <string name="language_thai">Thai</string>
     <string name="live_graphs">Live Graphs</string>
     <string name="data_slot">Data %1$d</string>
     <string name="records_count">Records: %1$d</string>
@@ -353,6 +413,29 @@
     <string name="home_label_boost_psi">BOOST psi</string>
     <string name="home_label_throttle_pct">THROTTLE %</string>
     <string name="home_label_fuel_trim_pct">FUEL TRIM %</string>
+    <string name="home_label_hud">HUD</string>
+    <string name="home_toggle_rpm_graph">Toggle RPM graph line</string>
+    <string name="home_toggle_speed_graph">Toggle speed graph line</string>
+    <string name="home_toggle_boost_graph">Toggle boost graph line</string>
+    <string name="home_title_ai_insight">DRIVE INSIGHT</string>
+    <string name="home_ai_insight_collecting">Building your drive profile</string>
+    <string name="home_ai_insight_collecting_detail">Live data will be summarized as soon as the engine is running.</string>
+    <string name="home_ai_insight_stable">All key readings are stable</string>
+    <string name="home_ai_insight_stable_detail">Engine, voltage and fuel correction are within the normal range.</string>
+    <string name="home_ai_insight_dtc">Diagnostic attention needed</string>
+    <string name="home_ai_insight_dtc_detail">%1$d active fault code(s). Tap Diagnostic Health to inspect.</string>
+    <string name="home_ai_insight_hot">Coolant temperature is high</string>
+    <string name="home_ai_insight_hot_detail">Coolant is %1$.0f°C. Reduce load and check the cooling system.</string>
+    <string name="home_ai_insight_voltage">Battery voltage needs attention</string>
+    <string name="home_ai_insight_voltage_detail">System voltage is %1$.1f V. Check battery and charging system.</string>
+    <string name="home_ai_insight_trim">Fuel correction is elevated</string>
+    <string name="home_ai_insight_trim_detail">Total fuel trim is %1$+.1f%%. Capture more stable cruise data before tuning.</string>
+    <string name="home_ai_insight_local">LOCAL ANALYSIS • LIVE DATA</string>
+    <string name="home_nav_drive">Drive</string>
+    <string name="home_nav_analyze">Analyze</string>
+    <string name="home_nav_logs">Logs</string>
+    <string name="home_nav_scan">Scan</string>
+    <string name="home_record_action">Start or stop logging</string>
     <string name="home_title_diagnostic_health">DIAGNOSTIC HEALTH</string>
     <string name="home_diagnostic_no_codes">No active fault codes</string>
     <string name="home_diagnostic_ready_scan">Ready for a full scan</string>

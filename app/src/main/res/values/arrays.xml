@@ -21,6 +21,19 @@
         <item>System Default</item>
         <item>English</item>
         <item>ภาษาไทย</item>
+        <item>Deutsch</item>
+        <item>Español</item>
+        <item>Français</item>
+        <item>Italiano</item>
+        <item>Português</item>
+        <item>Русский</item>
+        <item>中文</item>
+        <item>日本語</item>
+        <item>한국어</item>
+        <item>العربية</item>
+        <item>हिन्दी</item>
+        <item>Bahasa Indonesia</item>
+        <item>Tiếng Việt</item>
     </string-array>
     <string-array name="theme_modes">
         <item>System Default</item>

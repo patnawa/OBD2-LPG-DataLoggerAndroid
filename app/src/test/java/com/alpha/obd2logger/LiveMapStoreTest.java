@@ -128,4 +128,22 @@ public class LiveMapStoreTest {
         assertEquals(MapSampleMeta.AXIS_MAP, meta.axisSource);
         assertEquals(MapBinning.cellKey(MapBinning.binRpm(2000), MapBinning.binMap(45)), meta.cellKey);
     }
+
+    @Test
+    public void clearRemovesBothFuelMapsAndCursor() {
+        LiveMapStore store = new LiveMapStore();
+        MapSampleMeta sample = MapSampleMeta.fromLegacy(2000, 40, 2.0, true, 90.0);
+        store.pushFromMeta(sample, FuelMode.PETROL);
+        store.pushFromMeta(sample, FuelMode.PETROL);
+        store.pushFromMeta(sample, FuelMode.LPG);
+        store.pushFromMeta(sample, FuelMode.LPG);
+        assertFalse(store.getPetrolData().isEmpty());
+        assertFalse(store.getLpgData().isEmpty());
+
+        store.clear();
+        assertTrue(store.getPetrolData().isEmpty());
+        assertTrue(store.getLpgData().isEmpty());
+        assertEquals(-1, store.getActiveRpmCell());
+        assertEquals("", store.getLastCellKey());
+    }
 }

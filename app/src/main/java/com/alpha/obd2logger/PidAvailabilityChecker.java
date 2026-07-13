@@ -61,6 +61,12 @@ public final class PidAvailabilityChecker {
         int[] bitmapBases = {0x00, 0x20, 0x40, 0x60, 0x80, 0xA0, 0xC0, 0xE0};
 
         for (int i = 0; i < bitmapPids.length; i++) {
+            // The last bit of each support bitmap announces the next bank.
+            // Avoid probing unadvertised banks: it removes repeated NO DATA
+            // delays and is safer with low-quality ELM327-compatible adapters.
+            if (i > 0 && !supported.contains(String.format("%02X", bitmapBases[i]))) {
+                break;
+            }
             String response = elm.sendCommandRaw(bitmapPids[i]);
             if (response == null || response.isEmpty()) {
                 continue;
@@ -111,8 +117,50 @@ public final class PidAvailabilityChecker {
             return null;
         }
 
+        if (supported.size() == 1 && supported.contains("00")) {
+            Log.w(TAG, "Bitmap response contained no usable data PIDs");
+            return null;
+        }
+
         Log.i(TAG, "Detected " + supported.size() + " supported PIDs");
         return supported;
+    }
+
+    /**
+     * Degraded discovery for adapters/ECUs whose support bitmaps are broken.
+     * Each unique standard PID is queried once and accepted only when its
+     * positive response header is observed. This is slower than bitmap
+     * discovery but safer than guessing from make/model.
+     */
+    public static List<String> probeCatalogue(BaseDriver driver, List<PIDDefinition> catalogue) {
+        if (!(driver instanceof ElmDriver) || !driver.isConnected() || catalogue == null) return null;
+        ElmDriver elm = (ElmDriver) driver;
+        java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>();
+        for (PIDDefinition pid : catalogue) {
+            if (!"01".equalsIgnoreCase(pid.getService())) continue;
+            String hex = pid.getPidHex();
+            if (hex.contains("_")) hex = hex.substring(0, hex.indexOf('_'));
+            if (hex.matches("[0-9A-Fa-f]{2}")) candidates.add(hex.toUpperCase(java.util.Locale.US));
+        }
+
+        List<String> supported = new ArrayList<>();
+        for (String pid : candidates) {
+            String response = elm.sendCommandRaw("01" + pid);
+            if (hasPositiveResponse(response, "41" + pid)) supported.add(pid);
+        }
+        return supported.isEmpty() ? null : supported;
+    }
+
+    static boolean hasPositiveResponse(String response, String expectedHeader) {
+        if (response == null || response.isEmpty()) return false;
+        String expected = expectedHeader.toUpperCase(java.util.Locale.US);
+        for (String line : response.replace('\r', '\n').split("\n")) {
+            String clean = line.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "")
+                    .replaceAll("[^0-9A-Fa-f]", "")
+                    .toUpperCase(java.util.Locale.US);
+            if (clean.contains(expected)) return true;
+        }
+        return false;
     }
 
     /**
@@ -131,31 +179,18 @@ public final class PidAvailabilityChecker {
         // Build a set for O(1) lookup
         java.util.Set<String> supportedSet = new java.util.HashSet<>(supportedHex);
 
-        // Force-include core PIDs critical for diagnostics, LPG tuning, and
-        // derived sensors. Without these, features like fuel economy (needs
-        // 0D speed + 10 MAF), turbo boost (needs 33 baro), DPF monitor
-        // (needs 7A/7B/85/8B/8C), and AFR (needs lambda) break silently.
-        supportedSet.add("03"); // Fuel System Status
-        supportedSet.add("04"); // Engine Load
-        supportedSet.add("05"); // Coolant Temp
-        supportedSet.add("06"); // Short Term Fuel Trim
-        supportedSet.add("07"); // Long Term Fuel Trim
-        supportedSet.add("0B"); // MAP (falls back to Load if vehicle lacks MAP sensor)
-        supportedSet.add("0C"); // Engine RPM
-        supportedSet.add("0D"); // Vehicle Speed — fuel economy derived
-        supportedSet.add("10"); // MAF Air Flow — fuel economy + AFR derived
-        supportedSet.add("11"); // Throttle Position
-        supportedSet.add("33"); // Barometric Pressure — turbo boost derived
-        supportedSet.add("42"); // Control Module Voltage — lpgCritical
-        // DPF PIDs — auto-enabled for diesel, must survive filtering
-        supportedSet.add("7A"); // DPF Soot Load
-        supportedSet.add("7B"); // DPF Temperature
-        supportedSet.add("85"); // DPF Delta Pressure
-        supportedSet.add("8B"); // DPF Ash Load
-        supportedSet.add("8C"); // DPF Regen Status
+        // Live ECU capability is authoritative. Feature dependencies must not
+        // force unsupported requests back into the polling loop.
 
         List<PIDDefinition> filtered = new ArrayList<>();
         for (PIDDefinition pid : catalogue) {
+            // Standard Mode 01 bitmap queries cannot describe manufacturer
+            // services such as 21/22. A user explicitly enabled these custom
+            // PIDs, so do not silently discard them during generic discovery.
+            if (!"01".equalsIgnoreCase(pid.getService())) {
+                filtered.add(pid);
+                continue;
+            }
             String hex = pid.getPidHex();
             // Strip "_B" suffix for pseudo-PIDs — check parent
             String baseHex = hex.contains("_") ? hex.substring(0, hex.indexOf('_')) : hex;

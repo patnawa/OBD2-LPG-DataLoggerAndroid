@@ -73,6 +73,29 @@ public class PIDParserTest {
     }
 
     @Test
+    public void extractAndParseSupportsManufacturerDidResponse() {
+        // UDS service 22 uses positive response 62 and a two-byte DID. This
+        // is the format produced by a saved external PID such as 22 F405.
+        PIDDefinition did = new PIDDefinition("Oil Temperature", "22", "F405", "C",
+                "A-40", -40, 215, false, 1);
+        Double value = PIDParser.extractAndParse(did, "22F405\r62 F4 05 5A\r>", "62F405");
+        assertEquals(Double.valueOf(50.0), value);
+    }
+
+    @Test
+    public void parsesStandardWidebandRatioAndDerivedCurrent() {
+        PIDDefinition ratio = new PIDDefinition("Lambda", "01", "34", "",
+                "(A*256+B)/32768", 0, 2, false, 4);
+        PIDDefinition current = new PIDDefinition("Current", "01", "34_CD", "mA",
+                "(C*256+D)/256-128", -128, 128, false, 4);
+        java.util.Map<String, Double> values = new java.util.LinkedHashMap<>();
+        PIDParser.extractMulti(java.util.Arrays.asList(ratio, current),
+                "41 34 80 00 80 00", values);
+        assertEquals(1.0, values.get("Lambda"), 0.0001);
+        assertEquals(0.0, values.get("Current"), 0.0001);
+    }
+
+    @Test
     public void extractAndParseReturnsNullForNoData() {
         PIDDefinition rpmPid = PIDCatalogue.getAll().get(0);
         Double value = PIDParser.extractAndParse(rpmPid, "NODATA", "410C");

@@ -1,5 +1,7 @@
 package com.alpha.obd2logger;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -10,6 +12,8 @@ import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -30,6 +34,7 @@ import java.util.concurrent.TimeUnit;
  * sendCommand is synchronous: it writes the command and blocks on a
  * LinkedBlockingQueue that is fed by the GATT notification callback.
  */
+@SuppressLint("MissingPermission")
 public final class BleDriver extends ElmDriver {
 
     // Common ELM327 BLE UUIDs
@@ -54,6 +59,10 @@ public final class BleDriver extends ElmDriver {
     private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt g, int status, int newState) {
+            if (!hasBluetoothConnectPermission()) {
+                connected = false;
+                return;
+            }
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 g.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
@@ -63,6 +72,7 @@ public final class BleDriver extends ElmDriver {
 
         @Override
         public void onServicesDiscovered(BluetoothGatt g, int status) {
+            if (!hasBluetoothConnectPermission()) return;
             // Try standard service first
             writeChar = findCharacteristic(g, SERVICE_UUID, WRITE_UUID);
             notifyChar = findCharacteristic(g, SERVICE_UUID, NOTIFY_UUID);
@@ -150,7 +160,7 @@ public final class BleDriver extends ElmDriver {
 
     @Override
     public boolean connect() {
-        if (config.bluetoothDevice == null || context == null) {
+        if (config.bluetoothDevice == null || context == null || !hasBluetoothConnectPermission()) {
             return false;
         }
 
@@ -209,7 +219,7 @@ public final class BleDriver extends ElmDriver {
 
     @Override
     protected String sendCommand(String command) {
-        if (gatt == null || writeChar == null) {
+        if (gatt == null || writeChar == null || !hasBluetoothConnectPermission()) {
             return "";
         }
         commandLock.lock();
@@ -249,8 +259,15 @@ public final class BleDriver extends ElmDriver {
     }
 
     private BluetoothGattCharacteristic findCharacteristic(BluetoothGatt g, UUID serviceUuid, UUID charUuid) {
+        if (!hasBluetoothConnectPermission()) return null;
         android.bluetooth.BluetoothGattService service = g.getService(serviceUuid);
         if (service == null) return null;
         return service.getCharacteristic(charUuid);
+    }
+
+    private boolean hasBluetoothConnectPermission() {
+        return context != null && (Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+                || context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)
+                == PackageManager.PERMISSION_GRANTED);
     }
 }

@@ -189,9 +189,66 @@ public class AeroDensityTest {
     }
 
     @Test
+    public void commandedLambda_isLoggedButNeverUsedAsActualAfr() {
+        AirDensityMonitor mon = new AirDensityMonitor(null);
+        Map<String, Double> batch = new HashMap<>();
+        batch.put("Barometric Pressure", 100.0);
+        batch.put("Ambient Air Temp", 25.0);
+        batch.put("Intake Manifold Pressure", 100.0);
+        batch.put("Intake Air Temp", 30.0);
+        mon.onObdBatch(batch);
+
+        List<SensorSample> samples = new ArrayList<>();
+        mon.appendSamples(samples, 20.0, 2000.0, null, 1.0,
+                FuelMode.PETROL, 2000, 6000, true);
+
+        Double actualAfr = null, commandedAfr = null, dcafr = null, source = null;
+        for (SensorSample sample : samples) {
+            if ("derived_actual_afr".equals(sample.getPidKey())) actualAfr = sample.getValue();
+            if ("derived_commanded_afr".equals(sample.getPidKey())) commandedAfr = sample.getValue();
+            if ("derived_dcafr".equals(sample.getPidKey())) dcafr = sample.getValue();
+            if ("derived_lambda_source".equals(sample.getPidKey())) source = sample.getValue();
+        }
+        assertNull("commanded target is not actual AFR", actualAfr);
+        assertNull("commanded target must not drive DCAFR", dcafr);
+        assertNotNull("commanded AFR remains available for comparison", commandedAfr);
+        assertEquals(0.0, source, 0.0);
+    }
+
+    @Test
     public void humidityRatio_positive() {
         Double w = DerivedSensors.humidityRatio(101.325, 30.0, 70.0);
         assertNotNull(w);
         assertTrue(w > 0 && w < 0.05);
+    }
+
+    @Test
+    public void directObdValuesDriveAadAndMadFallback() {
+        AirDensityMonitor mon = new AirDensityMonitor(null);
+        mon.onObdValues(98.5, 30.0, 165.0, 55.0);
+        AirDensityMonitor.AirDensityResult result = mon.compute();
+        assertEquals(AirDensityMonitor.SRC_OBD, result.baroSource);
+        assertEquals(AirDensityMonitor.SRC_OBD, result.ambientTempSource);
+        assertTrue(result.mapFromObd);
+        assertTrue(result.iatFromObd);
+        assertNotNull(result.aad);
+        assertNotNull(result.mad);
+        assertTrue(result.mad > result.aad);
+    }
+
+    @Test
+    public void invalidObdUpdateDoesNotEraseLastGoodDensityInputs() {
+        AirDensityMonitor mon = new AirDensityMonitor(null);
+        mon.onObdValues(99.0, 27.0, 145.0, 42.0);
+        AirDensityMonitor.AirDensityResult before = mon.compute();
+
+        mon.onObdValues(Double.NaN, null, Double.NaN, null);
+        AirDensityMonitor.AirDensityResult after = mon.compute();
+
+        assertEquals(before.aad, after.aad, 0.0001);
+        assertEquals(before.mad, after.mad, 0.0001);
+        assertEquals(AirDensityMonitor.SRC_OBD, after.baroSource);
+        assertTrue(after.mapFromObd);
+        assertTrue(after.iatFromObd);
     }
 }

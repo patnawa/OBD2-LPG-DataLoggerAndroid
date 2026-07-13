@@ -1,12 +1,24 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.16.9** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.18.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
-แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมื่อนต่อ AI Agent ผ่าน REST API
+แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.16.9 — Interactive Live Graph
+## What's New in 3.18.0 — Next-generation Scanner Intelligence
+- Rebuilt connection setup around AUTO transport resolution with clearer adapter state and the actual connected transport exposed to the realtime API.
+- Improved automatic VIN, vehicle-brand, supported-PID, bitmap, targeted-probe, and per-VIN cache logic for broader vehicle compatibility.
+- Added a practical Custom PID manager with add/edit/delete, formula validation, raw-data testing, and support in LPG-only polling.
+- Upgraded DTC scanning presentation and decoding safeguards, and strengthened Battery/Crank test validation and guidance.
+- Corrected wideband PID `0x34` measured lambda/current decoding and separated PID `0x44` commanded equivalence ratio from measured AFR calculations.
+- Added Actual AFR, Commanded AFR, AFR source/quality log fields, gauge selection, and safe Live Map replay behavior.
+- Refined the responsive cockpit, header/VIN layout, language coverage, settings flow, history UI, and consistent light/dark surfaces.
+
+## Previous: 3.17.0 — UX Polish, Localization & Code Cleanup
+- Improved diagnostics safety, theme behavior, graph readability, lifecycle handling, and removed obsolete UI/code paths. See CHANGELOG.
+
+## Previous: 3.16.9 — Interactive Live Graph
 - Added pause/resume, touch inspection, and tap-to-toggle graph series on the Home live graph.
 
 ## Previous: 3.16.8 — Detailed Multi-color Live Graph
