@@ -262,6 +262,47 @@ public final class DtcReader {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    //  Progress Listener (real-time scan status callbacks)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Receives real-time updates as the DTC scan progresses through each
+     * protocol bus, mode, and module. All callbacks fire on the scanning
+     * thread — the UI layer must marshal to the main thread.
+     */
+    public interface DtcScanProgressListener {
+
+        /** A protocol bus is being probed (ATSP set, 0100 sent). */
+        void onProtocolProbeStart(String busLabel, String description, int busIndex, int totalBuses);
+
+        /** The protocol probe completed — did any ECU respond? */
+        void onProtocolProbeResult(String busLabel, boolean responded, int modulesFound);
+
+        /** Starting to scan a specific DTC mode on this bus. */
+        void onModeScanStart(String busLabel, String modeName);
+
+        /** A specific ECU module was detected with its DTC counts. */
+        void onModuleDetected(String busLabel, String canId, String moduleName,
+                              int storedCount, int pendingCount, int permanentCount);
+
+        /** A mode scan completed for this bus. */
+        void onModeScanComplete(String busLabel, String modeName, int dtcsFound);
+
+        /** The entire scan finished. */
+        void onScanComplete(int totalProtocols, int protocolsResponded, int totalDtcCount);
+    }
+
+    /** No-op listener to keep scanBuses simple. */
+    private static final DtcScanProgressListener NULL_LISTENER = new DtcScanProgressListener() {
+        @Override public void onProtocolProbeStart(String l, String d, int bi, int tb) {}
+        @Override public void onProtocolProbeResult(String l, boolean r, int m) {}
+        @Override public void onModeScanStart(String l, String m) {}
+        @Override public void onModuleDetected(String l, String c, String n, int s, int p, int per) {}
+        @Override public void onModeScanComplete(String l, String m, int d) {}
+        @Override public void onScanComplete(int tp, int pr, int td) {}
+    };
+
+    // ═══════════════════════════════════════════════════════════════
     //  Data Types
     // ═══════════════════════════════════════════════════════════════
 
@@ -385,7 +426,16 @@ public final class DtcReader {
      * Used by auto-scan on logger start.
      */
     public static DtcScanResult readAllDtcs(BaseDriver driver, boolean fordMsCan) {
+        return readAllDtcs(driver, fordMsCan, null);
+    }
+
+    /**
+     * Fast DTC scan with real-time progress callbacks.
+     */
+    public static DtcScanResult readAllDtcs(BaseDriver driver, boolean fordMsCan,
+                                            DtcScanProgressListener listener) {
         if (driver == null || !driver.isConnected()) {
+            if (listener != null) listener.onScanComplete(0, 0, 0);
             return DtcScanResult.empty();
         }
 
@@ -397,7 +447,7 @@ public final class DtcReader {
             buses.add(ALL_BUSES.get(0)); // MS-CAN
         }
 
-        return scanBuses(driver, buses, fordMsCan);
+        return scanBuses(driver, buses, fordMsCan, listener != null ? listener : NULL_LISTENER);
     }
 
     /**
@@ -409,7 +459,16 @@ public final class DtcReader {
      * @return comprehensive scan result with per-protocol status
      */
     public static DtcScanResult readAllDtcsDeep(BaseDriver driver, boolean fordMode) {
+        return readAllDtcsDeep(driver, fordMode, null);
+    }
+
+    /**
+     * Deep DTC scan with real-time progress callbacks.
+     */
+    public static DtcScanResult readAllDtcsDeep(BaseDriver driver, boolean fordMode,
+                                                DtcScanProgressListener listener) {
         if (driver == null || !driver.isConnected()) {
+            if (listener != null) listener.onScanComplete(0, 0, 0);
             return DtcScanResult.empty();
         }
 
@@ -418,7 +477,7 @@ public final class DtcReader {
         buses.add(FAST_BUSES.get(0)); // auto-detect first
         buses.addAll(ALL_BUSES);       // then all secondary buses
 
-        return scanBuses(driver, buses, fordMode);
+        return scanBuses(driver, buses, fordMode, listener != null ? listener : NULL_LISTENER);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -430,7 +489,8 @@ public final class DtcReader {
      * For each bus: switch protocol, scan Modes 03/07/0A with headers,
      * collect module info, restore auto protocol.
      */
-    private static DtcScanResult scanBuses(BaseDriver driver, List<ProtocolBus> buses, boolean fordMode) {
+    private static DtcScanResult scanBuses(BaseDriver driver, List<ProtocolBus> buses,
+                                           boolean fordMode, DtcScanProgressListener listener) {
         List<DtcCode> allStored = new ArrayList<>();
         List<DtcCode> allPending = new ArrayList<>();
         List<DtcCode> allPermanent = new ArrayList<>();
@@ -442,14 +502,30 @@ public final class DtcReader {
         driver.sendCommandRaw("ATSP0"); // start clean
         try { Thread.sleep(150); } catch (InterruptedException ignored) {}
 
-        for (ProtocolBus bus : buses) {
+        int totalBuses = buses.size();
+        for (int busIdx = 0; busIdx < buses.size(); busIdx++) {
+            ProtocolBus bus = buses.get(busIdx);
+            listener.onProtocolProbeStart(bus.label, bus.description, busIdx, totalBuses);
+
             BusScanResult result;
             try {
-                result = scanSingleBus(driver, bus, fordMode);
+                result = scanSingleBus(driver, bus, fordMode, listener);
             } catch (Exception e) {
                 android.util.Log.e("DtcReader", "Bus scan failed: " + bus.label, e);
                 statuses.add(new ProtocolScanStatus(bus, false, 0, 0));
+                listener.onProtocolProbeResult(bus.label, false, 0);
                 continue;
+            }
+
+            listener.onProtocolProbeResult(bus.label, result.anyResponse, result.modules.size());
+
+            // Fire module-detected callbacks for newly seen modules
+            for (ModuleInfo mod : result.modules) {
+                if (seenCanIds.add(mod.canId + "@" + mod.protocolLabel)) {
+                    allModules.add(mod);
+                    listener.onModuleDetected(bus.label, mod.canId, mod.moduleName,
+                            mod.storedDtcCount, mod.pendingDtcCount, mod.permanentDtcCount);
+                }
             }
 
             // Merge DTCs (deduplicate by code string)
@@ -461,13 +537,6 @@ public final class DtcReader {
             }
             for (DtcCode c : result.permanent) {
                 if (!containsCode(allPermanent, c)) allPermanent.add(c);
-            }
-
-            // Merge modules (deduplicate by CAN ID)
-            for (ModuleInfo mod : result.modules) {
-                if (seenCanIds.add(mod.canId + "@" + mod.protocolLabel)) {
-                    allModules.add(mod);
-                }
             }
 
             statuses.add(new ProtocolScanStatus(
@@ -486,6 +555,13 @@ public final class DtcReader {
         // Send a throwaway 0100 probe to trigger auto-detect re-lock
         driver.sendCommandRaw("0100");
         try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+
+        int totalDtcCount = allStored.size() + allPending.size() + allPermanent.size();
+        int protocolsResponded = 0;
+        for (ProtocolScanStatus s : statuses) {
+            if (s.responded) protocolsResponded++;
+        }
+        listener.onScanComplete(totalBuses, protocolsResponded, totalDtcCount);
 
         return new DtcScanResult(allStored, allPending, allPermanent, allModules, statuses);
     }
@@ -510,87 +586,94 @@ public final class DtcReader {
         }
     }
 
-    private static BusScanResult scanSingleBus(BaseDriver driver, ProtocolBus bus, boolean fordMode) {
-        List<DtcCode> stored = new ArrayList<>();
-        List<DtcCode> pending = new ArrayList<>();
-        List<DtcCode> permanent = new ArrayList<>();
-        Map<Integer, ModuleInfo.Builder> moduleBuilders = new LinkedHashMap<>();
-        boolean anyResponse = false;
+    private static BusScanResult scanSingleBus(BaseDriver driver, ProtocolBus bus,
+                                                   boolean fordMode, DtcScanProgressListener listener) {
+            List<DtcCode> stored = new ArrayList<>();
+            List<DtcCode> pending = new ArrayList<>();
+            List<DtcCode> permanent = new ArrayList<>();
+            Map<Integer, ModuleInfo.Builder> moduleBuilders = new LinkedHashMap<>();
+            boolean anyResponse = false;
 
-        // Switch to this protocol
-        driver.sendCommandRaw(bus.atSpCommand);
-        try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+            // Switch to this protocol
+            driver.sendCommandRaw(bus.atSpCommand);
+            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
 
-        // Apply custom baud params if needed (MS-CAN: AT PB 40 01)
-        if (bus.atPbParams != null) {
-            driver.sendCommandRaw(bus.atPbParams);
-            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
-        }
-
-        // ── ISO-TP flow control: enable auto flow control for multi-frame responses ──
-        // Without this, ECUs that return many DTCs in a single multi-frame response
-        // will be truncated at the first frame (7 bytes = ~3 DTCs max).
-        driver.sendCommandRaw("ATCFC1");
-        try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-
-        // ── Protocol probe: send 0100 to check if any ECU is alive on this bus ──
-        // This avoids false "NO DATA" results from a bus that has no ECU at all.
-        String probe = sendWithRetry(driver, "0100", 2, 150);
-        if (!isValidResponse(probe)) {
-            // No ECU responded on this protocol — skip DTC scan entirely
-            driver.sendCommandRaw("ATCFC0");
-            return new BusScanResult(stored, pending, permanent, new ArrayList<>(), false);
-        }
-        // A valid Mode 01 probe proves this bus responded even when the ECU has
-        // zero DTCs or does not implement one of Modes 07/0A.
-        anyResponse = true;
-
-        // Enable headers to see CAN IDs
-        driver.sendCommandRaw("ATH1");
-        try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-
-        try {
-            // Mode 03 — Stored DTCs (retry up to 3 times with backoff)
-            String raw03 = sendWithRetry(driver, "03", 3, 200);
-            if (isValidResponse(raw03)) {
-                ScanLineResult slr = parseWithModuleHeaders(raw03, "43", bus.label);
-                stored.addAll(slr.codes);
-                for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
-                    ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
-                        k -> new ModuleInfo.Builder(k, bus.label, fordMode));
-                    mb.storedOk = true;
-                    mb.storedDtcCount = e.getValue().size();
-                }
-                if (!slr.codes.isEmpty()) anyResponse = true;
+            // Apply custom baud params if needed (MS-CAN: AT PB 40 01)
+            if (bus.atPbParams != null) {
+                driver.sendCommandRaw(bus.atPbParams);
+                try { Thread.sleep(100); } catch (InterruptedException ignored) {}
             }
 
-            // Mode 07 — Pending DTCs
-            String raw07 = sendWithRetry(driver, "07", 3, 200);
-            if (isValidResponse(raw07)) {
-                ScanLineResult slr = parseWithModuleHeaders(raw07, "47", bus.label);
-                pending.addAll(slr.codes);
-                for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
-                    ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
-                        k -> new ModuleInfo.Builder(k, bus.label, fordMode));
-                    mb.pendingOk = true;
-                    mb.pendingDtcCount = e.getValue().size();
-                }
-            }
+            // ── ISO-TP flow control: enable auto flow control for multi-frame responses ──
+            // Without this, ECUs that return many DTCs in a single multi-frame response
+            // will be truncated at the first frame (7 bytes = ~3 DTCs max).
+            driver.sendCommandRaw("ATCFC1");
+            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
 
-            // Mode 0A — Permanent DTCs
-            String raw0A = sendWithRetry(driver, "0A", 3, 200);
-            if (isValidResponse(raw0A)) {
-                ScanLineResult slr = parseWithModuleHeaders(raw0A, "4A", bus.label);
-                permanent.addAll(slr.codes);
-                for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
-                    ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
-                        k -> new ModuleInfo.Builder(k, bus.label, fordMode));
-                    mb.permanentOk = true;
-                    mb.permanentDtcCount = e.getValue().size();
-                }
+            // ── Protocol probe: send 0100 to check if any ECU is alive on this bus ──
+            // This avoids false "NO DATA" results from a bus that has no ECU at all.
+            String probe = sendWithRetry(driver, "0100", 2, 150);
+            if (!isValidResponse(probe)) {
+                // No ECU responded on this protocol — skip DTC scan entirely
+                driver.sendCommandRaw("ATCFC0");
+                return new BusScanResult(stored, pending, permanent, new ArrayList<>(), false);
             }
+            // A valid Mode 01 probe proves this bus responded even when the ECU has
+            // zero DTCs or does not implement one of Modes 07/0A.
+            anyResponse = true;
 
-        } finally {
+            // Enable headers to see CAN IDs
+            driver.sendCommandRaw("ATH1");
+            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+
+            try {
+                // Mode 03 — Stored DTCs (retry up to 3 times with backoff)
+                listener.onModeScanStart(bus.label, "Mode 03 (Stored)");
+                String raw03 = sendWithRetry(driver, "03", 3, 200);
+                if (isValidResponse(raw03)) {
+                    ScanLineResult slr = parseWithModuleHeaders(raw03, "43", bus.label);
+                    stored.addAll(slr.codes);
+                    for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
+                        ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
+                            k -> new ModuleInfo.Builder(k, bus.label, fordMode));
+                        mb.storedOk = true;
+                        mb.storedDtcCount = e.getValue().size();
+                    }
+                    if (!slr.codes.isEmpty()) anyResponse = true;
+                }
+                listener.onModeScanComplete(bus.label, "Mode 03 (Stored)", stored.size());
+
+                // Mode 07 — Pending DTCs
+                listener.onModeScanStart(bus.label, "Mode 07 (Pending)");
+                String raw07 = sendWithRetry(driver, "07", 3, 200);
+                if (isValidResponse(raw07)) {
+                    ScanLineResult slr = parseWithModuleHeaders(raw07, "47", bus.label);
+                    pending.addAll(slr.codes);
+                    for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
+                        ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
+                            k -> new ModuleInfo.Builder(k, bus.label, fordMode));
+                        mb.pendingOk = true;
+                        mb.pendingDtcCount = e.getValue().size();
+                    }
+                }
+                listener.onModeScanComplete(bus.label, "Mode 07 (Pending)", pending.size());
+
+                // Mode 0A — Permanent DTCs
+                listener.onModeScanStart(bus.label, "Mode 0A (Permanent)");
+                String raw0A = sendWithRetry(driver, "0A", 3, 200);
+                if (isValidResponse(raw0A)) {
+                    ScanLineResult slr = parseWithModuleHeaders(raw0A, "4A", bus.label);
+                    permanent.addAll(slr.codes);
+                    for (Map.Entry<Integer, List<DtcCode>> e : slr.perModule.entrySet()) {
+                        ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(e.getKey(),
+                            k -> new ModuleInfo.Builder(k, bus.label, fordMode));
+                        mb.permanentOk = true;
+                        mb.permanentDtcCount = e.getValue().size();
+                    }
+                }
+                listener.onModeScanComplete(bus.label, "Mode 0A (Permanent)", permanent.size());
+
+            } finally {
             driver.sendCommandRaw("ATH0");
             // Restore flow control to default (off — let ELM327 handle normally)
             driver.sendCommandRaw("ATCFC0");

@@ -125,6 +125,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView dtcStatusText, dtcHealthTitle, dtcHealthDetail;
     private TextView dtcStoredCount, dtcPendingCount, dtcPermanentCount;
     private LinearLayout dtcListContainer, readinessContainer;
+    private ScanTrackerView dtcScanTracker;
     private com.google.android.material.card.MaterialCardView dtcVehicleCard;
     private TextView dtcVehicleBrand, dtcVehicleVin;
     private android.widget.ProgressBar dtcScanProgress;
@@ -1013,6 +1014,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcVehicleBrand = findViewById(R.id.dtcVehicleBrand);
         dtcVehicleVin = findViewById(R.id.dtcVehicleVin);
         dtcScanProgress = findViewById(R.id.dtcScanProgress);
+        // ScanTrackerView replaces the simple progress bar with a live per-protocol
+        // and per-module scan status panel.
+        dtcScanTracker = new ScanTrackerView(this);
+        if (dtcListContainer != null && dtcListContainer.getParent() instanceof ViewGroup) {
+            // Insert tracker above the DTC list container
+            ViewGroup dtcParent = (ViewGroup) dtcListContainer.getParent();
+            int idx = dtcParent.indexOfChild(dtcListContainer);
+            dtcParent.addView(dtcScanTracker, idx);
+        }
 
         // Logs tab
         txtSessionDuration = findViewById(R.id.txtSessionDuration);
@@ -5426,6 +5436,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcStatusText.setTextColor(getColorCompat(R.color.muted));
         showDtcScanningState();
         if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
+        if (dtcScanTracker != null) dtcScanTracker.reset();
         lastDtcScanWasDeep = false;
         dtcListContainer.removeAllViews();
 
@@ -5438,7 +5449,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             try {
                 boolean msCan = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
-                DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcs(activeDriver, msCan);
+                DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcs(activeDriver, msCan, dtcScanTracker);
                 List<DtcCode> stored = scanResult.storedDtcs;
                 List<DtcCode> pending = scanResult.pendingDtcs;
                 List<DtcCode> permanent = scanResult.permanentDtcs;
@@ -5486,6 +5497,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 
                 runOnUiThread(() -> {
                     if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
+                    // ScanTrackerView stays visible after scan completes so the user
+                    // can review the per-protocol/module progress. It will be reset
+                    // on the next scan.
                     displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
                     displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
                     updateDtcBadge(stored.size(), pending.size(), permanent.size());
@@ -5494,6 +5508,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 Log.e("OBD2Logger", "DTC scan failed", e);
                 runOnUiThread(() -> {
                     if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
+                    if (dtcScanTracker != null) dtcScanTracker.hide();
                     dtcStatusText.setText("DTC scan failed: "
                             + (e.getMessage() != null ? e.getMessage() : "adapter did not respond"));
                     dtcStatusText.setTextColor(getColorCompat(R.color.danger));
@@ -5990,6 +6005,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcStatusText.setTextColor(getColorCompat(R.color.warning));
         showDtcScanningState();
         if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
+        if (dtcScanTracker != null) dtcScanTracker.reset();
         lastDtcScanWasDeep = true;
         dtcListContainer.removeAllViews();
         Toast.makeText(this, "Deep scanning all protocols — this may take 20-30s...", Toast.LENGTH_SHORT).show();
@@ -6003,7 +6019,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 try { Thread.sleep(300); } catch (InterruptedException ignored) {}
             }
             try {
-                DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcsDeep(activeDriver, msCan);
+                DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcsDeep(activeDriver, msCan, dtcScanTracker);
                 List<DtcCode> stored = scanResult.storedDtcs;
                 List<DtcCode> pending = scanResult.pendingDtcs;
                 List<DtcCode> permanent = scanResult.permanentDtcs;
@@ -6047,6 +6063,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 Log.e("OBD2Logger", "Deep DTC scan failed", e);
                 runOnUiThread(() -> {
                     if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
+                    if (dtcScanTracker != null) dtcScanTracker.hide();
                     dtcStatusText.setText("Deep scan failed: "
                             + (e.getMessage() != null ? e.getMessage() : "adapter did not respond"));
                     dtcStatusText.setTextColor(getColorCompat(R.color.danger));

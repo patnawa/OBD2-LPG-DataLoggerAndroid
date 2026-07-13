@@ -1,10 +1,21 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.21.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
+**Version 3.22.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
 
 ---
+
+## What's New in 3.22.0 — Real-Time DTC Scan Tracker
+
+- **Live scan progress visualization** — the DTC scan tab now shows a real-time tracker panel instead of a blind spinning progress bar:
+  - Each protocol bus (HS-CAN, MS-CAN, CAN 29-bit, KWP2000, ISO 9141, J1850 VPW) appears as a row with animated status: ○ pending → ◐ scanning → ✓ responded / ● has DTCs / ✗ no response.
+  - Mode 03/07/0A status chips appear inline per protocol as each mode is scanned, showing clean/DTC count.
+  - Detected ECU modules appear as nested rows with CAN ID, module name, and per-mode DTC counts.
+  - Summary line shows live progress ("Scanning 2/7: MS-CAN") and final result.
+- Added `DtcScanProgressListener` callback interface to `DtcReader.java` for real-time scan events.
+- Created `ScanTrackerView.java` — a custom view with thread-safe UI updates.
+- Backward-compatible: existing `readAllDtcs()` and `readAllDtcsDeep()` overloads still work without a listener.
 
 ## What's New in 3.21.0 — Drive Insight Merge & Feature Completion
 

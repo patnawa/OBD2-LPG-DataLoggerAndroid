@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.22.0] - 2026-07-13 — Real-Time DTC Scan Tracker
+
+- Versioned the program as `3.22.0` (`versionCode 119`).
+- Added `DtcScanProgressListener` callback interface to `DtcReader.java` — fires real-time events as each protocol bus is probed, each DTC mode (03/07/0A) is scanned, and each ECU module is detected.
+- Added overloaded `readAllDtcs(driver, msCan, listener)` and `readAllDtcsDeep(driver, fordMode, listener)` that accept a progress listener; the original no-listener overloads remain backward-compatible.
+- Created `ScanTrackerView.java` — a visual scan tracker panel that replaces the single indeterminate ProgressBar with a live per-protocol and per-module status display:
+  - Each protocol bus shows as a row with an animated status icon: ○ pending → ◐ scanning (amber pulse) → ✓ responded (green) / ● has DTCs (red) / ✗ no response (grey).
+  - Per-protocol Mode 03/07/0A chips appear inline as each mode is scanned, showing clean/DTC count.
+  - Detected ECU modules appear as nested rows with CAN ID, module name, and per-mode DTC counts.
+  - Summary line shows live progress ("Scanning 2/7: MS-CAN") and final result ("Scan complete: 3 protocols responded, 5 DTCs found").
+  - Thread-safe: all UI updates marshalled to the main thread via Handler.
+- Wired `ScanTrackerView` into `MainActivity.java` — inserted above the DTC list container, reset on scan start, stays visible after scan completes for review, hidden on error.
+- No layout XML changes needed — ScanTrackerView is created programmatically and inserted into the existing DTC panel parent.
+
 ## [3.21.0] - 2026-07-13 — Drive Insight Merge & Feature Completion
 
 - Versioned the program as `3.21.0` (`versionCode 118`).
