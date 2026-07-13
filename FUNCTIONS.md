@@ -1,4 +1,4 @@
-# TunerMap Pro v3.9.0 — Full Function List
+# TunerMap Pro v3.23.0 — Full Function List
 
 ### LIVE DATA / REAL-TIME MONITORING
 | Dashboard     | 2x4 telemetry grid: RPM \| Speed \| Coolant \| Voltage \| km/L \| Boost \| DPF \| DTC |
@@ -38,6 +38,8 @@
 | Deep Scan     | 7 protocol buses: HS-CAN, MS-CAN, CAN 29-bit, CAN 250k, KWP2000, ISO 9141, J1850 VPW |
 | ECU Database  | 40+ CAN IDs: Toyota, Honda, Mazda, Isuzu, Nissan, Mitsubishi, Ford |
 | DTC Enrich    | 157 codes with causes, fixes, emissions flags, drive cycles |
+| DTC OTA Update| Free GitHub-based OTA — downloads updated DTC JSON files from raw.githubusercontent.com with versioned manifest. Throttled to 1 check per 6h. Atomic write with JSON validation. No backend required. |
+| DTC Telemetry | Crowdsourced unknown-DTC reporting — auto-creates GitHub Issues for codes not in local database. Rate-limited to 1 report per unique code per 7 days. No VIN or personal data sent. |
 | Scan Compare  | NEW + CLEARED vs previous session |
 | Clear DTC     | Mode 04 with confirmation |
 | Freeze Frame  | Per-DTC snapshot, 10 PIDs |
@@ -135,3 +137,39 @@
 | Feature Flags  | 4 toggles: Turbo, Fuel, DPF, Custom PID — instant-save |
 | Deep Scan      | Auto-enabled for diesel; 7 buses with scan status table |
 | Auto-Detect    | Diesel from VIN WMI (MPA/MNB/MMB/MR0) — DPF+DeepScan auto-on |
+
+### DTC OTA UPDATE SYSTEM (v3.23.0)
+| Component      | Description |
+|----------------|-------------|
+| DtcUpdater     | Background OTA — fetches manifest.json from GitHub, compares versions, downloads only changed files. 6h throttle. Atomic temp-file + rename. JSON validated before commit. |
+| Manifest       | `dtc_updates/manifest.json` — versioned file list. Bump version number to trigger update. |
+| Storage        | OTA files saved to app internal storage (getFilesDir). Loaded before bundled assets. |
+| TelemetryClient| Auto-creates GitHub Issue when unknown DTC encountered. 7-day per-code dedup. No VIN/personal data. Optional GITHUB_TOKEN BuildConfig for higher rate limits. |
+| DtcDatabase    | Modified to check internal storage (OTA) first, then fall back to bundled assets. Added getAppContext() + getCurrentBrand() for telemetry. |
+
+### VEHICLE BRAND SUPPORT (37 brands via VIN WMI)
+| Region         | Brands |
+|----------------|--------|
+| Japanese       | Toyota, Lexus, Honda, Isuzu, Nissan, Mitsubishi, Mazda, Suzuki, Subaru, Hino |
+| Korean         | Hyundai, Kia |
+| European       | Volvo, BMW, Mercedes-Benz, Volkswagen, Audi, Porsche, Renault, Peugeot, Citroën, Fiat, Land Rover |
+| American       | Ford, Chevrolet, Jeep, Dodge, Chrysler, Tesla |
+| Chinese EV     | BYD, GWM (Haval/Ora), NETA (Hozon), AION (GAC), Deepal (Changan), MG (SAIC) |
+| Indian         | Tata, Mahindra |
+
+### OBD2 PROTOCOL SUPPORT (13 protocols)
+| Protocol                  | ELM ATSP |
+|---------------------------|----------|
+| Auto                      | ATSP0 |
+| SAE J1850 PWM             | ATSP1 |
+| SAE J1850 VPW             | ATSP2 |
+| ISO 9141-2                | ATSP3 |
+| ISO 14230-4 KWP 5-baud    | ATSP4 |
+| ISO 14230-4 KWP fast      | ATSP5 |
+| ISO 15765-4 CAN 11-bit 500| ATSP6 |
+| ISO 15765-4 CAN 29-bit 500| ATSP7 |
+| ISO 15765-4 CAN 11-bit 250| ATSP8 |
+| ISO 15765-4 CAN 29-bit 250| ATSP9 |
+| SAE J1939 CAN             | ATSPA |
+| User1 CAN                 | ATSPB |
+| User2 CAN                 | ATSPC |
