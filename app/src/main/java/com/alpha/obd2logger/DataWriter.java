@@ -9,6 +9,7 @@ import android.provider.MediaStore;
 import android.util.Log;
 
 import org.json.JSONException;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedWriter;
@@ -28,10 +29,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.Set;
+import java.util.LinkedHashSet;
 
 public final class DataWriter implements AutoCloseable {
     private static final String TAG = "DataWriter";
     private static final String DOWNLOAD_SUBDIR = "TunerMapPro";
+    private static final int SUMMARY_SCHEMA_VERSION = 2;
+    private static final int SUMMARY_CHECKPOINT_RECORDS = 10;
 
     private final Context context;
     private final String vin;
@@ -39,9 +43,17 @@ public final class DataWriter implements AutoCloseable {
     private final File jsonlFile;
     private final Uri csvUri;
     private final Uri jsonlUri;
+    private final File summaryFile;
+    private final Uri summaryUri;
+    private final DownloadTarget summaryTarget;
     private final BufferedWriter csvWriter;
     private final BufferedWriter jsonlWriter;
     private final List<PIDDefinition> pids;
+    private final String sessionId;
+    private final String transport;
+    private final String protocol;
+    private final String adapter;
+    private final long configuredSampleIntervalMs;
     private int recordsSinceFlush = 0;
 
     // Ordered column keys for the CSV/JSONL body. Built once at construction from
@@ -53,27 +65,50 @@ public final class DataWriter implements AutoCloseable {
     private final Map<String, String> columnLabel = new LinkedHashMap<>();
 
     public DataWriter(Context context, String sessionId) throws IOException {
-        this(context, sessionId, PIDCatalogue.getAll(), null);
+        this(context, sessionId, PIDCatalogue.getAll(), null, null, null);
     }
 
     public DataWriter(Context context, String sessionId, List<PIDDefinition> pids) throws IOException {
-        this(context, sessionId, pids, null);
+        this(context, sessionId, pids, null, null, null);
     }
 
     public DataWriter(Context context, String sessionId, List<PIDDefinition> pids, String vin) throws IOException {
+        this(context, sessionId, pids, vin, null, null);
+    }
+
+    public DataWriter(Context context, String sessionId, List<PIDDefinition> pids, String vin,
+                      LoggerConfig config, String adapterDetails) throws IOException {
         this.context = context.getApplicationContext();
         this.pids = pids;
         this.vin = vin;
+        this.sessionId = (sessionId == null || sessionId.trim().isEmpty())
+                ? "session_" + System.currentTimeMillis() : sessionId.trim();
+        this.transport = resolvedTransport(config);
+        this.protocol = config != null && config.obdProtocol != null
+                ? config.obdProtocol.toString() : "unknown";
+        this.adapter = adapterDetails == null || adapterDetails.trim().isEmpty()
+                ? "unknown" : adapterDetails.trim();
+        this.configuredSampleIntervalMs = config != null ? config.sampleIntervalMs : 0L;
 
         buildColumns(pids);
 
-        DownloadTarget csvTarget = createDownloadTarget(sessionId + "_obd2.csv", "text/csv");
-        DownloadTarget jsonlTarget = createDownloadTarget(sessionId + "_obd2.jsonl", "application/x-ndjson");
+        DownloadTarget csvTarget = createDownloadTarget(this.sessionId + "_obd2.csv", "text/csv");
+        DownloadTarget jsonlTarget = createDownloadTarget(this.sessionId + "_obd2.jsonl", "application/x-ndjson");
+        DownloadTarget createdSummaryTarget = null;
+        try {
+            createdSummaryTarget = createDownloadTarget(this.sessionId + "_summary.json", "application/json");
+        } catch (IOException e) {
+            // A summary is valuable but must never prevent raw logs from starting.
+            Log.w(TAG, "Could not create summary target; raw logging will continue", e);
+        }
 
         this.csvFile = csvTarget.file;
         this.jsonlFile = jsonlTarget.file;
         this.csvUri = csvTarget.uri;
         this.jsonlUri = jsonlTarget.uri;
+        this.summaryTarget = createdSummaryTarget;
+        this.summaryFile = createdSummaryTarget != null ? createdSummaryTarget.file : null;
+        this.summaryUri = createdSummaryTarget != null ? createdSummaryTarget.uri : null;
         this.csvWriter = new BufferedWriter(new OutputStreamWriter(csvTarget.openOutputStream(), StandardCharsets.UTF_8));
         try {
             this.jsonlWriter = new BufferedWriter(new OutputStreamWriter(jsonlTarget.openOutputStream(), StandardCharsets.UTF_8));
@@ -90,6 +125,31 @@ public final class DataWriter implements AutoCloseable {
         csvWriter.write(header.toString());
         csvWriter.newLine();
         csvWriter.flush();
+        try {
+            writeSummaryCheckpoint(false);
+        } catch (IOException checkpointError) {
+            Log.w(TAG, "Initial summary checkpoint failed; raw logging will continue",
+                    checkpointError);
+        }
+    }
+
+    private static String resolvedTransport(LoggerConfig config) {
+        String actual = DriverFactory.getLastResolvedTransport();
+        if (actual != null && !actual.trim().isEmpty()
+                && !"UNKNOWN".equalsIgnoreCase(actual)) {
+            return actual;
+        }
+        return config != null && config.transportMode != null
+                ? config.transportMode.getValue() : "unknown";
+    }
+
+    public static String describeAdapter(BaseDriver driver) {
+        if (driver == null) return "unknown";
+        if (driver instanceof ElmDriver) {
+            String details = ((ElmDriver) driver).getAdapterDetails();
+            if (details != null && !details.trim().isEmpty()) return details.trim();
+        }
+        return driver.getClass().getSimpleName();
     }
 
     /**
@@ -152,6 +212,7 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("map_rpm_cell", "Map RPM Cell (rpm)");
         registerDerived("map_axis_value", "Map Axis Value");
         registerDerived("map_axis_source", "Map Axis Source (1=MAP 2=LOAD)");
+        registerDerived("map_value_source", "MAP Value Source (0=missing 1=measured 2=synthesized)");
         registerDerived("map_trim_total", "Map Trim Total STFT+LTFT (%)");
         registerDerived("map_closed_loop", "Map Closed Loop (1/0)");
         registerDerived("map_warm", "Map Engine Warm (1/0)");
@@ -195,6 +256,21 @@ public final class DataWriter implements AutoCloseable {
         for (SensorSample sample : record.getSamples()) {
             sampleMap.put(sample.getPidKey(), sample);
         }
+        SensorSample mapSample = sampleMap.get("01_0B");
+        double mapSourceCode = 0.0;
+        String mapSourceStatus = "unavailable";
+        if (mapSample != null && mapSample.getValue() != null) {
+            if ("synth".equalsIgnoreCase(mapSample.getStatus())
+                    || "synthesized".equalsIgnoreCase(mapSample.getStatus())) {
+                mapSourceCode = 2.0;
+                mapSourceStatus = "synthesized";
+            } else {
+                mapSourceCode = 1.0;
+                mapSourceStatus = "measured";
+            }
+        }
+        sampleMap.put("map_value_source", new SensorSample("map_value_source",
+                "MAP Value Source", mapSourceCode, "code", mapSourceStatus));
 
         StringBuilder csvRow = new StringBuilder();
         csvRow.append(csvEscape(record.getTimestamp()))
@@ -205,6 +281,7 @@ public final class DataWriter implements AutoCloseable {
                 .append(',').append(csvEscape(record.getVin()));
 
         JSONObject json = new JSONObject();
+        JSONObject quality = new JSONObject();
         try {
             json.put("timestamp", record.getTimestamp());
             json.put("elapsed_s", record.getElapsedS());
@@ -222,9 +299,19 @@ public final class DataWriter implements AutoCloseable {
             csvRow.append(',').append(value == null ? "" : value);
             try {
                 json.put(key, value == null ? JSONObject.NULL : value);
+                if (sample != null && sample.getStatus() != null
+                        && !sample.getStatus().isEmpty()
+                        && !"ok".equalsIgnoreCase(sample.getStatus())) {
+                    quality.put(key, sample.getStatus());
+                }
             } catch (JSONException e) {
                 throw new IOException("Failed to add PID JSON field " + key, e);
             }
+        }
+        try {
+            if (quality.length() > 0) json.put("_quality", quality);
+        } catch (JSONException e) {
+            throw new IOException("Failed to add JSON quality metadata", e);
         }
 
         csvWriter.write(csvRow.toString());
@@ -238,7 +325,16 @@ public final class DataWriter implements AutoCloseable {
             jsonlWriter.flush();
         }
 
-        summary.add(record);
+        summary.add(record, sampleMap, loopStatus);
+        if (summary.getRecords() % SUMMARY_CHECKPOINT_RECORDS == 0) {
+            try {
+                writeSummaryCheckpoint(false);
+            } catch (IOException checkpointError) {
+                // Raw CSV/JSONL is the source of truth; a checkpoint failure
+                // must not stop a live vehicle logging session.
+                Log.w(TAG, "Summary checkpoint failed non-fatally", checkpointError);
+            }
+        }
     }
 
     /**
@@ -246,49 +342,162 @@ public final class DataWriter implements AutoCloseable {
      * samples in every record. Produces the session {@code _summary.json} on close so
      * users get trip stats (including fuel used) without re-parsing the whole CSV.
      */
-    private static final class SummaryCollector {
-        private final Map<String, Double> min = new LinkedHashMap<>();
-        private final Map<String, Double> max = new LinkedHashMap<>();
-        private final Map<String, Double> sum = new LinkedHashMap<>();
-        private final Map<String, Integer> count = new LinkedHashMap<>();
-        private int records = 0;
-        private double fuelLiters = 0.0;   // accumulated from L/100km × distance
-        private double distanceKm = 0.0;
+    private static final class ColumnStats {
+        String name = "";
+        String unit = "";
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
+        double sum = 0.0;
+        double sumSquares = 0.0;
+        int count = 0;
+        final Map<String, Integer> statuses = new LinkedHashMap<>();
 
-        void add(DataRecord record) {
-            records++;
-            Map<String, SensorSample> byKey = new LinkedHashMap<>();
-            for (SensorSample s : record.getSamples()) byKey.put(s.getPidKey(), s);
-
-            for (SensorSample s : record.getSamples()) {
-                Double v = s.getValue();
-                if (v == null || Double.isNaN(v) || Double.isInfinite(v)) continue;
-                String k = s.getPidKey();
-                if (!count.containsKey(k)) { min.put(k, v); max.put(k, v); sum.put(k, 0.0); count.put(k, 0); }
-                if (v < min.get(k)) min.put(k, v);
-                if (v > max.get(k)) max.put(k, v);
-                sum.put(k, sum.get(k) + v);
-                count.put(k, count.get(k) + 1);
+        void add(SensorSample sample) {
+            if (sample == null) return;
+            if (sample.getName() != null && !sample.getName().isEmpty()) name = sample.getName();
+            if (sample.getUnit() != null && !sample.getUnit().isEmpty()) unit = sample.getUnit();
+            String status = sample.getStatus();
+            if (status != null && !status.isEmpty()) {
+                statuses.put(status, statuses.getOrDefault(status, 0) + 1);
             }
-
-            // Integrate fuel used if we have km/L and speed over the sample interval.
-            Double kml = byKey.containsKey("derived_fuel_kmL") ? byKey.get("derived_fuel_kmL").getValue() : null;
-            Double speed = byKey.containsKey("01_0D") ? byKey.get("01_0D").getValue() : null;
-            if (kml != null && kml > 0 && speed != null && speed >= 0) {
-                // elapsed_s is absolute; approximate dt from distance handled by caller via markDt.
-                double km = speed / 3600.0; // km travelled in one second
-                distanceKm += km;
-                fuelLiters += km / kml;
-            }
+            Double value = sample.getValue();
+            if (value == null || !Double.isFinite(value)) return;
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+            sum += value;
+            sumSquares += value * value;
+            count++;
         }
+
+        double average() { return count == 0 ? 0.0 : sum / count; }
+
+        double standardDeviation() {
+            if (count < 2) return 0.0;
+            double variance = (sumSquares - (sum * sum / count)) / (count - 1);
+            return Math.sqrt(Math.max(0.0, variance));
+        }
+    }
+
+    private static final class SummaryCollector {
+        private static final double MAX_INTEGRATION_GAP_S = 30.0;
+        private final Map<String, ColumnStats> columns = new LinkedHashMap<>();
+        private final Set<String> fuelModes = new LinkedHashSet<>();
+        private final Set<String> brands = new LinkedHashSet<>();
+        private final Set<String> vins = new LinkedHashSet<>();
+        private int records = 0;
+        private int closedLoopRecords = 0;
+        private int openLoopRecords = 0;
+        private int unknownLoopRecords = 0;
+        private int integrationGapCount = 0;
+        private double distanceKm = 0.0;
+        private double fuelLiters = 0.0;
+        private double distanceIntegratedSeconds = 0.0;
+        private double fuelIntegratedSeconds = 0.0;
+        private double fuelRatePidSeconds = 0.0;
+        private double fuelEconomyFallbackSeconds = 0.0;
+        private Double previousElapsedS = null;
+        private Double previousSpeedKmh = null;
+        private Double previousFuelLph = null;
+        private String previousFuelSource = "unavailable";
+        private String startedAt = "";
+        private String endedAt = "";
+        private double lastElapsedS = 0.0;
+
+        void add(DataRecord record, Map<String, SensorSample> byKey, String loopStatus) {
+            if (record == null) return;
+            records++;
+            if (records == 1) startedAt = safe(record.getTimestamp());
+            endedAt = safe(record.getTimestamp());
+            lastElapsedS = Math.max(lastElapsedS, record.getElapsedS());
+            addNonPlaceholder(fuelModes, record.getFuelMode());
+            addNonPlaceholder(brands, record.getVehicleBrand());
+            addNonPlaceholder(vins, record.getVin());
+
+            if ("Closed".equalsIgnoreCase(loopStatus)) closedLoopRecords++;
+            else if ("Open".equalsIgnoreCase(loopStatus)) openLoopRecords++;
+            else unknownLoopRecords++;
+
+            for (Map.Entry<String, SensorSample> entry : byKey.entrySet()) {
+                columns.computeIfAbsent(entry.getKey(), ignored -> new ColumnStats())
+                        .add(entry.getValue());
+            }
+
+            Double speed = value(byKey, "01_0D");
+            Double directFuelLph = value(byKey, "01_5E");
+            Double kml = value(byKey, "derived_fuel_kmL");
+            Double fuelLph = validNonNegative(directFuelLph) ? directFuelLph : null;
+            String fuelSource = fuelLph != null ? "engine_fuel_rate_pid" : "unavailable";
+            if (fuelLph == null && validNonNegative(speed) && kml != null && kml > 0) {
+                fuelLph = speed / kml;
+                fuelSource = "speed_kml_fallback";
+            }
+
+            if (previousElapsedS != null) {
+                double dt = record.getElapsedS() - previousElapsedS;
+                if (dt > 0 && dt <= MAX_INTEGRATION_GAP_S) {
+                    Double avgSpeed = averageAvailable(previousSpeedKmh, speed);
+                    if (avgSpeed != null && avgSpeed >= 0) {
+                        distanceKm += avgSpeed * dt / 3600.0;
+                        distanceIntegratedSeconds += dt;
+                    }
+                    Double avgFuelLph = averageAvailable(previousFuelLph, fuelLph);
+                    if (avgFuelLph != null && avgFuelLph >= 0) {
+                        fuelLiters += avgFuelLph * dt / 3600.0;
+                        fuelIntegratedSeconds += dt;
+                        if ("engine_fuel_rate_pid".equals(previousFuelSource)
+                                || "engine_fuel_rate_pid".equals(fuelSource)) {
+                            fuelRatePidSeconds += dt;
+                        } else {
+                            fuelEconomyFallbackSeconds += dt;
+                        }
+                    }
+                } else if (dt > MAX_INTEGRATION_GAP_S) {
+                    integrationGapCount++;
+                }
+            }
+            previousElapsedS = record.getElapsedS();
+            previousSpeedKmh = validNonNegative(speed) ? speed : null;
+            previousFuelLph = validNonNegative(fuelLph) ? fuelLph : null;
+            previousFuelSource = fuelSource;
+        }
+
+        private static Double value(Map<String, SensorSample> samples, String key) {
+            SensorSample sample = samples.get(key);
+            return sample != null ? sample.getValue() : null;
+        }
+
+        private static boolean validNonNegative(Double value) {
+            return value != null && Double.isFinite(value) && value >= 0;
+        }
+
+        private static Double averageAvailable(Double a, Double b) {
+            if (validNonNegative(a) && validNonNegative(b)) return (a + b) / 2.0;
+            if (validNonNegative(a)) return a;
+            if (validNonNegative(b)) return b;
+            return null;
+        }
+
+        private static void addNonPlaceholder(Set<String> values, String value) {
+            if (value == null) return;
+            String clean = value.trim();
+            if (clean.isEmpty() || "unknown".equalsIgnoreCase(clean)
+                    || "auto".equalsIgnoreCase(clean)) return;
+            values.add(clean);
+        }
+
+        private static String safe(String value) { return value == null ? "" : value; }
 
         int getRecords() { return records; }
         double getDistanceKm() { return distanceKm; }
         double getFuelLiters() { return fuelLiters; }
-        Set<String> keys() { return count.keySet(); }
-        double avg(String k) { return count.get(k) == 0 ? 0 : sum.get(k) / count.get(k); }
-        double getMin(String k) { return min.getOrDefault(k, 0.0); }
-        double getMax(String k) { return max.getOrDefault(k, 0.0); }
+        double getDurationS() { return lastElapsedS; }
+        String getStartedAt() { return startedAt; }
+        String getEndedAt() { return endedAt; }
+        Set<String> getFuelModes() { return fuelModes; }
+        Set<String> getBrands() { return brands; }
+        Set<String> getVins() { return vins; }
+        Set<String> keys() { return columns.keySet(); }
+        ColumnStats stats(String key) { return columns.get(key); }
     }
 
     private final SummaryCollector summary = new SummaryCollector();
@@ -307,6 +516,14 @@ public final class DataWriter implements AutoCloseable {
 
     public Uri getJsonlUri() {
         return jsonlUri;
+    }
+
+    public File getSummaryFile() {
+        return summaryFile;
+    }
+
+    public Uri getSummaryUri() {
+        return summaryUri;
     }
 
     public String getCsvLocation() {
@@ -352,40 +569,121 @@ public final class DataWriter implements AutoCloseable {
             markDownloadComplete(jsonlUri);
         }
         try {
-            writeSummary();
+            writeSummaryCheckpoint(true);
         } catch (IOException e) {
-            if (failure == null) failure = e;
             Log.w(TAG, "Failed to write session summary", e);
         }
+        if (summaryUri != null) markDownloadComplete(summaryUri);
         if (failure != null) {
             throw failure;
         }
     }
 
-    private void writeSummary() throws IOException {
-        if (summary.getRecords() == 0) return;
+    private synchronized void writeSummaryCheckpoint(boolean complete) throws IOException {
+        if (summaryTarget == null) return;
         JSONObject root = new JSONObject();
         try {
+            root.put("schema_version", SUMMARY_SCHEMA_VERSION);
+            root.put("app_version", BuildConfig.VERSION_NAME);
+            root.put("session_id", sessionId);
+            root.put("complete", complete);
+            root.put("checkpoint_sequence", summary.getRecords() / SUMMARY_CHECKPOINT_RECORDS);
+            root.put("updated_at", isoTimestampNow());
             root.put("records", summary.getRecords());
-            root.put("distance_km", Math.round(summary.getDistanceKm() * 100.0) / 100.0);
-            root.put("fuel_liters", Math.round(summary.getFuelLiters() * 100.0) / 100.0);
+            root.put("started_at", summary.getStartedAt());
+            root.put("ended_at", summary.getEndedAt());
+            root.put("duration_s", round(summary.getDurationS(), 3));
+
+            JSONObject files = new JSONObject();
+            files.put("csv", sessionId + "_obd2.csv");
+            files.put("jsonl", sessionId + "_obd2.jsonl");
+            files.put("summary", sessionId + "_summary.json");
+            root.put("files", files);
+
+            JSONObject vehicle = new JSONObject();
+            vehicle.put("configured_vin", vin == null ? "UNKNOWN" : vin);
+            vehicle.put("observed_vins", jsonArray(summary.getVins()));
+            vehicle.put("observed_brands", jsonArray(summary.getBrands()));
+            vehicle.put("fuel_modes", jsonArray(summary.getFuelModes()));
+            root.put("vehicle", vehicle);
+
+            JSONObject connection = new JSONObject();
+            connection.put("transport", transport);
+            connection.put("protocol", protocol);
+            connection.put("adapter", adapter);
+            connection.put("configured_sample_interval_ms", configuredSampleIntervalMs);
+            root.put("connection", connection);
+
+            JSONObject trip = new JSONObject();
+            trip.put("distance_km", round(summary.getDistanceKm(), 4));
+            trip.put("fuel_liters", round(summary.getFuelLiters(), 4));
+            trip.put("average_km_l", summary.getFuelLiters() > 0
+                    ? round(summary.getDistanceKm() / summary.getFuelLiters(), 3)
+                    : JSONObject.NULL);
+            trip.put("distance_integrated_seconds", round(summary.distanceIntegratedSeconds, 3));
+            trip.put("fuel_integrated_seconds", round(summary.fuelIntegratedSeconds, 3));
+            trip.put("fuel_rate_pid_seconds", round(summary.fuelRatePidSeconds, 3));
+            trip.put("fuel_economy_fallback_seconds", round(summary.fuelEconomyFallbackSeconds, 3));
+            trip.put("integration_gap_count", summary.integrationGapCount);
+            trip.put("method", "elapsed_time_trapezoidal");
+            root.put("trip", trip);
+
+            JSONObject loop = new JSONObject();
+            loop.put("closed_records", summary.closedLoopRecords);
+            loop.put("open_records", summary.openLoopRecords);
+            loop.put("unknown_records", summary.unknownLoopRecords);
+            root.put("loop_status", loop);
+
             JSONObject stats = new JSONObject();
-            for (String k : summary.keys()) {
+            JSONArray emptyColumns = new JSONArray();
+            long validValues = 0;
+            int activeColumns = 0;
+            for (String k : columnKeys) {
+                ColumnStats cs = summary.stats(k);
+                if (cs == null) {
+                    emptyColumns.put(k);
+                    continue;
+                }
+                activeColumns++;
+                validValues += cs.count;
                 JSONObject s = new JSONObject();
-                s.put("min", summary.getMin(k));
-                s.put("avg", Math.round(summary.avg(k) * 10000.0) / 10000.0);
-                s.put("max", summary.getMax(k));
+                s.put("name", cs.name.isEmpty() ? columnLabel.get(k) : cs.name);
+                s.put("unit", cs.unit);
+                s.put("count", cs.count);
+                s.put("null_count", Math.max(0, summary.getRecords() - cs.count));
+                s.put("coverage_pct", summary.getRecords() > 0
+                        ? round(cs.count * 100.0 / summary.getRecords(), 2) : 0.0);
+                if (cs.count > 0) {
+                    s.put("min", cs.min);
+                    s.put("avg", round(cs.average(), 4));
+                    s.put("max", cs.max);
+                    s.put("stddev", round(cs.standardDeviation(), 4));
+                }
+                JSONObject statuses = new JSONObject();
+                for (Map.Entry<String, Integer> status : cs.statuses.entrySet()) {
+                    statuses.put(status.getKey(), status.getValue());
+                }
+                if (statuses.length() > 0) s.put("status_counts", statuses);
                 stats.put(k, s);
+                if (cs.count == 0) emptyColumns.put(k);
             }
             root.put("columns", stats);
+
+            JSONObject quality = new JSONObject();
+            quality.put("declared_columns", columnKeys.size());
+            quality.put("observed_columns", activeColumns);
+            quality.put("empty_columns", emptyColumns);
+            quality.put("valid_numeric_values", validValues);
+            long possibleValues = (long) summary.getRecords() * activeColumns;
+            quality.put("overall_coverage_pct", possibleValues > 0
+                    ? round(validValues * 100.0 / possibleValues, 2) : 0.0);
+            quality.put("formula_profile", "tunermap_summary_v2_sae_j1979");
+            root.put("data_quality", quality);
         } catch (JSONException e) {
             throw new IOException("Failed to build summary", e);
         }
 
-        String baseName = (csvFile != null ? csvFile.getName() : "session_obd2.csv")
-                .replace("_obd2.csv", "");
-        DownloadTarget target = createDownloadTarget(baseName + "_summary.json", "application/json");
-        try (OutputStream out = target.openOutputStream();
+        try (OutputStream out = summaryTarget.openOutputStream();
              Writer w = new OutputStreamWriter(out, StandardCharsets.UTF_8)) {
             String json;
             try {
@@ -396,7 +694,29 @@ public final class DataWriter implements AutoCloseable {
             w.write(json);
             w.flush();
         }
-        if (target.uri != null) markDownloadComplete(target.uri);
+    }
+
+    private static JSONArray jsonArray(Set<String> values) {
+        JSONArray array = new JSONArray();
+        if (values != null) {
+            for (String value : values) array.put(value);
+        }
+        return array;
+    }
+
+    private static double round(double value, int decimals) {
+        double factor = Math.pow(10.0, decimals);
+        return Math.round(value * factor) / factor;
+    }
+
+    /** RFC 3339 timestamp compatible with Android API 23 (pattern X needs API 24). */
+    private static String isoTimestampNow() {
+        String raw = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US)
+                .format(new Date());
+        if (raw.length() >= 5) {
+            return raw.substring(0, raw.length() - 2) + ":" + raw.substring(raw.length() - 2);
+        }
+        return raw;
     }
 
     private DownloadTarget createDownloadTarget(String displayName, String mimeType) throws IOException {

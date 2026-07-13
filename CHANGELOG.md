@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.19.0] - 2026-07-13 — Reliable Session Intelligence & Output Schema v2
+
+### Session Summary v2
+- Session summaries now use the exact session ID (`<session>_summary.json`) even when logs are written through Android SAF; generic `session_summary (N).json` collisions are eliminated.
+- Added `schema_version`, `app_version`, session identity, completion/checkpoint state, timestamps, duration, raw-file references, vehicle/fuel metadata, and connection/adapter/protocol metadata.
+- Added per-column sample count, null count, coverage percentage, min/average/max, standard deviation, unit, and status/source counts.
+- Added declared/observed/empty-column inventory and overall numeric coverage so a three-sample MAP cannot appear representative of an entire session.
+
+### Accurate Trip Integration
+- Replaced the fixed one-second assumption with real `elapsed_s` deltas and trapezoidal speed/fuel integration.
+- Prefer standardized Engine Fuel Rate PID `0x5E` for fuel used, including idle consumption; fall back to speed/kmL only when the PID is unavailable.
+- Added distance/fuel integrated-duration, integration-gap count, fuel source duration, method, and distance-weighted average km/L.
+- Gaps longer than 30 seconds are explicitly counted and excluded instead of integrating stale values.
+
+### Crash Recovery & Log Provenance
+- Summary checkpoints are rewritten every 10 records with `complete=false`; graceful close finalizes the same file with `complete=true`.
+- Summary write failures are non-fatal and can no longer stop CSV/JSONL logging.
+- JSONL now includes compact `_quality` metadata for non-OK samples.
+- CSV/JSONL include `map_value_source` (`0=missing`, `1=measured`, `2=synthesized`) so estimated MAP is never silently presented as sensor data.
+- Added regression tests for elapsed-time integration, PID 0x5E fuel use, coverage/null accounting, MAP provenance, checkpoint recovery, and session-linked filenames.
+
 ## [3.18.0] - 2026-07-13 — Next-generation Scanner Intelligence & Wideband Integrity
 
 ### Connection, VIN & PID Discovery

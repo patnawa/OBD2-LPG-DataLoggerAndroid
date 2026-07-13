@@ -1,12 +1,19 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.18.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.19.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.18.0 — Next-generation Scanner Intelligence
+## What's New in 3.19.0 — Reliable Session Intelligence
+- Rebuilt session summaries as schema v2 with session-linked filenames, app/schema version, vehicle/connection metadata, completeness state, and raw-file references.
+- Added checkpoint summaries every 10 records so force-stop or connection loss preserves a recoverable partial summary.
+- Corrected trip distance and fuel integration using real `elapsed_s` intervals, trapezoidal integration, PID 0x5E fuel-rate priority, and explicit fallback/gap metrics.
+- Added per-column count, null count, coverage, standard deviation, status/source counts, and overall data-quality reporting.
+- Added measured/synthesized MAP source to CSV/JSONL and compact non-OK quality metadata to JSONL.
+
+## Previous: 3.18.0 — Next-generation Scanner Intelligence
 - Rebuilt connection setup around AUTO transport resolution with clearer adapter state and the actual connected transport exposed to the realtime API.
 - Improved automatic VIN, vehicle-brand, supported-PID, bitmap, targeted-probe, and per-VIN cache logic for broader vehicle compatibility.
 - Added a practical Custom PID manager with add/edit/delete, formula validation, raw-data testing, and support in LPG-only polling.

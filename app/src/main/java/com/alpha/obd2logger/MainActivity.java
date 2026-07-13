@@ -3038,7 +3038,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         final java.util.Map<String, Integer> consecutiveFailures = new java.util.HashMap<>();
 
         try {
-            writer = new DataWriter(this, sessionId, finalPids, config.vin);
+            writer = new DataWriter(this, sessionId, finalPids, config.vin,
+                    config, DataWriter.describeAdapter(driver));
             currentWriter = writer;
             final DataWriter dataWriter = writer;
             currentDownloadFolder = dataWriter.getDownloadFolderFile();

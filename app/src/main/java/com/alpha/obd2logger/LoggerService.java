@@ -485,7 +485,8 @@ public final class LoggerService extends Service {
         int localRecordCount = 0;
 
         try {
-            localWriter = new DataWriter(this, sessionId, finalPids, config.vin);
+            localWriter = new DataWriter(this, sessionId, finalPids, config.vin,
+                    config, DataWriter.describeAdapter(localDriver));
             if (currentSessionToken == sessionToken) {
                 writer = localWriter;
             }

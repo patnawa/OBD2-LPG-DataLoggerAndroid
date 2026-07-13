@@ -1,5 +1,6 @@
 package com.alpha.obd2logger;
 
+import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
@@ -13,6 +14,8 @@ import java.util.List;
 import java.util.Scanner;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -57,6 +60,89 @@ public class DataWriterTest {
         // Distinct columns: header must carry all four derived labels.
         assertFalse("four distinct derived columns present",
                 countOccurrences(csv.split("\n")[0], ',') < 6 + 4);
+    }
+
+    @Test
+    public void summaryV2_usesElapsedTimeCoverageSourcesAndSessionFilename() throws Exception {
+        PIDDefinition speed = new PIDDefinition("Vehicle Speed", "01", "0D", "km/h",
+                "A", 0, 255, true, 1, true);
+        PIDDefinition map = new PIDDefinition("Intake Manifold Pressure", "01", "0B", "kPa",
+                "A", 0, 255, true, 1, true);
+        PIDDefinition fuelRate = new PIDDefinition("Engine Fuel Rate", "01", "5E", "L/h",
+                "(A*256+B)/20", 0, 3276.75, true, 2, false);
+        String session = "summary_v2_" + System.nanoTime();
+        LoggerConfig config = new LoggerConfig();
+        config.transportMode = TransportMode.SIM;
+        config.sampleIntervalMs = 500;
+        DataWriter writer = new DataWriter(RuntimeEnvironment.getApplication(), session,
+                Arrays.asList(speed, map, fuelRate), "TESTVIN", config, "Test Adapter");
+
+        writer.writeRecord(record(0.0, 36.0, 50.0, "measured", 3.0));
+        writer.writeRecord(record(2.0, 36.0, null, "err", 3.0));
+        writer.writeRecord(record(5.0, 36.0, 60.0, "synth", 3.0));
+        writer.close();
+
+        File summaryFile = writer.getSummaryFile();
+        assertNotNull(summaryFile);
+        assertEquals(session + "_summary.json", summaryFile.getName());
+        JSONObject root = new JSONObject(readFile(summaryFile));
+        assertEquals(2, root.getInt("schema_version"));
+        assertTrue(root.getBoolean("complete"));
+        assertEquals(3, root.getInt("records"));
+        assertEquals(5.0, root.getDouble("duration_s"), 0.0001);
+
+        JSONObject trip = root.getJSONObject("trip");
+        assertEquals("elapsed_time_trapezoidal", trip.getString("method"));
+        assertEquals(0.05, trip.getDouble("distance_km"), 0.0001);
+        assertEquals(0.0042, trip.getDouble("fuel_liters"), 0.0001);
+        assertEquals(5.0, trip.getDouble("fuel_rate_pid_seconds"), 0.0001);
+
+        JSONObject mapStats = root.getJSONObject("columns").getJSONObject("01_0B");
+        assertEquals(2, mapStats.getInt("count"));
+        assertEquals(1, mapStats.getInt("null_count"));
+        assertEquals(66.67, mapStats.getDouble("coverage_pct"), 0.001);
+        assertEquals(1, mapStats.getJSONObject("status_counts").getInt("synth"));
+
+        JSONObject sourceStats = root.getJSONObject("columns").getJSONObject("map_value_source");
+        assertEquals(3, sourceStats.getInt("count"));
+        assertEquals(1, sourceStats.getJSONObject("status_counts").getInt("measured"));
+        assertEquals(1, sourceStats.getJSONObject("status_counts").getInt("synthesized"));
+        assertEquals(1, sourceStats.getJSONObject("status_counts").getInt("unavailable"));
+
+        String jsonl = readFile(writer.getJsonlFile());
+        assertTrue("JSONL preserves synthesized source", jsonl.contains("\"01_0B\":\"synth\""));
+        assertTrue("JSONL has quality metadata", jsonl.contains("\"_quality\""));
+    }
+
+    @Test
+    public void summaryCheckpoint_existsBeforeGracefulClose() throws Exception {
+        PIDDefinition rpm = new PIDDefinition("Engine RPM", "01", "0C", "rpm",
+                "(A*256+B)/4", 0, 16383, true, 2, true);
+        String session = "checkpoint_" + System.nanoTime();
+        DataWriter writer = new DataWriter(RuntimeEnvironment.getApplication(), session,
+                Collections.singletonList(rpm), "TESTVIN");
+        for (int i = 1; i <= 10; i++) {
+            SensorSample sample = new SensorSample("01_0C", "Engine RPM", 1000.0 + i,
+                    "rpm", "ok");
+            writer.writeRecord(new DataRecord("2026-07-13T10:00:00.000", i,
+                    "petrol", "Toyota", "TESTVIN", Collections.singletonList(sample)));
+        }
+
+        JSONObject checkpoint = new JSONObject(readFile(writer.getSummaryFile()));
+        assertFalse(checkpoint.getBoolean("complete"));
+        assertEquals(10, checkpoint.getInt("records"));
+        writer.close();
+        JSONObject completed = new JSONObject(readFile(writer.getSummaryFile()));
+        assertTrue(completed.getBoolean("complete"));
+    }
+
+    private static DataRecord record(double elapsed, Double speed, Double map,
+                                     String mapStatus, Double fuelRate) {
+        return new DataRecord("2026-07-13T10:00:00.000", elapsed, "lpg/cng",
+                "Toyota", "TESTVIN", Arrays.asList(
+                new SensorSample("01_0D", "Vehicle Speed", speed, "km/h", "ok"),
+                new SensorSample("01_0B", "Intake Manifold Pressure", map, "kPa", mapStatus),
+                new SensorSample("01_5E", "Engine Fuel Rate", fuelRate, "L/h", "ok")));
     }
 
     private static int countOccurrences(String s, char c) {
