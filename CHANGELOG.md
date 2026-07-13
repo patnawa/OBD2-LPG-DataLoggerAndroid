@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.22.2] - 2026-07-13 — Session History Button Layout Fix
+
+- Versioned the program as `3.22.2` (`versionCode 121`).
+- Fixed the Session History "Select Logs" button being pushed off-screen in portrait mode.
+- Restructured `compareBarLayout` from a single horizontal row of `wrap_content` buttons to a vertical container with an inner horizontal row of equal-weight (`layout_weight="1"`) buttons — Compare Logs, Import Log, and Select Logs now share the screen width evenly.
+- Added `ellipsize="end"` and `maxLines="1"` to all three buttons so labels truncate gracefully on very narrow screens instead of overflowing.
+- Moved the compare hint text (`compareHintText`) to its own row below the button bar, so it no longer competes for horizontal space with the buttons.
+
 ## [3.22.1] - 2026-07-13 — SW-CAN/CH-CAN/LS-CAN Protocol Expansion
 
 - Versioned the program as `3.22.1` (`versionCode 120`).

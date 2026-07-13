@@ -3010,48 +3010,69 @@
                         android:id="@+id/compareBarLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
+                        android:orientation="vertical"
                         android:layout_marginBottom="8dp">
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnCompareLogs"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="wrap_content"
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="@string/compare_logs" />
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnImportLog"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="Import Log"
-                            android:textColor="@color/accent"
-                            android:textSize="12sp"
-                            app:icon="@android:drawable/ic_menu_upload"
-                            app:iconSize="16dp"
-                            app:iconTint="@color/accent" />
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnCompareLogs"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/compare_logs"
+                                android:textSize="12sp"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:paddingStart="4dp"
+                                android:paddingEnd="4dp" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnSelectLogs"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="@string/select_logs"
-                            android:textSize="12sp"
-                            app:icon="@android:drawable/ic_menu_agenda"
-                            app:iconSize="16dp"
-                            app:iconTint="@color/primary" />
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnImportLog"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginStart="6dp"
+                                android:text="Import Log"
+                                android:textColor="@color/accent"
+                                android:textSize="12sp"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:paddingStart="4dp"
+                                android:paddingEnd="4dp"
+                                app:icon="@android:drawable/ic_menu_upload"
+                                app:iconSize="16dp"
+                                app:iconTint="@color/accent" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnSelectLogs"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginStart="6dp"
+                                android:text="@string/select_logs"
+                                android:textSize="12sp"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:paddingStart="4dp"
+                                android:paddingEnd="4dp"
+                                app:icon="@android:drawable/ic_menu_agenda"
+                                app:iconSize="16dp"
+                                app:iconTint="@color/primary" />
+                        </LinearLayout>
 
                         <TextView
                             android:id="@+id/compareHintText"
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginStart="12dp"
+                            android:layout_marginTop="6dp"
                             android:textColor="@color/muted"
                             android:textSize="12sp"
                             android:visibility="gone" />
