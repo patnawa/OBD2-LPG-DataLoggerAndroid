@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.24.2] - 2026-07-13 — Flashcard Icons Fixed + Map Layout Shift Fixed
+
+- Versioned the program as `3.24.2` (`versionCode 125`).
+- Fixed the adapter flashcard transport icons: the previous v3.24.1 attempt used incorrect vector paths (USB icon was actually a battery shape, Bluetooth path was malformed). Now using proper Material Design vector icons for USB, WiFi, and Bluetooth — clean and recognizable at 24dp.
+- Fixed the fuel map "screentable move" / layout jump: the `mapConfidenceText` chip used `wrap_content` width, so when the status text changed between short ("COLLECTING • 0 stable") and long ("LIVE PREVIEW • WAITING FOR STEADY RPM / LOAD / THROTTLE") strings, the entire row layout shifted horizontally on every data update. Fixed by:
+  - Setting fixed `160dp` width on the confidence chip with `maxLines=1` and `ellipsize=end` so layout never shifts
+  - Shortening the status strings: "LIVE PREVIEW • WAITING FOR STEADY RPM / LOAD / THROTTLE" -> "LIVE • STABILIZING…" (EN) / "สด • กำลังคงที่…" (TH)
+  - Keeping the `setMapConfidenceText()` cache from v3.24.1 so `setText()` is only called when text/color actually changes
+
 ## [3.24.1] - 2026-07-13 — Flashcard Icon Polish + Map Confidence Flicker Fix
 
 - Versioned the program as `3.24.1` (`versionCode 124`).

@@ -497,7 +497,7 @@
                                 android:textSize="10sp" />
                             <TextView
                                 android:id="@+id/mapConfidenceText"
-                                android:layout_width="wrap_content"
+                                android:layout_width="160dp"
                                 android:layout_height="wrap_content"
                                 android:background="@drawable/bg_status_chip"
                                 android:paddingStart="8dp"
@@ -507,7 +507,10 @@
                                 android:text="COLLECTING"
                                 android:textColor="@color/warning"
                                 android:textSize="9sp"
-                                android:textStyle="bold" />
+                                android:textStyle="bold"
+                                android:maxLines="1"
+                                android:ellipsize="end"
+                                android:gravity="center" />
                         </LinearLayout>
                         <com.google.android.material.progressindicator.LinearProgressIndicator
                             android:id="@+id/mapCoverageProgress"

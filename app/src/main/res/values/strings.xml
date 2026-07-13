@@ -452,14 +452,14 @@ RPM %1$s • Coolant %2$s °C • Voltage %3$s V • Fuel trim %4$s%%</string>
     <string name="map_live_closed_loop">%1$s • CLOSED LOOP</string>
     <string name="map_live_open_loop">%1$s • OPEN LOOP</string>
     <string name="map_live_loop_unknown">%1$s • LOOP UNKNOWN</string>
-    <string name="map_live_preview">LIVE PREVIEW • %1$s</string>
+    <string name="map_live_preview">LIVE • %1$s</string>
     <string name="map_wait_loop_pid">WAITING FOR LOOP PID</string>
     <string name="map_wait_closed_loop">WAITING FOR CLOSED LOOP</string>
     <string name="map_wait_coolant_pid">WAITING FOR COOLANT PID</string>
     <string name="map_wait_warm_engine">ENGINE WARM-UP</string>
     <string name="map_wait_fuel_trim">WAITING FOR FUEL TRIM</string>
     <string name="map_wait_engine_data">WAITING FOR RPM / LOAD</string>
-    <string name="map_wait_stable_sample">WAITING FOR STEADY RPM / LOAD / THROTTLE</string>
+    <string name="map_wait_stable_sample">STABILIZING…</string>
     <string name="map_wait_lambda_stable">WAITING FOR LAMBDA TO REACH COMMANDED TARGET</string>
     <string name="map_axis_mismatch">MAP AXIS MISMATCH • comparison disabled</string>
     <string name="home_nav_drive">Drive</string>

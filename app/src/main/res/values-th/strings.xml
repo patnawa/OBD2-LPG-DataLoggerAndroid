@@ -413,14 +413,14 @@
     <string name="map_live_closed_loop">%1$s • CLOSED LOOP</string>
     <string name="map_live_open_loop">%1$s • OPEN LOOP</string>
     <string name="map_live_loop_unknown">%1$s • ไม่ทราบสถานะ LOOP</string>
-    <string name="map_live_preview">ตัวอย่างสด • %1$s</string>
+    <string name="map_live_preview">สด • %1$s</string>
     <string name="map_wait_loop_pid">รอ PID สถานะ LOOP</string>
     <string name="map_wait_closed_loop">รอเข้าสู่ CLOSED LOOP</string>
     <string name="map_wait_coolant_pid">รอ PID อุณหภูมิน้ำหล่อเย็น</string>
     <string name="map_wait_warm_engine">กำลังอุ่นเครื่องยนต์</string>
     <string name="map_wait_fuel_trim">รอค่า FUEL TRIM</string>
     <string name="map_wait_engine_data">รอค่า RPM / LOAD</string>
-    <string name="map_wait_stable_sample">รอให้ RPM / LOAD / คันเร่งคงที่</string>
+    <string name="map_wait_stable_sample">กำลังคงที่…</string>
     <string name="map_wait_lambda_stable">รอ Lambda เข้าใกล้ค่าเป้าหมาย</string>
     <string name="map_axis_mismatch">แหล่งแกนแผนที่ไม่ตรงกัน • ปิดการเปรียบเทียบ</string>
     <string name="home_nav_drive">ขับรถ</string>
