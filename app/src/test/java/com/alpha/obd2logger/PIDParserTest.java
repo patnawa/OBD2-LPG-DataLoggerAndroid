@@ -52,6 +52,29 @@ public class PIDParserTest {
     }
 
     @Test
+    public void o2SensorUnusedTrimSentinelIsNullButPrimaryTrimKeepsFullRange() {
+        PIDDefinition o2stft = findByName("O2 Sensor B1S2 STFT");
+        PIDDefinition primaryStft = findByName("Short Term Fuel Trim");
+
+        // B=0xFF on PIDs 14..1B means this O2 sensor is not used for trim.
+        assertNull(PIDParser.parse(o2stft, "80FF"));
+        // PID 06 uses A directly and retains the full SAE range by design.
+        assertEquals(99.2188, PIDParser.parse(primaryStft, "FF"), 0.0001);
+    }
+
+    @Test
+    public void extractMultiDoesNotPublishUnusedO2TrimSentinel() {
+        PIDDefinition voltage = findByName("O2 Sensor B1S2 Voltage");
+        PIDDefinition trim = findByName("O2 Sensor B1S2 STFT");
+        java.util.Map<String, Double> values = new java.util.LinkedHashMap<>();
+
+        PIDParser.extractMulti(java.util.Arrays.asList(voltage, trim), "411580FF", values);
+
+        assertEquals(0.64, values.get("O2 Sensor B1S2 Voltage"), 0.0001);
+        assertNull(values.get("O2 Sensor B1S2 STFT"));
+    }
+
+    @Test
     public void o2StftPidsAreLpgCritical() {
         // The O2 STFT PIDs must be lpgCritical so they show up in LPG mode
         PIDDefinition stft1 = findByName("O2 Sensor B1S1 STFT");

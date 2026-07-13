@@ -19,9 +19,7 @@ import android.hardware.usb.UsbManager;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 import android.os.Environment;
-import android.os.PowerManager;
 import android.os.SystemClock;
-import android.provider.Settings;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -79,6 +77,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private View cardHomeDiagnostics;
     private com.google.android.material.card.MaterialCardView cockpitInsightCard;
     private TextView cockpitInsightTitle, cockpitInsightMessage, cockpitInsightMeta;
+    private DriveInsightEngine.Result currentDriveInsight =
+            DriveInsightEngine.evaluate(null, null, null, null, 0);
     private android.widget.ImageView imgHomeDiagnostics;
     private LiveMultiGraphView homeRpmTrend;
     private TextView stripBoost, stripFuel;
@@ -93,6 +93,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private EditText wifiIpInput, wifiPortInput, baudInput, intervalInput;
     private TextView bluetoothHintText;
     private CheckBox lpgOnlyCheckbox, backgroundLoggingCheckbox, keepScreenOnCheckbox, apiServerCheckbox, fordMsCanCheckbox;
+    private TextView backgroundLoggingStatusText;
     private CheckBox turboBoostCheckbox, fuelEconomyCheckbox, dpfMonitorCheckbox, customPidCheckbox;
     private CheckBox airDensityCheckbox;
     private TextView apiServerIpText;
@@ -169,6 +170,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         @Override
         public void run() {
             if (running || isConnecting) {
+                boolean backgroundAttempt = backgroundUiState != BackgroundUiState.OFF
+                        || LoggerService.isLoggingActive();
                 isConnecting = false;
                 stopLogging();
                 setFabState(false);
@@ -176,6 +179,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 updateStatusStripConnection(0, "Connection timed out");
                 if (headerStatus != null) {
                     headerStatus.setText("Connection timed out");
+                }
+                if (backgroundAttempt) {
+                    renderBackgroundLoggingState(BackgroundUiState.ERROR, 0,
+                            "Connection timed out");
                 }
                 setStatus("Connection timed out. If using background service, check autostart/battery settings.", R.color.danger);
             }
@@ -206,8 +213,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private android.widget.ListView historyListViewLpg;
     private TextView historyFolderText;
     private com.google.android.material.button.MaterialButton btnCompareLogs;
+    private com.google.android.material.button.MaterialButton btnSelectLogs;
+    private com.google.android.material.button.MaterialButton btnShareSelectedLogs;
+    private com.google.android.material.button.MaterialButton btnDeleteSelectedLogs;
+    private com.google.android.material.button.MaterialButton btnCancelSelection;
     private com.google.android.material.button.MaterialButton btnImportLog;
     private TextView compareHintText;
+    private TextView batchSelectionHint;
+    private View historyBatchBar;
     private android.widget.ListView historyListViewFolders;
     private com.google.android.material.button.MaterialButton btnBackToFolders;
     private TextView vinFoldersHeader;
@@ -219,6 +232,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // pick up to 2 logs (e.g. a Petrol log + an LPG log) and plot both onto one map.
     private boolean compareMode = false;
     private final java.util.LinkedHashSet<Uri> compareSelection = new java.util.LinkedHashSet<>();
+    private boolean batchSelectionMode = false;
+    private final java.util.LinkedHashSet<Uri> batchSelection = new java.util.LinkedHashSet<>();
     private java.util.List<HistoryLogFile> currentLogFiles = new ArrayList<>();
 
     // --- State ---
@@ -266,8 +281,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private static final int PERMISSION_REQUEST_CODE = 1001;
     private static final int IMPORT_LOG_REQUEST_CODE = 1002;
-    private static final int NOTIFICATION_PERMISSION_CODE = 1002;
+    private static final int NOTIFICATION_PERMISSION_CODE = 1003;
     private LoggerConfig pendingBackgroundConfig = null;
+    private boolean waitingForNotificationSettings = false;
+    private boolean allowHiddenBackgroundStartOnce = false;
+
+    private enum BackgroundUiState {
+        OFF, PERMISSION, STARTING, ACTIVE, RECONNECTING, ERROR
+    }
+
+    private BackgroundUiState backgroundUiState = BackgroundUiState.OFF;
+    private String lastBackgroundError = null;
 
     private androidx.activity.result.ActivityResultLauncher<Intent> folderPickerLauncher;
     private boolean pendingStartLoggingAfterFolderSelect = false;
@@ -285,6 +309,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (granted && shouldStart) {
                 if (startLogging()) setFabState(true);
             } else if (!granted) {
+                allowHiddenBackgroundStartOnce = false;
                 setStatus("USB permission denied.", R.color.danger);
                 updateStatusStripConnection(0, "USB permission denied");
                 setFabState(false);
@@ -322,7 +347,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
 
             LoggerService.dtcClearTrigger = () -> {
-                runOnUiThread(() -> clearDtcs());
+                // Remote API requests must still require the same physical-user
+                // confirmation as the on-screen Clear DTC button.
+                runOnUiThread(() -> {
+                    if (btnClearDtc != null) btnClearDtc.performClick();
+                });
                 return true;
             };
 
@@ -375,7 +404,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (hasBluetoothPermissions()) {
                 refreshBluetoothDevices();
             }
-            requestNotificationPermission();
 
             bluetoothDeviceSpinner.setEnabled(false);
             bluetoothHintText.setEnabled(false);
@@ -454,16 +482,23 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 }
                 
                 int count = service.getRecordCount();
-                countText.setText(getString(R.string.records_count, count));
+                if (countText != null) countText.setText(getString(R.string.records_count, count));
                 setStatus("Background logging active...", R.color.accent);
-                if (activeConfig != null) updateStatusStripConnection(2, "Connected " + activeConfig.transportMode.getValue());
-                headerStatus.setText("Logging...");
+                BaseDriver serviceDriver = service.getDriver();
+                boolean serviceConnected = serviceDriver != null && serviceDriver.isConnected();
+                if (activeConfig != null) {
+                    updateStatusStripConnection(serviceConnected ? 2 : 1,
+                            (serviceConnected ? "Connected " : "Connecting ")
+                                    + activeConfig.transportMode.getValue());
+                }
+                renderBackgroundLoggingState(serviceConnected
+                                ? BackgroundUiState.ACTIVE : BackgroundUiState.STARTING,
+                        count, null);
             }
 
             // Restore fuel map from LiveMapStore (single source of truth)
             if (fuelMapView != null) {
-                LoggerService svc = LoggerService.getInstance();
-                LiveMapStore restoreStore = svc != null ? svc.getLiveMapStore() : null;
+                LiveMapStore restoreStore = getLiveMapStore();
                 if (restoreStore != null) {
                     fuelMapView.syncFromStore(restoreStore.snapshot());
                 } else {
@@ -473,6 +508,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             setConfigUiEnabled(false);
         } else if (running) {
+            renderBackgroundLoggingState(BackgroundUiState.OFF, 0, null);
             if (fabLog != null) {
                 setFabState(true);
             }
@@ -504,8 +540,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             // Restore fuel map from LiveMapStore (single source of truth)
             if (fuelMapView != null) {
-                LoggerService svc = LoggerService.getInstance();
-                LiveMapStore restoreStore = svc != null ? svc.getLiveMapStore() : null;
+                LiveMapStore restoreStore = getLiveMapStore();
                 if (restoreStore != null) {
                     fuelMapView.syncFromStore(restoreStore.snapshot());
                 } else {
@@ -515,7 +550,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             setConfigUiEnabled(false);
         } else {
+            if (fuelMapView != null) {
+                LiveMapStore restoreStore = getLiveMapStore();
+                if (restoreStore != null) fuelMapView.syncFromStore(restoreStore.snapshot());
+            }
             setConfigUiEnabled(true);
+            if (pendingBackgroundConfig == null) {
+                renderBackgroundLoggingState(BackgroundUiState.OFF, 0, null);
+            }
         }
     }
 
@@ -552,6 +594,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         btnBackToFolders = findViewById(R.id.btnBackToFolders);
         vinFoldersHeader = findViewById(R.id.vinFoldersHeader);
         compareBarLayout = findViewById(R.id.compareBarLayout);
+        historyBatchBar = findViewById(R.id.historyBatchBar);
         petrolLogsHeader = findViewById(R.id.petrolLogsHeader);
         lpgLogsHeader = findViewById(R.id.lpgLogsHeader);
 
@@ -560,6 +603,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 selectedVinFolder = null;
                 compareMode = false;
                 compareSelection.clear();
+                batchSelectionMode = false;
+                batchSelection.clear();
                 loadHistoryFiles();
             });
         }
@@ -700,6 +745,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         bluetoothHintText = findViewById(R.id.bluetoothHintText);
         lpgOnlyCheckbox = findViewById(R.id.lpgOnlyCheckbox);
         backgroundLoggingCheckbox = findViewById(R.id.backgroundLoggingCheckbox);
+        backgroundLoggingStatusText = findViewById(R.id.backgroundLoggingStatusText);
         keepScreenOnCheckbox = findViewById(R.id.keepScreenOnCheckbox);
         apiServerCheckbox = findViewById(R.id.apiServerCheckbox);
         apiServerIpText = findViewById(R.id.apiServerIpText);
@@ -718,6 +764,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
 
         // ── Instant-save on toggle (no need to wait for onPause) ──
+        if (backgroundLoggingCheckbox != null) {
+            backgroundLoggingCheckbox.setOnCheckedChangeListener((btn, checked) -> {
+                prefs.edit().putBoolean("pref_background_logging", checked).apply();
+                if (!running && !isConnecting && !LoggerService.isLoggingActive()) {
+                    renderBackgroundLoggingState(BackgroundUiState.OFF, 0, null);
+                }
+            });
+        }
         if (turboBoostCheckbox != null) {
             turboBoostCheckbox.setOnCheckedChangeListener((btn, checked) ->
                 prefs.edit().putBoolean("pref_turbo_boost", checked).apply());
@@ -755,19 +809,29 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fordMsCanCheckbox.setOnCheckedChangeListener((btn, checked) ->
                 prefs.edit().putBoolean("pref_ford_ms_can", checked).apply());
         }
-        if (backgroundLoggingCheckbox != null) {
-            backgroundLoggingCheckbox.setOnCheckedChangeListener((btn, checked) -> {
-                if (checked) {
-                    requestBatteryOptimizationExemption();
-                }
-            });
+        boolean isApiServerEnabled = prefs.getBoolean("pref_api_server",
+                prefs.getBoolean("apiServerEnabled", false));
+        if (prefs.contains("apiServerEnabled")) {
+            prefs.edit().putBoolean("pref_api_server", isApiServerEnabled)
+                    .remove("apiServerEnabled").apply();
         }
-        boolean isApiServerEnabled = prefs.getBoolean("apiServerEnabled", false);
         if (apiServerCheckbox != null) {
             apiServerCheckbox.setChecked(isApiServerEnabled);
             apiServerCheckbox.setOnCheckedChangeListener((btn, isChecked) -> {
-                prefs.edit().putBoolean("apiServerEnabled", isChecked).apply();
+                prefs.edit().putBoolean("pref_api_server", isChecked).apply();
                 updateApiServerIpText(isChecked);
+            });
+        }
+        if (apiServerIpText != null) {
+            apiServerIpText.setOnClickListener(v -> {
+                CharSequence details = apiServerIpText.getText();
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
+                        getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null && details != null) {
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
+                            "TunerMap Pro API", details));
+                    Toast.makeText(this, R.string.api_connection_copied, Toast.LENGTH_SHORT).show();
+                }
             });
         }
         updateApiServerIpText(isApiServerEnabled);
@@ -776,13 +840,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         TextView appVersionText = findViewById(R.id.appVersionText);
         try {
             String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-            String versionString = "Version " + versionName;
+            String versionString = getString(R.string.version_format, versionName);
             if (appVersionText != null) {
                 appVersionText.setText(versionString);
             }
         } catch (Exception e) {
             if (appVersionText != null) {
-                appVersionText.setText("Version 3.2.1");
+                appVersionText.setText(getString(R.string.version_format, BuildConfig.VERSION_NAME));
             }
         }
 
@@ -1016,9 +1080,26 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
 
         btnCompareLogs = findViewById(R.id.btnCompareLogs);
+        btnSelectLogs = findViewById(R.id.btnSelectLogs);
+        btnShareSelectedLogs = findViewById(R.id.btnShareSelectedLogs);
+        btnDeleteSelectedLogs = findViewById(R.id.btnDeleteSelectedLogs);
+        btnCancelSelection = findViewById(R.id.btnCancelSelection);
         compareHintText = findViewById(R.id.compareHintText);
+        batchSelectionHint = findViewById(R.id.batchSelectionHint);
         if (btnCompareLogs != null) {
             btnCompareLogs.setOnClickListener(v -> toggleCompareMode());
+        }
+        if (btnSelectLogs != null) {
+            btnSelectLogs.setOnClickListener(v -> toggleBatchSelectionMode());
+        }
+        if (btnShareSelectedLogs != null) {
+            btnShareSelectedLogs.setOnClickListener(v -> shareSelectedLogFiles());
+        }
+        if (btnDeleteSelectedLogs != null) {
+            btnDeleteSelectedLogs.setOnClickListener(v -> confirmDeleteSelectedLogFiles());
+        }
+        if (btnCancelSelection != null) {
+            btnCancelSelection.setOnClickListener(v -> exitBatchSelectionMode());
         }
 
         // Import Log button — opens a file picker for any CSV log file
@@ -1354,7 +1435,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     mainText.setText(p.getName());
                     subText.setText("PID: " + p.key() + "  •  Unit: " + (p.getUnit().isEmpty() ? "None" : p.getUnit()));
                     
-                    String name = p.getName().toUpperCase();
+                    String name = p.getName().toUpperCase(Locale.ROOT);
                     String badgeStr = name.length() > 3 ? name.substring(0, 3) : name;
                     badge.setText(badgeStr);
                     
@@ -1532,7 +1613,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         ipString = String.format(java.util.Locale.US, "%d.%d.%d.%d", (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
                     }
                 }
-                headerApiStatus.setText("API: " + ipString + ":8080");
+                headerApiStatus.setText(R.string.api_header_on);
                 headerApiStatus.setTextColor(0xFF34D399); // Neon emerald green
                 headerApiStatus.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0x2034D399));
             }
@@ -1544,15 +1625,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         apiServerIpText.setVisibility(View.VISIBLE);
         android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+        String ipString = "127.0.0.1";
         if (wm != null) {
             int ip = wm.getConnectionInfo().getIpAddress();
             if (ip != 0) {
-                String ipString = String.format(java.util.Locale.US, "%d.%d.%d.%d", (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
-                apiServerIpText.setText("URL: http://" + ipString + ":8080/api/data");
-                return;
+                ipString = String.format(java.util.Locale.US, "%d.%d.%d.%d",
+                        (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
             }
         }
-        apiServerIpText.setText("URL: http://localhost:8080/api/data");
+        String endpoint = "http://" + ipString + ":8080/api/agent";
+        String token = ApiSecurity.getOrCreateToken(this);
+        apiServerIpText.setText(getString(R.string.api_connection_template, endpoint, token));
     }
 
     /**
@@ -1679,6 +1762,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         View cardBattery = findViewById(R.id.cockpitBattery);
         if (cardBattery != null) {
             cardBattery.setOnClickListener(v -> showTab(7));
+        }
+        if (cockpitInsightCard != null) {
+            cockpitInsightCard.setClickable(true);
+            cockpitInsightCard.setFocusable(true);
+            cockpitInsightCard.setOnClickListener(v -> showDriveInsightDetails());
         }
 
         // Home Cockpit HUD Mode Toggle
@@ -1821,6 +1909,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         };
         for (int i=0; i<4; i++) {
             if (gauges[i] == null) continue;
+            // Apply the slot theme before resolving the selected PID so an
+            // empty/missing slot cannot fall back to GaugeView's default
+            // cyan/red palette.
+            int[] theme = gaugeThemes[i];
+            gauges[i].setFullColors(theme[0], theme[1], theme[2]);
             String pidKey = prefGaugePids[i];
             if ("none".equalsIgnoreCase(pidKey)) {
                 gauges[i].setRange(0f, 100f);
@@ -1833,8 +1926,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     gauges[i].setRange((float)pid.getMinVal(), (float)pid.getMaxVal());
                     gauges[i].setLabel(pid.getName());
                     gauges[i].setUnit(pid.getUnit());
-                    int[] theme = gaugeThemes[i];
-                    gauges[i].setFullColors(theme[0], theme[1], theme[2]);
                     // Set warning at 80% of max for RPM, 90% for others
                     gauges[i].setWarningStart(i == 0 ? 0.75f : 0.85f);
                 } else {
@@ -1844,8 +1935,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         gauges[i].setRange(dc.min, dc.max);
                         gauges[i].setLabel(dc.label);
                         gauges[i].setUnit(dc.unit);
-                        int[] theme = gaugeThemes[i];
-                        gauges[i].setFullColors(theme[0], theme[1], theme[2]);
                         gauges[i].setWarningStart(0.85f);
                     }
                 }
@@ -2110,6 +2199,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             allUris.add(f.uri);
         }
         compareSelection.retainAll(allUris);
+        batchSelection.retainAll(allUris);
 
         // Group log files by VIN
         java.util.Map<String, java.util.List<HistoryLogFile>> groups = new java.util.HashMap<>();
@@ -2127,6 +2217,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (vinFoldersHeader != null) vinFoldersHeader.setVisibility(View.VISIBLE);
             if (historyListViewFolders != null) historyListViewFolders.setVisibility(View.VISIBLE);
             if (compareBarLayout != null) compareBarLayout.setVisibility(View.GONE);
+            if (historyBatchBar != null) historyBatchBar.setVisibility(View.GONE);
             if (petrolLogsHeader != null) petrolLogsHeader.setVisibility(View.GONE);
             if (historyListViewPetrol != null) historyListViewPetrol.setVisibility(View.GONE);
             if (lpgLogsHeader != null) lpgLogsHeader.setVisibility(View.GONE);
@@ -2194,6 +2285,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (vinFoldersHeader != null) vinFoldersHeader.setVisibility(View.GONE);
             if (historyListViewFolders != null) historyListViewFolders.setVisibility(View.GONE);
             if (compareBarLayout != null) compareBarLayout.setVisibility(View.VISIBLE);
+            if (historyBatchBar != null) {
+                historyBatchBar.setVisibility(batchSelectionMode ? View.VISIBLE : View.GONE);
+            }
             if (petrolLogsHeader != null) petrolLogsHeader.setVisibility(View.VISIBLE);
             if (historyListViewPetrol != null) historyListViewPetrol.setVisibility(View.VISIBLE);
             if (lpgLogsHeader != null) lpgLogsHeader.setVisibility(View.VISIBLE);
@@ -2207,7 +2301,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             List<HistoryLogFile> petrolFiles = new ArrayList<>();
             List<HistoryLogFile> lpgFiles = new ArrayList<>();
             for (HistoryLogFile f : filteredFiles) {
-                if (f.name != null && f.name.toUpperCase().startsWith("PETROL")) {
+                if (f.name != null && f.name.toUpperCase(Locale.ROOT).startsWith("PETROL")) {
                     petrolFiles.add(f);
                 } else {
                     lpgFiles.add(f);
@@ -2259,13 +2353,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         : (size / 1024) + " KB";
                     dateText.setText(sdf.format(new Date(item.date)) + "  •  " + sizeText);
 
-                    if (compareMode) {
+                    if (compareMode || batchSelectionMode) {
                         actionLayout.setVisibility(View.GONE);
                         compareCheckbox.setVisibility(View.VISIBLE);
-                        compareCheckbox.setChecked(compareSelection.contains(item.uri));
+                        compareCheckbox.setChecked(compareMode
+                                ? compareSelection.contains(item.uri)
+                                : batchSelection.contains(item.uri));
                     } else {
                         actionLayout.setVisibility(View.VISIBLE);
                         compareCheckbox.setVisibility(View.GONE);
+                        compareCheckbox.setChecked(false);
 
                         btnShare.setOnClickListener(v -> shareLogFile(item));
                         btnDelete.setOnClickListener(v -> deleteLogFile(item));
@@ -2318,13 +2415,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         : (size / 1024) + " KB";
                     dateText.setText(sdf.format(new Date(item.date)) + "  •  " + sizeText);
 
-                    if (compareMode) {
+                    if (compareMode || batchSelectionMode) {
                         actionLayout.setVisibility(View.GONE);
                         compareCheckbox.setVisibility(View.VISIBLE);
-                        compareCheckbox.setChecked(compareSelection.contains(item.uri));
+                        compareCheckbox.setChecked(compareMode
+                                ? compareSelection.contains(item.uri)
+                                : batchSelection.contains(item.uri));
                     } else {
                         actionLayout.setVisibility(View.VISIBLE);
                         compareCheckbox.setVisibility(View.GONE);
+                        compareCheckbox.setChecked(false);
 
                         btnShare.setOnClickListener(v -> shareLogFile(item));
                         btnDelete.setOnClickListener(v -> deleteLogFile(item));
@@ -2339,6 +2439,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (compareMode) {
                     handleCompareClick(selectedFile.uri);
                     return;
+                } else if (batchSelectionMode) {
+                    handleBatchSelectionClick(selectedFile.uri);
+                    return;
                 }
                 openReviewActivity(selectedFile);
             });
@@ -2348,6 +2451,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (compareMode) {
                     handleCompareClick(selectedFile.uri);
                     return;
+                } else if (batchSelectionMode) {
+                    handleBatchSelectionClick(selectedFile.uri);
+                    return;
                 }
                 openReviewActivity(selectedFile);
             });
@@ -2356,9 +2462,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             setListViewHeightBasedOnChildren(historyListViewLpg);
         }
         updateCompareUi();
+        updateBatchSelectionUi();
     }
 
     private void openReviewActivity(HistoryLogFile selectedFile) {
+        if (selectedFile == null || selectedFile.name == null
+                || !selectedFile.name.toLowerCase(Locale.ROOT).endsWith(".csv")) {
+            Toast.makeText(this, R.string.open_log_csv_only, Toast.LENGTH_SHORT).show();
+            return;
+        }
         Intent intent = new Intent(this, ReviewSessionActivity.class);
         intent.setData(selectedFile.uri);
         intent.putExtra("file_name", selectedFile.name);
@@ -2372,6 +2484,36 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         shareIntent.putExtra(Intent.EXTRA_STREAM, selectedFile.uri);
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(Intent.createChooser(shareIntent, "Share Log File"));
+    }
+
+    /** Remove an empty VIN folder after a batch delete without touching the root. */
+    private void cleanupDeletedLogParent(HistoryLogFile selectedFile) {
+        if (selectedFile == null) return;
+        if (selectedFile.isFile && selectedFile.file != null) {
+            File parent = selectedFile.file.getParentFile();
+            if (parent != null && parent.isDirectory()) {
+                File[] children = parent.listFiles();
+                if (children == null || children.length == 0) parent.delete();
+            }
+        } else if (selectedFile.isSaf && selectedFile.vin != null
+                && !"General".equalsIgnoreCase(selectedFile.vin)) {
+            try {
+                String savedUriStr = getSharedPreferences("OBD2Prefs", MODE_PRIVATE)
+                        .getString("custom_log_folder_uri", null);
+                if (savedUriStr != null) {
+                    Uri treeUri = Uri.parse(savedUriStr);
+                    androidx.documentfile.provider.DocumentFile tree =
+                            androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
+                    if (tree != null && tree.exists()) {
+                        androidx.documentfile.provider.DocumentFile sub = tree.findFile(selectedFile.vin);
+                        if (sub != null && sub.isDirectory()) {
+                            androidx.documentfile.provider.DocumentFile[] children = sub.listFiles();
+                            if (children == null || children.length == 0) sub.delete();
+                        }
+                    }
+                }
+            } catch (Exception ignored) { }
+        }
     }
 
     private void deleteLogFile(HistoryLogFile selectedFile) {
@@ -2503,13 +2645,41 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     /** Toggle the compare (multi-select) mode and rebuild the history list. */
     private void toggleCompareMode() {
+        if (batchSelectionMode) {
+            batchSelectionMode = false;
+            batchSelection.clear();
+        }
         compareMode = !compareMode;
         compareSelection.clear();
         loadHistoryFiles();
     }
 
+    /** Toggle batch selection for sharing or deleting history files. */
+    private void toggleBatchSelectionMode() {
+        if (compareMode) {
+            compareMode = false;
+            compareSelection.clear();
+        }
+        batchSelectionMode = !batchSelectionMode;
+        batchSelection.clear();
+        loadHistoryFiles();
+    }
+
+    private void exitBatchSelectionMode() {
+        batchSelectionMode = false;
+        batchSelection.clear();
+        loadHistoryFiles();
+    }
+
     /** Handle a tap on a row while in compare mode (enforce max 2 selections). */
     private void handleCompareClick(Uri uri) {
+        for (HistoryLogFile file : currentLogFiles) {
+            if (file.uri.equals(uri) && (file.name == null
+                    || !file.name.toLowerCase(Locale.ROOT).endsWith(".csv"))) {
+                Toast.makeText(this, R.string.open_log_csv_only, Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
         if (compareSelection.contains(uri)) {
             compareSelection.remove(uri);
         } else {
@@ -2526,6 +2696,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             ((android.widget.BaseAdapter) historyListViewLpg.getAdapter()).notifyDataSetChanged();
         }
         updateCompareUi();
+    }
+
+    /** Toggle one history row in the share/delete selection. */
+    private void handleBatchSelectionClick(Uri uri) {
+        if (batchSelection.contains(uri)) {
+            batchSelection.remove(uri);
+        } else {
+            batchSelection.add(uri);
+        }
+        if (historyListViewPetrol.getAdapter() instanceof android.widget.BaseAdapter) {
+            ((android.widget.BaseAdapter) historyListViewPetrol.getAdapter()).notifyDataSetChanged();
+        }
+        if (historyListViewLpg.getAdapter() instanceof android.widget.BaseAdapter) {
+            ((android.widget.BaseAdapter) historyListViewLpg.getAdapter()).notifyDataSetChanged();
+        }
+        updateBatchSelectionUi();
     }
 
     /** Refresh the compare button label and the hint/count text. */
@@ -2556,6 +2742,85 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 toggleCompareMode();
             }
         });
+    }
+
+    private void updateBatchSelectionUi() {
+        if (btnSelectLogs == null || batchSelectionHint == null) return;
+        if (!batchSelectionMode || selectedVinFolder == null) {
+            btnSelectLogs.setText(R.string.select_logs);
+            if (historyBatchBar != null) historyBatchBar.setVisibility(View.GONE);
+            btnSelectLogs.setOnClickListener(v -> toggleBatchSelectionMode());
+            return;
+        }
+        if (historyBatchBar != null) historyBatchBar.setVisibility(View.VISIBLE);
+        int n = batchSelection.size();
+        batchSelectionHint.setText(n == 0
+                ? getString(R.string.select_logs_hint)
+                : getString(R.string.selected_logs_count, n));
+        if (btnShareSelectedLogs != null) btnShareSelectedLogs.setEnabled(n > 0);
+        if (btnDeleteSelectedLogs != null) btnDeleteSelectedLogs.setEnabled(n > 0);
+        btnSelectLogs.setText(R.string.cancel_selection);
+        btnSelectLogs.setOnClickListener(v -> exitBatchSelectionMode());
+    }
+
+    private List<HistoryLogFile> getSelectedBatchFiles() {
+        List<HistoryLogFile> selected = new ArrayList<>();
+        for (HistoryLogFile file : currentLogFiles) {
+            if (batchSelection.contains(file.uri)) selected.add(file);
+        }
+        return selected;
+    }
+
+    private void shareSelectedLogFiles() {
+        List<HistoryLogFile> selected = getSelectedBatchFiles();
+        if (selected.isEmpty()) {
+            Toast.makeText(this, R.string.select_logs_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ArrayList<Uri> uris = new ArrayList<>();
+        for (HistoryLogFile file : selected) uris.add(file.uri);
+        Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+        shareIntent.setType("text/*");
+        shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(shareIntent,
+                getString(R.string.share_selected_logs)));
+    }
+
+    private void confirmDeleteSelectedLogFiles() {
+        List<HistoryLogFile> selected = getSelectedBatchFiles();
+        if (selected.isEmpty()) {
+            Toast.makeText(this, R.string.select_logs_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int count = selected.size();
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.delete_selected_logs)
+                .setMessage(getString(R.string.confirm_delete_selected_logs, count))
+                .setPositiveButton(android.R.string.ok, (d, w) -> deleteSelectedLogFiles(selected))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void deleteSelectedLogFiles(List<HistoryLogFile> selected) {
+        int deleted = 0;
+        int failed = 0;
+        for (HistoryLogFile file : selected) {
+            if (file.delete(this)) {
+                deleted++;
+                cleanupDeletedLogParent(file);
+            } else {
+                failed++;
+            }
+        }
+        batchSelection.clear();
+        batchSelectionMode = false;
+        loadHistoryFiles();
+        if (failed == 0) {
+            Toast.makeText(this, getString(R.string.selected_logs_deleted, deleted), Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, getString(R.string.selected_logs_delete_failed, deleted, failed), Toast.LENGTH_LONG).show();
+        }
     }
 
     /** Build a file_uris list from the selected rows and open ReviewSessionActivity. */
@@ -2595,8 +2860,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             };
             String selection = "(" + android.provider.MediaStore.Downloads.RELATIVE_PATH + " LIKE ? OR " +
                                android.provider.MediaStore.Downloads.RELATIVE_PATH + " LIKE ?) AND " +
-                               android.provider.MediaStore.Downloads.DISPLAY_NAME + " LIKE ?";
-            String[] selectionArgs = new String[] { "%TunerMapPro%", "%OBD2LPGLogger%", "%.csv" };
+                               "(" + android.provider.MediaStore.Downloads.DISPLAY_NAME + " LIKE ? OR " +
+                               android.provider.MediaStore.Downloads.DISPLAY_NAME + " LIKE ?)";
+            String[] selectionArgs = new String[] {
+                    "%TunerMapPro%", "%OBD2LPGLogger%", "%.csv", "%.jsonl"
+            };
 
             try (android.database.Cursor cursor = getContentResolver().query(collection, projection, selection, selectionArgs, null)) {
                 if (cursor != null) {
@@ -2660,7 +2928,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             for (File f : files) {
                 if (f.isDirectory()) {
                     scanFolderRecursively(f, f.getName(), logFiles);
-                } else if (f.getName().endsWith(".csv") && !f.getName().startsWith("CorrectionMap_")) {
+                } else if (isHistoryLogName(f.getName()) && !f.getName().startsWith("CorrectionMap_")) {
                     HistoryLogFile hlf = new HistoryLogFile();
                     hlf.uri = androidx.core.content.FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".fileprovider", f);
                     hlf.name = f.getName();
@@ -2678,7 +2946,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         for (androidx.documentfile.provider.DocumentFile f : dir.listFiles()) {
             if (f.isDirectory()) {
                 scanSafFolderRecursively(f, f.getName(), logFiles);
-            } else if (f.getName() != null && f.getName().endsWith(".csv") && !f.getName().startsWith("CorrectionMap_")) {
+            } else if (isHistoryLogName(f.getName()) && !f.getName().startsWith("CorrectionMap_")) {
                 HistoryLogFile hlf = new HistoryLogFile();
                 hlf.uri = f.getUri();
                 hlf.name = f.getName();
@@ -2734,6 +3002,23 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
 
+        // Ask contextually before resetting graphs/map/session data. Cancelling
+        // the permission choice must never erase the previous session preview.
+        if (backgroundLoggingCheckbox.isChecked()
+                && !canShowBackgroundNotification()
+                && !allowHiddenBackgroundStartOnce) {
+            pendingBackgroundConfig = config;
+            renderBackgroundLoggingState(BackgroundUiState.PERMISSION, 0, null);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                showBackgroundNotificationPermissionDialog();
+            } else {
+                showBackgroundNotificationBlockedDialog();
+            }
+            return false;
+        }
+        allowHiddenBackgroundStartOnce = false;
 
         loggingStartTime = SystemClock.elapsedRealtime();
         updateSessionStatus(true);
@@ -2787,41 +3072,32 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         watchdogHandler.postDelayed(connectionWatchdog, 45000);
 
         if (backgroundLoggingCheckbox.isChecked()) {
-            startBackgroundLogging(config);
+            return actuallyStartBackgroundLogging(config);
         } else {
             startInProcessLogging(config);
+            return true;
         }
-        return true;
     }
 
     private void startInProcessLogging(LoggerConfig config) {
+        mapOwnedByBackgroundService = false;
         running = true;
         activeInProcessConfig = config;
         executor = Executors.newSingleThreadExecutor();
         executor.submit(() -> runLogger(config));
     }
 
-    private void startBackgroundLogging(LoggerConfig config) {
-        // On Android 13+ (API 33) a foreground service needs the runtime
-        // POST_NOTIFICATIONS permission before startForeground() is called,
-        // otherwise startForeground() throws SecurityException on the system
-        // binder thread and the whole app crashes. Gate on it and defer the
-        // actual start until the user grants it.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-            pendingBackgroundConfig = config;
-            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                    NOTIFICATION_PERMISSION_CODE);
-            Toast.makeText(this, "Grant notification permission to enable background logging",
-                    Toast.LENGTH_LONG).show();
-            return;
-        }
-        actuallyStartBackgroundLogging(config);
-    }
-
-    private void actuallyStartBackgroundLogging(LoggerConfig config) {
+    private boolean actuallyStartBackgroundLogging(LoggerConfig config) {
+        if (config == null) return false;
+        pendingBackgroundConfig = null;
+        waitingForNotificationSettings = false;
+        mapOwnedByBackgroundService = true;
+        isConnecting = true;
         running = true;
+        renderBackgroundLoggingState(BackgroundUiState.STARTING, 0, null);
+        setConfigUiEnabled(false);
+        watchdogHandler.removeCallbacks(connectionWatchdog);
+        watchdogHandler.postDelayed(connectionWatchdog, 45000);
         LoggerService.setCallback(this);
         LoggerService.setPendingConfig(config);
         Intent intent = new Intent(this, LoggerService.class);
@@ -2832,6 +3108,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             } else {
                 startService(intent);
             }
+            return true;
         } catch (Exception e) {
             android.util.Log.e("MainActivity", "Failed to start foreground service", e);
             isConnecting = false;
@@ -2840,24 +3117,125 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             setFabState(false);
             setConfigUiEnabled(true);
             updateStatusStripConnection(0, "Service failed");
-            if (headerStatus != null) headerStatus.setText("Service failed");
+            renderBackgroundLoggingState(BackgroundUiState.ERROR, 0,
+                    e.getMessage() != null ? e.getMessage() : getString(R.string.header_bg_error));
             setStatus("FGS failed: " + e.getMessage(), R.color.danger);
+            return false;
+        }
+    }
+
+    private boolean isHistoryLogName(String name) {
+        if (name == null) return false;
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.endsWith(".csv") || lower.endsWith(".jsonl");
+    }
+
+    private boolean canShowBackgroundNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
+        if (!androidx.core.app.NotificationManagerCompat.from(this)
+                .areNotificationsEnabled()) {
+            return false;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            NotificationChannel channel = manager != null
+                    ? manager.getNotificationChannel(LoggerService.CHANNEL_ID) : null;
+            return channel == null || channel.getImportance() != NotificationManager.IMPORTANCE_NONE;
+        }
+        return true;
+    }
+
+    private void showBackgroundNotificationPermissionDialog() {
+        if (isFinishing() || isDestroyed()) return;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.background_permission_title)
+                .setMessage(R.string.background_permission_message)
+                .setCancelable(false)
+                .setPositiveButton(R.string.background_allow_notification, (dialog, which) ->
+                        requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                                NOTIFICATION_PERMISSION_CODE))
+                .setNeutralButton(R.string.background_continue_without_notification,
+                        (dialog, which) -> continuePendingBackgroundStart())
+                .setNegativeButton(R.string.cancel,
+                        (dialog, which) -> cancelPendingBackgroundStart())
+                .show();
+    }
+
+    private void showBackgroundNotificationBlockedDialog() {
+        if (pendingBackgroundConfig == null || isFinishing() || isDestroyed()) return;
+        renderBackgroundLoggingState(BackgroundUiState.PERMISSION, 0, null);
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.background_notification_blocked_title)
+                .setMessage(R.string.background_notification_blocked_message)
+                .setCancelable(false)
+                .setPositiveButton(R.string.background_continue_without_notification,
+                        (dialog, which) -> continuePendingBackgroundStart())
+                .setNeutralButton(R.string.background_open_notification_settings,
+                        (dialog, which) -> openNotificationSettingsForPendingStart())
+                .setNegativeButton(R.string.cancel,
+                        (dialog, which) -> cancelPendingBackgroundStart())
+                .show();
+    }
+
+    private void continuePendingBackgroundStart() {
+        if (pendingBackgroundConfig == null) return;
+        pendingBackgroundConfig = null;
+        waitingForNotificationSettings = false;
+        allowHiddenBackgroundStartOnce = true;
+        if (startLogging()) {
+            setFabState(true);
+        }
+    }
+
+    private void cancelPendingBackgroundStart() {
+        pendingBackgroundConfig = null;
+        waitingForNotificationSettings = false;
+        allowHiddenBackgroundStartOnce = false;
+        isConnecting = false;
+        running = false;
+        watchdogHandler.removeCallbacks(connectionWatchdog);
+        setFabState(false);
+        setConfigUiEnabled(true);
+        updateSessionStatus(false);
+        updateStatusStripConnection(0, "Disconnected");
+        renderBackgroundLoggingState(BackgroundUiState.OFF, 0, null);
+        setStatus(getString(R.string.background_start_cancelled), R.color.muted);
+    }
+
+    private void openNotificationSettingsForPendingStart() {
+        waitingForNotificationSettings = true;
+        try {
+            Intent intent = new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getPackageName());
+            startActivity(intent);
+        } catch (Exception e) {
+            Intent fallback = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName()));
+            startActivity(fallback);
         }
     }
 
     private void stopLogging() {
+        boolean shouldStopBackgroundService = LoggerService.isLoggingActive()
+                || (mapOwnedByBackgroundService && running);
         isConnecting = false;
         running = false;
         isPaused = false; // Clear any stuck pause from diagnostic features
         watchdogHandler.removeCallbacks(connectionWatchdog);
         pendingBackgroundConfig = null; // cancel any deferred (permission-gated) start
+        waitingForNotificationSettings = false;
+        allowHiddenBackgroundStartOnce = false;
         // Don't call currentDriver.disconnect() from the main thread — the
         // logger thread performs disconnect() in its finally block. Calling it
         // here too races with that thread and can double-free native resources
         // (GATT handles, BluetoothSocket, UsbSerialPort). Setting running=false
         // and shutdownNow() is enough to make the logger thread exit and clean up.
 
-        if (backgroundLoggingCheckbox.isChecked() || LoggerService.isLoggingActive()) {
+        if (shouldStopBackgroundService) {
             Intent intent = new Intent(this, LoggerService.class);
             intent.setAction(LoggerService.ACTION_STOP);
             startService(intent);
@@ -2873,6 +3251,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // must not kill in-flight DTC/VIN/readiness reads. It is shut down in onDestroy().
         headerStatus.setText("Disconnected");
         updateStatusStripConnection(0, "Disconnected");
+        renderBackgroundLoggingState(BackgroundUiState.OFF, 0, null);
         updateSessionStatus(false);
         setConfigUiEnabled(true);
     }
@@ -2882,20 +3261,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         String simPrefix = (config.transportMode == TransportMode.SIM) ? "Sim_" : "";
         String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
         String sessionId = simPrefix + fuelPrefix + timeStr;
-        BaseDriver driver = DriverFactory.create(config);
+        DriverConnector.Result connection = DriverConnector.connect(config, 30_000L);
+        BaseDriver driver = connection.getDriver();
         currentDriver = driver;
 
-        if (!driver.isConnected() && !driver.connect()) {
-            DriverFactory.markConnectionFailure("Check adapter power, pairing and protocol");
+        if (!connection.isConnected()) {
+            DriverFactory.markConnectionFailure(connection.getError());
             running = false;
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
                 if (active != null) {
                     active.isConnecting = false;
                     active.running = false;
-                    active.setStatus("Connection failed. Check settings and adapter.", R.color.danger);
-                    active.headerStatus.setText("Connection failed");
-                    active.updateStatusStripConnection(0, "Connection failed");
+                    String message = connection.isTimedOut()
+                            ? "Connection timed out. Check adapter power and transport settings."
+                            : "Connection failed: " + connection.getError();
+                    active.setStatus(message, R.color.danger);
+                    active.headerStatus.setText(R.string.status_disconnected);
+                    active.updateStatusStripConnection(0, message);
                     if (active.fabLog != null) {
                         active.setFabState(false);
                     }
@@ -2905,28 +3288,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return;
         }
 
-        if (config.transportMode == TransportMode.AUTO && driver instanceof SimulationDriver) {
-            runOnActiveActivity(() -> {
-                MainActivity active = activeInstance;
-                if (active != null) active.setStatus("Auto probe failed — running simulation.", R.color.warning);
-            });
-        } else {
-            runOnActiveActivity(() -> {
-                MainActivity active = activeInstance;
-                if (active != null) {
-                    active.isConnecting = false;
-                    active.setStatus("Connected. Logging started.", R.color.accent);
-                    // Cancel the connection watchdog now that connect succeeded.
-                    // Without this, the 20s watchdog fires during slow VIN/DTC
-                    // initialization and kills the logger prematurely.
-                    active.watchdogHandler.removeCallbacks(active.connectionWatchdog);
-                }
-            });
-        }
+        final String resolvedTransport = DriverFactory.getLastResolvedTransport();
         runOnActiveActivity(() -> {
             MainActivity active = activeInstance;
-            if (active != null) active.headerStatus.setText("Connected: " + config.transportMode.getValue());
-            if (active != null) active.updateStatusStripConnection(2, "Connected " + config.transportMode.getValue());
+            if (active != null) {
+                active.isConnecting = false;
+                active.setStatus("Connected via " + resolvedTransport + ". Logging started.", R.color.accent);
+                active.watchdogHandler.removeCallbacks(active.connectionWatchdog);
+            }
+        });
+        runOnActiveActivity(() -> {
+            MainActivity active = activeInstance;
+            if (active != null) active.headerStatus.setText(R.string.status_connected);
+            if (active != null) active.updateStatusStripConnection(2, resolvedTransport);
         });
 
         // Try to read VIN unless a valid one was already supplied to this session.
@@ -3035,7 +3409,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         final List<PIDDefinition> finalPids = pids;
         SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US);
-        final java.util.Map<String, Integer> consecutiveFailures = new java.util.HashMap<>();
+        final PidHealthTracker pidHealth = new PidHealthTracker();
+        long pollCycle = 0L;
 
         try {
             writer = new DataWriter(this, sessionId, finalPids, config.vin,
@@ -3080,16 +3455,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 }
                             });
                         }
-                        if (!driver.connect()) {
-                            throw new java.io.IOException("Reconnection failed");
+                        DriverConnector.Result reconnect =
+                                DriverConnector.reconnect(driver, 30_000L);
+                        if (!reconnect.isConnected()) {
+                            throw new java.io.IOException(reconnect.getError());
                         }
                         retryCount = 0;
                         runOnActiveActivity(() -> {
                             MainActivity active = activeInstance;
                             if (active != null) {
+                                String actualTransport = DriverFactory.getLastResolvedTransport();
                                 active.setStatus("Connected. Logging resumed.", R.color.accent);
-                                active.headerStatus.setText("Connected: " + config.transportMode.getValue());
-                                active.updateStatusStripConnection(2, "Connected " + config.transportMode.getValue());
+                                active.headerStatus.setText(R.string.status_connected);
+                                active.updateStatusStripConnection(2, actualTransport);
                             }
                         });
                     }
@@ -3099,52 +3477,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             try { Thread.sleep(100); } catch (InterruptedException ignored) {}
                             continue;
                         }
-                        Map<String, Double> batch = driver.queryPidBatch(finalPids);
+                        pollCycle++;
+                        List<PIDDefinition> polledPids = pidHealth.selectForPoll(finalPids, pollCycle);
+                        Map<String, Double> batch = driver.queryPidBatch(polledPids);
+                        if (!driver.isConnected()) {
+                            throw new java.io.IOException("Adapter stopped responding");
+                        }
+                        java.util.Set<String> polledKeys = new java.util.HashSet<>();
+                        for (PIDDefinition polled : polledPids) polledKeys.add(polled.key());
                         List<SensorSample> samples = new ArrayList<>();
-                        List<PIDDefinition> toRemove = new ArrayList<>();
 
                         for (PIDDefinition pid : finalPids) {
                             Double value = batch.get(pid.getName());
+                            boolean wasPolled = polledKeys.contains(pid.key());
+                            if (wasPolled) pidHealth.recordPolled(pid, value, pollCycle);
                             samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
-                                    value == null ? "err" : "ok"));
-
-                            if (value == null) {
-                                int fails = consecutiveFailures.getOrDefault(pid.key(), 0) + 1;
-                                consecutiveFailures.put(pid.key(), fails);
-                                if (fails >= 3) {
-                                    toRemove.add(pid);
-                                }
-                            } else {
-                                consecutiveFailures.put(pid.key(), 0);
-                            }
-                        }
-
-                        if (!toRemove.isEmpty()) {
-                            // Never remove ALL PIDs — keep at least a minimum set
-                            // so the logger always has something to poll. Also
-                            // never blacklist core PIDs (RPM, Speed, etc.) that
-                            // are essential for derived sensor calculations.
-                            if (finalPids.size() - toRemove.size() < 3) {
-                                toRemove.clear();
-                            } else {
-                                toRemove.removeIf(p -> {
-                                    String key = p.key();
-                                    return key.equals("01_00") || key.equals("01_0C") // RPM
-                                        || key.equals("01_0D") // Speed
-                                        || key.equals("01_05") // Coolant
-                                        || key.equals("01_04") // Load
-                                        || key.equals("01_0B") // MAP
-                                        || key.equals("01_0F") // IAT
-                                        || key.equals("01_33") // Baro
-                                        || key.equals("01_46"); // Ambient // MAP
-                                });
-                            }
-                            if (!toRemove.isEmpty()) {
-                                finalPids.removeAll(toRemove);
-                                for (PIDDefinition p : toRemove) {
-                                    Log.w("OBD2Logger", "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
-                                }
-                            }
+                                    pidHealth.statusFor(pid, value, wasPolled)));
                         }
 
                         // ── Derived sensors ──────────────────────
@@ -3401,8 +3749,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             LoggerConfig cfg = (service != null && service.getConfig() != null) ? service.getConfig() : activeInProcessConfig;
             String modeStr = (cfg != null && cfg.transportMode != null) ? cfg.transportMode.getValue() : "OBD2";
             updateStatusStripConnection(2, "Connected " + modeStr);
-            if (headerStatus != null) {
-                headerStatus.setText("Logging...");
+            if (LoggerService.isLoggingActive()) {
+                renderBackgroundLoggingState(BackgroundUiState.ACTIVE, count, null);
             }
             if (countText != null) countText.setText(getString(R.string.records_count, count));
             updateDashboard(record);
@@ -3425,6 +3773,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (record == null) return;
             MapSampleMeta meta = MapSampleMeta.from(record);
             Double ect = meta.ect;
+            FuelMode mode = FuelMode.fromString(record.getFuelMode());
 
             if (ect != null && mapEctText != null) {
                 mapEctText.setText(String.format(Locale.US, "ECT: %.0f °C", ect));
@@ -3434,39 +3783,72 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             if (mapLoopStatusText != null) {
                 if (meta.fuelSystemStatus != null) {
-                    mapLoopStatusText.setText(meta.closedLoop ? "Status: Closed Loop" : "Status: Open Loop");
+                    mapLoopStatusText.setText(getString(meta.closedLoop
+                            ? R.string.map_live_closed_loop : R.string.map_live_open_loop,
+                            meta.axisSource));
                     mapLoopStatusText.setTextColor(getColorCompat(meta.closedLoop ? R.color.accent : R.color.warning));
                 } else {
-                    mapLoopStatusText.setText("Status: Unknown (Assumed Closed)");
+                    mapLoopStatusText.setText(getString(R.string.map_live_loop_unknown,
+                            meta.axisSource));
                     mapLoopStatusText.setTextColor(getColorCompat(R.color.muted));
                 }
             }
 
             LiveMapStore store = getLiveMapStore();
 
-            // Prefer service store when background logging actively owns writes to avoid double-count.
-            boolean serviceOwnsStore = LoggerService.isLoggingActive()
-                    && LoggerService.getInstance() != null
-                    && LoggerService.getInstance().getLiveMapStore() != null;
-
-            // In-process path already pushed in the logging loop (ensureInProcessMapStore).
-            // Only skip re-push when the background service is the owner.
-            // Do not push here at all if samples were enriched with map_accepted — store is already current.
-            // UI only needs a snapshot + active cell.
-
             if (fuelMapView != null && store != null) {
                 LiveMapStore.MapSnapshot snapshot = store.snapshot();
                 fuelMapView.syncFromStore(snapshot);
-                updateMapCoverage(snapshot, FuelMode.fromString(record.getFuelMode()));
+                updateMapCoverage(snapshot, mode);
             } else if (fuelMapView != null && meta.rpm != null && !Double.isNaN(meta.loadAxis)) {
-                FuelMode mode = FuelMode.fromString(record.getFuelMode());
                 if (meta.gatedEligible) {
                     fuelMapView.pushData(meta.rpm, meta.loadAxis, meta.trimTotal, mode);
                 } else if (meta.rpmCell >= 0) {
                     fuelMapView.setActiveCell(meta.rpmCell, meta.mapBin);
                 }
             }
+            if (fuelMapView != null) {
+                Double liveTrim = meta.stft != null || meta.ltft != null
+                        ? meta.trimTotal : null;
+                Double acceptedValue = valueByKey(record, "map_accepted");
+                boolean sampleAccepted = acceptedValue != null
+                        ? acceptedValue >= 0.5 : meta.gatedEligible;
+                fuelMapView.setLiveSample(meta.rpmCell, meta.mapBin, liveTrim,
+                        mode, sampleAccepted);
+            }
+            updateMapGateStatus(meta, record);
         }
+
+    /** Explain why a live preview is not yet safe to persist as a tune sample. */
+    private void updateMapGateStatus(MapSampleMeta meta, DataRecord record) {
+        if (mapConfidenceText == null || meta == null) return;
+        int reasonRes;
+        if (!meta.gatedEligible) {
+            switch (meta.rejectReason != null ? meta.rejectReason : "") {
+                case "no_fuel_status": reasonRes = R.string.map_wait_loop_pid; break;
+                case "open_loop": reasonRes = R.string.map_wait_closed_loop; break;
+                case "no_coolant": reasonRes = R.string.map_wait_coolant_pid; break;
+                case "cold_engine": reasonRes = R.string.map_wait_warm_engine; break;
+                case "no_trim": reasonRes = R.string.map_wait_fuel_trim; break;
+                case "no_rpm":
+                case "no_axis":
+                default: reasonRes = R.string.map_wait_engine_data; break;
+            }
+        } else {
+            Double rejectCode = valueByKey(record, "map_reject_code");
+            int code = rejectCode != null ? (int) Math.round(rejectCode) : 0;
+            if (code == 11) reasonRes = R.string.map_axis_mismatch;
+            else if (code == 13) reasonRes = R.string.map_wait_lambda_stable;
+            else if (code == 6 || code == 12 || code == 14) {
+                reasonRes = R.string.map_wait_stable_sample;
+            } else {
+                return; // accepted or locked mature cell; retain coverage/confidence status
+            }
+        }
+        mapConfidenceText.setText(getString(R.string.map_live_preview,
+                getString(reasonRes)));
+        mapConfidenceText.setTextColor(getColorCompat(R.color.warning));
+    }
 
     private void updateMapCoverage(LiveMapStore.MapSnapshot snapshot, FuelMode mode) {
         if (snapshot == null) return;
@@ -3487,6 +3869,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     snapshot.getOverlappingCellCount()));
         }
         if (mapConfidenceText != null) {
+            if (!snapshot.getPetrolData().isEmpty() && !snapshot.getLpgData().isEmpty()
+                    && !snapshot.isComparisonAxisCompatible()) {
+                mapConfidenceText.setText(getString(R.string.map_axis_mismatch));
+                mapConfidenceText.setTextColor(getColorCompat(R.color.danger));
+                return;
+            }
             float matureRatio = cellCount > 0 ? mature / (float) cellCount : 0f;
             String label;
             int color;
@@ -3507,15 +3895,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
          * Falls back to the in-process store for foreground-only logging.
          */
         private LiveMapStore getLiveMapStore() {
-            LoggerService s = LoggerService.getInstance();
-            if (s != null && s.getLiveMapStore() != null) {
-                return s.getLiveMapStore();
+            LoggerService service = LoggerService.getInstance();
+            if (LoggerService.isLoggingActive() && service != null
+                    && service.getLiveMapStore() != null) {
+                return service.getLiveMapStore();
             }
-            return ensureInProcessMapStore();
+            // Foreground logging writes exclusively to inProcessMapStore. A
+            // stopped service may still retain its last snapshot, so selecting
+            // merely by non-null service instance returned stale/empty data.
+            if (running || !mapOwnedByBackgroundService) return ensureInProcessMapStore();
+            if (mapOwnedByBackgroundService && service != null
+                    && service.getLiveMapStore() != null) {
+                return service.getLiveMapStore();
+            }
+            return inProcessMapStore != null ? inProcessMapStore : ensureInProcessMapStore();
         }
 
         /** Lazy in-process store so map survives Activity recreation during foreground logging. */
         private static LiveMapStore inProcessMapStore;
+        private static volatile boolean mapOwnedByBackgroundService;
 
         private static LiveMapStore ensureInProcessMapStore() {
             if (inProcessMapStore == null) {
@@ -3527,8 +3925,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     @Override
     public void onStatus(String status, boolean isError) {
         runOnUiThread(() -> {
-            setStatus(status, isError ? R.color.danger : R.color.accent);
-            if (!isError && status != null && (status.contains("Connected") || status.contains("Logging in background") || status.contains("Logging active") || status.contains("Logging resumed") || status.contains("running simulation"))) {
+            String normalized = status != null ? status.toLowerCase(Locale.ROOT) : "";
+            boolean backgroundSession = LoggerService.isLoggingActive()
+                    || backgroundUiState != BackgroundUiState.OFF;
+            boolean connectedStatus = !isError && (normalized.contains("connected")
+                    || normalized.contains("logging in background")
+                    || normalized.contains("logging active")
+                    || normalized.contains("logging resumed")
+                    || normalized.contains("running simulation"));
+            boolean reconnectingStatus = normalized.contains("connection lost")
+                    || normalized.contains("reconnecting");
+            boolean fatalStatus = isError && (normalized.contains("failed to start")
+                    || normalized.contains("connection failed")
+                    || normalized.contains("timed out")
+                    || normalized.contains("logger error")
+                    || normalized.contains("disconnected permanently"));
+            setStatus(status, fatalStatus ? R.color.danger
+                    : ((reconnectingStatus || isError) ? R.color.warning : R.color.accent));
+
+            if (connectedStatus) {
                 isConnecting = false;
                 watchdogHandler.removeCallbacks(connectionWatchdog);
                 if (fabLog != null) {
@@ -3538,15 +3953,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 LoggerConfig cfg = (service != null && service.getConfig() != null) ? service.getConfig() : activeInProcessConfig;
                 String modeStr = (cfg != null && cfg.transportMode != null) ? cfg.transportMode.getValue() : "OBD2";
                 updateStatusStripConnection(2, "Connected " + modeStr);
-                if (headerStatus != null) {
-                    headerStatus.setText("Logging...");
+                if (backgroundSession) {
+                    int records = service != null ? service.getRecordCount() : 0;
+                    renderBackgroundLoggingState(BackgroundUiState.ACTIVE, records, null);
                 }
-            } else if (isError && status != null && status.contains("Connection failed")) {
+            } else if (backgroundSession && reconnectingStatus) {
+                updateStatusStripConnection(1, "Reconnecting...");
+                renderBackgroundLoggingState(BackgroundUiState.RECONNECTING, 0, status);
+            } else if (fatalStatus) {
                 isConnecting = false;
                 watchdogHandler.removeCallbacks(connectionWatchdog);
                 updateStatusStripConnection(0, "Connection failed");
-                if (headerStatus != null) {
-                    headerStatus.setText("Connection failed");
+                if (backgroundSession) {
+                    renderBackgroundLoggingState(BackgroundUiState.ERROR, 0, status);
                 }
             }
         });
@@ -3558,12 +3977,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         running = false;
         watchdogHandler.removeCallbacks(connectionWatchdog);
         runOnUiThread(() -> {
+            boolean stoppedAfterError = backgroundUiState == BackgroundUiState.ERROR;
             if (fabLog != null) {
                 setFabState(false);
             }
-            setStatus("Background logging stopped. " + totalRecords + " records saved.", R.color.primary);
-            headerStatus.setText("Disconnected");
+            if (!stoppedAfterError) {
+                setStatus(getString(R.string.background_stopped_saved, totalRecords), R.color.primary);
+            }
             updateStatusStripConnection(0, "Disconnected");
+            if (stoppedAfterError) {
+                renderBackgroundLoggingState(BackgroundUiState.ERROR, totalRecords,
+                        lastBackgroundError);
+            } else {
+                renderBackgroundLoggingState(BackgroundUiState.OFF, totalRecords, null);
+            }
             updateSessionStatus(false);
             setConfigUiEnabled(true);
         });
@@ -3616,7 +4043,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     /** Heuristic: returns true if VIN suggests a diesel vehicle. */
     private static boolean isDieselVin(String vin) {
         if (vin == null || vin.length() < 3) return false;
-        String wmi = vin.substring(0, 3).toUpperCase();
+        String wmi = vin.substring(0, 3).toUpperCase(Locale.ROOT);
         // Common Thai-market diesel WMI prefixes
         switch (wmi) {
             case "MPA": // Isuzu (Thailand) — almost all diesel
@@ -3855,33 +4282,44 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (cockpitInsightTitle == null || cockpitInsightMessage == null) return;
 
         int dtcCount = LoggerService.lastStoredDtcs.size() + LoggerService.lastPendingDtcs.size();
+        DriveInsightEngine.Result insight = DriveInsightEngine.evaluate(
+                rpm, coolant, voltage, totalTrim, dtcCount);
+        currentDriveInsight = insight;
         int tone = R.color.accent;
         int titleRes;
         String message;
 
-        if (rpm == null) {
-            titleRes = R.string.home_ai_insight_collecting;
-            message = getString(R.string.home_ai_insight_collecting_detail);
-            tone = R.color.muted;
-        } else if (dtcCount > 0) {
-            titleRes = R.string.home_ai_insight_dtc;
-            message = getString(R.string.home_ai_insight_dtc_detail, dtcCount);
-            tone = R.color.danger;
-        } else if (coolant != null && coolant >= 105.0) {
-            titleRes = R.string.home_ai_insight_hot;
-            message = getString(R.string.home_ai_insight_hot_detail, coolant);
-            tone = R.color.danger;
-        } else if (voltage != null && rpm >= 500.0 && (voltage < 13.0 || voltage > 14.9)) {
-            titleRes = R.string.home_ai_insight_voltage;
-            message = getString(R.string.home_ai_insight_voltage_detail, voltage);
-            tone = R.color.warning;
-        } else if (totalTrim != null && Math.abs(totalTrim) >= 10.0) {
-            titleRes = R.string.home_ai_insight_trim;
-            message = getString(R.string.home_ai_insight_trim_detail, totalTrim);
-            tone = R.color.warning;
-        } else {
-            titleRes = R.string.home_ai_insight_stable;
-            message = getString(R.string.home_ai_insight_stable_detail);
+        switch (insight.type) {
+            case DTC:
+                titleRes = R.string.home_ai_insight_dtc;
+                message = getString(R.string.home_ai_insight_dtc_detail, insight.dtcCount);
+                tone = R.color.danger;
+                break;
+            case COOLANT_HIGH:
+                titleRes = R.string.home_ai_insight_hot;
+                message = getString(R.string.home_ai_insight_hot_detail, insight.coolant);
+                tone = R.color.danger;
+                break;
+            case VOLTAGE:
+                titleRes = R.string.home_ai_insight_voltage;
+                message = getString(R.string.home_ai_insight_voltage_detail, insight.voltage);
+                tone = R.color.warning;
+                break;
+            case FUEL_TRIM:
+                titleRes = R.string.home_ai_insight_trim;
+                message = getString(R.string.home_ai_insight_trim_detail, insight.totalTrim);
+                tone = R.color.warning;
+                break;
+            case COLLECTING:
+                titleRes = R.string.home_ai_insight_collecting;
+                message = getString(R.string.home_ai_insight_collecting_detail);
+                tone = R.color.muted;
+                break;
+            case STABLE:
+            default:
+                titleRes = R.string.home_ai_insight_stable;
+                message = getString(R.string.home_ai_insight_stable_detail);
+                break;
         }
 
         boolean needsAttention = tone == R.color.warning || tone == R.color.danger;
@@ -3891,7 +4329,64 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (cockpitInsightMeta != null) cockpitInsightMeta.setText(R.string.home_ai_insight_local);
         if (cockpitInsightCard != null) {
             cockpitInsightCard.setStrokeColor(getColorCompat(needsAttention ? tone : R.color.border));
+            cockpitInsightCard.setContentDescription(cockpitInsightTitle.getText() + ". "
+                    + message + ". " + getString(R.string.drive_insight_tap_details));
         }
+    }
+
+    private void showDriveInsightDetails() {
+        DriveInsightEngine.Result insight = currentDriveInsight;
+        if (insight == null) {
+            insight = DriveInsightEngine.evaluate(null, null, null, null, 0);
+        }
+        int actionRes;
+        switch (insight.destination) {
+            case DIAGNOSTICS: actionRes = R.string.drive_insight_open_diagnostics; break;
+            case BATTERY: actionRes = R.string.drive_insight_open_battery; break;
+            case FUEL_MAP: actionRes = R.string.drive_insight_open_map; break;
+            case DASHBOARD:
+                actionRes = R.string.drive_insight_open_dashboard; break;
+            case NONE:
+            default: actionRes = 0; break;
+        }
+        CharSequence title = cockpitInsightTitle != null
+                ? cockpitInsightTitle.getText() : getString(R.string.home_title_ai_insight);
+        CharSequence detail = cockpitInsightMessage != null
+                ? cockpitInsightMessage.getText() : getString(R.string.home_ai_insight_collecting_detail);
+        final DriveInsightEngine.Destination destination = insight.destination;
+        String snapshot = getString(R.string.drive_insight_snapshot,
+                formatInsightValue(insight.rpm),
+                formatInsightValue(insight.coolant),
+                formatInsightValue(insight.voltage),
+                formatInsightValue(insight.totalTrim));
+        com.google.android.material.dialog.MaterialAlertDialogBuilder builder =
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(title)
+                .setMessage(detail + "\n\n" + snapshot + "\n\n"
+                        + getString(R.string.drive_insight_advisory))
+                .setNegativeButton(R.string.cancel, null);
+        if (destination == DriveInsightEngine.Destination.NONE) {
+            // Healthy/collecting states are informational; do not send the
+            // user to the same live dashboard they are already viewing.
+            builder.setPositiveButton(android.R.string.ok, null);
+        } else {
+            builder.setPositiveButton(actionRes, (dialog, which) -> {
+                switch (destination) {
+                    case DIAGNOSTICS: showTab(3); break;
+                    case BATTERY: showTab(7); break;
+                    case FUEL_MAP: showTab(2); break;
+                    case DASHBOARD: showTab(0); break;
+                    case NONE:
+                    default: break;
+                }
+            });
+        }
+        builder.show();
+    }
+
+    private String formatInsightValue(Double value) {
+        return value != null && Double.isFinite(value)
+                ? String.format(Locale.US, "%.1f", value) : "--";
     }
 
     /** Keep the compact header useful without exposing the full VIN at a glance. */
@@ -3952,7 +4447,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 displayDeviceName = getString(R.string.status_offline) + " (Service Failed)";
             }
         } else if (state == 1) {
-            if (deviceName != null && deviceName.toLowerCase().startsWith("connecting")) {
+            if (deviceName != null && deviceName.toLowerCase(Locale.ROOT).startsWith("connecting")) {
                 displayDeviceName = getString(R.string.status_connecting);
             } else if ("Reconnecting...".equalsIgnoreCase(deviceName)) {
                 displayDeviceName = getString(R.string.status_connecting) + "...";
@@ -6451,6 +6946,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         config.sampleIntervalMs = Math.max(50, (long) Math.round(seconds * 1000.0));
         config.lpgOnlyMode = lpgOnlyCheckbox.isChecked();
         config.enableApiServer = apiServerCheckbox.isChecked();
+        config.apiAccessToken = ApiSecurity.getOrCreateToken(this);
         config.fordMsCanEnabled = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
         config.showTurboBoost = turboBoostCheckbox == null || turboBoostCheckbox.isChecked();
         config.showFuelConsumption = fuelEconomyCheckbox == null || fuelEconomyCheckbox.isChecked();
@@ -6902,7 +7398,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         for (String dk : derivedKeys) {
             if (!allKeys.contains(dk)) {
                 allKeys.add(dk);
-                keyToName.put(dk, dk.replace("derived_", "").replace("_", " ").toUpperCase());
+                keyToName.put(dk, dk.replace("derived_", "").replace("_", " ").toUpperCase(Locale.ROOT));
             }
         }
 
@@ -6922,10 +7418,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (text.isEmpty()) {
                     filteredKeys.addAll(allKeys);
                 } else {
-                    String q = text.toLowerCase();
+                    String q = text.toLowerCase(Locale.ROOT);
                     for (String k : allKeys) {
                         String name = keyToName.getOrDefault(k, k);
-                        if (k.toLowerCase().contains(q) || name.toLowerCase().contains(q)) {
+                        if (k.toLowerCase(Locale.ROOT).contains(q)
+                                || name.toLowerCase(Locale.ROOT).contains(q)) {
                             filteredKeys.add(k);
                         }
                     }
@@ -7806,27 +8303,85 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
-    private void requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                        NOTIFICATION_PERMISSION_CODE);
-            }
-        }
-    }
+    private void renderBackgroundLoggingState(BackgroundUiState state, int recordCount,
+                                              String detail) {
+        backgroundUiState = state != null ? state : BackgroundUiState.OFF;
+        boolean notificationVisible = canShowBackgroundNotification();
+        String settingsText;
+        String headerText = null;
+        int color = R.color.muted;
+        int dot = R.drawable.bg_status_dot_off;
 
-    private void requestBatteryOptimizationExemption() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-            String pkg = getPackageName();
-            if (pm != null && !pm.isIgnoringBatteryOptimizations(pkg)) {
-                try {
-                    Intent intent = new Intent(
-                            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-                    intent.setData(Uri.parse("package:" + pkg));
-                    startActivity(intent);
-                } catch (Exception ignored) {
-                }
+        switch (backgroundUiState) {
+            case PERMISSION:
+                settingsText = getString(R.string.background_status_permission);
+                headerText = getString(R.string.header_bg_permission);
+                color = R.color.warning;
+                dot = R.drawable.bg_status_dot_connecting;
+                break;
+            case STARTING:
+                lastBackgroundError = null;
+                settingsText = getString(R.string.background_status_starting);
+                headerText = getString(R.string.header_bg_starting);
+                color = R.color.warning;
+                dot = R.drawable.bg_status_dot_connecting;
+                break;
+            case ACTIVE:
+                lastBackgroundError = null;
+                settingsText = getString(notificationVisible
+                                ? R.string.background_status_active
+                                : R.string.background_status_active_no_notification,
+                        Math.max(0, recordCount));
+                headerText = getString(R.string.header_bg_active);
+                color = R.color.accent;
+                dot = R.drawable.bg_status_dot_on;
+                break;
+            case RECONNECTING:
+                settingsText = getString(R.string.background_status_reconnecting);
+                headerText = getString(R.string.header_bg_reconnecting);
+                color = R.color.warning;
+                dot = R.drawable.bg_status_dot_connecting;
+                break;
+            case ERROR:
+                String safeDetail = detail == null || detail.trim().isEmpty()
+                        ? (lastBackgroundError != null ? lastBackgroundError
+                            : getString(R.string.header_bg_error))
+                        : detail.trim();
+                lastBackgroundError = safeDetail;
+                settingsText = getString(R.string.background_status_error, safeDetail);
+                headerText = getString(R.string.header_bg_error);
+                color = R.color.danger;
+                dot = R.drawable.bg_status_dot_off;
+                break;
+            case OFF:
+            default:
+                lastBackgroundError = null;
+                boolean enabled = backgroundLoggingCheckbox != null
+                        && backgroundLoggingCheckbox.isChecked();
+                color = !enabled ? R.color.muted
+                        : (notificationVisible ? R.color.accent : R.color.warning);
+                settingsText = getString(!enabled
+                        ? R.string.background_status_disabled
+                        : (notificationVisible
+                            ? R.string.background_status_ready
+                            : R.string.background_status_ready_no_notification));
+                break;
+        }
+
+        if (backgroundLoggingStatusText != null) {
+            backgroundLoggingStatusText.setText(settingsText);
+            backgroundLoggingStatusText.setTextColor(getColorCompat(color));
+            backgroundLoggingStatusText.setContentDescription(settingsText);
+        }
+        if (headerText != null) {
+            if (headerStatus != null) {
+                headerStatus.setText(headerText);
+                headerStatus.setTextColor(getColorCompat(color));
+                headerStatus.setContentDescription(settingsText);
+            }
+            if (headerStatusDot != null) {
+                headerStatusDot.setBackgroundResource(dot);
+                headerStatusDot.setContentDescription(settingsText);
             }
         }
     }
@@ -7860,6 +8415,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         ed.putString("pref_baud", baudInput != null ? baudInput.getText().toString().trim() : "115200");
         ed.putString("pref_interval", intervalInput != null ? intervalInput.getText().toString().trim() : "0.5");
         ed.putBoolean("pref_lpg_only", lpgOnlyCheckbox != null && lpgOnlyCheckbox.isChecked());
+        ed.putBoolean("pref_background_logging", backgroundLoggingCheckbox != null && backgroundLoggingCheckbox.isChecked());
         ed.putBoolean("pref_api_server", apiServerCheckbox != null && apiServerCheckbox.isChecked());
         ed.putBoolean("pref_ford_ms_can", fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked());
         ed.putBoolean("pref_turbo_boost", turboBoostCheckbox != null && turboBoostCheckbox.isChecked());
@@ -7919,6 +8475,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         if (lpgOnlyCheckbox != null) {
             lpgOnlyCheckbox.setChecked(prefs.getBoolean("pref_lpg_only", false));
+        }
+        if (backgroundLoggingCheckbox != null && !LoggerService.isLoggingActive()) {
+            backgroundLoggingCheckbox.setChecked(prefs.getBoolean("pref_background_logging", false));
         }
         if (apiServerCheckbox != null) {
             apiServerCheckbox.setChecked(prefs.getBoolean("pref_api_server", false));
@@ -7981,6 +8540,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
         syncLoggerState();
+        if (waitingForNotificationSettings && pendingBackgroundConfig != null) {
+            waitingForNotificationSettings = false;
+            if (canShowBackgroundNotification()) {
+                continuePendingBackgroundStart();
+            } else {
+                showBackgroundNotificationBlockedDialog();
+            }
+        }
     }
 
     @Override
@@ -7997,11 +8564,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             dtc.shutdownNow();
             dtcExecutor = null;
         }
-        if (isFinishing()) {
+        // An explicitly enabled foreground-service session must survive the
+        // Activity closing; only the in-process logger is Activity-owned.
+        if (isFinishing() && !LoggerService.isLoggingActive()) {
             stopLogging();
+        } else if (isFinishing()) {
+            LoggerService.setCallback(null);
         }
         if (activeInstance == this) {
             activeInstance = null;
+            LoggerService.dtcClearTrigger = null;
         }
         try {
             unregisterReceiver(usbPermissionReceiver);
@@ -8045,26 +8617,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == NOTIFICATION_PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                if (pendingBackgroundConfig != null) {
-                    LoggerConfig cfg = pendingBackgroundConfig;
-                    pendingBackgroundConfig = null;
-                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                        actuallyStartBackgroundLogging(cfg);
-                    }, 300);
-                }
+                continuePendingBackgroundStart();
             } else {
-                pendingBackgroundConfig = null;
-                isConnecting = false;
-                running = false;
-                watchdogHandler.removeCallbacks(connectionWatchdog);
-                runOnUiThread(() -> {
-                    setFabState(false);
-                    setConfigUiEnabled(true);
-                    updateStatusStripConnection(0, "Permission denied");
-                    if (headerStatus != null) headerStatus.setText("Disconnected");
-                    Toast.makeText(this, "Notification permission denied — background logging off",
-                            Toast.LENGTH_LONG).show();
-                });
+                // Permission controls notification visibility; Android still
+                // permits the foreground logger. Continue only by user choice.
+                showBackgroundNotificationBlockedDialog();
             }
             return;
         }
@@ -8089,6 +8646,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 }
             } else {
                 pendingStartLoggingAfterPermission = false;
+                allowHiddenBackgroundStartOnce = false;
                 isConnecting = false;
                 running = false;
                 watchdogHandler.removeCallbacks(connectionWatchdog);

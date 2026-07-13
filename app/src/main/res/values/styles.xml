@@ -33,9 +33,11 @@
     </style>
 
     <style name="AppTheme" parent="BaseAppTheme">
-        <!-- Global Font Configuration -->
-        <item name="android:fontFamily">@font/outfit</item>
-        <item name="fontFamily">@font/outfit</item>
+        <!-- System sans is optimized for Android displays and includes stable
+             Thai/Latin fallback metrics. The former Outfit assets were HTML
+             error pages saved with .ttf names, not usable font binaries. -->
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="fontFamily">sans-serif</item>
     </style>
 
     <style name="CustomCardViewStyle" parent="Widget.Material3.CardView.Elevated">

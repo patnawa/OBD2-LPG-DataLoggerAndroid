@@ -2,6 +2,71 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+## [3.20.3] - 2026-07-13 — Play Store Release Preparation
+
+- Versioned the program as `3.20.3` (`versionCode 117`).
+- Updated the release workflow to build and publish a signed Android App Bundle (`.aab`) alongside the QA APK, with APK/AAB signature verification and SHA-256 checksums.
+- Added a Play Store release checklist covering privacy, Data Safety, foreground-service declaration, closed testing, 16 KB page-size verification, store assets, and hardware smoke tests.
+
+## [3.20.2] - 2026-07-13 — Session History & UX
+
+### Live Map accuracy and diagnostics
+- Added a dedicated multi-select mode in Session History: select any number of CSV/JSONL sessions, share them together with Android's multi-file chooser, or delete them after one confirmation.
+- Kept Compare 2 Logs as a separate workflow so batch file management cannot accidentally launch map comparison.
+- Versioned the program as `3.20.2` (`versionCode 116`) and refreshed the README/release notes.
+- Drive Insight now stays in place for healthy/collecting states, shows a current-data snapshot, and only deep-links to Dashboard, Diagnostics, Battery, or Live Map when an actionable condition is detected.
+- Fixed gauge color rendering across Light/Dark themes: adaptive track, bezel, tick, text, and alpha-safe hub colors now stay readable for every gauge slot.
+- Made output routing explicit: valid VINs use their own folder, while missing/placeholder VINs use `Downloads/TunerMapPro/General` and summary metadata records the routing decision.
+- Reframed Live Map values as ECU fuel corrections instead of labeling positive trim as a currently lean mixture; measured Lambda is now shown separately when available.
+- Added transient/load-step, unstable-trim, and measured-vs-commanded Lambda quality gates before a sample can affect the learned map.
+- Reset debounce and stability history at petrol/gaseous fuel changeover so samples from one fuel cannot prime the other map.
+- Prevented comparisons and correction exports when petrol and gaseous maps were learned from incompatible MAP/load-axis sources.
+- Added per-cell STFT, LTFT, Lambda, spread, hit count, confidence, and lock diagnostics to the realtime API and AI export.
+- Treated `0xFF` in unused secondary O2-trim bytes as unavailable without changing the valid SAE boundary behavior of the primary STFT/LTFT PIDs.
+- Updated Live Map status feedback and all supported translations to describe correction direction without incorrectly claiming rich/lean combustion.
+- Added regression coverage for correction components, Lambda stability, transient rejection, axis compatibility, and unused O2-trim sentinel handling.
+
+## [3.20.1] - 2026-07-13 — Live Map & Installability Hotfix
+
+- Fixed foreground Map Live Data reading a stale background-service store, including state restoration after Activity recreation.
+- Restored Fuel System Status (`01 03`) to Simulation auto-detection and kept admitted MAP/loop/trim PIDs continuously polled so live learning does not appear frozen.
+- Added a non-persistent `LIVE` cell preview while warm-up, loop-state, trim, and debounce safety gates settle; preview samples never contaminate correction export or API map data.
+- Made Drive Insight interactive with a localized detail dialog and context-aware actions to Dashboard, Diagnostics, Battery Tester, or Fuel Map.
+- Reworked Background Logging permission UX: notification access is requested only when starting a background session, denial no longer incorrectly disables a valid foreground service, and users can explicitly continue with a hidden notification.
+- Added live background state to the compact header (`BG START`, `BG LIVE`, `BG RETRY`, `BG ERROR`) and Settings, including record count, notification visibility, persisted preference, channel-level blocking detection, and notification actions to reopen the app or stop logging.
+- Fixed GitHub Actions publishing an unsigned release APK. Tag releases now require a persistent keystore from GitHub Secrets, verify the signed APK before publishing, and include a SHA-256 checksum; CI debug APKs are explicitly clean-install-only.
+- Versioned the hotfix as `3.20.1` (`versionCode 115`) and added regression tests for simulator map prerequisites, map polling continuity, and Drive Insight routing.
+
+## [3.20.0] - 2026-07-13 — Production Reliability & Secure Realtime API
+
+### Transport and Session Reliability
+- AUTO discovery is now covered by a hard 30-second deadline, prioritizes likely OBD adapters, and reports the transport that actually connected.
+- AUTO no longer silently falls back to simulated telemetry; demo data is available only when Simulation is selected explicitly.
+- Reconnect attempts use bounded daemon executors with deterministic shutdown, and transport I/O failures now activate reconnect instead of leaving an empty session running.
+- Replaced permanent PID blacklisting with adaptive cooldown and automatic retry, while preserving null/quality columns in every record.
+- Foreground-service logging now survives closing the Activity as intended.
+
+### Fuel-map and Output Integrity
+- Synthesized MAP is explicitly identified as `SYNTH_MAP` instead of being presented as an ECU MAP sensor value.
+- Fuel-map learning now fails safe when coolant temperature or fuel-system loop state is unavailable; the live cursor remains active without storing an unsafe correction.
+- Missing STFT/LTFT is logged as null/unavailable instead of a fabricated `0%` trim.
+- Map imports are transactional, bounded to 512 KiB/1000 cells, range checked, and protected from malformed requests clearing existing data.
+
+### API and Platform Security
+- Added a per-install 128-bit API token. VIN, telemetry, map, stream, and DTC endpoints require Bearer or `X-API-Key` authentication; only `/api/ping` is public.
+- DTC clear requests now open the same physical confirmation flow as the UI and return HTTP 202 Accepted.
+- SSE delivery is non-blocking and client bounded so a slow network consumer cannot stall OBD polling.
+- Disabled Android backup and global cleartext client traffic, removed the direct battery-optimization exemption request, and added no-cache/nosniff response headers.
+
+### UI and Packaging
+- The connection header/status strip now shows resolved adapter transport consistently after initial connect and reconnect.
+- Replaced invalid downloaded font files with the Android system sans-serif family for deterministic rendering and smaller packaging.
+- Unified the API preference key and added a tap-to-copy endpoint/token card in Settings.
+- Versioned the app as `3.20.0` (`versionCode 114`) and verified installable QA packaging with APK Signature Schemes v1/v2/v3; production distribution still requires the owner's private release key.
+- Added regression coverage for connection deadlines, PID recovery, API authentication, MAP safety/provenance, and reconnect behavior.
+
 ## [3.19.0] - 2026-07-13 — Reliable Session Intelligence & Output Schema v2
 
 ### Session Summary v2

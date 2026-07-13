@@ -22,9 +22,9 @@
     <string name="smart_tuning_analysis">Intelligente Tuning-Analyse</string>
     <string name="waiting_for_data">Warte auf Fuel Trim Daten...</string>
     <string name="live_fuel_map">Live-Fuel Trim Karte</string>
-    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = U/min (500-6500)</string>
+    <string name="map_axes" formatted="false">Y = MAP kPa (oder Load-%-Ersatzachse), X = U/min (500-6500)</string>
     <string name="how_to_read_map_title">Funktionsweise der Karte</string>
-    <string name="how_to_read_map_desc" formatted="false">Zeigt das gesamte Fuel Trim (STFT + LTFT)\n🟢 Grün (±5%) = Perfekt\n🔴 Rot (Negativ) = Fett (Kraftstoff reduzieren)\n🔵 Blau (Positiv) = Mager (Kraftstoff hinzufügen)\n\nZELLEN-SPERRE &amp; TREFFER-ZÄHLER:\nZellen beginnen transparent. Halten Sie U/min/MAP stabil, um Daten zu sammeln. Die Deckkraft erhöht sich mit den Treffern.\nx20 Treffer = Gesperrt (Goldener Rand).\n\nABWEICHUNG: Zeigt (LPG/CNG - Benzin).\n+ bedeutet LPG ist mager. - bedeutet LPG ist fett. Ziel ist 0%.\n\nTUNING-ASSISTENT: Zeigt die genaue %-Korrektur für Ihr LPG-Kennfeld (Exportierbar als CSV).\n\n* Hinweis: Um den Assistenten oder die Abweichung zu nutzen, müssen Sie zuerst Benzin- und LPG-Daten sammeln!</string>
+    <string name="how_to_read_map_desc" formatted="false">Zeigt die ECU-Kraftstoffkorrektur (STFT + LTFT), nicht direkt ein fettes oder mageres Gemisch.\nNegativ = ECU reduziert Kraftstoff. Positiv = ECU erhöht Kraftstoff. Gemessenes Lambda (λ) erscheint in stabilen Zellen. Zellen mit weniger als 3 stabilen Treffern bleiben grau.\n\nABWEICHUNG = LPG-Trim - Benzin-Trim. + bedeutet Gas hinzufügen, - bedeutet Gas reduzieren. Nur Kennfelder mit gleicher Achsenquelle vergleichen.</string>
     <string name="petrol">BENZIN</string>
     <string name="petrol_logs_header">Benzin-Protokolle</string>
     <string name="lpg_logs_header">LPG/CNG-Protokolle</string>

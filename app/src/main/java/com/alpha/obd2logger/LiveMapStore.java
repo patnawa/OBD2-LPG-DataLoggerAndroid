@@ -25,6 +25,14 @@ public final class LiveMapStore {
 
     public static final class TrimData {
         private double sum = 0;
+        private double sumSquares = 0;
+        private double stftSum = 0;
+        private int stftCount = 0;
+        private double ltftSum = 0;
+        private int ltftCount = 0;
+        private double lambdaSum = 0;
+        private double lambdaSumSquares = 0;
+        private int lambdaCount = 0;
         private int hitCount = 0;
         private volatile long lastUpdateMs = 0;
         public static final int MAX_HITS = 20;
@@ -35,6 +43,8 @@ public final class LiveMapStore {
         public TrimData(double sum, int hitCount) {
             this.sum = sum;
             this.hitCount = hitCount;
+            double average = hitCount > 0 ? sum / hitCount : 0.0;
+            this.sumSquares = average * average * hitCount;
             this.lastUpdateMs = System.currentTimeMillis();
         }
 
@@ -45,15 +55,48 @@ public final class LiveMapStore {
                 return;
             }
             sum += val;
+            sumSquares += val * val;
             hitCount++;
             lastUpdateMs = System.currentTimeMillis();
         }
 
-        /** Overwrite from import (trusted baseline). */
+        /** Store one quality-gated sample together with its diagnostic components. */
+        public synchronized void addStableSample(MapSampleMeta meta) {
+            if (meta == null || hitCount >= MAX_HITS || !Double.isFinite(meta.trimTotal)) return;
+            sum += meta.trimTotal;
+            sumSquares += meta.trimTotal * meta.trimTotal;
+            hitCount++;
+            if (finite(meta.stft)) {
+                stftSum += meta.stft;
+                stftCount++;
+            }
+            if (finite(meta.ltft)) {
+                ltftSum += meta.ltft;
+                ltftCount++;
+            }
+            if (finite(meta.lambda) && meta.lambda > 0.0 && meta.lambda < 2.0) {
+                lambdaSum += meta.lambda;
+                lambdaSumSquares += meta.lambda * meta.lambda;
+                lambdaCount++;
+            }
+            lastUpdateMs = System.currentTimeMillis();
+        }
+
+        /** Overwrite from an imported baseline with bounded automotive values. */
         public synchronized void setFromImport(double avg, int hits) {
-            int n = Math.max(0, hits);
+            int n = Math.max(0, Math.min(MAX_HITS, hits));
+            double boundedAverage = Double.isFinite(avg)
+                    ? Math.max(-100.0, Math.min(100.0, avg)) : 0.0;
             this.hitCount = n;
-            this.sum = avg * n;
+            this.sum = boundedAverage * n;
+            this.sumSquares = boundedAverage * boundedAverage * n;
+            this.stftSum = 0;
+            this.stftCount = 0;
+            this.ltftSum = 0;
+            this.ltftCount = 0;
+            this.lambdaSum = 0;
+            this.lambdaSumSquares = 0;
+            this.lambdaCount = 0;
             this.lastUpdateMs = System.currentTimeMillis();
         }
 
@@ -69,6 +112,42 @@ public final class LiveMapStore {
             return sum;
         }
 
+        public synchronized double getStandardDeviation() {
+            if (hitCount < 2) return 0.0;
+            double variance = (sumSquares - (sum * sum / hitCount)) / (hitCount - 1);
+            return Math.sqrt(Math.max(0.0, variance));
+        }
+
+        public synchronized Double getAverageStft() {
+            return stftCount > 0 ? stftSum / stftCount : null;
+        }
+
+        public synchronized Double getAverageLtft() {
+            return ltftCount > 0 ? ltftSum / ltftCount : null;
+        }
+
+        public synchronized Double getAverageLambda() {
+            return lambdaCount > 0 ? lambdaSum / lambdaCount : null;
+        }
+
+        public synchronized double getLambdaStandardDeviation() {
+            if (lambdaCount < 2) return 0.0;
+            double variance = (lambdaSumSquares - (lambdaSum * lambdaSum / lambdaCount))
+                    / (lambdaCount - 1);
+            return Math.sqrt(Math.max(0.0, variance));
+        }
+
+        public synchronized int getLambdaCount() {
+            return lambdaCount;
+        }
+
+        /** 0..1 score used by UI/API; five stable hits is the minimum mature cell. */
+        public synchronized double getConfidence() {
+            double hitScore = Math.min(1.0, hitCount / 5.0);
+            double spreadPenalty = Math.min(0.5, getStandardDeviation() / 20.0);
+            return Math.max(0.0, hitScore - spreadPenalty);
+        }
+
         public long getLastUpdateMs() {
             return lastUpdateMs;
         }
@@ -81,9 +160,21 @@ public final class LiveMapStore {
         public synchronized TrimData copy() {
             TrimData c = new TrimData();
             c.sum = this.sum;
+            c.sumSquares = this.sumSquares;
+            c.stftSum = this.stftSum;
+            c.stftCount = this.stftCount;
+            c.ltftSum = this.ltftSum;
+            c.ltftCount = this.ltftCount;
+            c.lambdaSum = this.lambdaSum;
+            c.lambdaSumSquares = this.lambdaSumSquares;
+            c.lambdaCount = this.lambdaCount;
             c.hitCount = this.hitCount;
             c.lastUpdateMs = this.lastUpdateMs;
             return c;
+        }
+
+        private static boolean finite(Double value) {
+            return value != null && Double.isFinite(value);
         }
     }
 
@@ -128,6 +219,8 @@ public final class LiveMapStore {
         private final int activeRpmCell;
         private final float activeMapBin;
         private final String axisSource;
+        private final String petrolAxisSource;
+        private final String lpgAxisSource;
 
         public MapSnapshot(Map<String, TrimData> petrol,
                            Map<String, TrimData> lpg,
@@ -136,7 +229,9 @@ public final class LiveMapStore {
                            int totalRecords,
                            int activeRpmCell,
                            float activeMapBin,
-                           String axisSource) {
+                           String axisSource,
+                           String petrolAxisSource,
+                           String lpgAxisSource) {
             // Deep-copy TrimData so later write-side mutations don't mutate this snapshot.
             Map<String, TrimData> pCopy = new HashMap<>();
             for (Map.Entry<String, TrimData> e : petrol.entrySet()) {
@@ -154,6 +249,8 @@ public final class LiveMapStore {
             this.activeRpmCell = activeRpmCell;
             this.activeMapBin = activeMapBin;
             this.axisSource = axisSource != null ? axisSource : MapSampleMeta.AXIS_NONE;
+            this.petrolAxisSource = normalizeAxis(petrolAxisSource);
+            this.lpgAxisSource = normalizeAxis(lpgAxisSource);
         }
 
         public Map<String, TrimData> getPetrolData() { return petrol; }
@@ -164,8 +261,16 @@ public final class LiveMapStore {
         public int getActiveRpmCell() { return activeRpmCell; }
         public float getActiveMapBin() { return activeMapBin; }
         public String getAxisSource() { return axisSource; }
+        public String getPetrolAxisSource() { return petrolAxisSource; }
+        public String getLpgAxisSource() { return lpgAxisSource; }
+
+        public boolean isComparisonAxisCompatible() {
+            return !MapSampleMeta.AXIS_NONE.equals(petrolAxisSource)
+                    && petrolAxisSource.equals(lpgAxisSource);
+        }
 
         public int getOverlappingCellCount() {
+            if (!isComparisonAxisCompatible()) return 0;
             int count = 0;
             for (String key : petrol.keySet()) {
                 if (lpg.containsKey(key)) count++;
@@ -174,6 +279,7 @@ public final class LiveMapStore {
         }
 
         public double getAverageAbsoluteDeviation() {
+            if (!isComparisonAxisCompatible()) return 0;
             double sumAbs = 0;
             int common = 0;
             for (String key : petrol.keySet()) {
@@ -188,6 +294,7 @@ public final class LiveMapStore {
         }
 
         public double getMaxDeviation() {
+            if (!isComparisonAxisCompatible()) return 0;
             double maxDev = 0;
             for (String key : petrol.keySet()) {
                 TrimData p = petrol.get(key);
@@ -203,6 +310,7 @@ public final class LiveMapStore {
         }
 
         public String getMaxDeviationCell() {
+            if (!isComparisonAxisCompatible()) return null;
             double maxAbs = 0;
             String maxKey = null;
             for (String key : petrol.keySet()) {
@@ -217,6 +325,10 @@ public final class LiveMapStore {
                 }
             }
             return maxKey;
+        }
+
+        private static String normalizeAxis(String source) {
+            return source != null && !source.isEmpty() ? source : MapSampleMeta.AXIS_NONE;
         }
     }
 
@@ -290,9 +402,103 @@ public final class LiveMapStore {
         }
     }
 
+    /**
+     * Rejects transient samples before they can become tune corrections. The
+     * thresholds are deliberately wider than normal closed-loop oscillation;
+     * they remove pedal/load steps and sensor-lag spikes without requiring a
+     * vehicle-specific calibration.
+     */
+    private static final class SampleStabilityGate {
+        private static final double MAX_RPM_STEP = 400.0;
+        private static final double MAX_AXIS_STEP = 15.0;
+        private static final double MAX_THROTTLE_STEP = 10.0;
+        private static final double MAX_LAMBDA_ERROR = 0.08;
+        private static final double MAX_STFT_STDDEV = 6.0;
+        private static final double MAX_TOTAL_TRIM = 50.0;
+        private static final int STFT_WINDOW = 4;
+
+        private MapSampleMeta previous;
+        private final double[] stftWindow = new double[STFT_WINDOW];
+        private int stftIndex = 0;
+        private int stftFill = 0;
+
+        String evaluate(MapSampleMeta meta) {
+            if (meta == null) return "null_record";
+            String reason = null;
+
+            boolean sameCell = previous != null && meta.cellKey.equals(previous.cellKey);
+            if (!sameCell) resetStft();
+
+            if (sameCell && isTransient(previous, meta)) {
+                reason = "transient";
+                resetStft();
+            }
+
+            if (finite(meta.stft)) addStft(meta.stft);
+            if (reason == null && Math.abs(meta.trimTotal) > MAX_TOTAL_TRIM) {
+                reason = "trim_unstable";
+            }
+            if (reason == null && stftFill >= 3 && stftStdDev() > MAX_STFT_STDDEV) {
+                reason = "trim_unstable";
+            }
+            if (reason == null && finite(meta.lambda) && finite(meta.commandedLambda)
+                    && meta.lambda > 0.5 && meta.lambda < 1.5
+                    && meta.commandedLambda > 0.5 && meta.commandedLambda < 1.5
+                    && Math.abs(meta.lambda - meta.commandedLambda) > MAX_LAMBDA_ERROR) {
+                reason = "lambda_unstable";
+            }
+
+            previous = meta;
+            return reason;
+        }
+
+        void reset() {
+            previous = null;
+            resetStft();
+        }
+
+        private static boolean isTransient(MapSampleMeta before, MapSampleMeta now) {
+            if (finite(before.rpm) && finite(now.rpm)
+                    && Math.abs(now.rpm - before.rpm) > MAX_RPM_STEP) return true;
+            if (Double.isFinite(before.loadAxis) && Double.isFinite(now.loadAxis)
+                    && Math.abs(now.loadAxis - before.loadAxis) > MAX_AXIS_STEP) return true;
+            return finite(before.throttle) && finite(now.throttle)
+                    && Math.abs(now.throttle - before.throttle) > MAX_THROTTLE_STEP;
+        }
+
+        private void resetStft() {
+            stftIndex = 0;
+            stftFill = 0;
+        }
+
+        private void addStft(double value) {
+            stftWindow[stftIndex] = value;
+            stftIndex = (stftIndex + 1) % STFT_WINDOW;
+            if (stftFill < STFT_WINDOW) stftFill++;
+        }
+
+        private double stftStdDev() {
+            if (stftFill < 2) return 0.0;
+            double sum = 0.0;
+            for (int i = 0; i < stftFill; i++) sum += stftWindow[i];
+            double mean = sum / stftFill;
+            double squares = 0.0;
+            for (int i = 0; i < stftFill; i++) {
+                double delta = stftWindow[i] - mean;
+                squares += delta * delta;
+            }
+            return Math.sqrt(squares / (stftFill - 1));
+        }
+
+        private static boolean finite(Double value) {
+            return value != null && Double.isFinite(value);
+        }
+    }
+
     private final ConcurrentHashMap<String, TrimData> petrolData = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, TrimData> lpgData = new ConcurrentHashMap<>();
     private final SlidingWindow debounce = new SlidingWindow(4);
+    private final SampleStabilityGate stabilityGate = new SampleStabilityGate();
 
     private volatile long lastUpdateMs = 0;
     private volatile String lastCellKey = "";
@@ -300,6 +506,9 @@ public final class LiveMapStore {
     private volatile int activeRpmCell = -1;
     private volatile float activeMapBin = -1f;
     private volatile String axisSource = MapSampleMeta.AXIS_NONE;
+    private volatile String petrolAxisSource = MapSampleMeta.AXIS_NONE;
+    private volatile String lpgAxisSource = MapSampleMeta.AXIS_NONE;
+    private Boolean lastFuelSideGaseous = null;
 
     /**
      * Preferred write entry — uses precomputed {@link MapSampleMeta}.
@@ -309,6 +518,14 @@ public final class LiveMapStore {
         if (meta == null) {
             return PushResult.rejected("null_record", null, gaseous);
         }
+
+        // Fuel changeover is a real transient. Never let petrol history prime
+        // the LPG debounce window (or vice versa), even in the same grid cell.
+        if (lastFuelSideGaseous != null && lastFuelSideGaseous != gaseous) {
+            debounce.reset();
+            stabilityGate.reset();
+        }
+        lastFuelSideGaseous = gaseous;
 
         // Always track cursor so the live highlight follows the right cell,
         // even when the sample is gated out or debounced away.
@@ -320,9 +537,26 @@ public final class LiveMapStore {
         }
 
         if (!meta.gatedEligible) {
+            // Never bridge debounce/stability history across open-loop, cold or
+            // missing-signal periods.
+            debounce.reset();
+            stabilityGate.reset();
             return PushResult.rejected(
                     meta.rejectReason != null ? meta.rejectReason : "gated",
                     meta, gaseous);
+        }
+
+        String targetAxis = gaseous ? lpgAxisSource : petrolAxisSource;
+        if (!MapSampleMeta.AXIS_NONE.equals(targetAxis)
+                && !targetAxis.equals(meta.axisSource)) {
+            debounce.reset();
+            stabilityGate.reset();
+            return PushResult.rejected("axis_mismatch", meta, gaseous);
+        }
+
+        String stabilityReason = stabilityGate.evaluate(meta);
+        if (stabilityReason != null) {
+            return PushResult.rejected(stabilityReason, meta, gaseous);
         }
 
         if (!debounce.accept(meta.rpmCell, meta.mapBin)) {
@@ -338,7 +572,10 @@ public final class LiveMapStore {
         if (cell.isLocked()) {
             return PushResult.rejected("locked", meta, gaseous);
         }
-        cell.addStableValue(meta.trimTotal);
+        cell.addStableSample(meta);
+
+        if (gaseous) lpgAxisSource = meta.axisSource;
+        else petrolAxisSource = meta.axisSource;
 
         lastUpdateMs = System.currentTimeMillis();
         totalRecords++;
@@ -366,7 +603,9 @@ public final class LiveMapStore {
                 totalRecords,
                 activeRpmCell,
                 activeMapBin,
-                axisSource
+                axisSource,
+                petrolAxisSource,
+                lpgAxisSource
         );
     }
 
@@ -395,23 +634,35 @@ public final class LiveMapStore {
      * unless {@code replaceAll} is true.
      */
     public synchronized void importPetrol(Map<String, TrimData> data, boolean replaceAll) {
-        if (replaceAll) petrolData.clear();
+        if (replaceAll) {
+            petrolData.clear();
+            petrolAxisSource = MapSampleMeta.AXIS_NONE;
+        }
         if (data == null) return;
         for (Map.Entry<String, TrimData> e : data.entrySet()) {
             TrimData src = e.getValue();
             if (src == null) continue;
             petrolData.put(e.getKey(), src.copy());
         }
+        if (!data.isEmpty() && MapSampleMeta.AXIS_NONE.equals(petrolAxisSource)) {
+            petrolAxisSource = MapSampleMeta.AXIS_MAP;
+        }
         lastUpdateMs = System.currentTimeMillis();
     }
 
     public synchronized void importLpg(Map<String, TrimData> data, boolean replaceAll) {
-        if (replaceAll) lpgData.clear();
+        if (replaceAll) {
+            lpgData.clear();
+            lpgAxisSource = MapSampleMeta.AXIS_NONE;
+        }
         if (data == null) return;
         for (Map.Entry<String, TrimData> e : data.entrySet()) {
             TrimData src = e.getValue();
             if (src == null) continue;
             lpgData.put(e.getKey(), src.copy());
+        }
+        if (!data.isEmpty() && MapSampleMeta.AXIS_NONE.equals(lpgAxisSource)) {
+            lpgAxisSource = MapSampleMeta.AXIS_MAP;
         }
         lastUpdateMs = System.currentTimeMillis();
     }
@@ -430,14 +681,17 @@ public final class LiveMapStore {
      * Used by POST /api/map/import. Keys must use {@link MapBinning#cellKey}.
      */
     public synchronized void putImportedCell(boolean gaseous, String key, double avg, int hits) {
-        if (key == null || key.isEmpty()) return;
+        if (key == null || key.isEmpty() || !Double.isFinite(avg) || hits < 0) return;
         String normalized = normalizeCellKey(key);
+        if (!normalized.matches("\\d+_-?\\d+(?:\\.\\d+)?")) return;
         TrimData cell = new TrimData();
         cell.setFromImport(avg, hits);
         if (gaseous) {
             lpgData.put(normalized, cell);
+            if (MapSampleMeta.AXIS_NONE.equals(lpgAxisSource)) lpgAxisSource = MapSampleMeta.AXIS_MAP;
         } else {
             petrolData.put(normalized, cell);
+            if (MapSampleMeta.AXIS_NONE.equals(petrolAxisSource)) petrolAxisSource = MapSampleMeta.AXIS_MAP;
         }
         lastUpdateMs = System.currentTimeMillis();
     }
@@ -460,7 +714,7 @@ public final class LiveMapStore {
         }
     }
 
-    public void clear() {
+    public synchronized void clear() {
         petrolData.clear();
         lpgData.clear();
         lastUpdateMs = 0;
@@ -469,17 +723,25 @@ public final class LiveMapStore {
         activeRpmCell = -1;
         activeMapBin = -1f;
         axisSource = MapSampleMeta.AXIS_NONE;
+        petrolAxisSource = MapSampleMeta.AXIS_NONE;
+        lpgAxisSource = MapSampleMeta.AXIS_NONE;
+        lastFuelSideGaseous = null;
         debounce.reset();
+        stabilityGate.reset();
     }
 
-    public void clear(FuelMode fuelMode) {
+    public synchronized void clear(FuelMode fuelMode) {
         if (fuelMode != null && fuelMode.isGaseous()) {
             lpgData.clear();
+            lpgAxisSource = MapSampleMeta.AXIS_NONE;
         } else {
             petrolData.clear();
+            petrolAxisSource = MapSampleMeta.AXIS_NONE;
         }
         // Keep active cursor so next sample can still highlight position.
+        lastFuelSideGaseous = null;
         debounce.reset();
+        stabilityGate.reset();
     }
 
     public long getLastUpdateMs() { return lastUpdateMs; }
@@ -488,8 +750,16 @@ public final class LiveMapStore {
     public int getActiveRpmCell() { return activeRpmCell; }
     public float getActiveMapBin() { return activeMapBin; }
     public String getAxisSource() { return axisSource; }
+    public String getPetrolAxisSource() { return petrolAxisSource; }
+    public String getLpgAxisSource() { return lpgAxisSource; }
+
+    public boolean isComparisonAxisCompatible() {
+        return !MapSampleMeta.AXIS_NONE.equals(petrolAxisSource)
+                && petrolAxisSource.equals(lpgAxisSource);
+    }
 
     public boolean hasAnyCorrection() {
+        if (!isComparisonAxisCompatible()) return false;
         for (String key : petrolData.keySet()) {
             if (lpgData.containsKey(key)) return true;
         }
@@ -502,6 +772,13 @@ public final class LiveMapStore {
 
     public String exportCorrectionMapCsv() {
         StringBuilder sb = new StringBuilder();
+
+        if (!isComparisonAxisCompatible()) {
+            sb.append("ERROR,Petrol and LPG map axes are missing or incompatible\n");
+            sb.append("petrol_axis,").append(petrolAxisSource).append('\n');
+            sb.append("lpg_axis,").append(lpgAxisSource).append('\n');
+            return sb.toString();
+        }
 
         int rpmCount = MapBinning.getRpmCount();
         int mapCount = MapBinning.MAP_BINS.length;
@@ -536,12 +813,12 @@ public final class LiveMapStore {
     }
 
     /**
-     * AI-friendly dense JSON-like CSV for one map side (petrol or lpg):
-     * rpm_cell,map_bin,avg,hits,locked
+     * AI-friendly dense CSV for one map side (petrol or lpg). The legacy
+     * {@code avg} column is retained as an alias of {@code correction_avg}.
      */
     public String exportAiCsv(boolean gaseous) {
         StringBuilder sb = new StringBuilder();
-        sb.append("rpm_cell,map_bin,avg,hits,locked\n");
+        sb.append("rpm_cell,map_bin,avg,correction_avg,stft_avg,ltft_avg,lambda_avg,lambda_stddev,hits,confidence,locked\n");
         Map<String, TrimData> map = gaseous ? lpgData : petrolData;
         for (Map.Entry<String, TrimData> e : map.entrySet()) {
             String key = e.getKey();
@@ -552,10 +829,22 @@ public final class LiveMapStore {
             sb.append(rpm).append(',')
               .append(mb).append(',')
               .append(String.format(Locale.US, "%.4f", t.getAverage())).append(',')
+              .append(String.format(Locale.US, "%.4f", t.getAverage())).append(',')
+              .append(nullableNumber(t.getAverageStft())).append(',')
+              .append(nullableNumber(t.getAverageLtft())).append(',')
+              .append(nullableNumber(t.getAverageLambda())).append(',')
+              .append(t.getLambdaCount() > 1
+                      ? String.format(Locale.US, "%.5f", t.getLambdaStandardDeviation()) : "").append(',')
               .append(t.getHitCount()).append(',')
+              .append(String.format(Locale.US, "%.3f", t.getConfidence())).append(',')
               .append(t.isLocked() ? 1 : 0)
               .append('\n');
         }
         return sb.toString();
+    }
+
+    private static String nullableNumber(Double value) {
+        return value != null && Double.isFinite(value)
+                ? String.format(Locale.US, "%.5f", value) : "";
     }
 }

@@ -22,9 +22,9 @@
     <string name="smart_tuning_analysis">स्मार्ट ट्यूनिंग विश्लेषण</string>
     <string name="waiting_for_data">फ्यूल ट्रिम डेटा की प्रतीक्षा की जा रही है...</string>
     <string name="live_fuel_map">लाइव फ्यूल ट्रिम नक्शा</string>
-    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = RPM (500-6500)</string>
+    <string name="map_axes" formatted="false">Y = MAP kPa (या वैकल्पिक Load % अक्ष), X = RPM (500-6500)</string>
     <string name="how_to_read_map_title">नक्शा कैसे पढ़ें</string>
-    <string name="how_to_read_map_desc" formatted="false">कुल फ्यूल ट्रिम (STFT + LTFT) दिखाता है\n🟢 हरा (±5%) = सही\n🔴 लाल (नकारात्मक) = रिच (ईंधन कम करें)\n🔵 नीला (सकारात्मक) = लीन (ईंधन बढ़ाएं)\n\nसेल लॉक और हिट काउंटर:\nसेल्स पारदर्शी रूप से शुरू होते हैं। डेटा एकत्र करने के लिए स्थिर RPM/MAP बनाए रखें। हिट के साथ अपारदर्शिता बढ़ती है।\nx20 हिट्स = लॉक (गोल्ड बॉर्डर)।\n\nअंतर (DEVIATION): (LPG/CNG - पेट्रोल) दिखाता है।\n+ का मतलब है कि LPG लीन है। - का मतलब है कि LPG रिच है। 0% का लक्ष्य रखें।\n\nTUNE ASSIST: आपके LPG मैप के लिए सटीक % सुधार दिखाता है (CSV में निर्यात योग्य)।\n\n* नोट: ट्यून असिस्ट या अंतर का उपयोग करने के लिए, आपको पहले पेट्रोल और LPG दोनों का डेटा एकत्र करना होगा!</string>
+    <string name="how_to_read_map_desc" formatted="false">ECU ईंधन सुधार (STFT + LTFT) दिखाता है, मापी हुई रिच/लीन स्थिति नहीं।\nऋणात्मक = ECU ईंधन घटाता है। धनात्मक = ECU ईंधन बढ़ाता है। मापी हुई Lambda (λ) स्थिर सेल में दिखती है। 3 से कम स्थिर नमूनों वाले सेल धूसर रहते हैं।\n\nअंतर = LPG Trim - पेट्रोल Trim। + का अर्थ गैस बढ़ाना और - का अर्थ गैस घटाना है। केवल समान अक्ष स्रोत वाले मैप की तुलना करें।</string>
     <string name="petrol">पेट्रोल</string>
     <string name="petrol_logs_header">पेट्रोल लॉग्स</string>
     <string name="lpg_logs_header">LPG/CNG लॉग्स</string>

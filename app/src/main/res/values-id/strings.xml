@@ -22,9 +22,9 @@
     <string name="smart_tuning_analysis">Analisis Penyetelan Pintar</string>
     <string name="waiting_for_data">Menunggu data Fuel Trim...</string>
     <string name="live_fuel_map">Peta Fuel Trim Langsung</string>
-    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = RPM (500-6500)</string>
+    <string name="map_axes" formatted="false">Y = MAP kPa (atau sumbu cadangan Load %), X = RPM (500-6500)</string>
     <string name="how_to_read_map_title">Cara Membaca Peta</string>
-    <string name="how_to_read_map_desc" formatted="false">Menunjukkan Fuel Trim Total (STFT + LTFT)\n🟢 Hijau (±5%) = Sempurna\n🔴 Merah (Negatif) = Rich (Kurangi bahan bakar)\n🔵 Biru (Positif) = Lean (Tambah bahan bakar)\n\nKUNCI SEL &amp; PENGHITUNG SENTUHAN:\nSel dimulai dengan transparan. Jaga kestabilan RPM/MAP untuk mengumpulkan data. Opasitas meningkat dengan jumlah sentuhan.\nx20 sentuhan = Terkunci (Bingkai Emas).\n\nDEVIASI: Menunjukkan (LPG/CNG - Bensin).\n+ berarti LPG miskin (Lean). - berarti LPG kaya (Rich). Targetkan 0%.\n\nASISTEN SETEL (TUNE ASSIST): Menunjukkan persentase koreksi yang tepat untuk peta LPG Anda (Dapat diekspor ke CSV).\n\n* Catatan: Untuk menggunakan Asisten Setel atau Deviasi, Anda harus mengumpulkan data Bensin dan LPG terlebih dahulu!</string>
+    <string name="how_to_read_map_desc" formatted="false">Menampilkan koreksi bahan bakar ECU (STFT + LTFT), bukan kondisi rich/lean yang terukur.\nNegatif = ECU mengurangi bahan bakar. Positif = ECU menambah bahan bakar. Lambda (λ) terukur tampil pada sel stabil. Sel dengan kurang dari 3 sampel stabil tetap abu-abu.\n\nDEVIASI = Trim LPG - Trim bensin. + berarti tambah gas dan - kurangi gas. Bandingkan hanya peta dengan sumber sumbu yang sama.</string>
     <string name="petrol">BENSIN</string>
     <string name="petrol_logs_header">Log Bensin</string>
     <string name="lpg_logs_header">Log LPG/CNG</string>

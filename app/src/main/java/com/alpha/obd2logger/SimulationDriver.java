@@ -50,8 +50,10 @@ public final class SimulationDriver extends BaseDriver {
     @Override
     public Double queryPid(PIDDefinition pidDef) {
         String pid = pidDef.getPidHex();
-        boolean isStftPseudo = pid.contains("_B");
-        if (isStftPseudo) {
+        if ("34_CD".equals(pid)) {
+            return 0.0; // simulated wideband pump current at stoichiometric lambda
+        }
+        if (pid.contains("_")) {
             pid = pid.substring(0, pid.indexOf('_'));
         }
 

@@ -3,6 +3,7 @@ package com.alpha.obd2logger;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -15,8 +16,6 @@ import androidx.core.app.NotificationCompat;
 import android.os.Handler;
 import android.os.Looper;
 import java.lang.ref.WeakReference;
-import java.util.concurrent.TimeUnit;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -33,7 +32,7 @@ import java.util.concurrent.Executors;
  */
 public final class LoggerService extends Service {
     private static final String TAG = "LoggerService";
-    private static final String CHANNEL_ID = "obd2_logger_channel";
+    static final String CHANNEL_ID = "obd2_logger_channel";
     private static final int NOTIFICATION_ID = 2001;
 
     public static final String ACTION_START = "com.alpha.obd2logger.START";
@@ -180,17 +179,30 @@ public final class LoggerService extends Service {
                         ? android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
                         : android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE;
                 try {
-                    startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0), fgsType);
+                    startForeground(NOTIFICATION_ID,
+                            buildNotification(localizedString(
+                                    R.string.background_notification_starting,
+                                    "Starting OBD2 logger…"), 0),
+                            fgsType);
                 } catch (Exception e1) {
                     try {
-                        startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0),
+                        startForeground(NOTIFICATION_ID,
+                                buildNotification(localizedString(
+                                        R.string.background_notification_starting,
+                                        "Starting OBD2 logger…"), 0),
                                 android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
                     } catch (Exception e2) {
-                        startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0));
+                        startForeground(NOTIFICATION_ID,
+                                buildNotification(localizedString(
+                                        R.string.background_notification_starting,
+                                        "Starting OBD2 logger…"), 0));
                     }
                 }
             } else {
-                startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0));
+                startForeground(NOTIFICATION_ID,
+                        buildNotification(localizedString(
+                                R.string.background_notification_starting,
+                                "Starting OBD2 logger…"), 0));
             }
         } catch (Exception e) {
             Log.e(TAG, "startForeground failed — cannot run as foreground service", e);
@@ -233,50 +245,33 @@ public final class LoggerService extends Service {
         String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
         String sessionId = simPrefix + fuelPrefix + timeStr;
         
-        BaseDriver localDriver = DriverFactory.create(config);
+        DriverConnector.Result connection = DriverConnector.connect(config, 30_000L);
+        BaseDriver localDriver = connection.getDriver();
         if (currentSessionToken == sessionToken) {
             driver = localDriver;
         }
 
-        // connect() can hang on some adapters/Android versions (e.g. a Bluetooth
-        // socket that never completes). Bound it with a timeout so a dead adapter
-        // reports "Connection failed" instead of freezing on "Connecting…" forever.
-        java.util.concurrent.Future<Boolean> connectTask =
-                Executors.newSingleThreadExecutor().submit(() -> localDriver.isConnected() || localDriver.connect());
-        boolean connectedResult;
-        try {
-            connectedResult = connectTask.get(30, java.util.concurrent.TimeUnit.SECONDS);
-        } catch (java.util.concurrent.TimeoutException e) {
-            connectTask.cancel(true);
-            try { localDriver.disconnect(); } catch (Throwable ignored) {}
-            connectedResult = false;
-            Log.w(TAG, "driver.connect() timed out after 30s");
-        } catch (Exception e) {
-            connectTask.cancel(true);
-            connectedResult = false;
-        }
-
-        if (!connectedResult) {
-            DriverFactory.markConnectionFailure("Background connection timed out or was rejected");
+        if (!connection.isConnected()) {
+            String connectionError = connection.getError();
+            DriverFactory.markConnectionFailure(connectionError);
             if (currentSessionToken == sessionToken) {
                 running = false;
                 driver = null;
-                notifyStatus("Connection failed. Check adapter and settings.", true);
+                notifyStatus(connection.isTimedOut()
+                        ? "Connection timed out. Check adapter power and transport settings."
+                        : "Connection failed: " + connectionError, true);
                 notifyStopped();
                 releaseWakeLock();
                 stopForeground(true);
                 stopSelf();
-            } else {
+            } else if (localDriver != null) {
                 try { localDriver.disconnect(); } catch (Throwable ignored) {}
             }
             return;
         }
 
-        if (config.transportMode == TransportMode.AUTO && localDriver instanceof SimulationDriver) {
-            notifyStatus("Auto probe failed — running simulation.", false);
-        } else {
-            notifyStatus("Connected. Logging in background.", false);
-        }
+        notifyStatus("Connected via " + DriverFactory.getLastResolvedTransport()
+                + ". Logging in background.", false);
 
         // Notify UI of detected vLinker device type
         if (localDriver instanceof ElmDriver) {
@@ -333,7 +328,7 @@ public final class LoggerService extends Service {
         ApiServer localApiServer = null;
         if (config.enableApiServer) {
             try {
-                localApiServer = new ApiServer(8080);
+                localApiServer = new ApiServer(8080, config.apiAccessToken);
                 localApiServer.setDtcProvider(new ApiServer.DtcProvider() {
                     @Override
                     public java.util.List<DtcCode> getStoredDtcs() {
@@ -479,7 +474,8 @@ public final class LoggerService extends Service {
         final List<PIDDefinition> finalPids = pids;
         SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US);
         long started = android.os.SystemClock.elapsedRealtime();
-        final java.util.Map<String, Integer> consecutiveFailures = new java.util.HashMap<>();
+        final PidHealthTracker pidHealth = new PidHealthTracker();
+        long pollCycle = 0L;
 
         DataWriter localWriter = null;
         int localRecordCount = 0;
@@ -502,19 +498,10 @@ public final class LoggerService extends Service {
                             final int finalRetry = retryCount;
                             notifyStatus("Connection lost. Reconnecting (" + finalRetry + "/" + maxRetries + ")...", false);
                         }
-                        // Wrap reconnect in a timeout so a hanging connect()
-                        // call doesn't stall the loop forever.
-                        java.util.concurrent.Future<Boolean> reconnectTask =
-                            Executors.newSingleThreadExecutor().submit(() -> localDriver.connect());
-                        boolean reconnected;
-                        try {
-                            reconnected = reconnectTask.get(30, java.util.concurrent.TimeUnit.SECONDS);
-                        } catch (Exception te) {
-                            reconnectTask.cancel(true);
-                            reconnected = false;
-                        }
-                        if (!reconnected) {
-                            throw new java.io.IOException("Reconnection failed");
+                        DriverConnector.Result reconnect =
+                                DriverConnector.reconnect(localDriver, 30_000L);
+                        if (!reconnect.isConnected()) {
+                            throw new java.io.IOException(reconnect.getError());
                         }
                         retryCount = 0;
                         notifyStatus("Connected. Logging resumed.", false);
@@ -569,25 +556,23 @@ public final class LoggerService extends Service {
                             try { Thread.sleep(200); } catch (InterruptedException e) { break; }
                             continue;
                         }
-                        Map<String, Double> batch = localDriver.queryPidBatch(finalPids);
+                        pollCycle++;
+                        List<PIDDefinition> polledPids = pidHealth.selectForPoll(finalPids, pollCycle);
+                        Map<String, Double> batch = localDriver.queryPidBatch(polledPids);
+                        if (!localDriver.isConnected()) {
+                            throw new java.io.IOException("Adapter stopped responding");
+                        }
+                        java.util.Set<String> polledKeys = new java.util.HashSet<>();
+                        for (PIDDefinition polled : polledPids) polledKeys.add(polled.key());
                         List<SensorSample> samples = new ArrayList<>();
-                        List<PIDDefinition> toRemove = new ArrayList<>();
 
                         // ── Raw PID samples ──────────────────────
                         for (PIDDefinition pid : finalPids) {
                             Double value = batch.get(pid.getName());
+                            boolean wasPolled = polledKeys.contains(pid.key());
+                            if (wasPolled) pidHealth.recordPolled(pid, value, pollCycle);
                             samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
-                                    value == null ? "err" : "ok"));
-
-                            if (value == null) {
-                                int fails = consecutiveFailures.getOrDefault(pid.key(), 0) + 1;
-                                consecutiveFailures.put(pid.key(), fails);
-                                if (fails >= 3) {
-                                    toRemove.add(pid);
-                                }
-                            } else {
-                                consecutiveFailures.put(pid.key(), 0);
-                            }
+                                    pidHealth.statusFor(pid, value, wasPolled)));
                         }
 
                         // ── Derived sensors ──────────────────────
@@ -642,8 +627,6 @@ public final class LoggerService extends Service {
                                         break;
                                     }
                                 }
-                                // Don't count as failure — we successfully synthesized
-                                consecutiveFailures.put("01_0B", 0);
                             }
                         }
 
@@ -709,34 +692,6 @@ public final class LoggerService extends Service {
                                     batch.get("Lambda (B1S1)"),
                                     batch.get("Commanded Equivalence Ratio"),
                                     config.fuelMode);
-                        }
-
-                        if (!toRemove.isEmpty()) {
-                            // Never remove ALL PIDs — keep at least a minimum set
-                            // so the logger always has something to poll. Also
-                            // never blacklist core PIDs (RPM, Speed, etc.) that
-                            // are essential for derived sensor calculations.
-                            if (finalPids.size() - toRemove.size() < 3) {
-                                toRemove.clear();
-                            } else {
-                                toRemove.removeIf(p -> {
-                                                                    String key = p.key();
-                                                                    return key.equals("01_00") || key.equals("01_0C") // RPM
-                                        || key.equals("01_0D") // Speed
-                                        || key.equals("01_05") // Coolant
-                                        || key.equals("01_04") // Load
-                                        || key.equals("01_0B") // MAP
-                                        || key.equals("01_0F") // IAT
-                                        || key.equals("01_33") // Baro
-                                        || key.equals("01_46"); // Ambient // Ambient — AeroDensity AAD
-                                                                });
-                            }
-                            if (!toRemove.isEmpty()) {
-                                finalPids.removeAll(toRemove);
-                                for (PIDDefinition p : toRemove) {
-                                    Log.w(TAG, "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
-                                }
-                            }
                         }
 
                         DataRecord record = new DataRecord(
@@ -942,8 +897,12 @@ public final class LoggerService extends Service {
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "OBD2 Logger", NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("OBD2 data logging in progress");
+                    CHANNEL_ID, localizedString(R.string.background_notification_channel_name,
+                            "OBD2 background logger"),
+                    NotificationManager.IMPORTANCE_LOW);
+            channel.setDescription(localizedString(
+                    R.string.background_notification_channel_description,
+                    "Live OBD2 collection and connection status"));
             channel.setShowBadge(false);
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) {
@@ -953,19 +912,55 @@ public final class LoggerService extends Service {
     }
 
     private Notification buildNotification(String text, int recordCount) {
+        Intent openIntent = new Intent(this, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent openPendingIntent = PendingIntent.getActivity(this, 0, openIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        Intent stopIntent = new Intent(this, LoggerService.class).setAction(ACTION_STOP);
+        PendingIntent stopPendingIntent = PendingIntent.getService(this, 1, stopIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("TunerMap Pro")
+                .setContentTitle(localizedString(R.string.app_name, "TunerMap Pro"))
                 .setContentText(text)
+                .setSubText(localizedString(R.string.records_count,
+                        "Records: " + Math.max(0, recordCount), Math.max(0, recordCount)))
                 .setSmallIcon(android.R.drawable.ic_menu_compass)
+                .setContentIntent(openPendingIntent)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel,
+                        localizedString(R.string.background_notification_stop, "Stop logging"),
+                        stopPendingIntent)
                 .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setNumber(Math.max(0, recordCount))
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
+    }
+
+    private String localizedString(int resourceId, String fallback, Object... formatArgs) {
+        try {
+            return formatArgs != null && formatArgs.length > 0
+                    ? getString(resourceId, formatArgs) : getString(resourceId);
+        } catch (android.content.res.Resources.NotFoundException e) {
+            // Defensive fallback for resource-table edge cases during process
+            // restoration and for service-only test harnesses.
+            return fallback;
+        }
     }
 
     private void updateNotification(String text, int recordCount) {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) {
-            nm.notify(NOTIFICATION_ID, buildNotification(text, recordCount));
+            try {
+                nm.notify(NOTIFICATION_ID, buildNotification(text, recordCount));
+            } catch (SecurityException e) {
+                // Android 13+ may hide notifications after the user denies the
+                // runtime permission; the foreground service remains valid.
+                Log.w(TAG, "Notification hidden by system permission", e);
+            }
         }
     }
 

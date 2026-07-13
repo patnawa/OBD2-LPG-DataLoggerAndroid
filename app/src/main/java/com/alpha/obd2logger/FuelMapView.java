@@ -53,9 +53,18 @@ public class FuelMapView extends View {
     private final Map<String, LiveMapStore.TrimData> lpgData = new ConcurrentHashMap<>();
 
     private MapMode currentMode = MapMode.PETROL;
+    private boolean comparisonAxisCompatible = true;
 
     private int currentRpmCell = -1;
     private float currentMapCell = -1f;
+    // Latest raw live sample is intentionally separate from learned map data.
+    // It gives immediate visual feedback while debounce/safety gates are still
+    // waiting, without contaminating correction export or the API map dataset.
+    private int liveRpmCell = -1;
+    private float liveMapCell = -1f;
+    private Double liveTrim = null;
+    private FuelMode liveFuelMode = FuelMode.PETROL;
+    private boolean liveSampleEligible = false;
 
     // Debounce tracking: sliding window of last N cell positions.
     // Kept for backward compat with pushData() path (live logging + replay).
@@ -106,6 +115,8 @@ public class FuelMapView extends View {
             this.petrolData.putAll(snapshot.getPetrolData());
             this.lpgData.clear();
             this.lpgData.putAll(snapshot.getLpgData());
+            this.comparisonAxisCompatible = snapshot.isComparisonAxisCompatible()
+                    || snapshot.getPetrolData().isEmpty() || snapshot.getLpgData().isEmpty();
             if (snapshot.getActiveRpmCell() >= 0) {
                 this.currentRpmCell = snapshot.getActiveRpmCell();
                 this.currentMapCell = snapshot.getActiveMapBin();
@@ -117,6 +128,31 @@ public class FuelMapView extends View {
         public void setActiveCell(int rpmCell, float mapBin) {
             this.currentRpmCell = rpmCell;
             this.currentMapCell = mapBin;
+            postInvalidate();
+        }
+
+        /** Render one non-persistent live sample while the learning gate settles. */
+        public void setLiveSample(int rpmCell, float mapBin, Double trim,
+                                  FuelMode fuelMode, boolean eligible) {
+            if (rpmCell < 0 || mapBin < 0f) {
+                clearLiveSample();
+                return;
+            }
+            this.currentRpmCell = rpmCell;
+            this.currentMapCell = mapBin;
+            this.liveRpmCell = rpmCell;
+            this.liveMapCell = mapBin;
+            this.liveTrim = trim != null && Double.isFinite(trim) ? trim : null;
+            this.liveFuelMode = fuelMode != null ? fuelMode : FuelMode.PETROL;
+            this.liveSampleEligible = eligible;
+            postInvalidate();
+        }
+
+        public void clearLiveSample() {
+            this.liveRpmCell = -1;
+            this.liveMapCell = -1f;
+            this.liveTrim = null;
+            this.liveSampleEligible = false;
             postInvalidate();
         }
 
@@ -240,6 +276,10 @@ public class FuelMapView extends View {
         lpgData.clear();
         currentRpmCell = -1;
         currentMapCell = -1f;
+        liveRpmCell = -1;
+        liveMapCell = -1f;
+        liveTrim = null;
+        liveSampleEligible = false;
         // Reset sliding-window debounce so the next session starts fresh.
         windowIdx = 0;
         windowFill = 0;
@@ -257,6 +297,10 @@ public class FuelMapView extends View {
         }
         currentRpmCell = -1;
         currentMapCell = -1f;
+        liveRpmCell = -1;
+        liveMapCell = -1f;
+        liveTrim = null;
+        liveSampleEligible = false;
         windowIdx = 0;
         windowFill = 0;
         invalidate();
@@ -312,29 +356,43 @@ public class FuelMapView extends View {
                 boolean isLocked = (activeData != null) ? activeData.isLocked() : false;
                 
                 Double displayTrim = null;
+                boolean showingLivePreview = false;
                 if (currentMode == MapMode.PETROL && petrol != null) {
                     displayTrim = petrol.getAverage();
                 } else if (currentMode == MapMode.LPG && lpg != null) {
                     displayTrim = lpg.getAverage();
                 } else if (currentMode == MapMode.DEVIATION || currentMode == MapMode.CORRECTION) {
-                    if (petrol != null && lpg != null) {
+                    if (comparisonAxisCompatible && petrol != null && lpg != null) {
                         displayTrim = lpg.getAverage() - petrol.getAverage();
                         hitCount = Math.min(petrol.getHitCount(), lpg.getHitCount());
                         isLocked = petrol.isLocked() && lpg.isLocked();
                     }
                 }
+
+                boolean liveModeMatches = (currentMode == MapMode.LPG && liveFuelMode.isGaseous())
+                        || (currentMode == MapMode.PETROL && !liveFuelMode.isGaseous());
+                if (displayTrim == null && liveModeMatches && liveTrim != null
+                        && rpmValue == liveRpmCell
+                        && Math.abs(mapValue - liveMapCell) < 0.01f) {
+                    displayTrim = liveTrim;
+                    showingLivePreview = true;
+                    hitCount = 0;
+                    isLocked = false;
+                }
                 
                 cellRect.set(xLeft, yTop, xRight, yBottom);
 
                 if (displayTrim != null) {
-                    highlightPaint.setColor(getColorForTrim(displayTrim));
+                    highlightPaint.setColor(getColorForCorrection(displayTrim, hitCount,
+                            showingLivePreview));
                     
                     int alpha = Math.min(255, 40 + (int)((hitCount / (float)LiveMapStore.TrimData.MAX_HITS) * 215));
                     if (isLocked) alpha = 255;
                     
                     // Highlight current cell differently
                     if (rpmValue == currentRpmCell && Math.abs(mapValue - currentMapCell) < 0.01f) {
-                        highlightPaint.setAlpha(255);
+                        highlightPaint.setAlpha(showingLivePreview
+                                ? (liveSampleEligible ? 190 : 100) : 255);
                         canvas.drawRect(cellRect, highlightPaint);
                     } else {
                         highlightPaint.setAlpha(alpha);
@@ -349,14 +407,34 @@ public class FuelMapView extends View {
                     if (currentMode == MapMode.CORRECTION) {
                         textToDraw = (displayTrim > 0 ? "+" : "") + Math.round(displayTrim) + "%";
                     } else {
-                        textToDraw = String.format(Locale.US, "%.1f", displayTrim);
+                        textToDraw = String.format(Locale.US, "%+.1f", displayTrim);
                     }
-                    canvas.drawText(textToDraw, xLeft + cellWidth / 2, yBottom - cellHeight / 3, textPaint);
+
+                    Double cellLambda = activeData != null ? activeData.getAverageLambda() : null;
+                    boolean showLambda = (currentMode == MapMode.PETROL || currentMode == MapMode.LPG)
+                            && cellLambda != null && activeData.getLambdaCount() >= 3;
+                    float centerX = xLeft + cellWidth / 2;
+                    if (showLambda) {
+                        canvas.drawText(textToDraw, centerX, yTop + cellHeight * 0.48f, textPaint);
+                        float oldSize = textPaint.getTextSize();
+                        textPaint.setTextSize(7f * density);
+                        textPaint.setColor(0xFFE2E8F0);
+                        canvas.drawText(String.format(Locale.US, "λ%.3f", cellLambda),
+                                centerX, yTop + cellHeight * 0.82f, textPaint);
+                        textPaint.setTextSize(oldSize);
+                    } else {
+                        canvas.drawText(textToDraw, centerX, yBottom - cellHeight / 3, textPaint);
+                    }
                     textPaint.setColor(oldColor);
                     textPaint.setTextAlign(oldAlign);
                     
                     // Draw hit count badge in top-right
-                    if (currentMode != MapMode.DEVIATION && currentMode != MapMode.CORRECTION && hitCount > 0) {
+                    if (showingLivePreview) {
+                        badgePaint.setTextSize(7f * density);
+                        canvas.drawText("LIVE", xRight - (4f * density),
+                                yTop + (12f * density), badgePaint);
+                    } else if (currentMode != MapMode.DEVIATION
+                            && currentMode != MapMode.CORRECTION && hitCount > 0) {
                         badgePaint.setTextSize(8f * density);
                         canvas.drawText("x" + hitCount, xRight - (4f * density), yTop + (12f * density), badgePaint);
                     }
@@ -411,18 +489,22 @@ public class FuelMapView extends View {
         }
     }
 
-    private int getColorForTrim(double trim) {
-        if (trim < -10) return 0xFFEF4444; // Red (Very Rich)
-        if (trim < -5) return 0xFFF59E0B;  // Orange (Rich)
-        if (trim <= 5) return 0xFF22C55E;  // Green (Perfect)
-        if (trim <= 10) return 0xFF0EA5E9; // Light Blue (Lean)
-        return 0xFF3B82F6;                 // Blue (Very Lean)
+    private int getColorForCorrection(double correction, int hits, boolean livePreview) {
+        // One/two-hit cells are provisional. Keep them neutral so a transient
+        // cannot visually masquerade as a diagnosed rich/lean condition.
+        if (livePreview || hits < 3) return 0xFF64748B;
+        if (correction < -10) return 0xFFEF4444; // ECU removing fuel: high
+        if (correction < -5) return 0xFFF59E0B;  // ECU removing fuel
+        if (correction <= 5) return 0xFF22C55E;  // Low learned correction
+        if (correction <= 10) return 0xFF0EA5E9; // ECU adding fuel
+        return 0xFF3B82F6;                       // ECU adding fuel: high
     }
 
     /**
      * Checks if there is any overlapping Petrol+LPG data to produce a correction value.
      */
     public boolean hasAnyCorrection() {
+        if (!comparisonAxisCompatible) return false;
         for (String key : petrolData.keySet()) {
             if (lpgData.containsKey(key)) {
                 return true;

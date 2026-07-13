@@ -269,6 +269,7 @@ public final class PidAvailabilityChecker {
         // Common Mode 01 PIDs supported by most post-2008 vehicles
         String[] pids = {
                 "00", // PID availability [0x01-0x20]
+                "03", // Fuel System Status (required by live-map safety gate)
                 "04", // Engine Load
                 "05", // Coolant Temp
                 "06", // STFT B1

@@ -3034,6 +3034,18 @@
                             app:iconSize="16dp"
                             app:iconTint="@color/accent" />
 
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnSelectLogs"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="@string/select_logs"
+                            android:textSize="12sp"
+                            app:icon="@android:drawable/ic_menu_agenda"
+                            app:iconSize="16dp"
+                            app:iconTint="@color/primary" />
+
                         <TextView
                             android:id="@+id/compareHintText"
                             android:layout_width="0dp"
@@ -3043,6 +3055,67 @@
                             android:textColor="@color/muted"
                             android:textSize="12sp"
                             android:visibility="gone" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/historyBatchBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="10dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/panel"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/batchSelectionHint"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/select_logs_hint"
+                            android:textColor="@color/muted"
+                            android:textSize="12sp"
+                            android:layout_marginBottom="6dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnShareSelectedLogs"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/share_selected_logs"
+                                android:textSize="11sp"
+                                app:icon="@android:drawable/ic_menu_share"
+                                app:iconSize="16dp"
+                                app:iconTint="@color/primary" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnDeleteSelectedLogs"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginStart="6dp"
+                                android:text="@string/delete_selected_logs"
+                                android:textSize="11sp"
+                                android:textColor="@color/danger"
+                                app:icon="@android:drawable/ic_menu_delete"
+                                app:iconSize="16dp"
+                                app:iconTint="@color/danger" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnCancelSelection"
+                                style="@style/Widget.MaterialComponents.Button.TextButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="4dp"
+                                android:text="@string/cancel_selection"
+                                android:textSize="11sp" />
+                        </LinearLayout>
                     </LinearLayout>
 
                     <!-- Petrol Logs Section -->
@@ -3753,9 +3826,10 @@
                                     android:textStyle="bold" />
 
                                 <TextView
+                                    android:id="@+id/backgroundLoggingStatusText"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:text="Run background logging service"
+                                    android:text="@string/background_logging_description"
                                     android:textColor="@color/muted"
                                     android:textSize="11sp"
                                     android:layout_marginTop="2dp" />
@@ -3844,7 +3918,7 @@
                                     <TextView
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
-                                        android:text="AI Agent API Server"
+                                        android:text="@string/api_agent_title"
                                         android:textColor="@color/text"
                                         android:textSize="14sp"
                                         android:textStyle="bold" />
@@ -3852,7 +3926,7 @@
                                     <TextView
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
-                                        android:text="Exposes telemetry data over HTTP (Port 8080)"
+                                        android:text="@string/api_agent_description"
                                         android:textColor="@color/muted"
                                         android:textSize="11sp"
                                         android:layout_marginTop="2dp" />
@@ -3868,10 +3942,13 @@
                                 android:id="@+id/apiServerIpText"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="URL: http://192.168.x.x:8080/api/data"
+                                android:text="@string/api_agent_description"
                                 android:textColor="@color/primary"
                                 android:textSize="12sp"
-                                android:paddingStart="8dp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:background="?attr/selectableItemBackground"
+                                android:padding="8dp"
                                 android:layout_marginTop="8dp"
                                 android:visibility="gone" />
                         </LinearLayout>

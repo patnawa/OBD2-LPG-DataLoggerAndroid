@@ -112,7 +112,8 @@
 | Dark/Light    | System, Light, or Dark mode |
 | Keep Screen   | Prevent sleep while foreground |
 | Home Menu     | Card navigation + live vehicle status |
-| History       | Browse, open, share, delete, compare |
+| History       | Browse, open, compare, select multiple sessions, batch share, batch delete |
+| Play release  | Signed APK + AAB build, signature verification, SHA-256 checksums, Play Store readiness checklist |
 | Filter PIDs   | Select which PIDs to show in Live Readings (theme-fixed) |
 | Settings      | Transport, WiFi, BT, USB, fuel, protocol, interval, toggles |
 

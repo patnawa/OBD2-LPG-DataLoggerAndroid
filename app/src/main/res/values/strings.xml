@@ -39,10 +39,10 @@
     <!-- Map UI -->
     <string name="smart_tuning_analysis">Smart OBD2 Tuning Analyzer</string>
     <string name="waiting_for_data">Waiting for Fuel Trim data...</string>
-    <string name="live_fuel_map">Live Fuel Trim Deviation Matrix</string>
-    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = RPM (500-6500)</string>
+    <string name="live_fuel_map">Live ECU Fuel Correction Map</string>
+    <string name="map_axes" formatted="false">Y = MAP kPa (or explicit Load % fallback), X = RPM (500-6500)</string>
     <string name="how_to_read_map_title">How to read the Map</string>
-    <string name="how_to_read_map_desc" formatted="false">Shows Total Fuel Trim (STFT + LTFT)\n🟢 Green (±5%) = Perfect\n🟡 Orange/Yellow (-5% to -10%) = Slightly Rich\n🔴 Red (Under -10%) = Very Rich\n🌐 Light Blue (+5% to +10%) = Slightly Lean\n🔵 Dark Blue (Over +10%) = Very Lean\n\nMathematical logic for each mode:\n\n1️⃣ PETROL\nFormula: Trim = STFT + LTFT (from ECU while on petrol)\nActs as the vehicle\'s engine calibration baseline.\n\n2️⃣ LPG/CNG\nFormula: Trim = STFT + LTFT (from ECU while on gas)\nShows the current fuel delivery behavior under gas operation.\n\n3️⃣ DEVIATION\nFormula: Deviation = LPG Trim - Petrol Trim\nCalculates how far the gas calibration drifts from petrol (+ is lean, - is rich).\n\n4️⃣ TUNE ASSIST\nFormula: Correction = LPG Trim - Petrol Trim\nThe exact percentage to add (+) or subtract (-) in your gas ECU multiplier map to bring the deviation back to 0% (matching petrol).\n\n* Note: You must collect both Petrol and LPG data in the same cells first for the comparison to work!</string>
+    <string name="how_to_read_map_desc" formatted="false">Shows ECU fuel correction, not current rich/lean mixture.\n\nTrim = STFT + LTFT\n🟢 ±5% = Low learned correction\n🟡/🔴 Negative = ECU removing fuel\n🌐/🔵 Positive = ECU adding fuel\nA positive value does not mean the current AFR is lean while closed loop is correcting it. Measured Lambda (λ) appears inside mature cells when PID 01 34 is supported.\n\nPETROL stores the gasoline/E20 baseline. LPG/CNG stores the gas baseline.\nDEVIATION = LPG Trim - Petrol Trim.\nTUNE ASSIST uses that deviation as the gas multiplier direction: + add gas, - remove gas.\n\nCells with fewer than 3 stable hits remain neutral gray. Only compare maps collected with the same axis source.</string>
     <string name="petrol">PETROL</string>
     <string name="petrol_logs_header">Petrol Logs</string>
     <string name="lpg_logs_header">LPG/CNG Logs</string>
@@ -55,11 +55,21 @@
     <string name="compare_hint_count">Selected %1$d/2 — tap Compare to plot both on the map.</string>
     <string name="compare_need_two">Select at least 2 logs (or 1) to compare.</string>
     <string name="compare_max_two">You can compare up to 2 logs at a time.</string>
+    <string name="select_logs">Select logs</string>
+    <string name="cancel_selection">Cancel selection</string>
+    <string name="share_selected_logs">Share selected</string>
+    <string name="delete_selected_logs">Delete selected</string>
+    <string name="select_logs_hint">Select one or more session files</string>
+    <string name="select_logs_empty">Select at least one log file.</string>
+    <string name="selected_logs_count">%1$d log file(s) selected</string>
+    <string name="confirm_delete_selected_logs">Delete %1$d selected log file(s)? This cannot be undone.</string>
+    <string name="selected_logs_deleted">Deleted %1$d log file(s)</string>
+    <string name="selected_logs_delete_failed">Deleted %1$d log file(s); failed to delete %2$d</string>
     <string name="open_log_csv_only">Only CSV log files can be opened on the map. (JSONL logs aren\'t supported for replay.)</string>
     <string name="open_log_skipped_non_csv">Skipped %1$d non-CSV file(s) — only CSV can be plotted.</string>
     <string name="lpg">LPG/CNG</string>
     <string name="deviation">DEVIATION</string>
-    <string name="map_formula_hint">Formula: Deviation = LPG Trim - Petrol Trim. Adjust your LPG ECU multiplier map by this percentage.</string>
+    <string name="map_formula_hint">ECU correction is not measured rich/lean. Deviation = LPG Trim - Petrol Trim; + means add gas and - means remove gas. Confirm mixture with measured Lambda.</string>
     
     <!-- Tuning Analyzer Context Strings (professional OBD2 fuel-trim engine) -->
         <string name="analyzer_unknown">UNKNOWN</string>
@@ -286,24 +296,24 @@
     <!-- Map Tab localizations -->
     <string name="map_formula_logic_title">FORMULA &amp; TUNING LOGIC</string>
     <string name="map_color_legend_title">MAP COLOR LEGEND</string>
-    <string name="map_legend_perfect" formatted="false">±5% (Perfect)</string>
-    <string name="map_legend_slightly_rich" formatted="false">-5% to -10% (Slightly Rich)</string>
-    <string name="map_legend_slightly_lean" formatted="false">+5% to +10% (Slightly Lean)</string>
-    <string name="map_legend_very_rich" formatted="false">&lt; -10% (Very Rich)</string>
-    <string name="map_legend_very_lean" formatted="false">&gt; +10% (Very Lean)</string>
-    <string name="scale_very_rich">Very Rich</string>
-    <string name="scale_slightly_rich">Slightly Rich</string>
-    <string name="scale_perfect">Perfect (OK)</string>
-    <string name="scale_slightly_lean">Slightly Lean</string>
-    <string name="scale_very_lean">Very Lean</string>
+    <string name="map_legend_perfect" formatted="false">±5% (Low correction)</string>
+    <string name="map_legend_slightly_rich" formatted="false">-5% to -10% (ECU removes)</string>
+    <string name="map_legend_slightly_lean" formatted="false">+5% to +10% (ECU adds)</string>
+    <string name="map_legend_very_rich" formatted="false">&lt; -10% (Remove high)</string>
+    <string name="map_legend_very_lean" formatted="false">&gt; +10% (Add high)</string>
+    <string name="scale_very_rich">Remove high</string>
+    <string name="scale_slightly_rich">ECU removes</string>
+    <string name="scale_perfect">Low correction</string>
+    <string name="scale_slightly_lean">ECU adds</string>
+    <string name="scale_very_lean">Add high</string>
 
     <!-- Map Info Dialog -->
     <string name="map_info_color_legend_header">COLOR LEGEND</string>
-    <string name="map_info_legend_perfect">Perfect (±5%) • Healthy fuel mixture</string>
-    <string name="map_info_legend_slightly_rich" formatted="false">Slightly Rich (-5% to -10%) • Slightly high fuel injection</string>
-    <string name="map_info_legend_very_rich" formatted="false">Very Rich (Under -10%) • Excessive fuel injection</string>
-    <string name="map_info_legend_slightly_lean" formatted="false">Slightly Lean (+5% to +10%) • Slightly low fuel injection</string>
-    <string name="map_info_legend_very_lean" formatted="false">Very Lean (Over +10%) • Insufficient fuel injection</string>
+    <string name="map_info_legend_perfect">Low ECU correction (±5%) • Verify mixture with Lambda</string>
+    <string name="map_info_legend_slightly_rich" formatted="false">ECU removes fuel (-5% to -10%) • Not a measured rich verdict</string>
+    <string name="map_info_legend_very_rich" formatted="false">ECU removes fuel heavily (Under -10%) • Inspect the baseline</string>
+    <string name="map_info_legend_slightly_lean" formatted="false">ECU adds fuel (+5% to +10%) • Not a measured lean verdict</string>
+    <string name="map_info_legend_very_lean" formatted="false">ECU adds fuel heavily (Over +10%) • Inspect the baseline</string>
     
     <string name="map_info_tuning_logic_header">TUNING LOGIC</string>
     <string name="map_info_petrol_title">1. PETROL</string>
@@ -430,7 +440,28 @@
     <string name="home_ai_insight_voltage_detail">System voltage is %1$.1f V. Check battery and charging system.</string>
     <string name="home_ai_insight_trim">Fuel correction is elevated</string>
     <string name="home_ai_insight_trim_detail">Total fuel trim is %1$+.1f%%. Capture more stable cruise data before tuning.</string>
-    <string name="home_ai_insight_local">LOCAL ANALYSIS • LIVE DATA</string>
+    <string name="home_ai_insight_local">LOCAL ANALYSIS • TAP FOR DETAILS</string>
+    <string name="drive_insight_tap_details">Tap for details</string>
+    <string name="drive_insight_advisory">Advisory only. Drive Insight analyzes current OBD data on this device and never controls the vehicle.</string>
+    <string name="drive_insight_snapshot">Current snapshot
+RPM %1$s • Coolant %2$s °C • Voltage %3$s V • Fuel trim %4$s%%</string>
+    <string name="drive_insight_open_dashboard">Open live dashboard</string>
+    <string name="drive_insight_open_diagnostics">Open diagnostics</string>
+    <string name="drive_insight_open_battery">Open battery tester</string>
+    <string name="drive_insight_open_map">Open live fuel map</string>
+    <string name="map_live_closed_loop">%1$s • CLOSED LOOP</string>
+    <string name="map_live_open_loop">%1$s • OPEN LOOP</string>
+    <string name="map_live_loop_unknown">%1$s • LOOP UNKNOWN</string>
+    <string name="map_live_preview">LIVE PREVIEW • %1$s</string>
+    <string name="map_wait_loop_pid">WAITING FOR LOOP PID</string>
+    <string name="map_wait_closed_loop">WAITING FOR CLOSED LOOP</string>
+    <string name="map_wait_coolant_pid">WAITING FOR COOLANT PID</string>
+    <string name="map_wait_warm_engine">ENGINE WARM-UP</string>
+    <string name="map_wait_fuel_trim">WAITING FOR FUEL TRIM</string>
+    <string name="map_wait_engine_data">WAITING FOR RPM / LOAD</string>
+    <string name="map_wait_stable_sample">WAITING FOR STEADY RPM / LOAD / THROTTLE</string>
+    <string name="map_wait_lambda_stable">WAITING FOR LAMBDA TO REACH COMMANDED TARGET</string>
+    <string name="map_axis_mismatch">MAP AXIS MISMATCH • comparison disabled</string>
     <string name="home_nav_drive">Drive</string>
     <string name="home_nav_analyze">Analyze</string>
     <string name="home_nav_logs">Logs</string>
@@ -469,4 +500,40 @@
     <string name="status_negotiating">Negotiating protocol…</string>
     <string name="status_connect_adapter_prompt">Connect an OBD2 adapter to begin live scanning</string>
     <string name="status_no_live_data">● NO LIVE DATA</string>
+    <string name="status_disconnected">Disconnected</string>
+    <string name="api_agent_title">AI Agent API Server</string>
+    <string name="api_agent_description">Protected real-time telemetry on port 8080</string>
+    <string name="api_connection_template">Endpoint:\n%1$s\nAPI key:\n%2$s\nTap to copy connection details</string>
+    <string name="api_connection_copied">API connection details copied</string>
+    <string name="api_header_on">API ON</string>
+    <string name="version_format">Version %1$s</string>
+    <!-- Background logger permission and live state -->
+    <string name="background_logging_description">Keep logging when the app is minimized</string>
+    <string name="background_status_disabled">Disabled • logging stops when the app closes</string>
+    <string name="background_status_ready">Ready • notification visible while logging</string>
+    <string name="background_status_ready_no_notification">Ready • notification blocked by Android</string>
+    <string name="background_status_permission">Waiting for notification choice</string>
+    <string name="background_status_starting">Starting service and connecting to adapter…</string>
+    <string name="background_status_active">ACTIVE • %1$d records • notification ON</string>
+    <string name="background_status_active_no_notification">ACTIVE • %1$d records • notification HIDDEN</string>
+    <string name="background_status_reconnecting">ACTIVE • adapter reconnecting…</string>
+    <string name="background_status_error">Stopped • %1$s</string>
+    <string name="header_bg_permission">ALLOW ALERTS</string>
+    <string name="header_bg_starting">BG START</string>
+    <string name="header_bg_active">BG LIVE</string>
+    <string name="header_bg_reconnecting">BG RETRY</string>
+    <string name="header_bg_error">BG ERROR</string>
+    <string name="background_permission_title">Show background status?</string>
+    <string name="background_permission_message">Allow notifications so Android can show that OBD2 logging is active. Logging can still run if you continue without notifications.</string>
+    <string name="background_allow_notification">Allow notification</string>
+    <string name="background_continue_without_notification">Continue hidden</string>
+    <string name="background_notification_blocked_title">Logging notification is blocked</string>
+    <string name="background_notification_blocked_message">Background logging can run, but Android will hide its notification. The app header will still show BG LIVE while this screen is open.</string>
+    <string name="background_open_notification_settings">Notification settings</string>
+    <string name="background_start_cancelled">Background logging cancelled</string>
+    <string name="background_notification_stop">Stop logging</string>
+    <string name="background_notification_channel_name">OBD2 background logger</string>
+    <string name="background_notification_channel_description">Live OBD2 collection and connection status</string>
+    <string name="background_notification_starting">Starting OBD2 logger…</string>
+    <string name="background_stopped_saved">Background logging stopped • %1$d records saved</string>
 </resources>

@@ -114,6 +114,14 @@ public final class PIDParser {
             int rawC = dataHex.length() >= 6 ? parseHexByte(dataHex, 4) : 0;
             int rawD = dataHex.length() >= 8 ? parseHexByte(dataHex, 6) : 0;
 
+            // SAE oxygen-sensor PIDs 0x14..0x1B use B=0xFF to indicate
+            // that the sensor is not used for fuel-trim calculation. It is
+            // not a real +99.2188% trim. Keep primary PIDs 0x06/0x07 intact:
+            // their full specified range still legitimately reaches 0xFF.
+            if (isUnusedO2TrimSentinel(pidDef, rawB)) {
+                return null;
+            }
+
             FormulaEvaluator evaluator = new FormulaEvaluator(pidDef.getFormula());
             double value = evaluator.evaluate(rawA, rawB, rawC, rawD);
 
@@ -200,6 +208,13 @@ public final class PIDParser {
 
     private static int parseHexByte(String dataHex, int offset) {
         return Integer.parseInt(dataHex.substring(offset, offset + 2), 16);
+    }
+
+    private static boolean isUnusedO2TrimSentinel(PIDDefinition pidDef, int rawB) {
+        if (pidDef == null || rawB != 0xFF) return false;
+        String pidHex = pidDef.getPidHex();
+        return pidHex != null && pidHex.toUpperCase(java.util.Locale.US)
+                .matches("(?:1[4-9A-B])_B");
     }
 
     private static final class FormulaEvaluator {

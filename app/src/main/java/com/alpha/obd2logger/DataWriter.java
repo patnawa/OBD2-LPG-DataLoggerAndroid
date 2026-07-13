@@ -34,6 +34,7 @@ import java.util.LinkedHashSet;
 public final class DataWriter implements AutoCloseable {
     private static final String TAG = "DataWriter";
     private static final String DOWNLOAD_SUBDIR = "TunerMapPro";
+    private static final String NO_VIN_SUBDIR = "General";
     private static final int SUMMARY_SCHEMA_VERSION = 2;
     private static final int SUMMARY_CHECKPOINT_RECORDS = 10;
 
@@ -211,9 +212,12 @@ public final class DataWriter implements AutoCloseable {
         // binning / closed-loop / warm rules). Numeric only for easy ML ingestion.
         registerDerived("map_rpm_cell", "Map RPM Cell (rpm)");
         registerDerived("map_axis_value", "Map Axis Value");
-        registerDerived("map_axis_source", "Map Axis Source (1=MAP 2=LOAD)");
+        registerDerived("map_axis_source", "Map Axis Source (1=MAP 2=LOAD 3=SYNTH_MAP)");
         registerDerived("map_value_source", "MAP Value Source (0=missing 1=measured 2=synthesized)");
         registerDerived("map_trim_total", "Map Trim Total STFT+LTFT (%)");
+        registerDerived("map_lambda", "Map Measured Lambda");
+        registerDerived("map_commanded_lambda", "Map Commanded Lambda");
+        registerDerived("map_lambda_error", "Map Lambda Error (Measured-Commanded)");
         registerDerived("map_closed_loop", "Map Closed Loop (1/0)");
         registerDerived("map_warm", "Map Engine Warm (1/0)");
         registerDerived("map_gated", "Map Gate Eligible (1/0)");
@@ -535,12 +539,8 @@ public final class DataWriter implements AutoCloseable {
     }
 
     public File getDownloadFolderFile() {
-        String cleanVin = sanitizeVin(this.vin);
         File downloadDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), DOWNLOAD_SUBDIR);
-        if (!cleanVin.isEmpty()) {
-            return new File(downloadDir, cleanVin);
-        }
-        return downloadDir;
+        return new File(downloadDir, storageDirectoryName(this.vin));
     }
 
     public String getDownloadFolderPath() {
@@ -599,6 +599,8 @@ public final class DataWriter implements AutoCloseable {
             files.put("jsonl", sessionId + "_obd2.jsonl");
             files.put("summary", sessionId + "_summary.json");
             root.put("files", files);
+            root.put("output_directory", storageDirectoryName(vin));
+            root.put("output_directory_type", sanitizeVin(vin).isEmpty() ? "GENERAL_NO_VIN" : "VIN");
 
             JSONObject vehicle = new JSONObject();
             vehicle.put("configured_vin", vin == null ? "UNKNOWN" : vin);
@@ -724,14 +726,19 @@ public final class DataWriter implements AutoCloseable {
         if (savedUriStr != null) {
             try {
                 Uri treeUri = Uri.parse(savedUriStr);
-                androidx.documentfile.provider.DocumentFile tree = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, treeUri);
+                androidx.documentfile.provider.DocumentFile tree =
+                        androidx.documentfile.provider.DocumentFile.fromTreeUri(context, treeUri);
                 if (tree != null && tree.exists() && tree.canWrite()) {
                     androidx.documentfile.provider.DocumentFile targetDir = tree;
-                    String cleanVin = sanitizeVin(this.vin);
-                    if (!cleanVin.isEmpty()) {
-                        androidx.documentfile.provider.DocumentFile sub = tree.findFile(cleanVin);
+                    String storageDir = storageDirectoryName(this.vin);
+                    // If the user selected the VIN/General folder itself, do
+                    // not create a misleading nested VIN/VIN directory.
+                    boolean treeIsTarget = tree.getName() != null
+                            && storageDir.equalsIgnoreCase(tree.getName().trim());
+                    if (!treeIsTarget) {
+                        androidx.documentfile.provider.DocumentFile sub = tree.findFile(storageDir);
                         if (sub == null || !sub.isDirectory()) {
-                            sub = tree.createDirectory(cleanVin);
+                            sub = tree.createDirectory(storageDir);
                         }
                         if (sub != null) {
                             targetDir = sub;
@@ -761,10 +768,7 @@ public final class DataWriter implements AutoCloseable {
             values.put(MediaStore.Downloads.DISPLAY_NAME, displayName);
             values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
             String path = Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_SUBDIR;
-            String cleanVin = sanitizeVin(this.vin);
-            if (!cleanVin.isEmpty()) {
-                path += "/" + cleanVin;
-            }
+            path += "/" + storageDirectoryName(this.vin);
             values.put(MediaStore.Downloads.RELATIVE_PATH, path);
             Uri uri = context.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
             if (uri != null) {
@@ -800,11 +804,8 @@ public final class DataWriter implements AutoCloseable {
     }
 
     private DownloadTarget localFileTarget(String displayName) throws IOException {
-        String cleanVin = sanitizeVin(this.vin);
         File downloadDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), DOWNLOAD_SUBDIR);
-        if (!cleanVin.isEmpty()) {
-            downloadDir = new File(downloadDir, cleanVin);
-        }
+        downloadDir = new File(downloadDir, storageDirectoryName(this.vin));
         if (!downloadDir.exists() && !downloadDir.mkdirs()) {
             throw new IOException("Failed to create download directory: " + downloadDir.getAbsolutePath());
         }
@@ -839,10 +840,35 @@ public final class DataWriter implements AutoCloseable {
     }
 
     private static String sanitizeVin(String vin) {
-        if (vin == null || vin.isEmpty() || "Unknown".equalsIgnoreCase(vin)) {
+        if (vin == null) {
             return "";
         }
-        return vin.replaceAll("[^a-zA-Z0-9_-]", "").toUpperCase(Locale.US).trim();
+        String normalized = vin.trim().toUpperCase(Locale.US);
+        if (normalized.isEmpty() || isVinPlaceholder(normalized)) {
+            return "";
+        }
+        return normalized.replaceAll("[^A-Z0-9_-]", "").trim();
+    }
+
+    private static String storageDirectoryName(String vin) {
+        String cleanVin = sanitizeVin(vin);
+        return cleanVin.isEmpty() ? NO_VIN_SUBDIR : cleanVin;
+    }
+
+    private static boolean isVinPlaceholder(String value) {
+        return "UNKNOWN".equals(value)
+                || "UNKNOWN_VIN".equals(value)
+                || "UNKNOWNVIN".equals(value)
+                || "N/A".equals(value)
+                || "NA".equals(value)
+                || "NULL".equals(value)
+                || "NONE".equals(value)
+                || "NO_DATA".equals(value)
+                || "NODATA".equals(value)
+                || "NOT_AVAILABLE".equals(value)
+                || "NOTAVAILABLE".equals(value)
+                || "UNAVAILABLE".equals(value)
+                || "UNDEFINED".equals(value);
     }
 
     private abstract static class DownloadTarget {

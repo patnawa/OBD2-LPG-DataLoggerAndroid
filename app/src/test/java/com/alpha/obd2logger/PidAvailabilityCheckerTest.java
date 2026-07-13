@@ -342,12 +342,15 @@ public class PidAvailabilityCheckerTest {
 
     @Test
     public void simulationProfileIsNotNullAndContainsCorePids() {
-        // The simulation profile is returned by PidAvailabilityChecker for SimulationDriver
-        // We can test it indirectly by checking that filterCatalogue with a known set works
-        List<String> simPids = Arrays.asList("0C", "0D", "05", "06", "07", "0B", "04", "11", "10", "14");
-        List<PIDDefinition> filtered = PidAvailabilityChecker.filterCatalogue(
-                simPids, PIDCatalogue.getAll());
-        assertNotNull(filtered);
-        assertTrue(filtered.size() > 0);
+        SimulationDriver driver = new SimulationDriver(new LoggerConfig());
+        driver.connect();
+        List<String> simPids = PidAvailabilityChecker.querySupportedPids(driver);
+        assertNotNull(simPids);
+        assertTrue(simPids.contains("03")); // closed-loop gate
+        assertTrue(simPids.contains("05")); // warm-engine gate
+        assertTrue(simPids.contains("06")); // STFT
+        assertTrue(simPids.contains("07")); // LTFT
+        assertTrue(simPids.contains("0B")); // MAP axis
+        assertTrue(simPids.contains("0C")); // RPM axis
     }
 }
