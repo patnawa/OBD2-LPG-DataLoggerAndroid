@@ -249,8 +249,12 @@ public final class BleDriver extends ElmDriver {
 
                 // Wait for response with '>' prompt
                 String response = responseQueue.poll(config.connectionTimeoutMs, TimeUnit.MILLISECONDS);
-                return response != null ? response : "";
+                String result = response != null ? response : "";
+                trackResponseLiveness(result);
+                return result;
             } catch (Exception e) {
+                if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+                trackResponseLiveness("");
                 return "";
             }
         } finally {

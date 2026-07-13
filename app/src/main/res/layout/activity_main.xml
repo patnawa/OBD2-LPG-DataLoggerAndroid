@@ -3844,7 +3844,7 @@
                                     <TextView
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
-                                        android:text="AI Agent API Server"
+                                        android:text="@string/api_agent_title"
                                         android:textColor="@color/text"
                                         android:textSize="14sp"
                                         android:textStyle="bold" />
@@ -3852,7 +3852,7 @@
                                     <TextView
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
-                                        android:text="Exposes telemetry data over HTTP (Port 8080)"
+                                        android:text="@string/api_agent_description"
                                         android:textColor="@color/muted"
                                         android:textSize="11sp"
                                         android:layout_marginTop="2dp" />
@@ -3868,10 +3868,13 @@
                                 android:id="@+id/apiServerIpText"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="URL: http://192.168.x.x:8080/api/data"
+                                android:text="@string/api_agent_description"
                                 android:textColor="@color/primary"
                                 android:textSize="12sp"
-                                android:paddingStart="8dp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:background="?attr/selectableItemBackground"
+                                android:padding="8dp"
                                 android:layout_marginTop="8dp"
                                 android:visibility="gone" />
                         </LinearLayout>

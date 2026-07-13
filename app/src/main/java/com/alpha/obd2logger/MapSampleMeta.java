@@ -4,16 +4,17 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Shared fuel-map sample enrichment used by live UI ({@link LiveMapStore}),
- * CSV/JSONL logs ({@link DataWriter}) and API/AI endpoints.
+ * Shared fuel-map sample enrichment used by the live UI, CSV/JSONL logs and
+ * API/AI endpoints.
  *
- * <p>Always resolves the grid cell for the current sample (right cell for live
- * highlight) including cases that fail closed-loop / temperature gates. AI
- * tools can re-build maps from log columns without re-deriving binning rules.
+ * <p>The current grid cell is resolved even when a sample fails a safety gate,
+ * so the UI can keep its cursor responsive without learning an unsafe tune
+ * correction.</p>
  */
 public final class MapSampleMeta {
 
     public static final String AXIS_MAP = "MAP";
+    public static final String AXIS_SYNTH_MAP = "SYNTH_MAP";
     public static final String AXIS_LOAD = "LOAD";
     public static final String AXIS_NONE = "NONE";
 
@@ -33,8 +34,8 @@ public final class MapSampleMeta {
     public final double trimTotal;
     public final boolean closedLoop;
     public final boolean warmEnough;
-    public final boolean gatedEligible; // closed-loop + warm + has rpm/axis
-    public final String rejectReason;   // null if gatedEligible
+    public final boolean gatedEligible;
+    public final String rejectReason;
 
     private MapSampleMeta(Double rpm, Double mapKpa, Double engineLoad,
                           Double stft, Double ltft, Double ect, Double fuelSystemStatus,
@@ -61,37 +62,35 @@ public final class MapSampleMeta {
         this.rejectReason = rejectReason;
     }
 
-    /** Build metadata from one DataRecord (sensor table). */
+    /** Build metadata from one DataRecord and preserve MAP provenance. */
     public static MapSampleMeta from(DataRecord record) {
-        if (record == null) {
-            return empty("null_record");
-        }
-        Double rpm = valueByKey(record, "01_0C");
-        Double map = valueByKey(record, "01_0B");
-        Double load = valueByKey(record, "01_04");
-        Double stft = valueByKey(record, "01_06");
-        Double ltft = valueByKey(record, "01_07");
-        Double ect = valueByKey(record, "01_05");
-        Double fuelStatus = valueByKey(record, "01_03");
-        return fromValues(rpm, map, load, stft, ltft, ect, fuelStatus);
+        if (record == null) return empty("null_record");
+
+        SensorSample mapSample = sampleByKey(record, "01_0B");
+        boolean synthesizedMap = mapSample != null
+                && ("synth".equalsIgnoreCase(mapSample.getStatus())
+                || "synthesized".equalsIgnoreCase(mapSample.getStatus()));
+        return fromValues(
+                valueByKey(record, "01_0C"),
+                mapSample != null ? mapSample.getValue() : null,
+                valueByKey(record, "01_04"),
+                valueByKey(record, "01_06"),
+                valueByKey(record, "01_07"),
+                valueByKey(record, "01_05"),
+                valueByKey(record, "01_03"),
+                synthesizedMap);
     }
 
     /**
-     * Build metadata from the legacy pushSample signature (already-combined trim,
-     * already-chosen load axis, boolean closed-loop flags).
+     * Compatibility entry for callers that already combined trim and selected
+     * an axis. A missing ECT remains allowed here because the old signature
+     * cannot distinguish unsupported ECT from omitted ECT.
      */
     public static MapSampleMeta fromLegacy(double rpm, double loadAxis, double trim,
                                            boolean isClosedLoop, Double ect) {
-        boolean warmEnough = (ect == null) || (ect >= 80.0);
-
-        String axisSource = AXIS_NONE;
-        double axis = Double.NaN;
-        if (!Double.isNaN(loadAxis)) {
-            axis = loadAxis;
-            // Callers already chose the axis; annotate for labels only.
-            axisSource = (loadAxis > 100.0) ? AXIS_MAP : AXIS_MAP;
-        }
-        // Prefer MAP label for legacy path (Live path that cares uses from()).
+        boolean warmEnough = ect == null || ect >= 80.0;
+        double axis = Double.isNaN(loadAxis) ? Double.NaN : loadAxis;
+        String axisSource = Double.isNaN(axis) ? AXIS_NONE : AXIS_MAP;
 
         int rpmCell = -1;
         float mapBin = -1f;
@@ -103,39 +102,28 @@ public final class MapSampleMeta {
         }
 
         String reject = null;
-        boolean gated = true;
-        if (Double.isNaN(rpm)) {
-            gated = false;
-            reject = "no_rpm";
-        } else if (Double.isNaN(axis)) {
-            gated = false;
-            reject = "no_axis";
-        } else if (!isClosedLoop) {
-            gated = false;
-            reject = "open_loop";
-        } else if (!warmEnough) {
-            gated = false;
-            reject = "cold_engine";
-        }
+        if (Double.isNaN(rpm)) reject = "no_rpm";
+        else if (Double.isNaN(axis)) reject = "no_axis";
+        else if (!isClosedLoop) reject = "open_loop";
+        else if (!warmEnough) reject = "cold_engine";
 
         Double fuelStatus = isClosedLoop ? 2.0 : 1.0;
-        return new MapSampleMeta(
-                rpm, axis, null, trim, 0.0, ect, fuelStatus,
-                axis, axisSource, rpmCell, mapBin, cellKey,
-                trim, isClosedLoop, warmEnough, gated, reject);
+        return new MapSampleMeta(rpm, axis, null, trim, 0.0, ect, fuelStatus,
+                axis, axisSource, rpmCell, mapBin, cellKey, trim,
+                isClosedLoop, warmEnough, reject == null, reject);
     }
 
     public static MapSampleMeta fromValues(Double rpm, Double map, Double load,
                                            Double stft, Double ltft, Double ect,
                                            Double fuelStatus) {
-        boolean closedLoop = true;
-        if (fuelStatus != null) {
-            closedLoop = (fuelStatus.intValue() & 0x02) != 0;
-        }
+        return fromValues(rpm, map, load, stft, ltft, ect, fuelStatus, false);
+    }
 
-        // Warm gate: when ECT is present require ≥80°C. Missing ECT still allowed
-        // (some vehicles / lpg-critical sets may omit it) but is flagged.
-        boolean warmEnough = (ect == null) || (ect >= 80.0);
+    private static MapSampleMeta fromValues(Double rpm, Double map, Double load,
+                                            Double stft, Double ltft, Double ect,
+                                            Double fuelStatus, boolean synthesizedMap) {
+        boolean closedLoop = fuelStatus != null && (fuelStatus.intValue() & 0x02) != 0;
+        boolean warmEnough = ect != null && ect >= 80.0;
 
         double trim = 0.0;
         boolean hasTrim = false;
@@ -151,7 +139,7 @@ public final class MapSampleMeta {
         double loadAxis = Double.NaN;
         if (map != null && !Double.isNaN(map)) {
             loadAxis = map;
-            axisSource = AXIS_MAP;
+            axisSource = synthesizedMap ? AXIS_SYNTH_MAP : AXIS_MAP;
         } else if (load != null && !Double.isNaN(load)) {
             loadAxis = load;
             axisSource = AXIS_LOAD;
@@ -167,67 +155,58 @@ public final class MapSampleMeta {
         }
 
         String reject = null;
-        boolean gated = true;
-        if (rpm == null || Double.isNaN(rpm)) {
-            gated = false;
-            reject = "no_rpm";
-        } else if (Double.isNaN(loadAxis)) {
-            gated = false;
-            reject = "no_axis";
-        } else if (!closedLoop) {
-            gated = false;
-            reject = "open_loop";
-        } else if (!warmEnough) {
-            gated = false;
-            reject = "cold_engine";
-        } else if (!hasTrim) {
-            gated = false;
-            reject = "no_trim";
-        }
+        if (rpm == null || Double.isNaN(rpm)) reject = "no_rpm";
+        else if (Double.isNaN(loadAxis)) reject = "no_axis";
+        else if (fuelStatus == null) reject = "no_fuel_status";
+        else if (!closedLoop) reject = "open_loop";
+        else if (ect == null) reject = "no_coolant";
+        else if (!warmEnough) reject = "cold_engine";
+        else if (!hasTrim) reject = "no_trim";
 
         return new MapSampleMeta(rpm, map, load, stft, ltft, ect, fuelStatus,
                 loadAxis, axisSource, rpmCell, mapBin, cellKey, trim,
-                closedLoop, warmEnough, gated, reject);
+                closedLoop, warmEnough, reject == null, reject);
     }
 
     private static MapSampleMeta empty(String reason) {
         return new MapSampleMeta(null, null, null, null, null, null, null,
                 Double.NaN, AXIS_NONE, -1, -1f, "", 0.0,
-                true, true, false, reason);
+                false, false, false, reason);
     }
 
     private static Double valueByKey(DataRecord record, String key) {
+        SensorSample sample = sampleByKey(record, key);
+        return sample != null ? sample.getValue() : null;
+    }
+
+    private static SensorSample sampleByKey(DataRecord record, String key) {
         if (record == null || record.getSamples() == null) return null;
-        for (SensorSample s : record.getSamples()) {
-            if (key.equals(s.getPidKey())) return s.getValue();
+        for (SensorSample sample : record.getSamples()) {
+            if (key.equals(sample.getPidKey())) return sample;
         }
         return null;
     }
 
-    /**
-     * Append map AI columns onto a growing sample list for CSV/JSONL.
-     * Safe to call every record — values that are unresolvable stay null.
-     *
-     * @param accepted true if LiveMapStore actually stored this sample (after debounce/lock)
-     * @param storeReject reason from store when accepted=false (debounce/locked/gate)
-     */
+    /** Append numeric, provenance-aware map columns to CSV/JSONL samples. */
     public void appendLogSamples(List<SensorSample> samples, boolean accepted, String storeReject) {
         if (samples == null) return;
         samples.add(new SensorSample("map_rpm_cell", "Map RPM Cell",
                 rpmCell >= 0 ? (double) rpmCell : null, "rpm", "ok"));
         samples.add(new SensorSample("map_axis_value", "Map Axis Value",
                 Double.isNaN(loadAxis) ? null : loadAxis,
-                AXIS_MAP.equals(axisSource) ? "kPa" : "%", "ok"));
+                isMapAxis(axisSource) ? "kPa" : "%", "ok"));
         samples.add(new SensorSample("map_axis_source", "Map Axis Source",
                 axisSourceCode(axisSource), "", "ok"));
-        // cell key as free-text is not numeric — AI still has rpm cell + axis
+
+        boolean hasTrim = stft != null || ltft != null;
         samples.add(new SensorSample("map_trim_total", "Map Trim Total (STFT+LTFT)",
-                gatedEligible || "no_trim".equals(rejectReason) ? trimTotal : trimTotal,
-                "%", "ok"));
+                hasTrim ? trimTotal : null, "%", hasTrim ? "ok" : "unavailable"));
         samples.add(new SensorSample("map_closed_loop", "Map Closed Loop",
-                closedLoop ? 1.0 : 0.0, "", "ok"));
+                fuelSystemStatus != null ? (closedLoop ? 1.0 : 0.0) : null,
+                "", fuelSystemStatus != null ? "ok" : "unavailable"));
         samples.add(new SensorSample("map_warm", "Map Engine Warm",
-                warmEnough ? 1.0 : 0.0, "", "ok"));
+                ect != null ? (warmEnough ? 1.0 : 0.0) : null,
+                "", ect != null ? "ok" : "unavailable"));
         samples.add(new SensorSample("map_gated", "Map Gate Eligible",
                 gatedEligible ? 1.0 : 0.0, "", "ok"));
         samples.add(new SensorSample("map_accepted", "Map Sample Accepted",
@@ -237,17 +216,22 @@ public final class MapSampleMeta {
                 "", "ok"));
     }
 
-    /** Numeric code for axis so CSV stays numeric-friendly for AI tools. */
+    /** 0=none, 1=measured MAP, 2=load, 3=synthesized MAP. */
     public static double axisSourceCode(String axisSource) {
         if (AXIS_MAP.equals(axisSource)) return 1.0;
         if (AXIS_LOAD.equals(axisSource)) return 2.0;
+        if (AXIS_SYNTH_MAP.equals(axisSource)) return 3.0;
         return 0.0;
     }
 
+    private static boolean isMapAxis(String axisSource) {
+        return AXIS_MAP.equals(axisSource) || AXIS_SYNTH_MAP.equals(axisSource);
+    }
+
     /**
-     * Compact integer reject reason codes (documented for AI agents):
-     * 0=accepted, 1=no_rpm, 2=no_axis未遂, 3=open_loop, 4=cold, 5=no_trim,
-     * 6=debounce, 7=locked, 8=null_record, 9=other.
+     * 0=accepted, 1=no_rpm, 2=no_axis, 3=open_loop, 4=cold, 5=no_trim,
+     * 6=debounce, 7=locked, 8=null_record, 9=no_coolant,
+     * 10=no_fuel_status, 99=other.
      */
     public static double rejectCode(String reason) {
         if (reason == null || reason.isEmpty()) return 0.0;
@@ -260,11 +244,12 @@ public final class MapSampleMeta {
             case "debounce": return 6.0;
             case "locked": return 7.0;
             case "null_record": return 8.0;
-            default: return 9.0;
+            case "no_coolant": return 9.0;
+            case "no_fuel_status": return 10.0;
+            default: return 99.0;
         }
     }
 
-    /** Human-readable cell label for HUD / agent. */
     public String cellLabel() {
         if (cellKey == null || cellKey.isEmpty()) return "—";
         return String.format(Locale.US, "%s (%s)", cellKey, axisSource);

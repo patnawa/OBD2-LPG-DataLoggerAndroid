@@ -7,18 +7,24 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 import fi.iki.elonen.NanoHTTPD;
 
 public class ApiServer extends NanoHTTPD {
+    private static final int MAX_IMPORT_BYTES = 512 * 1024;
+    private static final int MAX_IMPORT_CELLS = 1_000;
+    private static final int MAX_SSE_CLIENTS = 8;
 
     private volatile DataRecord latestData;
     private volatile boolean isLogging;
@@ -27,6 +33,7 @@ public class ApiServer extends NanoHTTPD {
     private volatile String vehicleBrand;
     private volatile int recordCount;
     private volatile long sessionStartMs;
+    private final String accessToken;
 
     /**
      * The canonical fuel-map store. Set by {@link LoggerService} when the
@@ -147,26 +154,44 @@ public class ApiServer extends NanoHTTPD {
     private static class SseClient {
         final PipedOutputStream out;
         final PipedInputStream in;
+        final ArrayBlockingQueue<String> events = new ArrayBlockingQueue<>(16);
+        final Thread writerThread;
         volatile boolean closed = false;
 
         SseClient() throws IOException {
             // 16KB pipe buffer — enough for ~100 SSE events before backpressure
             this.in = new PipedInputStream(16384);
             this.out = new PipedOutputStream(in);
+            this.writerThread = new Thread(this::writeLoop, "obd-api-sse");
+            this.writerThread.setDaemon(true);
+            this.writerThread.start();
         }
 
         void send(String event) {
-            if (closed) return;
+            if (closed || event == null) return;
+            // A slow network client must never block the OBD polling thread.
+            if (!events.offer(event)) close();
+        }
+
+        private void writeLoop() {
             try {
-                out.write(event.getBytes("UTF-8"));
-                out.flush();
-            } catch (IOException e) {
+                while (!closed) {
+                    String event = events.take();
+                    out.write(event.getBytes(StandardCharsets.UTF_8));
+                    out.flush();
+                }
+            } catch (IOException | InterruptedException e) {
+                if (e instanceof InterruptedException) Thread.currentThread().interrupt();
                 closed = true;
+            } finally {
+                try { out.close(); } catch (IOException ignored) {}
             }
         }
 
         void close() {
+            if (closed) return;
             closed = true;
+            writerThread.interrupt();
             try { out.close(); } catch (IOException ignored) {}
             try { in.close(); } catch (IOException ignored) {}
         }
@@ -229,7 +254,18 @@ public class ApiServer extends NanoHTTPD {
     // snapshots from it.
 
     public ApiServer(int port) {
+        this(port, ApiSecurity.generateToken());
+    }
+
+    public ApiServer(int port, String accessToken) {
         super(port);
+        this.accessToken = ApiSecurity.isValid(accessToken)
+                ? accessToken
+                : ApiSecurity.generateToken();
+    }
+
+    public String getAccessToken() {
+        return accessToken;
     }
 
     /**
@@ -297,6 +333,17 @@ public class ApiServer extends NanoHTTPD {
         Method method = session.getMethod();
         
         Response response = null;
+
+        // Health discovery is intentionally public; every endpoint containing
+        // VIN, telemetry, maps, DTCs, or mutations requires the per-install key.
+        boolean publicPing = Method.GET.equals(method) && "/api/ping".equals(uri);
+        if (!Method.OPTIONS.equals(method) && !publicPing && !isAuthorized(session)) {
+            response = newFixedLengthResponse(Response.Status.UNAUTHORIZED, "application/json",
+                    "{\"error\":\"unauthorized\",\"hint\":\"Use Authorization: Bearer <token> or X-API-Key\"}");
+            response.addHeader("WWW-Authenticate", "Bearer realm=\"TunerMap Pro\"");
+            addCorsHeaders(response);
+            return response;
+        }
         
         // CORS preflight
         if (Method.OPTIONS.equals(method)) {
@@ -342,12 +389,45 @@ public class ApiServer extends NanoHTTPD {
         }
 
         if (response != null) {
-            response.addHeader("Access-Control-Allow-Origin", "*");
-            response.addHeader("Access-Control-Allow-Headers", "origin, accept, content-type");
-            response.addHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS, HEAD");
+            addCorsHeaders(response);
         }
         
         return response;
+    }
+
+    private boolean isAuthorized(IHTTPSession session) {
+        if (session == null) return false;
+        String supplied = null;
+        Map<String, String> headers = session.getHeaders();
+        if (headers != null) {
+            supplied = headers.get("x-api-key");
+            if (supplied == null) supplied = headers.get("X-API-Key");
+            if (supplied == null) {
+                String auth = headers.get("authorization");
+                if (auth == null) auth = headers.get("Authorization");
+                if (auth != null && auth.regionMatches(true, 0, "Bearer ", 0, 7)) {
+                    supplied = auth.substring(7).trim();
+                }
+            }
+        }
+        // Query-token support keeps browser EventSource usable because its API
+        // cannot attach Authorization headers.
+        if (supplied == null && session.getParms() != null) {
+            supplied = session.getParms().get("token");
+        }
+        if (supplied == null) return false;
+        return MessageDigest.isEqual(accessToken.getBytes(StandardCharsets.UTF_8),
+                supplied.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static void addCorsHeaders(Response response) {
+        if (response == null) return;
+        response.addHeader("Access-Control-Allow-Origin", "*");
+        response.addHeader("Access-Control-Allow-Headers",
+                "origin, accept, content-type, authorization, x-api-key");
+        response.addHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS, HEAD");
+        response.addHeader("Cache-Control", "no-store");
+        response.addHeader("X-Content-Type-Options", "nosniff");
     }
 
     private Response handlePing() {
@@ -623,22 +703,54 @@ public class ApiServer extends NanoHTTPD {
 
             Map<String, String> files = new HashMap<>();
             try {
+                String contentLength = session.getHeaders() != null
+                        ? session.getHeaders().get("content-length") : null;
+                if (contentLength != null) {
+                    try {
+                        if (Long.parseLong(contentLength) > MAX_IMPORT_BYTES) {
+                            return importTooLarge();
+                        }
+                    } catch (NumberFormatException badLength) {
+                        return newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json",
+                                "{\"error\":\"Invalid Content-Length\"}");
+                    }
+                }
                 session.parseBody(files);
                 String body = files.get("postData");
                 if (body == null || body.trim().isEmpty()) {
                     return newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json",
                             "{\"error\": \"Empty body\"}");
                 }
+                if (body.getBytes(StandardCharsets.UTF_8).length > MAX_IMPORT_BYTES) {
+                    return importTooLarge();
+                }
 
                 JSONObject root = new JSONObject(body);
                 boolean replace = root.optBoolean("replace", true);
+                JSONObject petrolJson = root.optJSONObject("petrolMap");
+                JSONObject lpgJson = root.optJSONObject("lpgMap");
+                JSONArray compactCells = root.optJSONArray("cells");
+                if ((root.has("petrolMap") && petrolJson == null)
+                        || (root.has("lpgMap") && lpgJson == null)
+                        || (root.has("cells") && compactCells == null)) {
+                    return newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json",
+                            "{\"error\":\"Map fields have invalid types\"}");
+                }
+                int requestedCells = (petrolJson != null ? petrolJson.length() : 0)
+                        + (lpgJson != null ? lpgJson.length() : 0)
+                        + (compactCells != null ? compactCells.length() : 0);
+                if (requestedCells > MAX_IMPORT_CELLS) return importTooLarge();
+
                 int petrolImported = 0;
                 int lpgImported = 0;
                 int skipped = 0;
+                boolean petrolPresent = petrolJson != null;
+                boolean lpgPresent = lpgJson != null;
+                Map<String, LiveMapStore.TrimData> pendingPetrol = new HashMap<>();
+                Map<String, LiveMapStore.TrimData> pendingLpg = new HashMap<>();
 
-                if (root.has("petrolMap")) {
-                    if (replace) store.importPetrol(java.util.Collections.emptyMap(), true);
-                    JSONObject petrolJson = root.getJSONObject("petrolMap");
+                // Build a complete transaction before mutating the live store.
+                if (petrolJson != null) {
                     java.util.Iterator<String> keys = petrolJson.keys();
                     while (keys.hasNext()) {
                         String key = keys.next();
@@ -646,15 +758,17 @@ public class ApiServer extends NanoHTTPD {
                         if (cell == null) { skipped++; continue; }
                         double avg = cell.optDouble("avg", Double.NaN);
                         int hits = cell.optInt("hits", 0);
-                        if (Double.isNaN(avg) || hits < 0) { skipped++; continue; }
-                        store.putImportedCell(false, key, avg, hits);
+                        if (!Double.isFinite(avg) || Math.abs(avg) > 100.0 || hits < 0) {
+                            skipped++;
+                            continue;
+                        }
+                        LiveMapStore.TrimData imported = importedCell(key, avg, hits, pendingPetrol);
+                        if (imported == null) { skipped++; continue; }
                         petrolImported++;
                     }
                 }
 
-                if (root.has("lpgMap")) {
-                    if (replace) store.importLpg(java.util.Collections.emptyMap(), true);
-                    JSONObject lpgJson = root.getJSONObject("lpgMap");
+                if (lpgJson != null) {
                     java.util.Iterator<String> keys = lpgJson.keys();
                     while (keys.hasNext()) {
                         String key = keys.next();
@@ -662,33 +776,56 @@ public class ApiServer extends NanoHTTPD {
                         if (cell == null) { skipped++; continue; }
                         double avg = cell.optDouble("avg", Double.NaN);
                         int hits = cell.optInt("hits", 0);
-                        if (Double.isNaN(avg) || hits < 0) { skipped++; continue; }
-                        store.putImportedCell(true, key, avg, hits);
+                        if (!Double.isFinite(avg) || Math.abs(avg) > 100.0 || hits < 0) {
+                            skipped++;
+                            continue;
+                        }
+                        LiveMapStore.TrimData imported = importedCell(key, avg, hits, pendingLpg);
+                        if (imported == null) { skipped++; continue; }
                         lpgImported++;
                     }
                 }
 
                 // Also accept compact AI export format: array of {rpm, map, avg, hits, fuel}
-                if (root.has("cells")) {
-                    org.json.JSONArray arr = root.getJSONArray("cells");
-                    for (int i = 0; i < arr.length(); i++) {
-                        JSONObject cell = arr.optJSONObject(i);
+                if (compactCells != null) {
+                    for (int i = 0; i < compactCells.length(); i++) {
+                        JSONObject cell = compactCells.optJSONObject(i);
                         if (cell == null) { skipped++; continue; }
                         double rpm = cell.optDouble("rpm", Double.NaN);
                         double map = cell.optDouble("map", Double.NaN);
                         double avg = cell.optDouble("avg", Double.NaN);
                         int hits = cell.optInt("hits", 1);
                         String fuel = cell.optString("fuel", "petrol");
-                        if (Double.isNaN(rpm) || Double.isNaN(map) || Double.isNaN(avg)) {
+                        if (!Double.isFinite(rpm) || !Double.isFinite(map)
+                                || !Double.isFinite(avg) || Math.abs(avg) > 100.0 || hits < 0) {
                             skipped++;
                             continue;
                         }
                         String key = MapBinning.cellKey(rpm, map);
                         boolean gaseous = FuelMode.fromString(fuel).isGaseous();
-                        store.putImportedCell(gaseous, key, avg, hits);
-                        if (gaseous) lpgImported++; else petrolImported++;
+                        Map<String, LiveMapStore.TrimData> target = gaseous ? pendingLpg : pendingPetrol;
+                        if (importedCell(key, avg, hits, target) == null) {
+                            skipped++;
+                            continue;
+                        }
+                        if (gaseous) {
+                            lpgPresent = true;
+                            lpgImported++;
+                        } else {
+                            petrolPresent = true;
+                            petrolImported++;
+                        }
                     }
                 }
+
+                if ((petrolJson != null && petrolJson.length() > 0 && pendingPetrol.isEmpty())
+                        || (lpgJson != null && lpgJson.length() > 0 && pendingLpg.isEmpty())) {
+                    return newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json",
+                            "{\"error\":\"Import contains no valid map cells\"}");
+                }
+
+                if (petrolPresent) store.importPetrol(pendingPetrol, replace);
+                if (lpgPresent) store.importLpg(pendingLpg, replace);
 
                 JSONObject resp = new JSONObject();
                 resp.put("status", "imported");
@@ -698,13 +835,33 @@ public class ApiServer extends NanoHTTPD {
                 resp.put("overlappingCells", store.snapshot().getOverlappingCellCount());
                 return newFixedLengthResponse(Response.Status.OK, "application/json", resp.toString());
 
-            } catch (IOException | ResponseException | JSONException e) {
-                e.printStackTrace();
+            } catch (JSONException e) {
+                String msg = e.getMessage() != null ? e.getMessage().replace("\"", "'") : "invalid_json";
+                return newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json",
+                        "{\"error\": \"" + msg + "\"}");
+            } catch (IOException | ResponseException e) {
+                android.util.Log.w("ApiServer", "Map import failed", e);
                 String msg = e.getMessage() != null ? e.getMessage().replace("\"", "'") : "import_failed";
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json",
                         "{\"error\": \"" + msg + "\"}");
             }
         }
+
+    private Response importTooLarge() {
+        return newFixedLengthResponse(Response.Status.PAYLOAD_TOO_LARGE, "application/json",
+                "{\"error\":\"Import exceeds 512 KiB or 1000 cells\"}");
+    }
+
+    private static LiveMapStore.TrimData importedCell(
+            String key, double avg, int hits, Map<String, LiveMapStore.TrimData> destination) {
+        String normalized = LiveMapStore.normalizeCellKey(key);
+        if (destination == null || normalized == null
+                || !normalized.matches("\\d+_-?\\d+(?:\\.\\d+)?")) return null;
+        LiveMapStore.TrimData cell = new LiveMapStore.TrimData();
+        cell.setFromImport(avg, hits);
+        destination.put(normalized, cell);
+        return cell;
+    }
 
     // ═══════════════════════════════════════════════════════════════
     //  SSE Stream Handler
@@ -726,6 +883,11 @@ public class ApiServer extends NanoHTTPD {
      */
     private Response handleSseStream(IHTTPSession session) {
         try {
+            sseClients.removeIf(client -> client.closed);
+            if (sseClients.size() >= MAX_SSE_CLIENTS) {
+                return newFixedLengthResponse(Response.Status.TOO_MANY_REQUESTS,
+                        "application/json", "{\"error\":\"Too many stream clients\"}");
+            }
             final SseClient client = new SseClient();
             sseClients.add(client);
 
@@ -813,11 +975,15 @@ public class ApiServer extends NanoHTTPD {
         JSONObject obj = new JSONObject();
         try {
             obj.put("success", success);
-            obj.put("message", success ? "Clear DTC command triggered" : "DTC provider unavailable");
+            obj.put("confirmationRequired", success);
+            obj.put("message", success
+                    ? "Clear request accepted; confirm on the vehicle screen"
+                    : "DTC provider unavailable");
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        return newFixedLengthResponse(Response.Status.OK, "application/json", obj.toString());
+        return newFixedLengthResponse(success ? Response.Status.ACCEPTED : Response.Status.SERVICE_UNAVAILABLE,
+                "application/json", obj.toString());
     }
 
     // ═══════════════════════════════════════════════════════════════

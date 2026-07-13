@@ -1,12 +1,19 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.19.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and AI Agent integration.
+**Version 3.20.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.19.0 — Reliable Session Intelligence
+## What's New in 3.20.0 — Production Reliability & Secure Realtime API
+- AUTO transport discovery and reconnects now have hard deadlines, deterministic cleanup, actual-transport reporting, and no silent simulation fallback.
+- Intermittent PIDs use adaptive cooldown/retry instead of permanent session blacklisting; dead transports trigger reconnect rather than empty logging.
+- Fuel-map learning distinguishes measured/synthesized MAP and rejects learning when ECT, loop state, or fuel trim evidence is missing.
+- The realtime API now requires a per-install token for all vehicle data and mutations, enforces bounded transactional map imports, and cannot let slow SSE clients block OBD polling.
+- Foreground logging survives closing the UI, Android backup/global cleartext are disabled, and invalid bundled font files were removed.
+
+## Previous: 3.19.0 — Reliable Session Intelligence
 - Rebuilt session summaries as schema v2 with session-linked filenames, app/schema version, vehicle/connection metadata, completeness state, and raw-file references.
 - Added checkpoint summaries every 10 records so force-stop or connection loss preserves a recoverable partial summary.
 - Corrected trip distance and fuel integration using real `elapsed_s` intervals, trapezoidal integration, PID 0x5E fuel-rate priority, and explicit fallback/gap metrics.
@@ -365,13 +372,15 @@ Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Vol
 - **USB serial**: Supports CH340, CP2102, FTDI, Prolific via usb-serial-for-android v3.7.3
 
 ### AI Agent Integration
-- **HTTP API server** (NanoHTTPD on port 8080): Enable in Settings to expose live data as JSON
-  - `GET /api/ping` — heartbeat
+- **Authenticated HTTP API server** (NanoHTTPD on port 8080): Enable it in Settings, then tap the API card to copy the endpoint and per-install access token
+  - `GET /api/ping` — public heartbeat
+  - `GET /api/agent` — complete AI snapshot: status, sensors, map analysis, hotspots, and DTCs
   - `GET /api/data` — all sensor values with units
   - `GET /api/map` — binned Fuel Map with min_hits filter
   - `POST /api/map/import` — import map session JSON
   - `GET /api/map/export` — download correction CSV
-- **CORS enabled**: Web AI agents and MCP clients can fetch directly
+- **Authentication**: Send `Authorization: Bearer <token>` or `X-API-Key: <token>`; browser EventSource may use `?token=<token>`
+- **CORS enabled**: Authenticated web AI agents and MCP clients can fetch directly
 - **Zero polling impact**: Separate thread, no OBD2 slowdown
 
 ### UI/UX
@@ -384,15 +393,19 @@ Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Vol
 
 ## Build
 
-Requirements: JDK 17, Android SDK 35 (API 35), Gradle 8.5.2+
+Requirements: JDK 17, Android SDK 35 (API 35), Gradle wrapper 9.4.1
 
 ```bash
 export JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-17.0.19.10-hotspot"
 export ANDROID_HOME="/c/Users/Alpha/Android/Sdk"
-./gradlew clean testDebugUnitTest assembleDebug
+./gradlew clean testDebugUnitTest lintDebug assembleDebug assembleRelease
 ```
 
-Debug APK output: `app/build/outputs/apk/debug/app-debug.apk (~6.5 MB)`
+Build outputs:
+
+- Installable debug APK: `app/build/outputs/apk/debug/app-debug.apk` (about 7.9 MB)
+- Optimized release APK: `app/build/outputs/apk/release/app-release-unsigned.apk` (must be signed with a private release keystore before distribution)
+- APK and `.idsig` artifacts are intentionally excluded from Git history; publish signed production packages through GitHub Releases or the app store.
 
 ## Runtime Notes
 
@@ -401,7 +414,7 @@ Debug APK output: `app/build/outputs/apk/debug/app-debug.apk (~6.5 MB)`
 - **USB**: Plug in vLinker/USB-serial adapter via OTG. Grant USB permission when prompted.
 - **Background logging**: Enable in Settings to use foreground service (survives screen off / app switch).
 - **Keep screen on**: Enabled by default. Toggle in Settings.
-- **API server**: Enable in Settings to allow AI Agents to read live data on `http://<phone-ip>:8080/api/data`.
+- **API server**: Enable in Settings, tap the connection card to copy the `/api/agent` URL and token, then authenticate each request.
 - **DPF Monitor**: Auto-enabled for diesel vehicles on first VIN read. Toggle in Settings to disable.
 - **Custom PIDs**: Enable in Settings, then add via SharedPreferences or API.
 - **Custom log folder**: Use Settings → "Select Log Folder" to choose a SAF-accessible directory.
@@ -413,9 +426,11 @@ Debug APK output: `app/build/outputs/apk/debug/app-debug.apk (~6.5 MB)`
 - **USB**: usb-serial-for-android v3.7.3 (mik3y)
 - **API server**: NanoHTTPD 2.3.1
 - **Architecture**: Catalogue pattern — PIDs defined once in `PIDCatalogue.java`, auto-flow through querying, logging, and display
-- **Testing**: JUnit 4, 75 unit tests (PID parsing, log replay, PID availability, vLinker optimizer)
+- **Testing**: JUnit 4, 195 unit tests covering transport, PID parsing/discovery, logging, replay, maps, diagnostics, battery/crank logic, and API security
 
 ## Project Structure
+
+Version 3.20 reliability modules include `DriverConnector` (bounded connect/reconnect), `PidHealthTracker` (adaptive PID recovery), `UnavailableDriver` (explicit AUTO failure), `ApiSecurity` (per-install API credentials), and `MapSampleMeta` (fuel-map safety/provenance).
 
 ```
 app/src/main/java/com/alpha/obd2logger/

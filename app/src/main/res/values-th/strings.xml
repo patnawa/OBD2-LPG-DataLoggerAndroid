@@ -443,4 +443,11 @@
     <string name="status_connect_adapter_prompt">เชื่อมต่ออะแดปเตอร์เพื่อเริ่มต้นสแกน</string>
     <string name="status_no_live_data">● ไม่มีข้อมูลสด</string>
     <string name="fuel_economy">อัตราสิ้นเปลืองเชื้อเพลิง</string>
+    <string name="status_disconnected">ยังไม่เชื่อมต่อ</string>
+    <string name="api_agent_title">เซิร์ฟเวอร์ AI Agent API</string>
+    <string name="api_agent_description">ข้อมูลรถแบบเรียลไทม์ที่ป้องกันด้วยรหัส บนพอร์ต 8080</string>
+    <string name="api_connection_template">Endpoint:\n%1$s\nAPI key:\n%2$s\nแตะเพื่อคัดลอกข้อมูลการเชื่อมต่อ</string>
+    <string name="api_connection_copied">คัดลอกข้อมูลเชื่อมต่อ API แล้ว</string>
+    <string name="api_header_on">API เปิด</string>
+    <string name="version_format">เวอร์ชัน %1$s</string>
 </resources>

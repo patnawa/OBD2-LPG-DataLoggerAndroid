@@ -211,7 +211,7 @@ public final class DataWriter implements AutoCloseable {
         // binning / closed-loop / warm rules). Numeric only for easy ML ingestion.
         registerDerived("map_rpm_cell", "Map RPM Cell (rpm)");
         registerDerived("map_axis_value", "Map Axis Value");
-        registerDerived("map_axis_source", "Map Axis Source (1=MAP 2=LOAD)");
+        registerDerived("map_axis_source", "Map Axis Source (1=MAP 2=LOAD 3=SYNTH_MAP)");
         registerDerived("map_value_source", "MAP Value Source (0=missing 1=measured 2=synthesized)");
         registerDerived("map_trim_total", "Map Trim Total STFT+LTFT (%)");
         registerDerived("map_closed_loop", "Map Closed Loop (1/0)");

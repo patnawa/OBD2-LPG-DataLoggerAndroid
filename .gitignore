@@ -4,6 +4,7 @@ build/
 
 # Android
 *.apk
+*.idsig
 *.aab
 *.dex
 *.class

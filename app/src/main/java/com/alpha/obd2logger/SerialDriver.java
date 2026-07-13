@@ -161,7 +161,10 @@ public final class SerialDriver extends ElmDriver {
             // socket is half-open and needs reconnecting.
             trackResponseLiveness(result);
             return result;
-        } catch (IOException ignored) {
+        } catch (IOException failure) {
+            connected = false;
+            trackResponseLiveness("");
+            android.util.Log.w("OBD2Logger", "Bluetooth command failed", failure);
             return "";
         } finally {
             commandLock.unlock();

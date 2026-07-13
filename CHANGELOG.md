@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.20.0] - 2026-07-13 — Production Reliability & Secure Realtime API
+
+### Transport and Session Reliability
+- AUTO discovery is now covered by a hard 30-second deadline, prioritizes likely OBD adapters, and reports the transport that actually connected.
+- AUTO no longer silently falls back to simulated telemetry; demo data is available only when Simulation is selected explicitly.
+- Reconnect attempts use bounded daemon executors with deterministic shutdown, and transport I/O failures now activate reconnect instead of leaving an empty session running.
+- Replaced permanent PID blacklisting with adaptive cooldown and automatic retry, while preserving null/quality columns in every record.
+- Foreground-service logging now survives closing the Activity as intended.
+
+### Fuel-map and Output Integrity
+- Synthesized MAP is explicitly identified as `SYNTH_MAP` instead of being presented as an ECU MAP sensor value.
+- Fuel-map learning now fails safe when coolant temperature or fuel-system loop state is unavailable; the live cursor remains active without storing an unsafe correction.
+- Missing STFT/LTFT is logged as null/unavailable instead of a fabricated `0%` trim.
+- Map imports are transactional, bounded to 512 KiB/1000 cells, range checked, and protected from malformed requests clearing existing data.
+
+### API and Platform Security
+- Added a per-install 128-bit API token. VIN, telemetry, map, stream, and DTC endpoints require Bearer or `X-API-Key` authentication; only `/api/ping` is public.
+- DTC clear requests now open the same physical confirmation flow as the UI and return HTTP 202 Accepted.
+- SSE delivery is non-blocking and client bounded so a slow network consumer cannot stall OBD polling.
+- Disabled Android backup and global cleartext client traffic, removed the direct battery-optimization exemption request, and added no-cache/nosniff response headers.
+
+### UI and Packaging
+- The connection header/status strip now shows resolved adapter transport consistently after initial connect and reconnect.
+- Replaced invalid downloaded font files with the Android system sans-serif family for deterministic rendering and smaller packaging.
+- Unified the API preference key and added a tap-to-copy endpoint/token card in Settings.
+- Versioned the app as `3.20.0` (`versionCode 114`) and verified installable QA packaging with APK Signature Schemes v1/v2/v3; production distribution still requires the owner's private release key.
+- Added regression coverage for connection deadlines, PID recovery, API authentication, MAP safety/provenance, and reconnect behavior.
+
 ## [3.19.0] - 2026-07-13 — Reliable Session Intelligence & Output Schema v2
 
 ### Session Summary v2

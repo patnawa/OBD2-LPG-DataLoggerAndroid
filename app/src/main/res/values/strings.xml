@@ -469,4 +469,11 @@
     <string name="status_negotiating">Negotiating protocol…</string>
     <string name="status_connect_adapter_prompt">Connect an OBD2 adapter to begin live scanning</string>
     <string name="status_no_live_data">● NO LIVE DATA</string>
+    <string name="status_disconnected">Disconnected</string>
+    <string name="api_agent_title">AI Agent API Server</string>
+    <string name="api_agent_description">Protected real-time telemetry on port 8080</string>
+    <string name="api_connection_template">Endpoint:\n%1$s\nAPI key:\n%2$s\nTap to copy connection details</string>
+    <string name="api_connection_copied">API connection details copied</string>
+    <string name="api_header_on">API ON</string>
+    <string name="version_format">Version %1$s</string>
 </resources>

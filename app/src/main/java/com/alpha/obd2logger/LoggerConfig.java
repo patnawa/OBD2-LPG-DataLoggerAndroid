@@ -20,6 +20,8 @@ public final class LoggerConfig {
     public int connectionTimeoutMs;
     public int maxRetries;
     public boolean enableApiServer;
+    /** Required bearer/query credential for every telemetry API endpoint except /api/ping. */
+    public String apiAccessToken;
     public boolean fordMsCanEnabled;
 
     // ── Feature toggles ──────────────────────────────────────
@@ -63,6 +65,7 @@ public final class LoggerConfig {
         this.connectionTimeoutMs = 2000;
         this.maxRetries = 3;
         this.enableApiServer = false;
+        this.apiAccessToken = "";
         this.fordMsCanEnabled = false;
     }
 

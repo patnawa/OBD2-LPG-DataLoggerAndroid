@@ -49,11 +49,13 @@ public final class LiveMapStore {
             lastUpdateMs = System.currentTimeMillis();
         }
 
-        /** Overwrite from import (trusted baseline). */
+        /** Overwrite from an imported baseline with bounded automotive values. */
         public synchronized void setFromImport(double avg, int hits) {
-            int n = Math.max(0, hits);
+            int n = Math.max(0, Math.min(MAX_HITS, hits));
+            double boundedAverage = Double.isFinite(avg)
+                    ? Math.max(-100.0, Math.min(100.0, avg)) : 0.0;
             this.hitCount = n;
-            this.sum = avg * n;
+            this.sum = boundedAverage * n;
             this.lastUpdateMs = System.currentTimeMillis();
         }
 
@@ -430,8 +432,9 @@ public final class LiveMapStore {
      * Used by POST /api/map/import. Keys must use {@link MapBinning#cellKey}.
      */
     public synchronized void putImportedCell(boolean gaseous, String key, double avg, int hits) {
-        if (key == null || key.isEmpty()) return;
+        if (key == null || key.isEmpty() || !Double.isFinite(avg) || hits < 0) return;
         String normalized = normalizeCellKey(key);
+        if (!normalized.matches("\\d+_-?\\d+(?:\\.\\d+)?")) return;
         TrimData cell = new TrimData();
         cell.setFromImport(avg, hits);
         if (gaseous) {

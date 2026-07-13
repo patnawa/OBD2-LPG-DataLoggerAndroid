@@ -19,9 +19,7 @@ import android.hardware.usb.UsbManager;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 import android.os.Environment;
-import android.os.PowerManager;
 import android.os.SystemClock;
-import android.provider.Settings;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -322,7 +320,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
 
             LoggerService.dtcClearTrigger = () -> {
-                runOnUiThread(() -> clearDtcs());
+                // Remote API requests must still require the same physical-user
+                // confirmation as the on-screen Clear DTC button.
+                runOnUiThread(() -> {
+                    if (btnClearDtc != null) btnClearDtc.performClick();
+                });
                 return true;
             };
 
@@ -755,19 +757,29 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             fordMsCanCheckbox.setOnCheckedChangeListener((btn, checked) ->
                 prefs.edit().putBoolean("pref_ford_ms_can", checked).apply());
         }
-        if (backgroundLoggingCheckbox != null) {
-            backgroundLoggingCheckbox.setOnCheckedChangeListener((btn, checked) -> {
-                if (checked) {
-                    requestBatteryOptimizationExemption();
-                }
-            });
+        boolean isApiServerEnabled = prefs.getBoolean("pref_api_server",
+                prefs.getBoolean("apiServerEnabled", false));
+        if (prefs.contains("apiServerEnabled")) {
+            prefs.edit().putBoolean("pref_api_server", isApiServerEnabled)
+                    .remove("apiServerEnabled").apply();
         }
-        boolean isApiServerEnabled = prefs.getBoolean("apiServerEnabled", false);
         if (apiServerCheckbox != null) {
             apiServerCheckbox.setChecked(isApiServerEnabled);
             apiServerCheckbox.setOnCheckedChangeListener((btn, isChecked) -> {
-                prefs.edit().putBoolean("apiServerEnabled", isChecked).apply();
+                prefs.edit().putBoolean("pref_api_server", isChecked).apply();
                 updateApiServerIpText(isChecked);
+            });
+        }
+        if (apiServerIpText != null) {
+            apiServerIpText.setOnClickListener(v -> {
+                CharSequence details = apiServerIpText.getText();
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
+                        getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null && details != null) {
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
+                            "TunerMap Pro API", details));
+                    Toast.makeText(this, R.string.api_connection_copied, Toast.LENGTH_SHORT).show();
+                }
             });
         }
         updateApiServerIpText(isApiServerEnabled);
@@ -776,13 +788,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         TextView appVersionText = findViewById(R.id.appVersionText);
         try {
             String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-            String versionString = "Version " + versionName;
+            String versionString = getString(R.string.version_format, versionName);
             if (appVersionText != null) {
                 appVersionText.setText(versionString);
             }
         } catch (Exception e) {
             if (appVersionText != null) {
-                appVersionText.setText("Version 3.2.1");
+                appVersionText.setText(getString(R.string.version_format, BuildConfig.VERSION_NAME));
             }
         }
 
@@ -1354,7 +1366,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     mainText.setText(p.getName());
                     subText.setText("PID: " + p.key() + "  •  Unit: " + (p.getUnit().isEmpty() ? "None" : p.getUnit()));
                     
-                    String name = p.getName().toUpperCase();
+                    String name = p.getName().toUpperCase(Locale.ROOT);
                     String badgeStr = name.length() > 3 ? name.substring(0, 3) : name;
                     badge.setText(badgeStr);
                     
@@ -1532,7 +1544,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         ipString = String.format(java.util.Locale.US, "%d.%d.%d.%d", (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
                     }
                 }
-                headerApiStatus.setText("API: " + ipString + ":8080");
+                headerApiStatus.setText(R.string.api_header_on);
                 headerApiStatus.setTextColor(0xFF34D399); // Neon emerald green
                 headerApiStatus.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0x2034D399));
             }
@@ -1544,15 +1556,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         apiServerIpText.setVisibility(View.VISIBLE);
         android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+        String ipString = "127.0.0.1";
         if (wm != null) {
             int ip = wm.getConnectionInfo().getIpAddress();
             if (ip != 0) {
-                String ipString = String.format(java.util.Locale.US, "%d.%d.%d.%d", (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
-                apiServerIpText.setText("URL: http://" + ipString + ":8080/api/data");
-                return;
+                ipString = String.format(java.util.Locale.US, "%d.%d.%d.%d",
+                        (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
             }
         }
-        apiServerIpText.setText("URL: http://localhost:8080/api/data");
+        String endpoint = "http://" + ipString + ":8080/api/agent";
+        String token = ApiSecurity.getOrCreateToken(this);
+        apiServerIpText.setText(getString(R.string.api_connection_template, endpoint, token));
     }
 
     /**
@@ -2207,7 +2221,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             List<HistoryLogFile> petrolFiles = new ArrayList<>();
             List<HistoryLogFile> lpgFiles = new ArrayList<>();
             for (HistoryLogFile f : filteredFiles) {
-                if (f.name != null && f.name.toUpperCase().startsWith("PETROL")) {
+                if (f.name != null && f.name.toUpperCase(Locale.ROOT).startsWith("PETROL")) {
                     petrolFiles.add(f);
                 } else {
                     lpgFiles.add(f);
@@ -2882,20 +2896,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         String simPrefix = (config.transportMode == TransportMode.SIM) ? "Sim_" : "";
         String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
         String sessionId = simPrefix + fuelPrefix + timeStr;
-        BaseDriver driver = DriverFactory.create(config);
+        DriverConnector.Result connection = DriverConnector.connect(config, 30_000L);
+        BaseDriver driver = connection.getDriver();
         currentDriver = driver;
 
-        if (!driver.isConnected() && !driver.connect()) {
-            DriverFactory.markConnectionFailure("Check adapter power, pairing and protocol");
+        if (!connection.isConnected()) {
+            DriverFactory.markConnectionFailure(connection.getError());
             running = false;
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
                 if (active != null) {
                     active.isConnecting = false;
                     active.running = false;
-                    active.setStatus("Connection failed. Check settings and adapter.", R.color.danger);
-                    active.headerStatus.setText("Connection failed");
-                    active.updateStatusStripConnection(0, "Connection failed");
+                    String message = connection.isTimedOut()
+                            ? "Connection timed out. Check adapter power and transport settings."
+                            : "Connection failed: " + connection.getError();
+                    active.setStatus(message, R.color.danger);
+                    active.headerStatus.setText(R.string.status_disconnected);
+                    active.updateStatusStripConnection(0, message);
                     if (active.fabLog != null) {
                         active.setFabState(false);
                     }
@@ -2905,28 +2923,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return;
         }
 
-        if (config.transportMode == TransportMode.AUTO && driver instanceof SimulationDriver) {
-            runOnActiveActivity(() -> {
-                MainActivity active = activeInstance;
-                if (active != null) active.setStatus("Auto probe failed — running simulation.", R.color.warning);
-            });
-        } else {
-            runOnActiveActivity(() -> {
-                MainActivity active = activeInstance;
-                if (active != null) {
-                    active.isConnecting = false;
-                    active.setStatus("Connected. Logging started.", R.color.accent);
-                    // Cancel the connection watchdog now that connect succeeded.
-                    // Without this, the 20s watchdog fires during slow VIN/DTC
-                    // initialization and kills the logger prematurely.
-                    active.watchdogHandler.removeCallbacks(active.connectionWatchdog);
-                }
-            });
-        }
+        final String resolvedTransport = DriverFactory.getLastResolvedTransport();
         runOnActiveActivity(() -> {
             MainActivity active = activeInstance;
-            if (active != null) active.headerStatus.setText("Connected: " + config.transportMode.getValue());
-            if (active != null) active.updateStatusStripConnection(2, "Connected " + config.transportMode.getValue());
+            if (active != null) {
+                active.isConnecting = false;
+                active.setStatus("Connected via " + resolvedTransport + ". Logging started.", R.color.accent);
+                active.watchdogHandler.removeCallbacks(active.connectionWatchdog);
+            }
+        });
+        runOnActiveActivity(() -> {
+            MainActivity active = activeInstance;
+            if (active != null) active.headerStatus.setText(R.string.status_connected);
+            if (active != null) active.updateStatusStripConnection(2, resolvedTransport);
         });
 
         // Try to read VIN unless a valid one was already supplied to this session.
@@ -3035,7 +3044,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         final List<PIDDefinition> finalPids = pids;
         SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US);
-        final java.util.Map<String, Integer> consecutiveFailures = new java.util.HashMap<>();
+        final PidHealthTracker pidHealth = new PidHealthTracker();
+        long pollCycle = 0L;
 
         try {
             writer = new DataWriter(this, sessionId, finalPids, config.vin,
@@ -3080,16 +3090,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 }
                             });
                         }
-                        if (!driver.connect()) {
-                            throw new java.io.IOException("Reconnection failed");
+                        DriverConnector.Result reconnect =
+                                DriverConnector.reconnect(driver, 30_000L);
+                        if (!reconnect.isConnected()) {
+                            throw new java.io.IOException(reconnect.getError());
                         }
                         retryCount = 0;
                         runOnActiveActivity(() -> {
                             MainActivity active = activeInstance;
                             if (active != null) {
+                                String actualTransport = DriverFactory.getLastResolvedTransport();
                                 active.setStatus("Connected. Logging resumed.", R.color.accent);
-                                active.headerStatus.setText("Connected: " + config.transportMode.getValue());
-                                active.updateStatusStripConnection(2, "Connected " + config.transportMode.getValue());
+                                active.headerStatus.setText(R.string.status_connected);
+                                active.updateStatusStripConnection(2, actualTransport);
                             }
                         });
                     }
@@ -3099,52 +3112,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             try { Thread.sleep(100); } catch (InterruptedException ignored) {}
                             continue;
                         }
-                        Map<String, Double> batch = driver.queryPidBatch(finalPids);
+                        pollCycle++;
+                        List<PIDDefinition> polledPids = pidHealth.selectForPoll(finalPids, pollCycle);
+                        Map<String, Double> batch = driver.queryPidBatch(polledPids);
+                        if (!driver.isConnected()) {
+                            throw new java.io.IOException("Adapter stopped responding");
+                        }
+                        java.util.Set<String> polledKeys = new java.util.HashSet<>();
+                        for (PIDDefinition polled : polledPids) polledKeys.add(polled.key());
                         List<SensorSample> samples = new ArrayList<>();
-                        List<PIDDefinition> toRemove = new ArrayList<>();
 
                         for (PIDDefinition pid : finalPids) {
                             Double value = batch.get(pid.getName());
+                            boolean wasPolled = polledKeys.contains(pid.key());
+                            if (wasPolled) pidHealth.recordPolled(pid, value, pollCycle);
                             samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
-                                    value == null ? "err" : "ok"));
-
-                            if (value == null) {
-                                int fails = consecutiveFailures.getOrDefault(pid.key(), 0) + 1;
-                                consecutiveFailures.put(pid.key(), fails);
-                                if (fails >= 3) {
-                                    toRemove.add(pid);
-                                }
-                            } else {
-                                consecutiveFailures.put(pid.key(), 0);
-                            }
-                        }
-
-                        if (!toRemove.isEmpty()) {
-                            // Never remove ALL PIDs — keep at least a minimum set
-                            // so the logger always has something to poll. Also
-                            // never blacklist core PIDs (RPM, Speed, etc.) that
-                            // are essential for derived sensor calculations.
-                            if (finalPids.size() - toRemove.size() < 3) {
-                                toRemove.clear();
-                            } else {
-                                toRemove.removeIf(p -> {
-                                    String key = p.key();
-                                    return key.equals("01_00") || key.equals("01_0C") // RPM
-                                        || key.equals("01_0D") // Speed
-                                        || key.equals("01_05") // Coolant
-                                        || key.equals("01_04") // Load
-                                        || key.equals("01_0B") // MAP
-                                        || key.equals("01_0F") // IAT
-                                        || key.equals("01_33") // Baro
-                                        || key.equals("01_46"); // Ambient // MAP
-                                });
-                            }
-                            if (!toRemove.isEmpty()) {
-                                finalPids.removeAll(toRemove);
-                                for (PIDDefinition p : toRemove) {
-                                    Log.w("OBD2Logger", "Blacklisted unsupported PID: " + p.key() + " (" + p.getName() + ")");
-                                }
-                            }
+                                    pidHealth.statusFor(pid, value, wasPolled)));
                         }
 
                         // ── Derived sensors ──────────────────────
@@ -3616,7 +3599,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     /** Heuristic: returns true if VIN suggests a diesel vehicle. */
     private static boolean isDieselVin(String vin) {
         if (vin == null || vin.length() < 3) return false;
-        String wmi = vin.substring(0, 3).toUpperCase();
+        String wmi = vin.substring(0, 3).toUpperCase(Locale.ROOT);
         // Common Thai-market diesel WMI prefixes
         switch (wmi) {
             case "MPA": // Isuzu (Thailand) — almost all diesel
@@ -3952,7 +3935,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 displayDeviceName = getString(R.string.status_offline) + " (Service Failed)";
             }
         } else if (state == 1) {
-            if (deviceName != null && deviceName.toLowerCase().startsWith("connecting")) {
+            if (deviceName != null && deviceName.toLowerCase(Locale.ROOT).startsWith("connecting")) {
                 displayDeviceName = getString(R.string.status_connecting);
             } else if ("Reconnecting...".equalsIgnoreCase(deviceName)) {
                 displayDeviceName = getString(R.string.status_connecting) + "...";
@@ -6451,6 +6434,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         config.sampleIntervalMs = Math.max(50, (long) Math.round(seconds * 1000.0));
         config.lpgOnlyMode = lpgOnlyCheckbox.isChecked();
         config.enableApiServer = apiServerCheckbox.isChecked();
+        config.apiAccessToken = ApiSecurity.getOrCreateToken(this);
         config.fordMsCanEnabled = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
         config.showTurboBoost = turboBoostCheckbox == null || turboBoostCheckbox.isChecked();
         config.showFuelConsumption = fuelEconomyCheckbox == null || fuelEconomyCheckbox.isChecked();
@@ -6902,7 +6886,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         for (String dk : derivedKeys) {
             if (!allKeys.contains(dk)) {
                 allKeys.add(dk);
-                keyToName.put(dk, dk.replace("derived_", "").replace("_", " ").toUpperCase());
+                keyToName.put(dk, dk.replace("derived_", "").replace("_", " ").toUpperCase(Locale.ROOT));
             }
         }
 
@@ -6922,10 +6906,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (text.isEmpty()) {
                     filteredKeys.addAll(allKeys);
                 } else {
-                    String q = text.toLowerCase();
+                    String q = text.toLowerCase(Locale.ROOT);
                     for (String k : allKeys) {
                         String name = keyToName.getOrDefault(k, k);
-                        if (k.toLowerCase().contains(q) || name.toLowerCase().contains(q)) {
+                        if (k.toLowerCase(Locale.ROOT).contains(q)
+                                || name.toLowerCase(Locale.ROOT).contains(q)) {
                             filteredKeys.add(k);
                         }
                     }
@@ -7815,22 +7800,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
     }
 
-    private void requestBatteryOptimizationExemption() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-            String pkg = getPackageName();
-            if (pm != null && !pm.isIgnoringBatteryOptimizations(pkg)) {
-                try {
-                    Intent intent = new Intent(
-                            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-                    intent.setData(Uri.parse("package:" + pkg));
-                    startActivity(intent);
-                } catch (Exception ignored) {
-                }
-            }
-        }
-    }
-
     /**
      * Apply or clear FLAG_KEEP_SCREEN_ON on the activity window.
      * When set, the device screen stays on (and won't dim/lock) the whole time
@@ -7997,11 +7966,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             dtc.shutdownNow();
             dtcExecutor = null;
         }
-        if (isFinishing()) {
+        // An explicitly enabled foreground-service session must survive the
+        // Activity closing; only the in-process logger is Activity-owned.
+        if (isFinishing() && !LoggerService.isLoggingActive()) {
             stopLogging();
+        } else if (isFinishing()) {
+            LoggerService.setCallback(null);
         }
         if (activeInstance == this) {
             activeInstance = null;
+            LoggerService.dtcClearTrigger = null;
         }
         try {
             unregisterReceiver(usbPermissionReceiver);

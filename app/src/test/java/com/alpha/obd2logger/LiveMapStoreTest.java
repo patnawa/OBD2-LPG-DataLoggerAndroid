@@ -5,6 +5,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -127,6 +128,49 @@ public class LiveMapStoreTest {
         assertEquals(3.0, meta.trimTotal, 0.001);
         assertEquals(MapSampleMeta.AXIS_MAP, meta.axisSource);
         assertEquals(MapBinning.cellKey(MapBinning.binRpm(2000), MapBinning.binMap(45)), meta.cellKey);
+    }
+
+    @Test
+    public void synthesizedMapIsExplicitAndMissingSafetySignalsAreRejected() {
+        java.util.List<SensorSample> samples = new java.util.ArrayList<>();
+        samples.add(new SensorSample("01_0C", "Engine RPM", 2000.0, "rpm", "ok"));
+        samples.add(new SensorSample("01_0B", "MAP", 45.0, "kPa", "synth"));
+        samples.add(new SensorSample("01_06", "STFT", 2.0, "%", "ok"));
+        DataRecord rec = new DataRecord("t", 1.0, "petrol", "Toyota", "VIN", samples);
+
+        MapSampleMeta meta = MapSampleMeta.from(rec);
+
+        assertFalse(meta.gatedEligible);
+        assertEquals("no_fuel_status", meta.rejectReason);
+        assertEquals(MapSampleMeta.AXIS_SYNTH_MAP, meta.axisSource);
+        assertEquals(3.0, MapSampleMeta.axisSourceCode(meta.axisSource), 0.0);
+    }
+
+    @Test
+    public void missingCoolantAndTrimStayMissingInLogMetadata() {
+        java.util.List<SensorSample> samples = new java.util.ArrayList<>();
+        samples.add(new SensorSample("01_0C", "Engine RPM", 2000.0, "rpm", "ok"));
+        samples.add(new SensorSample("01_0B", "MAP", 45.0, "kPa", "ok"));
+        samples.add(new SensorSample("01_03", "FuelStatus", 2.0, "", "ok"));
+        DataRecord rec = new DataRecord("t", 1.0, "petrol", "Toyota", "VIN", samples);
+
+        MapSampleMeta meta = MapSampleMeta.from(rec);
+        assertFalse(meta.gatedEligible);
+        assertEquals("no_coolant", meta.rejectReason);
+        meta.appendLogSamples(samples, false, meta.rejectReason);
+
+        SensorSample trim = null;
+        SensorSample warm = null;
+        for (SensorSample sample : samples) {
+            if ("map_trim_total".equals(sample.getPidKey())) trim = sample;
+            if ("map_warm".equals(sample.getPidKey())) warm = sample;
+        }
+        assertNotNull(trim);
+        assertNull(trim.getValue());
+        assertEquals("unavailable", trim.getStatus());
+        assertNotNull(warm);
+        assertNull(warm.getValue());
+        assertEquals(9.0, MapSampleMeta.rejectCode(meta.rejectReason), 0.0);
     }
 
     @Test

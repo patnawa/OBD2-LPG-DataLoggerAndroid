@@ -124,13 +124,19 @@ public class UsbDriver extends ElmDriver {
                         char ch = (char) buffer[i];
                         response.append(ch);
                         if (ch == '>') {
-                            return response.toString();
+                            String result = response.toString();
+                            trackResponseLiveness(result);
+                            return result;
                         }
                     }
                 }
             }
-            return response.toString();
+            String result = response.toString();
+            trackResponseLiveness(result);
+            return result;
         } catch (IOException e) {
+            connected = false;
+            trackResponseLiveness("");
             Log.e(TAG, "Error sending USB command", e);
             return "";
         } catch (InterruptedException ie) {

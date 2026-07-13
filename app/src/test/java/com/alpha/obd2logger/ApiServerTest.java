@@ -41,6 +41,10 @@ public class ApiServerTest {
             this.body = body;
         }
 
+        void setHeader(String key, String value) {
+            headers.put(key, value);
+        }
+
         @Override
         public void execute() throws IOException {}
 
@@ -106,6 +110,12 @@ public class ApiServerTest {
         }
     }
 
+    private static FakeHTTPSession authorized(ApiServer server, Method method, String uri) {
+        FakeHTTPSession session = new FakeHTTPSession(method, uri);
+        session.setHeader("authorization", "Bearer " + server.getAccessToken());
+        return session;
+    }
+
     @Test
     public void testPingEndpoint() throws Exception {
         ApiServer server = new ApiServer(8080);
@@ -120,7 +130,7 @@ public class ApiServerTest {
         ApiServer server = new ApiServer(8080);
         
         // Initial state
-        FakeHTTPSession sessionStatus = new FakeHTTPSession(Method.GET, "/api/status");
+        FakeHTTPSession sessionStatus = authorized(server, Method.GET, "/api/status");
         Response respStatus1 = server.serve(sessionStatus);
         assertEquals(Response.Status.OK, respStatus1.getStatus());
 
@@ -141,7 +151,7 @@ public class ApiServerTest {
         assertEquals(Response.Status.OK, respStatus2.getStatus());
 
         // Check data updated
-        FakeHTTPSession sessionData = new FakeHTTPSession(Method.GET, "/api/data");
+        FakeHTTPSession sessionData = authorized(server, Method.GET, "/api/data");
         Response respData = server.serve(sessionData);
         assertEquals(Response.Status.OK, respData.getStatus());
     }
@@ -158,7 +168,7 @@ public class ApiServerTest {
             + "\"petrolMap\": {\"2000_3.00\": {\"avg\": -2.5, \"hits\": 10}},"
             + "\"lpgMap\": {\"2000_3.00\": {\"avg\": 1.5, \"hits\": 15}}"
             + "}";
-        FakeHTTPSession importSession = new FakeHTTPSession(Method.POST, "/api/map/import");
+        FakeHTTPSession importSession = authorized(server, Method.POST, "/api/map/import");
         importSession.setBody(importJson);
         Response importResp = server.serve(importSession);
         assertEquals(Response.Status.OK, importResp.getStatus());
@@ -168,7 +178,7 @@ public class ApiServerTest {
         assertEquals(1, server.getLpgMap().size());
 
         // Test GET /api/map
-        FakeHTTPSession mapSession = new FakeHTTPSession(Method.GET, "/api/map");
+        FakeHTTPSession mapSession = authorized(server, Method.GET, "/api/map");
         Response mapResp = server.serve(mapSession);
         assertEquals(Response.Status.OK, mapResp.getStatus());
 
@@ -178,18 +188,18 @@ public class ApiServerTest {
         assertEquals(Response.Status.OK, mapFilteredResp.getStatus());
 
         // Test export CSV
-        FakeHTTPSession exportSession = new FakeHTTPSession(Method.GET, "/api/map/export");
+        FakeHTTPSession exportSession = authorized(server, Method.GET, "/api/map/export");
         Response exportResp = server.serve(exportSession);
         assertEquals(Response.Status.OK, exportResp.getStatus());
         assertEquals("text/csv", exportResp.getMimeType());
 
         // Test summary
-        FakeHTTPSession summarySession = new FakeHTTPSession(Method.GET, "/api/map/summary");
+        FakeHTTPSession summarySession = authorized(server, Method.GET, "/api/map/summary");
         Response summaryResp = server.serve(summarySession);
         assertEquals(Response.Status.OK, summaryResp.getStatus());
 
         // Test Clear
-        FakeHTTPSession clearSession = new FakeHTTPSession(Method.DELETE, "/api/map");
+        FakeHTTPSession clearSession = authorized(server, Method.DELETE, "/api/map");
         Response clearResp = server.serve(clearSession);
         assertEquals(Response.Status.OK, clearResp.getStatus());
         assertEquals(0, server.getPetrolMap().size());
@@ -225,15 +235,45 @@ public class ApiServerTest {
         });
 
         // Test GET /api/dtc
-        FakeHTTPSession getDtcSession = new FakeHTTPSession(Method.GET, "/api/dtc");
+        FakeHTTPSession getDtcSession = authorized(server, Method.GET, "/api/dtc");
         Response getDtcResp = server.serve(getDtcSession);
         assertEquals(Response.Status.OK, getDtcResp.getStatus());
         assertEquals("application/json", getDtcResp.getMimeType());
 
         // Test DELETE /api/dtc
-        FakeHTTPSession deleteDtcSession = new FakeHTTPSession(Method.DELETE, "/api/dtc");
+        FakeHTTPSession deleteDtcSession = authorized(server, Method.DELETE, "/api/dtc");
         Response deleteDtcResp = server.serve(deleteDtcSession);
-        assertEquals(Response.Status.OK, deleteDtcResp.getStatus());
+        assertEquals(Response.Status.ACCEPTED, deleteDtcResp.getStatus());
         assertTrue(clearTriggered[0]);
+    }
+
+    @Test
+    public void malformedImportDoesNotClearExistingMap() {
+        ApiServer server = new ApiServer(8080);
+        LiveMapStore store = new LiveMapStore();
+        store.putImportedCell(false, "2000_40", -2.0, 10);
+        server.setLiveMapStore(store);
+
+        FakeHTTPSession session = authorized(server, Method.POST, "/api/map/import");
+        session.setBody("{\"petrolMap\":{\"invalid-key\":{\"avg\":2.0,\"hits\":5}}}");
+        Response response = server.serve(session);
+
+        assertEquals(Response.Status.BAD_REQUEST, response.getStatus());
+        assertEquals(1, store.getPetrolData().size());
+    }
+
+    @Test
+    public void telemetryRequiresApiKeyButPingRemainsPublic() {
+        ApiServer server = new ApiServer(8080, "00112233445566778899aabbccddeeff");
+
+        Response ping = server.serve(new FakeHTTPSession(Method.GET, "/api/ping"));
+        assertEquals(Response.Status.OK, ping.getStatus());
+
+        Response unauthorized = server.serve(new FakeHTTPSession(Method.GET, "/api/data"));
+        assertEquals(Response.Status.UNAUTHORIZED, unauthorized.getStatus());
+
+        FakeHTTPSession authorized = new FakeHTTPSession(Method.GET, "/api/data");
+        authorized.setHeader("x-api-key", server.getAccessToken());
+        assertEquals(Response.Status.OK, server.serve(authorized).getStatus());
     }
 }

@@ -187,6 +187,8 @@ public final class WiFiDriver extends ElmDriver {
             trackResponseLiveness(result);
             return result;
         } catch (IOException e) {
+            connected = false;
+            trackResponseLiveness("");
             android.util.Log.w("WiFiDriver", "sendCommand '" + command + "' failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             return "";
         } finally {
