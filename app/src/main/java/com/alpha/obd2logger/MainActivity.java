@@ -213,8 +213,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private android.widget.ListView historyListViewLpg;
     private TextView historyFolderText;
     private com.google.android.material.button.MaterialButton btnCompareLogs;
+    private com.google.android.material.button.MaterialButton btnSelectLogs;
+    private com.google.android.material.button.MaterialButton btnShareSelectedLogs;
+    private com.google.android.material.button.MaterialButton btnDeleteSelectedLogs;
+    private com.google.android.material.button.MaterialButton btnCancelSelection;
     private com.google.android.material.button.MaterialButton btnImportLog;
     private TextView compareHintText;
+    private TextView batchSelectionHint;
+    private View historyBatchBar;
     private android.widget.ListView historyListViewFolders;
     private com.google.android.material.button.MaterialButton btnBackToFolders;
     private TextView vinFoldersHeader;
@@ -226,6 +232,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     // pick up to 2 logs (e.g. a Petrol log + an LPG log) and plot both onto one map.
     private boolean compareMode = false;
     private final java.util.LinkedHashSet<Uri> compareSelection = new java.util.LinkedHashSet<>();
+    private boolean batchSelectionMode = false;
+    private final java.util.LinkedHashSet<Uri> batchSelection = new java.util.LinkedHashSet<>();
     private java.util.List<HistoryLogFile> currentLogFiles = new ArrayList<>();
 
     // --- State ---
@@ -586,6 +594,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         btnBackToFolders = findViewById(R.id.btnBackToFolders);
         vinFoldersHeader = findViewById(R.id.vinFoldersHeader);
         compareBarLayout = findViewById(R.id.compareBarLayout);
+        historyBatchBar = findViewById(R.id.historyBatchBar);
         petrolLogsHeader = findViewById(R.id.petrolLogsHeader);
         lpgLogsHeader = findViewById(R.id.lpgLogsHeader);
 
@@ -594,6 +603,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 selectedVinFolder = null;
                 compareMode = false;
                 compareSelection.clear();
+                batchSelectionMode = false;
+                batchSelection.clear();
                 loadHistoryFiles();
             });
         }
@@ -1069,9 +1080,26 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
 
         btnCompareLogs = findViewById(R.id.btnCompareLogs);
+        btnSelectLogs = findViewById(R.id.btnSelectLogs);
+        btnShareSelectedLogs = findViewById(R.id.btnShareSelectedLogs);
+        btnDeleteSelectedLogs = findViewById(R.id.btnDeleteSelectedLogs);
+        btnCancelSelection = findViewById(R.id.btnCancelSelection);
         compareHintText = findViewById(R.id.compareHintText);
+        batchSelectionHint = findViewById(R.id.batchSelectionHint);
         if (btnCompareLogs != null) {
             btnCompareLogs.setOnClickListener(v -> toggleCompareMode());
+        }
+        if (btnSelectLogs != null) {
+            btnSelectLogs.setOnClickListener(v -> toggleBatchSelectionMode());
+        }
+        if (btnShareSelectedLogs != null) {
+            btnShareSelectedLogs.setOnClickListener(v -> shareSelectedLogFiles());
+        }
+        if (btnDeleteSelectedLogs != null) {
+            btnDeleteSelectedLogs.setOnClickListener(v -> confirmDeleteSelectedLogFiles());
+        }
+        if (btnCancelSelection != null) {
+            btnCancelSelection.setOnClickListener(v -> exitBatchSelectionMode());
         }
 
         // Import Log button — opens a file picker for any CSV log file
@@ -1881,6 +1909,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         };
         for (int i=0; i<4; i++) {
             if (gauges[i] == null) continue;
+            // Apply the slot theme before resolving the selected PID so an
+            // empty/missing slot cannot fall back to GaugeView's default
+            // cyan/red palette.
+            int[] theme = gaugeThemes[i];
+            gauges[i].setFullColors(theme[0], theme[1], theme[2]);
             String pidKey = prefGaugePids[i];
             if ("none".equalsIgnoreCase(pidKey)) {
                 gauges[i].setRange(0f, 100f);
@@ -1893,8 +1926,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     gauges[i].setRange((float)pid.getMinVal(), (float)pid.getMaxVal());
                     gauges[i].setLabel(pid.getName());
                     gauges[i].setUnit(pid.getUnit());
-                    int[] theme = gaugeThemes[i];
-                    gauges[i].setFullColors(theme[0], theme[1], theme[2]);
                     // Set warning at 80% of max for RPM, 90% for others
                     gauges[i].setWarningStart(i == 0 ? 0.75f : 0.85f);
                 } else {
@@ -1904,8 +1935,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         gauges[i].setRange(dc.min, dc.max);
                         gauges[i].setLabel(dc.label);
                         gauges[i].setUnit(dc.unit);
-                        int[] theme = gaugeThemes[i];
-                        gauges[i].setFullColors(theme[0], theme[1], theme[2]);
                         gauges[i].setWarningStart(0.85f);
                     }
                 }
@@ -2170,6 +2199,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             allUris.add(f.uri);
         }
         compareSelection.retainAll(allUris);
+        batchSelection.retainAll(allUris);
 
         // Group log files by VIN
         java.util.Map<String, java.util.List<HistoryLogFile>> groups = new java.util.HashMap<>();
@@ -2187,6 +2217,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (vinFoldersHeader != null) vinFoldersHeader.setVisibility(View.VISIBLE);
             if (historyListViewFolders != null) historyListViewFolders.setVisibility(View.VISIBLE);
             if (compareBarLayout != null) compareBarLayout.setVisibility(View.GONE);
+            if (historyBatchBar != null) historyBatchBar.setVisibility(View.GONE);
             if (petrolLogsHeader != null) petrolLogsHeader.setVisibility(View.GONE);
             if (historyListViewPetrol != null) historyListViewPetrol.setVisibility(View.GONE);
             if (lpgLogsHeader != null) lpgLogsHeader.setVisibility(View.GONE);
@@ -2254,6 +2285,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (vinFoldersHeader != null) vinFoldersHeader.setVisibility(View.GONE);
             if (historyListViewFolders != null) historyListViewFolders.setVisibility(View.GONE);
             if (compareBarLayout != null) compareBarLayout.setVisibility(View.VISIBLE);
+            if (historyBatchBar != null) {
+                historyBatchBar.setVisibility(batchSelectionMode ? View.VISIBLE : View.GONE);
+            }
             if (petrolLogsHeader != null) petrolLogsHeader.setVisibility(View.VISIBLE);
             if (historyListViewPetrol != null) historyListViewPetrol.setVisibility(View.VISIBLE);
             if (lpgLogsHeader != null) lpgLogsHeader.setVisibility(View.VISIBLE);
@@ -2319,13 +2353,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         : (size / 1024) + " KB";
                     dateText.setText(sdf.format(new Date(item.date)) + "  •  " + sizeText);
 
-                    if (compareMode) {
+                    if (compareMode || batchSelectionMode) {
                         actionLayout.setVisibility(View.GONE);
                         compareCheckbox.setVisibility(View.VISIBLE);
-                        compareCheckbox.setChecked(compareSelection.contains(item.uri));
+                        compareCheckbox.setChecked(compareMode
+                                ? compareSelection.contains(item.uri)
+                                : batchSelection.contains(item.uri));
                     } else {
                         actionLayout.setVisibility(View.VISIBLE);
                         compareCheckbox.setVisibility(View.GONE);
+                        compareCheckbox.setChecked(false);
 
                         btnShare.setOnClickListener(v -> shareLogFile(item));
                         btnDelete.setOnClickListener(v -> deleteLogFile(item));
@@ -2378,13 +2415,16 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         : (size / 1024) + " KB";
                     dateText.setText(sdf.format(new Date(item.date)) + "  •  " + sizeText);
 
-                    if (compareMode) {
+                    if (compareMode || batchSelectionMode) {
                         actionLayout.setVisibility(View.GONE);
                         compareCheckbox.setVisibility(View.VISIBLE);
-                        compareCheckbox.setChecked(compareSelection.contains(item.uri));
+                        compareCheckbox.setChecked(compareMode
+                                ? compareSelection.contains(item.uri)
+                                : batchSelection.contains(item.uri));
                     } else {
                         actionLayout.setVisibility(View.VISIBLE);
                         compareCheckbox.setVisibility(View.GONE);
+                        compareCheckbox.setChecked(false);
 
                         btnShare.setOnClickListener(v -> shareLogFile(item));
                         btnDelete.setOnClickListener(v -> deleteLogFile(item));
@@ -2399,6 +2439,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (compareMode) {
                     handleCompareClick(selectedFile.uri);
                     return;
+                } else if (batchSelectionMode) {
+                    handleBatchSelectionClick(selectedFile.uri);
+                    return;
                 }
                 openReviewActivity(selectedFile);
             });
@@ -2408,6 +2451,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (compareMode) {
                     handleCompareClick(selectedFile.uri);
                     return;
+                } else if (batchSelectionMode) {
+                    handleBatchSelectionClick(selectedFile.uri);
+                    return;
                 }
                 openReviewActivity(selectedFile);
             });
@@ -2416,9 +2462,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             setListViewHeightBasedOnChildren(historyListViewLpg);
         }
         updateCompareUi();
+        updateBatchSelectionUi();
     }
 
     private void openReviewActivity(HistoryLogFile selectedFile) {
+        if (selectedFile == null || selectedFile.name == null
+                || !selectedFile.name.toLowerCase(Locale.ROOT).endsWith(".csv")) {
+            Toast.makeText(this, R.string.open_log_csv_only, Toast.LENGTH_SHORT).show();
+            return;
+        }
         Intent intent = new Intent(this, ReviewSessionActivity.class);
         intent.setData(selectedFile.uri);
         intent.putExtra("file_name", selectedFile.name);
@@ -2432,6 +2484,36 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         shareIntent.putExtra(Intent.EXTRA_STREAM, selectedFile.uri);
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(Intent.createChooser(shareIntent, "Share Log File"));
+    }
+
+    /** Remove an empty VIN folder after a batch delete without touching the root. */
+    private void cleanupDeletedLogParent(HistoryLogFile selectedFile) {
+        if (selectedFile == null) return;
+        if (selectedFile.isFile && selectedFile.file != null) {
+            File parent = selectedFile.file.getParentFile();
+            if (parent != null && parent.isDirectory()) {
+                File[] children = parent.listFiles();
+                if (children == null || children.length == 0) parent.delete();
+            }
+        } else if (selectedFile.isSaf && selectedFile.vin != null
+                && !"General".equalsIgnoreCase(selectedFile.vin)) {
+            try {
+                String savedUriStr = getSharedPreferences("OBD2Prefs", MODE_PRIVATE)
+                        .getString("custom_log_folder_uri", null);
+                if (savedUriStr != null) {
+                    Uri treeUri = Uri.parse(savedUriStr);
+                    androidx.documentfile.provider.DocumentFile tree =
+                            androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
+                    if (tree != null && tree.exists()) {
+                        androidx.documentfile.provider.DocumentFile sub = tree.findFile(selectedFile.vin);
+                        if (sub != null && sub.isDirectory()) {
+                            androidx.documentfile.provider.DocumentFile[] children = sub.listFiles();
+                            if (children == null || children.length == 0) sub.delete();
+                        }
+                    }
+                }
+            } catch (Exception ignored) { }
+        }
     }
 
     private void deleteLogFile(HistoryLogFile selectedFile) {
@@ -2563,13 +2645,41 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     /** Toggle the compare (multi-select) mode and rebuild the history list. */
     private void toggleCompareMode() {
+        if (batchSelectionMode) {
+            batchSelectionMode = false;
+            batchSelection.clear();
+        }
         compareMode = !compareMode;
         compareSelection.clear();
         loadHistoryFiles();
     }
 
+    /** Toggle batch selection for sharing or deleting history files. */
+    private void toggleBatchSelectionMode() {
+        if (compareMode) {
+            compareMode = false;
+            compareSelection.clear();
+        }
+        batchSelectionMode = !batchSelectionMode;
+        batchSelection.clear();
+        loadHistoryFiles();
+    }
+
+    private void exitBatchSelectionMode() {
+        batchSelectionMode = false;
+        batchSelection.clear();
+        loadHistoryFiles();
+    }
+
     /** Handle a tap on a row while in compare mode (enforce max 2 selections). */
     private void handleCompareClick(Uri uri) {
+        for (HistoryLogFile file : currentLogFiles) {
+            if (file.uri.equals(uri) && (file.name == null
+                    || !file.name.toLowerCase(Locale.ROOT).endsWith(".csv"))) {
+                Toast.makeText(this, R.string.open_log_csv_only, Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
         if (compareSelection.contains(uri)) {
             compareSelection.remove(uri);
         } else {
@@ -2586,6 +2696,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             ((android.widget.BaseAdapter) historyListViewLpg.getAdapter()).notifyDataSetChanged();
         }
         updateCompareUi();
+    }
+
+    /** Toggle one history row in the share/delete selection. */
+    private void handleBatchSelectionClick(Uri uri) {
+        if (batchSelection.contains(uri)) {
+            batchSelection.remove(uri);
+        } else {
+            batchSelection.add(uri);
+        }
+        if (historyListViewPetrol.getAdapter() instanceof android.widget.BaseAdapter) {
+            ((android.widget.BaseAdapter) historyListViewPetrol.getAdapter()).notifyDataSetChanged();
+        }
+        if (historyListViewLpg.getAdapter() instanceof android.widget.BaseAdapter) {
+            ((android.widget.BaseAdapter) historyListViewLpg.getAdapter()).notifyDataSetChanged();
+        }
+        updateBatchSelectionUi();
     }
 
     /** Refresh the compare button label and the hint/count text. */
@@ -2616,6 +2742,85 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 toggleCompareMode();
             }
         });
+    }
+
+    private void updateBatchSelectionUi() {
+        if (btnSelectLogs == null || batchSelectionHint == null) return;
+        if (!batchSelectionMode || selectedVinFolder == null) {
+            btnSelectLogs.setText(R.string.select_logs);
+            if (historyBatchBar != null) historyBatchBar.setVisibility(View.GONE);
+            btnSelectLogs.setOnClickListener(v -> toggleBatchSelectionMode());
+            return;
+        }
+        if (historyBatchBar != null) historyBatchBar.setVisibility(View.VISIBLE);
+        int n = batchSelection.size();
+        batchSelectionHint.setText(n == 0
+                ? getString(R.string.select_logs_hint)
+                : getString(R.string.selected_logs_count, n));
+        if (btnShareSelectedLogs != null) btnShareSelectedLogs.setEnabled(n > 0);
+        if (btnDeleteSelectedLogs != null) btnDeleteSelectedLogs.setEnabled(n > 0);
+        btnSelectLogs.setText(R.string.cancel_selection);
+        btnSelectLogs.setOnClickListener(v -> exitBatchSelectionMode());
+    }
+
+    private List<HistoryLogFile> getSelectedBatchFiles() {
+        List<HistoryLogFile> selected = new ArrayList<>();
+        for (HistoryLogFile file : currentLogFiles) {
+            if (batchSelection.contains(file.uri)) selected.add(file);
+        }
+        return selected;
+    }
+
+    private void shareSelectedLogFiles() {
+        List<HistoryLogFile> selected = getSelectedBatchFiles();
+        if (selected.isEmpty()) {
+            Toast.makeText(this, R.string.select_logs_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ArrayList<Uri> uris = new ArrayList<>();
+        for (HistoryLogFile file : selected) uris.add(file.uri);
+        Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+        shareIntent.setType("text/*");
+        shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(shareIntent,
+                getString(R.string.share_selected_logs)));
+    }
+
+    private void confirmDeleteSelectedLogFiles() {
+        List<HistoryLogFile> selected = getSelectedBatchFiles();
+        if (selected.isEmpty()) {
+            Toast.makeText(this, R.string.select_logs_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int count = selected.size();
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.delete_selected_logs)
+                .setMessage(getString(R.string.confirm_delete_selected_logs, count))
+                .setPositiveButton(android.R.string.ok, (d, w) -> deleteSelectedLogFiles(selected))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void deleteSelectedLogFiles(List<HistoryLogFile> selected) {
+        int deleted = 0;
+        int failed = 0;
+        for (HistoryLogFile file : selected) {
+            if (file.delete(this)) {
+                deleted++;
+                cleanupDeletedLogParent(file);
+            } else {
+                failed++;
+            }
+        }
+        batchSelection.clear();
+        batchSelectionMode = false;
+        loadHistoryFiles();
+        if (failed == 0) {
+            Toast.makeText(this, getString(R.string.selected_logs_deleted, deleted), Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, getString(R.string.selected_logs_delete_failed, deleted, failed), Toast.LENGTH_LONG).show();
+        }
     }
 
     /** Build a file_uris list from the selected rows and open ReviewSessionActivity. */
@@ -2655,8 +2860,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             };
             String selection = "(" + android.provider.MediaStore.Downloads.RELATIVE_PATH + " LIKE ? OR " +
                                android.provider.MediaStore.Downloads.RELATIVE_PATH + " LIKE ?) AND " +
-                               android.provider.MediaStore.Downloads.DISPLAY_NAME + " LIKE ?";
-            String[] selectionArgs = new String[] { "%TunerMapPro%", "%OBD2LPGLogger%", "%.csv" };
+                               "(" + android.provider.MediaStore.Downloads.DISPLAY_NAME + " LIKE ? OR " +
+                               android.provider.MediaStore.Downloads.DISPLAY_NAME + " LIKE ?)";
+            String[] selectionArgs = new String[] {
+                    "%TunerMapPro%", "%OBD2LPGLogger%", "%.csv", "%.jsonl"
+            };
 
             try (android.database.Cursor cursor = getContentResolver().query(collection, projection, selection, selectionArgs, null)) {
                 if (cursor != null) {
@@ -2720,7 +2928,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             for (File f : files) {
                 if (f.isDirectory()) {
                     scanFolderRecursively(f, f.getName(), logFiles);
-                } else if (f.getName().endsWith(".csv") && !f.getName().startsWith("CorrectionMap_")) {
+                } else if (isHistoryLogName(f.getName()) && !f.getName().startsWith("CorrectionMap_")) {
                     HistoryLogFile hlf = new HistoryLogFile();
                     hlf.uri = androidx.core.content.FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".fileprovider", f);
                     hlf.name = f.getName();
@@ -2738,7 +2946,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         for (androidx.documentfile.provider.DocumentFile f : dir.listFiles()) {
             if (f.isDirectory()) {
                 scanSafFolderRecursively(f, f.getName(), logFiles);
-            } else if (f.getName() != null && f.getName().endsWith(".csv") && !f.getName().startsWith("CorrectionMap_")) {
+            } else if (isHistoryLogName(f.getName()) && !f.getName().startsWith("CorrectionMap_")) {
                 HistoryLogFile hlf = new HistoryLogFile();
                 hlf.uri = f.getUri();
                 hlf.name = f.getName();
@@ -2914,6 +3122,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             setStatus("FGS failed: " + e.getMessage(), R.color.danger);
             return false;
         }
+    }
+
+    private boolean isHistoryLogName(String name) {
+        if (name == null) return false;
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.endsWith(".csv") || lower.endsWith(".jsonl");
     }
 
     private boolean canShowBackgroundNotification() {
@@ -4131,27 +4345,48 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             case BATTERY: actionRes = R.string.drive_insight_open_battery; break;
             case FUEL_MAP: actionRes = R.string.drive_insight_open_map; break;
             case DASHBOARD:
-            default: actionRes = R.string.drive_insight_open_dashboard; break;
+                actionRes = R.string.drive_insight_open_dashboard; break;
+            case NONE:
+            default: actionRes = 0; break;
         }
         CharSequence title = cockpitInsightTitle != null
                 ? cockpitInsightTitle.getText() : getString(R.string.home_title_ai_insight);
         CharSequence detail = cockpitInsightMessage != null
                 ? cockpitInsightMessage.getText() : getString(R.string.home_ai_insight_collecting_detail);
         final DriveInsightEngine.Destination destination = insight.destination;
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        String snapshot = getString(R.string.drive_insight_snapshot,
+                formatInsightValue(insight.rpm),
+                formatInsightValue(insight.coolant),
+                formatInsightValue(insight.voltage),
+                formatInsightValue(insight.totalTrim));
+        com.google.android.material.dialog.MaterialAlertDialogBuilder builder =
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                 .setTitle(title)
-                .setMessage(detail + "\n\n" + getString(R.string.drive_insight_advisory))
-                .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(actionRes, (dialog, which) -> {
-                    switch (destination) {
-                        case DIAGNOSTICS: showTab(3); break;
-                        case BATTERY: showTab(7); break;
-                        case FUEL_MAP: showTab(2); break;
-                        case DASHBOARD:
-                        default: showTab(0); break;
-                    }
-                })
-                .show();
+                .setMessage(detail + "\n\n" + snapshot + "\n\n"
+                        + getString(R.string.drive_insight_advisory))
+                .setNegativeButton(R.string.cancel, null);
+        if (destination == DriveInsightEngine.Destination.NONE) {
+            // Healthy/collecting states are informational; do not send the
+            // user to the same live dashboard they are already viewing.
+            builder.setPositiveButton(android.R.string.ok, null);
+        } else {
+            builder.setPositiveButton(actionRes, (dialog, which) -> {
+                switch (destination) {
+                    case DIAGNOSTICS: showTab(3); break;
+                    case BATTERY: showTab(7); break;
+                    case FUEL_MAP: showTab(2); break;
+                    case DASHBOARD: showTab(0); break;
+                    case NONE:
+                    default: break;
+                }
+            });
+        }
+        builder.show();
+    }
+
+    private String formatInsightValue(Double value) {
+        return value != null && Double.isFinite(value)
+                ? String.format(Locale.US, "%.1f", value) : "--";
     }
 
     /** Keep the compact header useful without exposing the full VIN at a glance. */

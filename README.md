@@ -1,8 +1,17 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.20.1** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
+**Version 3.20.2** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
+
+---
+
+## What's New in 3.20.2 — Session History & UX
+
+- **Batch Session History** — Select any number of CSV/JSONL session files inside a VIN folder, share them together through Android's multi-file chooser, or delete them after a single confirmation.
+- **Safe workflow separation** — Compare 2 Logs remains limited to map comparison; Select Logs is dedicated to file management and never opens the replay screen.
+- **Drive Insight clarity** — Healthy/collecting states now show a live snapshot in place, while actionable findings deep-link only to the relevant tool.
+- **Adaptive gauge colors** — Light and Dark themes now keep gauge tracks, ticks, bezels, text, and needle highlights readable.
 
 ---
 
@@ -396,7 +405,7 @@ Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Vol
 - **Day/Night theme**: System default, Light, or Dark mode with quick-toggle
 - **Keep screen on**: Prevents screen sleep while app is foregrounded
 - **Dynamic PID selection**: Long-press any gauge/card/graph to choose which PID it displays
-- **History browser**: Browse, open, share, delete, and compare past log files
+- **History browser**: Browse/open supported CSV logs, select multiple CSV/JSONL sessions, batch share or delete them, and compare up to two CSV logs
 
 ## Build
 

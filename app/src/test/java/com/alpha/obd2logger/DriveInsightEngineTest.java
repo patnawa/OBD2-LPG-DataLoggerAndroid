@@ -28,7 +28,11 @@ public class DriveInsightEngineTest {
     public void healthyDataIsStableAndMissingRpmCollects() {
         assertEquals(DriveInsightEngine.Type.STABLE,
                 DriveInsightEngine.evaluate(900.0, 90.0, 14.1, 2.0, 0).type);
+        assertEquals(DriveInsightEngine.Destination.NONE,
+                DriveInsightEngine.evaluate(900.0, 90.0, 14.1, 2.0, 0).destination);
         assertEquals(DriveInsightEngine.Type.COLLECTING,
                 DriveInsightEngine.evaluate(null, 90.0, 14.1, 2.0, 0).type);
+        assertEquals(DriveInsightEngine.Destination.NONE,
+                DriveInsightEngine.evaluate(null, 90.0, 14.1, 2.0, 0).destination);
     }
 }

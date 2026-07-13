@@ -112,7 +112,7 @@
 | Dark/Light    | System, Light, or Dark mode |
 | Keep Screen   | Prevent sleep while foreground |
 | Home Menu     | Card navigation + live vehicle status |
-| History       | Browse, open, share, delete, compare |
+| History       | Browse, open, compare, select multiple sessions, batch share, batch delete |
 | Filter PIDs   | Select which PIDs to show in Live Readings (theme-fixed) |
 | Settings      | Transport, WiFi, BT, USB, fuel, protocol, interval, toggles |
 

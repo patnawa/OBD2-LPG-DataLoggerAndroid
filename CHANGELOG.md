@@ -4,7 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.20.2] - 2026-07-13 — Session History & UX
+
 ### Live Map accuracy and diagnostics
+- Added a dedicated multi-select mode in Session History: select any number of CSV/JSONL sessions, share them together with Android's multi-file chooser, or delete them after one confirmation.
+- Kept Compare 2 Logs as a separate workflow so batch file management cannot accidentally launch map comparison.
+- Versioned the program as `3.20.2` (`versionCode 116`) and refreshed the README/release notes.
+- Drive Insight now stays in place for healthy/collecting states, shows a current-data snapshot, and only deep-links to Dashboard, Diagnostics, Battery, or Live Map when an actionable condition is detected.
+- Fixed gauge color rendering across Light/Dark themes: adaptive track, bezel, tick, text, and alpha-safe hub colors now stay readable for every gauge slot.
 - Made output routing explicit: valid VINs use their own folder, while missing/placeholder VINs use `Downloads/TunerMapPro/General` and summary metadata records the routing decision.
 - Reframed Live Map values as ECU fuel corrections instead of labeling positive trim as a currently lean mixture; measured Lambda is now shown separately when available.
 - Added transient/load-step, unstable-trim, and measured-vs-commanded Lambda quality gates before a sample can affect the learned map.

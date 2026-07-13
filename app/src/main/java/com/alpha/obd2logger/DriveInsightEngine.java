@@ -16,6 +16,8 @@ public final class DriveInsightEngine {
     }
 
     public enum Destination {
+        /** No navigation is needed; show the insight snapshot in place. */
+        NONE,
         DASHBOARD,
         DIAGNOSTICS,
         BATTERY,
@@ -26,15 +28,17 @@ public final class DriveInsightEngine {
         public final Type type;
         public final Destination destination;
         public final int dtcCount;
+        public final Double rpm;
         public final Double coolant;
         public final Double voltage;
         public final Double totalTrim;
 
         private Result(Type type, Destination destination, int dtcCount,
-                       Double coolant, Double voltage, Double totalTrim) {
+                       Double rpm, Double coolant, Double voltage, Double totalTrim) {
             this.type = type;
             this.destination = destination;
             this.dtcCount = dtcCount;
+            this.rpm = rpm;
             this.coolant = coolant;
             this.voltage = voltage;
             this.totalTrim = totalTrim;
@@ -49,28 +53,28 @@ public final class DriveInsightEngine {
         // Stored scan results remain actionable even before a new live stream starts.
         if (safeDtcCount > 0) {
             return new Result(Type.DTC, Destination.DIAGNOSTICS, safeDtcCount,
-                    coolant, voltage, totalTrim);
+                    rpm, coolant, voltage, totalTrim);
         }
         if (coolant != null && Double.isFinite(coolant) && coolant >= 105.0) {
             return new Result(Type.COOLANT_HIGH, Destination.DASHBOARD, 0,
-                    coolant, voltage, totalTrim);
+                    rpm, coolant, voltage, totalTrim);
         }
         if (rpm != null && Double.isFinite(rpm) && rpm >= 500.0
                 && voltage != null && Double.isFinite(voltage)
                 && (voltage < 13.0 || voltage > 14.9)) {
             return new Result(Type.VOLTAGE, Destination.BATTERY, 0,
-                    coolant, voltage, totalTrim);
+                    rpm, coolant, voltage, totalTrim);
         }
         if (totalTrim != null && Double.isFinite(totalTrim)
                 && Math.abs(totalTrim) >= 10.0) {
             return new Result(Type.FUEL_TRIM, Destination.FUEL_MAP, 0,
-                    coolant, voltage, totalTrim);
+                    rpm, coolant, voltage, totalTrim);
         }
         if (rpm == null || !Double.isFinite(rpm)) {
-            return new Result(Type.COLLECTING, Destination.DASHBOARD, 0,
-                    coolant, voltage, totalTrim);
+            return new Result(Type.COLLECTING, Destination.NONE, 0,
+                    rpm, coolant, voltage, totalTrim);
         }
-        return new Result(Type.STABLE, Destination.DASHBOARD, 0,
-                coolant, voltage, totalTrim);
+        return new Result(Type.STABLE, Destination.NONE, 0,
+                rpm, coolant, voltage, totalTrim);
     }
 }

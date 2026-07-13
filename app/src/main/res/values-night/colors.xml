@@ -16,6 +16,14 @@
     <color name="tab_active">#16C7FF</color>
     <color name="tab_inactive">#475569</color>
     <color name="gauge_bg">#131C2D</color>
+    <color name="gauge_bezel">#293A5C</color>
+    <color name="gauge_bezel_inner">#1E2A44</color>
+    <color name="gauge_tick">#CBD5E1</color>
+    <color name="gauge_tick_minor">#64748B</color>
+    <color name="gauge_text">#F8FAFC</color>
+    <color name="gauge_unit">#94A3B8</color>
+    <color name="gauge_needle_tip">#FFFFFF</color>
+    <color name="gauge_shadow">#40000000</color>
 
     <!-- Material 3 Color Roles (Dark) -->
     <color name="colorPrimaryContainer">#003543</color>

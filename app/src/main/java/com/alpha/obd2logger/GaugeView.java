@@ -87,25 +87,27 @@ public final class GaugeView extends View {
     }
 
     private void init() {
-        // Default cyberpunk theme colors (will be overridden by setColors)
+        // Default gauge accents are supplied by the active Light/Dark resource
+        // set. Per-gauge arc/needle colors are applied later by setFullColors.
         arcColor = 0xFF00E5FF;       // cyan
-        arcColorDim = 0xFF1E2A44;    // dark blue-gray
+        arcColorDim = getResources().getColor(R.color.gauge_bg);
         needleBaseColor = 0xFFFF2A55; // red
-        needleTipColor = 0xFFFFFFFF;  // white tip
+        needleTipColor = getResources().getColor(R.color.gauge_needle_tip);
         warningColor = 0xFFFF2A55;    // red
         peakColor = 0xFFFFD600;       // yellow
 
         // Bezel (outer ring)
         bezelPaint.setStyle(Paint.Style.STROKE);
         bezelPaint.setStrokeWidth(4f);
-        bezelPaint.setColor(0xFF293A5C);
+        bezelPaint.setColor(getResources().getColor(R.color.gauge_bezel));
         bezelInnerPaint.setStyle(Paint.Style.STROKE);
         bezelInnerPaint.setStrokeWidth(2f);
-        bezelInnerPaint.setColor(0xFF1E2A44);
+        bezelInnerPaint.setColor(getResources().getColor(R.color.gauge_bezel_inner));
 
         // Arc background track
         bgArcPaint.setStyle(Paint.Style.STROKE);
         bgArcPaint.setStrokeCap(Paint.Cap.ROUND);
+        bgArcPaint.setColor(arcColorDim);
 
         // Main arc
         arcPaint.setStyle(Paint.Style.STROKE);
@@ -117,18 +119,18 @@ public final class GaugeView extends View {
 
         // Ticks
         tickPaint.setStyle(Paint.Style.STROKE);
-        tickPaint.setColor(0xFF94A3B8);
+        tickPaint.setColor(getResources().getColor(R.color.gauge_tick));
         minorTickPaint.setStyle(Paint.Style.STROKE);
-        minorTickPaint.setColor(0xFF475569);
+        minorTickPaint.setColor(getResources().getColor(R.color.gauge_tick_minor));
 
         // Tick labels
         tickLabelPaint.setTextAlign(Paint.Align.CENTER);
-        tickLabelPaint.setColor(0xFF94A3B8);
+        tickLabelPaint.setColor(getResources().getColor(R.color.gauge_tick));
 
         // Needle
         needlePaint.setStyle(Paint.Style.FILL);
         needleShadowPaint.setStyle(Paint.Style.FILL);
-        needleShadowPaint.setColor(0x40000000);
+        needleShadowPaint.setColor(getResources().getColor(R.color.gauge_shadow));
 
         // Hub
         hubPaint.setStyle(Paint.Style.FILL);
@@ -136,11 +138,11 @@ public final class GaugeView extends View {
 
         // Value text
         valuePaint.setTextAlign(Paint.Align.CENTER);
-        valuePaint.setColor(0xFFF8FAFC);
+        valuePaint.setColor(getResources().getColor(R.color.gauge_text));
 
         // Unit text
         unitPaint.setTextAlign(Paint.Align.CENTER);
-        unitPaint.setColor(0xFF94A3B8);
+        unitPaint.setColor(getResources().getColor(R.color.gauge_unit));
 
         // Peak indicator
         peakPaint.setStyle(Paint.Style.FILL);
@@ -174,6 +176,8 @@ public final class GaugeView extends View {
         this.arcColor = arc;
         this.needleBaseColor = needle;
         this.warningColor = adjustBrightness(needle, 1.2f);
+        this.peakColor = this.warningColor;
+        peakPaint.setColor(this.peakColor);
         invalidate();
     }
 
@@ -184,6 +188,8 @@ public final class GaugeView extends View {
         this.arcColor = arc;
         this.needleBaseColor = needle;
         this.warningColor = warning;
+        this.peakColor = warning;
+        peakPaint.setColor(this.peakColor);
         invalidate();
     }
 
@@ -248,6 +254,10 @@ public final class GaugeView extends View {
 
         float startAngle = 135f;
         float sweepAngle = 270f;
+
+        // Keep the track color synchronized with the active resource theme.
+        // This was previously left at Paint's default black.
+        bgArcPaint.setColor(arcColorDim);
 
         // Arc thickness scales with size
         float arcStroke = Math.max(6 * density, radius * 0.06f);
@@ -421,6 +431,7 @@ public final class GaugeView extends View {
         canvas.drawCircle(cx, cy, hubRadius, hubPaint);
         // Inner highlight
         hubHighlightPaint.setColor(needleBaseColor);
+        hubHighlightPaint.setAlpha(255);
         canvas.drawCircle(cx, cy, hubRadius * 0.7f, hubHighlightPaint);
         // Specular highlight (small white dot offset up-left)
         hubHighlightPaint.setColor(0x80FFFFFF);
