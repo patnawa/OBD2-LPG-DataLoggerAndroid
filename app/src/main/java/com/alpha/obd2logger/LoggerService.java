@@ -3,6 +3,7 @@ package com.alpha.obd2logger;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -31,7 +32,7 @@ import java.util.concurrent.Executors;
  */
 public final class LoggerService extends Service {
     private static final String TAG = "LoggerService";
-    private static final String CHANNEL_ID = "obd2_logger_channel";
+    static final String CHANNEL_ID = "obd2_logger_channel";
     private static final int NOTIFICATION_ID = 2001;
 
     public static final String ACTION_START = "com.alpha.obd2logger.START";
@@ -178,17 +179,30 @@ public final class LoggerService extends Service {
                         ? android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
                         : android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE;
                 try {
-                    startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0), fgsType);
+                    startForeground(NOTIFICATION_ID,
+                            buildNotification(localizedString(
+                                    R.string.background_notification_starting,
+                                    "Starting OBD2 logger…"), 0),
+                            fgsType);
                 } catch (Exception e1) {
                     try {
-                        startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0),
+                        startForeground(NOTIFICATION_ID,
+                                buildNotification(localizedString(
+                                        R.string.background_notification_starting,
+                                        "Starting OBD2 logger…"), 0),
                                 android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
                     } catch (Exception e2) {
-                        startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0));
+                        startForeground(NOTIFICATION_ID,
+                                buildNotification(localizedString(
+                                        R.string.background_notification_starting,
+                                        "Starting OBD2 logger…"), 0));
                     }
                 }
             } else {
-                startForeground(NOTIFICATION_ID, buildNotification("Starting OBD2 logger...", 0));
+                startForeground(NOTIFICATION_ID,
+                        buildNotification(localizedString(
+                                R.string.background_notification_starting,
+                                "Starting OBD2 logger…"), 0));
             }
         } catch (Exception e) {
             Log.e(TAG, "startForeground failed — cannot run as foreground service", e);
@@ -883,8 +897,12 @@ public final class LoggerService extends Service {
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "OBD2 Logger", NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("OBD2 data logging in progress");
+                    CHANNEL_ID, localizedString(R.string.background_notification_channel_name,
+                            "OBD2 background logger"),
+                    NotificationManager.IMPORTANCE_LOW);
+            channel.setDescription(localizedString(
+                    R.string.background_notification_channel_description,
+                    "Live OBD2 collection and connection status"));
             channel.setShowBadge(false);
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) {
@@ -894,19 +912,55 @@ public final class LoggerService extends Service {
     }
 
     private Notification buildNotification(String text, int recordCount) {
+        Intent openIntent = new Intent(this, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent openPendingIntent = PendingIntent.getActivity(this, 0, openIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        Intent stopIntent = new Intent(this, LoggerService.class).setAction(ACTION_STOP);
+        PendingIntent stopPendingIntent = PendingIntent.getService(this, 1, stopIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("TunerMap Pro")
+                .setContentTitle(localizedString(R.string.app_name, "TunerMap Pro"))
                 .setContentText(text)
+                .setSubText(localizedString(R.string.records_count,
+                        "Records: " + Math.max(0, recordCount), Math.max(0, recordCount)))
                 .setSmallIcon(android.R.drawable.ic_menu_compass)
+                .setContentIntent(openPendingIntent)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel,
+                        localizedString(R.string.background_notification_stop, "Stop logging"),
+                        stopPendingIntent)
                 .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setNumber(Math.max(0, recordCount))
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
+    }
+
+    private String localizedString(int resourceId, String fallback, Object... formatArgs) {
+        try {
+            return formatArgs != null && formatArgs.length > 0
+                    ? getString(resourceId, formatArgs) : getString(resourceId);
+        } catch (android.content.res.Resources.NotFoundException e) {
+            // Defensive fallback for resource-table edge cases during process
+            // restoration and for service-only test harnesses.
+            return fallback;
+        }
     }
 
     private void updateNotification(String text, int recordCount) {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) {
-            nm.notify(NOTIFICATION_ID, buildNotification(text, recordCount));
+            try {
+                nm.notify(NOTIFICATION_ID, buildNotification(text, recordCount));
+            } catch (SecurityException e) {
+                // Android 13+ may hide notifications after the user denies the
+                // runtime permission; the foreground service remains valid.
+                Log.w(TAG, "Notification hidden by system permission", e);
+            }
         }
     }
 

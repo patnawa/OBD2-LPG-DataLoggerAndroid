@@ -1,12 +1,19 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.20.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
+**Version 3.20.1** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
 
 ---
 
-## What's New in 3.20.0 — Production Reliability & Secure Realtime API
+## What's New in 3.20.1 — Live Map & Installability Hotfix
+
+- Map Live Data now follows the active foreground/background logger store and shows an immediate, safety-isolated live-cell preview while learning gates settle.
+- Drive Insight opens an actionable detail dialog and routes each finding to the relevant diagnostic tool.
+- Background Logging now requests notification access in context, can continue safely when notifications are denied, and reports `BG START/LIVE/RETRY/ERROR`, record count, and notification visibility in the header and Settings.
+- Release automation refuses unsigned APK publication and verifies persistent release signing before creating a GitHub Release.
+
+## 3.20.0 — Production Reliability & Secure Realtime API
 - AUTO transport discovery and reconnects now have hard deadlines, deterministic cleanup, actual-transport reporting, and no silent simulation fallback.
 - Intermittent PIDs use adaptive cooldown/retry instead of permanent session blacklisting; dead transports trigger reconnect rather than empty logging.
 - Fuel-map learning distinguishes measured/synthesized MAP and rejects learning when ECT, loop state, or fuel trim evidence is missing.
@@ -406,6 +413,17 @@ Build outputs:
 - Installable debug APK: `app/build/outputs/apk/debug/app-debug.apk` (about 7.9 MB)
 - Optimized release APK: `app/build/outputs/apk/release/app-release-unsigned.apk` (must be signed with a private release keystore before distribution)
 - APK and `.idsig` artifacts are intentionally excluded from Git history; publish signed production packages through GitHub Releases or the app store.
+
+### Release signing
+
+GitHub Releases are created only for `v*` tags and only when these repository secrets contain the owner's persistent signing identity:
+
+- `ANDROID_KEYSTORE_BASE64` — base64-encoded JKS/keystore file
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+The workflow refuses to publish when any signing secret is missing. PR debug artifacts use an ephemeral CI key and are labeled **clean-install-only**; they must not be used as upgrade packages. Never commit a keystore or its passwords.
 
 ## Runtime Notes
 

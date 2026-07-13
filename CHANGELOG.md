@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.20.1] - 2026-07-13 — Live Map & Installability Hotfix
+
+- Fixed foreground Map Live Data reading a stale background-service store, including state restoration after Activity recreation.
+- Restored Fuel System Status (`01 03`) to Simulation auto-detection and kept admitted MAP/loop/trim PIDs continuously polled so live learning does not appear frozen.
+- Added a non-persistent `LIVE` cell preview while warm-up, loop-state, trim, and debounce safety gates settle; preview samples never contaminate correction export or API map data.
+- Made Drive Insight interactive with a localized detail dialog and context-aware actions to Dashboard, Diagnostics, Battery Tester, or Fuel Map.
+- Reworked Background Logging permission UX: notification access is requested only when starting a background session, denial no longer incorrectly disables a valid foreground service, and users can explicitly continue with a hidden notification.
+- Added live background state to the compact header (`BG START`, `BG LIVE`, `BG RETRY`, `BG ERROR`) and Settings, including record count, notification visibility, persisted preference, channel-level blocking detection, and notification actions to reopen the app or stop logging.
+- Fixed GitHub Actions publishing an unsigned release APK. Tag releases now require a persistent keystore from GitHub Secrets, verify the signed APK before publishing, and include a SHA-256 checksum; CI debug APKs are explicitly clean-install-only.
+- Versioned the hotfix as `3.20.1` (`versionCode 115`) and added regression tests for simulator map prerequisites, map polling continuity, and Drive Insight routing.
+
 ## [3.20.0] - 2026-07-13 — Production Reliability & Secure Realtime API
 
 ### Transport and Session Reliability

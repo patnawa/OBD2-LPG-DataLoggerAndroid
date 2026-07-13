@@ -190,4 +190,31 @@ public class LiveMapStoreTest {
         assertEquals(-1, store.getActiveRpmCell());
         assertEquals("", store.getLastCellKey());
     }
+
+    @Test
+    public void simulationAutoDetectionProducesLearnableLiveMapSamples() {
+        SimulationDriver driver = new SimulationDriver(new LoggerConfig());
+        assertTrue(driver.connect());
+        java.util.List<String> supported = PidAvailabilityChecker.querySupportedPids(driver);
+        java.util.List<SensorSample> samples = new java.util.ArrayList<>();
+        String[] critical = {"01_0C", "01_0B", "01_06", "01_07", "01_05", "01_03"};
+        for (String key : critical) {
+            PIDDefinition pid = PIDDefinition.findByKey(key);
+            assertNotNull(key, pid);
+            assertTrue("Simulation capability must advertise " + key,
+                    supported.contains(pid.getPidHex()));
+            samples.add(new SensorSample(pid.key(), pid.getName(), driver.queryPid(pid),
+                    pid.getUnit(), "ok"));
+        }
+
+        DataRecord record = new DataRecord("t", 1.0, "petrol", "Simulation", "SIM", samples);
+        MapSampleMeta meta = MapSampleMeta.from(record);
+        assertTrue("Simulation record must pass live-map safety gates", meta.gatedEligible);
+
+        LiveMapStore store = new LiveMapStore();
+        store.pushFromMeta(meta, FuelMode.PETROL); // debounce prime
+        LiveMapStore.PushResult accepted = store.pushFromMeta(meta, FuelMode.PETROL);
+        assertTrue(accepted.accepted);
+        assertFalse(store.getPetrolData().isEmpty());
+    }
 }

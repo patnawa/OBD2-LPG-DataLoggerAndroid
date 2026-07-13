@@ -51,4 +51,16 @@ public class PidHealthTrackerTest {
         assertTrue(tracker.shouldPoll(rpm, 51));
         assertEquals(1, tracker.selectForPoll(Collections.singletonList(rpm), 51).size());
     }
+
+    @Test
+    public void admittedLiveMapPidsAreNeverDeferred() {
+        String[] keys = {"01_03", "01_05", "01_06", "01_07", "01_0B", "01_0C"};
+        PidHealthTracker tracker = new PidHealthTracker();
+        for (String key : keys) {
+            PIDDefinition pid = PIDDefinition.findByKey(key);
+            for (long cycle = 1; cycle <= 50; cycle++) tracker.recordPolled(pid, null, cycle);
+            assertTrue(key + " must remain live for fuel-map continuity",
+                    tracker.shouldPoll(pid, 51));
+        }
+    }
 }

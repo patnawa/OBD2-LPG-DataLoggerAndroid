@@ -3753,9 +3753,10 @@
                                     android:textStyle="bold" />
 
                                 <TextView
+                                    android:id="@+id/backgroundLoggingStatusText"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:text="Run background logging service"
+                                    android:text="@string/background_logging_description"
                                     android:textColor="@color/muted"
                                     android:textSize="11sp"
                                     android:layout_marginTop="2dp" />

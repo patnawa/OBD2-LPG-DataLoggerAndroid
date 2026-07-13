@@ -2,57 +2,44 @@ name: Build APK
 
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    branches: [main]
+    tags: ['v*']
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:  # Allow manual trigger
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      - name: Test, lint, and build installable debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest lintDebug assembleDebug
 
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
+      # Debug signing keys are runner-local and may change between workflow
+      # runs. This APK is for clean-install PR testing, never for releases.
+      - name: Upload ephemeral-key debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: OBD2LPGLogger-debug-clean-install-only
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
 
-    - name: Build Release APK (unsigned)
-      run: ./gradlew assembleRelease
-
-    - name: Upload Debug APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: OBD2LPGLogger-debug
-        path: app/build/outputs/apk/debug/*.apk
-        retention-days: 30
-
-    - name: Upload Release APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: OBD2LPGLogger-release
-        path: app/build/outputs/apk/release/*.apk
-        retention-days: 30
-
-    - name: Run Unit Tests
-      run: ./gradlew testDebugUnitTest
-      continue-on-error: true
-
-  # Auto-create GitHub Release when a tag is pushed
+  # Tags may publish only a release signed with the owner's persistent key.
   release:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
@@ -61,26 +48,59 @@ jobs:
       contents: write
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-    - name: Build Release APK
-      run: |
-        chmod +x gradlew
-        ./gradlew assembleRelease
+      - name: Validate release-signing secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || \
+             [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || \
+             [ -z "$ANDROID_KEY_ALIAS" ] || \
+             [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "::error::Release signing secrets are incomplete; refusing to publish an unsigned APK."
+            exit 1
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tunermap-release.keystore"
+          test -s "$RUNNER_TEMP/tunermap-release.keystore"
 
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
-      with:
-        files: |
-          app/build/outputs/apk/release/*.apk
-        generate_release_notes: true
+      - name: Build signed release APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/tunermap-release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest lintRelease assembleRelease
+
+      - name: Verify and name signed APK
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK"
+          BUILD_TOOLS="$(find "$ANDROID_SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          OUTPUT="TunerMap-Pro-${GITHUB_REF_NAME}.apk"
+          cp "$APK" "$OUTPUT"
+          sha256sum "$OUTPUT" > "$OUTPUT.sha256"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            TunerMap-Pro-*.apk
+            TunerMap-Pro-*.apk.sha256
+          generate_release_notes: true

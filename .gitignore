@@ -6,6 +6,9 @@ build/
 *.apk
 *.idsig
 *.aab
+*.jks
+*.keystore
+keystore.properties
 *.dex
 *.class
 local.properties

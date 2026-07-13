@@ -26,6 +26,13 @@ public final class PidHealthTracker {
         ALWAYS_POLL.add("01_0D"); // speed
         ALWAYS_POLL.add("01_04"); // engine load
         ALWAYS_POLL.add("01_05"); // coolant
+        // Live fuel-map safety/learning inputs need consecutive samples. Once
+        // ECU capability discovery has admitted them to the poll catalogue,
+        // never put them into adaptive cooldown or the map appears to freeze.
+        ALWAYS_POLL.add("01_03"); // fuel system / closed-loop status
+        ALWAYS_POLL.add("01_06"); // STFT bank 1
+        ALWAYS_POLL.add("01_07"); // LTFT bank 1
+        ALWAYS_POLL.add("01_0B"); // intake manifold pressure
         ALWAYS_POLL.add("01_42"); // control module voltage
     }
 
