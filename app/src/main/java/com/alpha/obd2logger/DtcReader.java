@@ -96,10 +96,30 @@ public final class DtcReader {
             "Older Honda (Civic EG/EK), Nissan (Sunny N16) — 5-baud init",
             false, null));
         // SAE J1850 VPW — some older GM/Isuzu (MU-7, D-Max 2004)
-        ALL_BUSES.add(new ProtocolBus("J1850 VPW", "ATSP2",
-            "Older Isuzu MU-7, D-Max 2004 — SAE J1850 VPW 10.4kbps",
-            false, null));
-    }
+                ALL_BUSES.add(new ProtocolBus("J1850 VPW", "ATSP2",
+                    "Older Isuzu MU-7, D-Max 2004 — SAE J1850 VPW 10.4kbps",
+                    false, null));
+
+                // ── Extended CAN buses (vLinker MS 5-channel support) ──
+                // These unlock modules on GM/Lexus/Chrysler vehicles that the
+                // standard 7-protocol deep scan misses entirely. Requires a
+                // vLinker MS or equivalent adapter with 5 CAN channel support.
+
+                // SW-CAN — Single-Wire CAN 33.3kbps (GM/Lexus body modules)
+                ALL_BUSES.add(new ProtocolBus("SW-CAN", "ATSPA",
+                    "GM/Lexus single-wire CAN 33.3kbps — Body/Door/Lighting/Seat modules",
+                    false, null));
+
+                // CH-CAN — Chrysler High-Speed CAN (FCA/Jeep/Ram/Chrysler)
+                ALL_BUSES.add(new ProtocolBus("CH-CAN", "ATSPC",
+                    "Chrysler/FCA/Jeep/Ram — CAN 11-bit 500kbps Chrysler-specific",
+                    false, null));
+
+                // LS-CAN — Low-Speed CAN 125kbps (GM/Chrysler comfort modules)
+                ALL_BUSES.add(new ProtocolBus("LS-CAN", "ATSPD",
+                    "GM/Chrysler low-speed CAN 125kbps — Comfort/BCM/Lighting modules",
+                    false, null));
+            }
 
     // ═══════════════════════════════════════════════════════════════
     //  Module Detection (ECU CAN ID → Name)
@@ -117,6 +137,15 @@ public final class DtcReader {
     static final Map<Integer, String> NISSAN_ECU = new LinkedHashMap<>();
     static final Map<Integer, String> ISUZU_ECU  = new LinkedHashMap<>();
     static final Map<Integer, String> MITSUBISHI_ECU = new LinkedHashMap<>();
+
+    /** GM/Chevrolet ECU names — HS-CAN + SW-CAN + LS-CAN modules. */
+    static final Map<Integer, String> GM_ECU = new LinkedHashMap<>();
+
+    /** Chrysler/Jeep/FCA ECU names — CH-CAN + LS-CAN modules. */
+    static final Map<Integer, String> CHRYSLER_ECU = new LinkedHashMap<>();
+
+    /** Lexus SW-CAN module names — supplements Toyota map for SW-CAN bus. */
+    static final Map<Integer, String> LEXUS_ECU = new LinkedHashMap<>();
 
     /** Ford HS-CAN names — override shared IDs when Ford mode is active. */
     static final Map<Integer, String> FORD_HS_CAN_NAMES = new LinkedHashMap<>();
@@ -199,7 +228,59 @@ public final class DtcReader {
         MITSUBISHI_ECU.put(0x611, "Engine-ECU Diesel (Mitsubishi 4D56/4N15)");
         MITSUBISHI_ECU.put(0x619, "Engine-ECU Response (Mitsubishi Diesel)");
 
-        // ── Generic ECU names (non-brand-specific IDs) ──
+                // ── GM/Chevrolet (HS-CAN + SW-CAN + LS-CAN) ──
+                // HS-CAN powertrain (shares 0x7E0-0x7EF with other brands)
+                GM_ECU.put(0x7E0, "ECM — Engine Control (GM)");
+                GM_ECU.put(0x7E1, "TCM — Transmission (GM)");
+                GM_ECU.put(0x7E2, "EBCM — Electronic Brake (GM)");
+                GM_ECU.put(0x7E3, "SDM — Airbag/SIR (GM)");
+                GM_ECU.put(0x7E4, "HVAC — Climate (GM)");
+                GM_ECU.put(0x7E5, "BCM — Body Control (GM)");
+                GM_ECU.put(0x7E8, "ECM Response");
+                GM_ECU.put(0x7E9, "TCM Response");
+                GM_ECU.put(0x7EA, "EBCM Response");
+                GM_ECU.put(0x7EB, "SDM Response");
+                // SW-CAN body modules (GM single-wire CAN 33.3kbps)
+                GM_ECU.put(0x640, "Driver Door Module (GM SW-CAN)");
+                GM_ECU.put(0x641, "Passenger Door Module (GM SW-CAN)");
+                GM_ECU.put(0x642, "Rear Left Door Module (GM SW-CAN)");
+                GM_ECU.put(0x643, "Rear Right Door Module (GM SW-CAN)");
+                GM_ECU.put(0x644, "Driver Seat Module (GM SW-CAN)");
+                GM_ECU.put(0x645, "Memory Seat Module (GM SW-CAN)");
+                // LS-CAN comfort modules (GM low-speed CAN 125kbps)
+                GM_ECU.put(0x680, "Dash/IPC — Instrument Panel (GM LS-CAN)");
+                GM_ECU.put(0x681, "Radio/Infotainment (GM LS-CAN)");
+                GM_ECU.put(0x682, "HVAC Control (GM LS-CAN)");
+                GM_ECU.put(0x683, "Lighting Control (GM LS-CAN)");
+
+                // ── Chrysler/Jeep/FCA (CH-CAN + LS-CAN) ──
+                // CH-CAN powertrain
+                CHRYSLER_ECU.put(0x7E0, "PCM — Powertrain (Chrysler)");
+                CHRYSLER_ECU.put(0x7E1, "TCM — Transmission (Chrysler)");
+                CHRYSLER_ECU.put(0x7E2, "ABS — Brakes (Chrysler)");
+                CHRYSLER_ECU.put(0x7E3, "ORC — Occupant Restraint (Chrysler)");
+                CHRYSLER_ECU.put(0x7E4, "HVAC — Climate (Chrysler)");
+                CHRYSLER_ECU.put(0x7E8, "PCM Response");
+                CHRYSLER_ECU.put(0x7E9, "TCM Response");
+                // LS-CAN comfort/body
+                CHRYSLER_ECU.put(0x710, "BCM — Body Control (Chrysler LS-CAN)");
+                CHRYSLER_ECU.put(0x711, "AMP — Audio Amplifier (Chrysler LS-CAN)");
+                CHRYSLER_ECU.put(0x712, "HVAC Control (Chrysler LS-CAN)");
+                CHRYSLER_ECU.put(0x713, "Radio/Infotainment (Chrysler LS-CAN)");
+                CHRYSLER_ECU.put(0x714, "Instrument Cluster (Chrysler LS-CAN)");
+
+                // ── Lexus SW-CAN (supplements Toyota for SW-CAN bus) ──
+                LEXUS_ECU.put(0x7E0, "ECM — Engine Control (Lexus)");
+                LEXUS_ECU.put(0x7E2, "ABS/VSC — Brakes (Lexus)");
+                LEXUS_ECU.put(0x7E3, "SRS — Airbag (Lexus)");
+                LEXUS_ECU.put(0x7E5, "EPS — Power Steering (Lexus)");
+                // SW-CAN body
+                LEXUS_ECU.put(0x740, "Door Control (Lexus SW-CAN)");
+                LEXUS_ECU.put(0x741, "Lighting Control (Lexus SW-CAN)");
+                LEXUS_ECU.put(0x742, "Seat Control (Lexus SW-CAN)");
+                LEXUS_ECU.put(0x743, "Air Conditioning (Lexus SW-CAN)");
+
+                // ── Generic ECU names (non-brand-specific IDs) ──
         ECU_NAMES.put(0x726, "GEM — Generic Electronic Module (Ford)");
         ECU_NAMES.put(0x727, "SJB — Smart Junction Box");
         ECU_NAMES.put(0x728, "BCM — Body Control (Ford)");
@@ -248,18 +329,20 @@ public final class DtcReader {
 
     /** Get the per-brand ECU name map for the detected vehicle brand. */
     private static Map<Integer, String> getBrandEcuMap(VinBrandDetector.Brand brand) {
-        if (brand == null) return null;
-        switch (brand) {
-            case TOYOTA: case LEXUS: return TOYOTA_ECU;
-            case HONDA:             return HONDA_ECU;
-            case MAZDA:             return MAZDA_ECU;
-            case NISSAN:            return NISSAN_ECU;
-            case ISUZU:             return ISUZU_ECU;
-            case MITSUBISHI:        return MITSUBISHI_ECU;
-            case FORD:              return FORD_HS_CAN_NAMES;
-            default:                return null;
+            if (brand == null) return null;
+            switch (brand) {
+                case TOYOTA: case LEXUS: return TOYOTA_ECU;
+                case HONDA:             return HONDA_ECU;
+                case MAZDA:             return MAZDA_ECU;
+                case NISSAN:            return NISSAN_ECU;
+                case ISUZU:             return ISUZU_ECU;
+                case MITSUBISHI:        return MITSUBISHI_ECU;
+                case FORD:              return FORD_HS_CAN_NAMES;
+                case CHEVROLET:         return GM_ECU;
+                case CHRYSLER: case JEEP: case DODGE: return CHRYSLER_ECU;
+                default:                return null;
+            }
         }
-    }
 
     // ═══════════════════════════════════════════════════════════════
     //  Progress Listener (real-time scan status callbacks)

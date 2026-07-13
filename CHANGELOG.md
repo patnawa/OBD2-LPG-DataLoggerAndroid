@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.22.1] - 2026-07-13 — SW-CAN/CH-CAN/LS-CAN Protocol Expansion
+
+- Versioned the program as `3.22.1` (`versionCode 120`).
+- Added 3 new CAN protocol buses to the deep DTC scan, unlocking modules on GM/Lexus/Chrysler vehicles that were previously invisible:
+  - **SW-CAN** (ATSPA) — Single-Wire CAN 33.3kbps, GM/Lexus body/door/lighting/seat modules.
+  - **CH-CAN** (ATSPC) — Chrysler/FCA/Jeep/Ram High-Speed CAN 500kbps.
+  - **LS-CAN** (ATSPD) — GM/Chrysler Low-Speed CAN 125kbps, comfort/BCM/lighting modules.
+- Deep scan now probes 10 protocol buses (was 7): HS-CAN auto, MS-CAN, CAN 29-bit, CAN 11-bit 250k, KWP2000, ISO 9141-2, J1850 VPW, SW-CAN, CH-CAN, LS-CAN.
+- Requires vLinker MS or equivalent 5 CAN-channel adapter for full coverage; non-vLinker adapters will simply get no response on the new buses (graceful skip).
+- Added ECU name maps:
+  - `GM_ECU` — 20 GM/Chevrolet modules across HS-CAN (0x7E0-7EB), SW-CAN (0x640-645), LS-CAN (0x680-683).
+  - `CHRYSLER_ECU` — 13 Chrysler/Jeep/FCA modules across CH-CAN (0x7E0-7E9) and LS-CAN (0x710-714).
+  - `LEXUS_ECU` — 8 Lexus modules including SW-CAN body modules (0x740-743).
+- Updated `getBrandEcuMap()` to route Chevrolet -> GM_ECU, Chrysler/Jeep/Dodge -> CHRYSLER_ECU.
+- The real-time ScanTrackerView (v3.22.0) automatically displays these new protocol buses as they are probed.
+
 ## [3.22.0] - 2026-07-13 — Real-Time DTC Scan Tracker
 
 - Versioned the program as `3.22.0` (`versionCode 119`).
