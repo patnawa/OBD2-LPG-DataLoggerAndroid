@@ -136,6 +136,21 @@ public class DataWriterTest {
         assertTrue(completed.getBoolean("complete"));
     }
 
+    @Test
+    public void unknownVinUsesExplicitGeneralOutputFolder() throws Exception {
+        PIDDefinition rpm = new PIDDefinition("Engine RPM", "01", "0C", "rpm",
+                "(A*256+B)/4", 0, 16383, true, 2, true);
+        DataWriter writer = new DataWriter(RuntimeEnvironment.getApplication(),
+                "general_folder_" + System.nanoTime(), Collections.singletonList(rpm),
+                "UNKNOWN_VIN");
+
+        assertEquals("General", writer.getDownloadFolderFile().getName());
+        JSONObject checkpoint = new JSONObject(readFile(writer.getSummaryFile()));
+        assertEquals("General", checkpoint.getString("output_directory"));
+        assertEquals("GENERAL_NO_VIN", checkpoint.getString("output_directory_type"));
+        writer.close();
+    }
+
     private static DataRecord record(double elapsed, Double speed, Double map,
                                      String mapStatus, Double fuelRate) {
         return new DataRecord("2026-07-13T10:00:00.000", elapsed, "lpg/cng",

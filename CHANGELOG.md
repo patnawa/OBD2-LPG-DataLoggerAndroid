@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Live Map accuracy and diagnostics
+- Made output routing explicit: valid VINs use their own folder, while missing/placeholder VINs use `Downloads/TunerMapPro/General` and summary metadata records the routing decision.
 - Reframed Live Map values as ECU fuel corrections instead of labeling positive trim as a currently lean mixture; measured Lambda is now shown separately when available.
 - Added transient/load-step, unstable-trim, and measured-vs-commanded Lambda quality gates before a sample can affect the learned map.
 - Reset debounce and stability history at petrol/gaseous fuel changeover so samples from one fuel cannot prime the other map.
