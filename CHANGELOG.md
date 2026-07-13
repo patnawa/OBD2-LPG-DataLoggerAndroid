@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.21.0] - 2026-07-13 — Drive Insight Merge & Feature Completion
+
+- Versioned the program as `3.21.0` (`versionCode 118`).
+- Merged `agent/v3-20-production-hardening` branch into `main`, bringing the full Drive Insight feature set that was previously missing from main:
+  - Added `DriveInsightEngine.java` — a pure, testable priority engine that evaluates RPM, coolant, voltage, fuel trim, and DTC count to produce a typed insight result with navigation destination.
+  - Added `DriveInsightEngineTest.java` with 3 unit tests covering DTC priority, per-condition routing, and stable/collecting states.
+  - `updateCockpitInsight()` now delegates to `DriveInsightEngine.evaluate()` instead of inline if/else logic, and stores `currentDriveInsight` for reuse.
+  - Added tap-to-detail dialog (`showDriveInsightDetails()`): tapping the Drive Insight card opens a MaterialAlertDialog showing the current data snapshot (RPM, coolant, voltage, fuel trim), an advisory notice, and a positive button that deep-links to the relevant tool (Diagnostics, Battery, Fuel Map, or Dashboard).
+  - Added `cockpitInsightCard.setOnClickListener` so the card is actually tappable.
+  - Added missing strings: `drive_insight_tap_details`, `drive_insight_advisory`, `drive_insight_snapshot`, `drive_insight_open_dashboard`, `drive_insight_open_diagnostics`, `drive_insight_open_battery`, `drive_insight_open_map`.
+  - Added `NONE` destination enum for healthy/collecting states that don't need navigation.
+- Resolved CI workflow conflict by adopting the agent branch's `build-apk.yml` with AAB support and secret validation.
+
 ## [3.20.3] - 2026-07-13 — Play Store Release Preparation
 
 - Versioned the program as `3.20.3` (`versionCode 117`).

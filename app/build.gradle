@@ -18,8 +18,8 @@ android {
         applicationId 'com.alpha.obd2logger'
         minSdk 23
         targetSdk 35
-        versionCode 117
-        versionName '3.20.3'
+        versionCode 118
+        versionName '3.21.0'
     }
 
     signingConfigs {

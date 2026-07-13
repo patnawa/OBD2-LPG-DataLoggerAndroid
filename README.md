@@ -1,8 +1,19 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.20.3** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
+**Version 3.21.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
+
+---
+
+## What's New in 3.21.0 — Drive Insight Merge & Feature Completion
+
+- Merged the full Drive Insight feature set from the production-hardening branch into main:
+  - **DriveInsightEngine** — a pure, testable priority engine that evaluates RPM, coolant, voltage, fuel trim, and DTC count to produce a typed insight with navigation destination.
+  - **Tap-to-detail dialog** — tapping the Drive Insight card now opens a snapshot of current readings with an advisory and a deep-link button to the relevant tool (Diagnostics, Battery, Fuel Map, or Dashboard).
+  - **Missing strings added** — `drive_insight_tap_details`, `drive_insight_advisory`, `drive_insight_snapshot`, and all `drive_insight_open_*` navigation labels.
+  - **Unit tests** — 3 tests covering DTC priority, per-condition routing, and stable/collecting states.
+- Resolved CI workflow conflict by adopting the agent branch's `build-apk.yml` with AAB support and secret validation.
 
 ---
 
