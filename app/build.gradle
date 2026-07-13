@@ -14,6 +14,25 @@ android {
         versionName '3.19.0'
     }
 
+    signingConfigs {
+        // CI/production signing: AGP reads these injected properties when the
+        // build is launched with -Pandroid.injectedSign* (the same mechanism
+        // Android Studio uses for "Generate Signed APK"). When any of the four
+        // values is missing (e.g. local unsigned build), the release buildType
+        // simply has no signingConfig and produces an unsigned APK as before.
+        release {
+            if (project.hasProperty('android.injectedSignStorePath')
+                    && project.hasProperty('android.injectedSignStorePassword')
+                    && project.hasProperty('android.injectedSignKeyAlias')
+                    && project.hasProperty('android.injectedSignKeyPassword')) {
+                storeFile file(project.property('android.injectedSignStorePath'))
+                storePassword project.property('android.injectedSignStorePassword')
+                keyAlias project.property('android.injectedSignKeyAlias')
+                keyPassword project.property('android.injectedSignKeyPassword')
+            }
+        }
+    }
+
     buildTypes {
         release {
             // R8 shrinks + obfuscates: smaller APK, faster cold start, no
@@ -21,6 +40,14 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Sign only when the injected signing properties are present;
+            // otherwise fall back to unsigned so local builds keep working.
+            if (project.hasProperty('android.injectedSignStorePath')
+                    && project.hasProperty('android.injectedSignStorePassword')
+                    && project.hasProperty('android.injectedSignKeyAlias')
+                    && project.hasProperty('android.injectedSignKeyPassword')) {
+                signingConfig signingConfigs.release
+            }
         }
         debug {
             minifyEnabled false
