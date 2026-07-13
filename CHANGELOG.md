@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.23.0] - 2026-07-13 — Free OTA DTC Updates + Crowdsourced Unknown-Code Reporting
+
+- Versioned the program as `3.23.0` (`versionCode 122`).
+- Added `DtcUpdater`: versioned OTA update system for DTC databases using GitHub raw URLs as a free CDN. Downloads only changed files based on a `manifest.json` version comparison. Throttled to one check per 6 hours. Atomically writes to internal storage with JSON validation before commit.
+- Added `TelemetryClient`: zero-backend crowdsourced DTC collector. When the app encounters a DTC not in the local database, it creates a GitHub Issue automatically (via GitHub Issues API) with the code, detected brand, and app version — no VIN or personal data. Rate-limited to one report per unique code per 7 days.
+- Modified `DtcDatabase.loadDatabase`: now checks internal storage (OTA-downloaded files) before falling back to bundled assets. OTA files take priority.
+- Added `DtcDatabase.getAppContext()` and `getCurrentBrand()` to support telemetry context.
+- Wired `DtcUpdater.checkForUpdates()` into `MainActivity.onCreate` for automatic background checks on app launch.
+- Added `GITHUB_TOKEN` BuildConfig field (optional, via env var) for higher GitHub API rate limits.
+- Created `dtc_updates/` folder with `manifest.json` for OTA delivery of updated DTC JSON files.
+
 ## [3.22.2] - 2026-07-13 — Session History Button Layout Fix
 
 - Versioned the program as `3.22.2` (`versionCode 121`).

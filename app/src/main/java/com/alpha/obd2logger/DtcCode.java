@@ -115,6 +115,8 @@ public final class DtcCode {
         String desc = DtcDatabase.lookup(code);
         if (desc == null) {
             desc = lookupDescription(code);
+            TelemetryClient.reportUnknownDtc(DtcDatabase.getAppContext(),
+                    code, DtcDatabase.getCurrentBrand());
         }
         return new DtcCode(code, desc);
     }

@@ -22,6 +22,7 @@ public final class DtcDatabase {
     private static final Map<String, String> brandCache = new HashMap<>();
     private static boolean initialized = false;
     private static VinBrandDetector.Brand currentBrand = null;
+    private static Context appContext = null;
 
     private DtcDatabase() {
     }
@@ -30,8 +31,17 @@ public final class DtcDatabase {
      * Load the generic DTC database from assets.
      * Call during application/activity startup.
      */
+    public static VinBrandDetector.Brand getCurrentBrand() {
+        return currentBrand;
+    }
+
+    public static Context getAppContext() {
+        return appContext;
+    }
+
     public static synchronized void init(Context context) {
         if (initialized) return;
+        appContext = context.getApplicationContext();
         loadDatabase(context, "dtc_database.json", genericCache);
         initialized = true;
     }
@@ -75,8 +85,18 @@ public final class DtcDatabase {
 
     private static void loadDatabase(Context context, String assetFile, Map<String, String> cache) {
         try {
-            AssetManager am = context.getAssets();
-            InputStream is = am.open(assetFile);
+            InputStream is = null;
+            java.io.File localUpdate = new java.io.File(context.getFilesDir(), assetFile);
+            
+            // 1. Try to load the OTA updated file from internal storage first
+            if (localUpdate.exists() && localUpdate.length() > 0) {
+                is = new java.io.FileInputStream(localUpdate);
+                Log.i(TAG, "Loading OTA updated database: " + assetFile);
+            } else {
+                // 2. Fallback to the bundled app assets
+                is = context.getAssets().open(assetFile);
+            }
+            
             int size = is.available();
             byte[] buffer = new byte[size];
             is.read(buffer);

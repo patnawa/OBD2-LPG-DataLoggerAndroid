@@ -331,6 +331,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         try {
             DtcDatabase.init(this);
             DtcEnrichment.init(this);
+            DtcUpdater.checkForUpdates(this, false);
             android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
             int currentTheme = prefs.getInt("app_theme", androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
             androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(currentTheme);

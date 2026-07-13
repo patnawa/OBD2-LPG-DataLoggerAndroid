@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "updated": "2026-07-13",
+  "files": [
+    { "name": "dtc_database.json", "version": 1 },
+    { "name": "dtc_toyota.json",   "version": 1 },
+    { "name": "dtc_honda.json",    "version": 1 },
+    { "name": "dtc_isuzu.json",    "version": 1 },
+    { "name": "dtc_nissan.json",   "version": 1 },
+    { "name": "dtc_mitsubishi.json", "version": 1 },
+    { "name": "dtc_suzuki.json",   "version": 1 },
+    { "name": "dtc_ford.json",     "version": 1 },
+    { "name": "dtc_chevrolet.json", "version": 1 },
+    { "name": "dtc_hyundai.json",  "version": 1 },
+    { "name": "dtc_volvo.json",    "version": 1 },
+    { "name": "dtc_bmw.json",      "version": 1 },
+    { "name": "dtc_mercedes.json", "version": 1 },
+    { "name": "dtc_byd.json",      "version": 1 },
+    { "name": "dtc_gwm.json",      "version": 1 },
+    { "name": "dtc_neta.json",     "version": 1 },
+    { "name": "dtc_aion.json",     "version": 1 },
+    { "name": "dtc_deepal.json",   "version": 1 },
+    { "name": "dtc_mg.json",       "version": 1 },
+    { "name": "dtc_tesla.json",    "version": 1 }
+  ]
+}
