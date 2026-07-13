@@ -214,6 +214,9 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("map_axis_source", "Map Axis Source (1=MAP 2=LOAD 3=SYNTH_MAP)");
         registerDerived("map_value_source", "MAP Value Source (0=missing 1=measured 2=synthesized)");
         registerDerived("map_trim_total", "Map Trim Total STFT+LTFT (%)");
+        registerDerived("map_lambda", "Map Measured Lambda");
+        registerDerived("map_commanded_lambda", "Map Commanded Lambda");
+        registerDerived("map_lambda_error", "Map Lambda Error (Measured-Commanded)");
         registerDerived("map_closed_loop", "Map Closed Loop (1/0)");
         registerDerived("map_warm", "Map Engine Warm (1/0)");
         registerDerived("map_gated", "Map Gate Eligible (1/0)");

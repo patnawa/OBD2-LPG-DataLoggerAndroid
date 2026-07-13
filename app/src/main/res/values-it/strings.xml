@@ -22,9 +22,9 @@
     <string name="smart_tuning_analysis">Analisi di calibrazione intelligente</string>
     <string name="waiting_for_data">In attesa dei dati Fuel Trim...</string>
     <string name="live_fuel_map">Mappa Fuel Trim in tempo reale</string>
-    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = Giri/min (500-6500)</string>
+    <string name="map_axes" formatted="false">Y = MAP kPa (o asse Load % di riserva), X = Giri/min (500-6500)</string>
     <string name="how_to_read_map_title">Come leggere la mappa</string>
-    <string name="how_to_read_map_desc" formatted="false">Mostra il Fuel Trim totale (STFT + LTFT)\n🟢 Verde (±5%) = Perfetto\n🔴 Rosso (Negativo) = Ricco (Ridurre carburante)\n🔵 Blu (Positivo) = Magro (Aggiungere carburante)\n\nBLOCCO CELLA E CONTATORE COLPI:\nLe celle iniziano trasparenti. Mantieni stabili Giri/min/MAP per raccogliere dati. L\'opacità aumenta con i colpi.\nx20 colpi = Bloccato (Bordo dorato).\n\nDEVIAZIONE: Mostra (LPG/CNG - Benzina).\n+ significa che il GPL è magro. - significa che il GPL è ricco. Punta allo 0%.\n\nASSISTENTE DI CALIBRAZIONE: Mostra la correzione esatta in % per la mappa GPL (Esportabile in CSV).\n\n* Nota: per utilizzare l\'assistente o la deviazione, devi prima raccogliere dati sia a Benzina che a GPL!</string>
+    <string name="how_to_read_map_desc" formatted="false">Mostra la correzione carburante ECU (STFT + LTFT), non direttamente una miscela ricca/magra misurata.\nNegativo = la ECU riduce carburante. Positivo = la ECU aggiunge carburante. Lambda (λ) misurata appare nelle celle stabili. Le celle con meno di 3 campioni stabili restano grigie.\n\nDEVIAZIONE = Trim GPL - Trim benzina. + significa aggiungere gas e - ridurre gas. Confronta solo mappe con la stessa sorgente asse.</string>
     <string name="petrol">BENZINA</string>
     <string name="petrol_logs_header">Log Benzina</string>
     <string name="lpg_logs_header">Log GPL/Metano</string>

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Live Map accuracy and diagnostics
+- Reframed Live Map values as ECU fuel corrections instead of labeling positive trim as a currently lean mixture; measured Lambda is now shown separately when available.
+- Added transient/load-step, unstable-trim, and measured-vs-commanded Lambda quality gates before a sample can affect the learned map.
+- Reset debounce and stability history at petrol/gaseous fuel changeover so samples from one fuel cannot prime the other map.
+- Prevented comparisons and correction exports when petrol and gaseous maps were learned from incompatible MAP/load-axis sources.
+- Added per-cell STFT, LTFT, Lambda, spread, hit count, confidence, and lock diagnostics to the realtime API and AI export.
+- Treated `0xFF` in unused secondary O2-trim bytes as unavailable without changing the valid SAE boundary behavior of the primary STFT/LTFT PIDs.
+- Updated Live Map status feedback and all supported translations to describe correction direction without incorrectly claiming rich/lean combustion.
+- Added regression coverage for correction components, Lambda stability, transient rejection, axis compatibility, and unused O2-trim sentinel handling.
+
 ## [3.20.1] - 2026-07-13 — Live Map & Installability Hotfix
 
 - Fixed foreground Map Live Data reading a stale background-service store, including state restoration after Activity recreation.

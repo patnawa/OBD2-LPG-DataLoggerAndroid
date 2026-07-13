@@ -23,6 +23,9 @@ public final class MapSampleMeta {
     public final Double engineLoad;
     public final Double stft;
     public final Double ltft;
+    public final Double lambda;
+    public final Double commandedLambda;
+    public final Double throttle;
     public final Double ect;
     public final Double fuelSystemStatus;
 
@@ -38,7 +41,8 @@ public final class MapSampleMeta {
     public final String rejectReason;
 
     private MapSampleMeta(Double rpm, Double mapKpa, Double engineLoad,
-                          Double stft, Double ltft, Double ect, Double fuelSystemStatus,
+                          Double stft, Double ltft, Double lambda, Double commandedLambda,
+                          Double throttle, Double ect, Double fuelSystemStatus,
                           double loadAxis, String axisSource,
                           int rpmCell, float mapBin, String cellKey,
                           double trimTotal, boolean closedLoop, boolean warmEnough,
@@ -48,6 +52,9 @@ public final class MapSampleMeta {
         this.engineLoad = engineLoad;
         this.stft = stft;
         this.ltft = ltft;
+        this.lambda = lambda;
+        this.commandedLambda = commandedLambda;
+        this.throttle = throttle;
         this.ect = ect;
         this.fuelSystemStatus = fuelSystemStatus;
         this.loadAxis = loadAxis;
@@ -76,6 +83,9 @@ public final class MapSampleMeta {
                 valueByKey(record, "01_04"),
                 valueByKey(record, "01_06"),
                 valueByKey(record, "01_07"),
+                valueByKey(record, "01_34"),
+                valueByKey(record, "01_44"),
+                valueByKey(record, "01_11"),
                 valueByKey(record, "01_05"),
                 valueByKey(record, "01_03"),
                 synthesizedMap);
@@ -108,7 +118,8 @@ public final class MapSampleMeta {
         else if (!warmEnough) reject = "cold_engine";
 
         Double fuelStatus = isClosedLoop ? 2.0 : 1.0;
-        return new MapSampleMeta(rpm, axis, null, trim, 0.0, ect, fuelStatus,
+        return new MapSampleMeta(rpm, axis, null, trim, 0.0,
+                null, null, null, ect, fuelStatus,
                 axis, axisSource, rpmCell, mapBin, cellKey, trim,
                 isClosedLoop, warmEnough, reject == null, reject);
     }
@@ -116,11 +127,14 @@ public final class MapSampleMeta {
     public static MapSampleMeta fromValues(Double rpm, Double map, Double load,
                                            Double stft, Double ltft, Double ect,
                                            Double fuelStatus) {
-        return fromValues(rpm, map, load, stft, ltft, ect, fuelStatus, false);
+        return fromValues(rpm, map, load, stft, ltft,
+                null, null, null, ect, fuelStatus, false);
     }
 
     private static MapSampleMeta fromValues(Double rpm, Double map, Double load,
-                                            Double stft, Double ltft, Double ect,
+                                            Double stft, Double ltft,
+                                            Double lambda, Double commandedLambda, Double throttle,
+                                            Double ect,
                                             Double fuelStatus, boolean synthesizedMap) {
         boolean closedLoop = fuelStatus != null && (fuelStatus.intValue() & 0x02) != 0;
         boolean warmEnough = ect != null && ect >= 80.0;
@@ -163,13 +177,15 @@ public final class MapSampleMeta {
         else if (!warmEnough) reject = "cold_engine";
         else if (!hasTrim) reject = "no_trim";
 
-        return new MapSampleMeta(rpm, map, load, stft, ltft, ect, fuelStatus,
+        return new MapSampleMeta(rpm, map, load, stft, ltft,
+                lambda, commandedLambda, throttle, ect, fuelStatus,
                 loadAxis, axisSource, rpmCell, mapBin, cellKey, trim,
                 closedLoop, warmEnough, reject == null, reject);
     }
 
     private static MapSampleMeta empty(String reason) {
-        return new MapSampleMeta(null, null, null, null, null, null, null,
+        return new MapSampleMeta(null, null, null, null, null,
+                null, null, null, null, null,
                 Double.NaN, AXIS_NONE, -1, -1f, "", 0.0,
                 false, false, false, reason);
     }
@@ -201,6 +217,15 @@ public final class MapSampleMeta {
         boolean hasTrim = stft != null || ltft != null;
         samples.add(new SensorSample("map_trim_total", "Map Trim Total (STFT+LTFT)",
                 hasTrim ? trimTotal : null, "%", hasTrim ? "ok" : "unavailable"));
+        samples.add(new SensorSample("map_lambda", "Map Measured Lambda",
+                finite(lambda) ? lambda : null, "", finite(lambda) ? "measured" : "unavailable"));
+        samples.add(new SensorSample("map_commanded_lambda", "Map Commanded Lambda",
+                finite(commandedLambda) ? commandedLambda : null, "",
+                finite(commandedLambda) ? "commanded" : "unavailable"));
+        Double lambdaError = finite(lambda) && finite(commandedLambda)
+                ? lambda - commandedLambda : null;
+        samples.add(new SensorSample("map_lambda_error", "Map Lambda Error",
+                lambdaError, "", lambdaError != null ? "ok" : "unavailable"));
         samples.add(new SensorSample("map_closed_loop", "Map Closed Loop",
                 fuelSystemStatus != null ? (closedLoop ? 1.0 : 0.0) : null,
                 "", fuelSystemStatus != null ? "ok" : "unavailable"));
@@ -228,10 +253,15 @@ public final class MapSampleMeta {
         return AXIS_MAP.equals(axisSource) || AXIS_SYNTH_MAP.equals(axisSource);
     }
 
+    private static boolean finite(Double value) {
+        return value != null && Double.isFinite(value);
+    }
+
     /**
      * 0=accepted, 1=no_rpm, 2=no_axis, 3=open_loop, 4=cold, 5=no_trim,
      * 6=debounce, 7=locked, 8=null_record, 9=no_coolant,
-     * 10=no_fuel_status, 99=other.
+     * 10=no_fuel_status, 11=axis_mismatch, 12=transient,
+     * 13=lambda_unstable, 14=trim_unstable, 99=other.
      */
     public static double rejectCode(String reason) {
         if (reason == null || reason.isEmpty()) return 0.0;
@@ -246,6 +276,10 @@ public final class MapSampleMeta {
             case "null_record": return 8.0;
             case "no_coolant": return 9.0;
             case "no_fuel_status": return 10.0;
+            case "axis_mismatch": return 11.0;
+            case "transient": return 12.0;
+            case "lambda_unstable": return 13.0;
+            case "trim_unstable": return 14.0;
             default: return 99.0;
         }
     }

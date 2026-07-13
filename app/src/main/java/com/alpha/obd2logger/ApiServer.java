@@ -530,8 +530,7 @@ public class ApiServer extends NanoHTTPD {
             for (Map.Entry<String, LiveMapStore.TrimData> entry : petrolMap.entrySet()) {
                 if (entry.getValue().getHitCount() >= minHits) {
                     JSONObject cell = new JSONObject();
-                    cell.put("avg", entry.getValue().getAverage());
-                    cell.put("hits", entry.getValue().getHitCount());
+                    putMapCellDiagnostics(cell, entry.getValue());
                     petrolJson.put(entry.getKey(), cell);
                 }
             }
@@ -541,8 +540,7 @@ public class ApiServer extends NanoHTTPD {
             for (Map.Entry<String, LiveMapStore.TrimData> entry : lpgMap.entrySet()) {
                 if (entry.getValue().getHitCount() >= minHits) {
                     JSONObject cell = new JSONObject();
-                    cell.put("avg", entry.getValue().getAverage());
-                    cell.put("hits", entry.getValue().getHitCount());
+                    putMapCellDiagnostics(cell, entry.getValue());
                     lpgJson.put(entry.getKey(), cell);
                 }
             }
@@ -551,7 +549,8 @@ public class ApiServer extends NanoHTTPD {
             JSONObject deviationJson = new JSONObject();
             JSONObject tuneAssistJson = new JSONObject();
 
-            for (String key : petrolMap.keySet()) {
+            boolean comparisonCompatible = store != null && store.isComparisonAxisCompatible();
+            if (comparisonCompatible) for (String key : petrolMap.keySet()) {
                 if (lpgMap.containsKey(key)) {
                     LiveMapStore.TrimData pData = petrolMap.get(key);
                     LiveMapStore.TrimData lData = lpgMap.get(key);
@@ -570,6 +569,10 @@ public class ApiServer extends NanoHTTPD {
                             obj.put("activeRpmCell", store.getActiveRpmCell());
                             obj.put("activeMapBin", store.getActiveMapBin());
                             obj.put("axisSource", store.getAxisSource());
+                            obj.put("petrolAxisSource", store.getPetrolAxisSource());
+                            obj.put("lpgAxisSource", store.getLpgAxisSource());
+                            obj.put("comparisonAxisCompatible", comparisonCompatible);
+                            obj.put("valueSemantics", "ECU_FUEL_CORRECTION_NOT_MEASURED_RICH_LEAN");
                             obj.put("totalAcceptedSamples", store.getTotalRecords());
                         }
 
@@ -606,19 +609,26 @@ public class ApiServer extends NanoHTTPD {
                             obj.put("activeRpmCell", snap.getActiveRpmCell());
                             obj.put("activeMapBin", snap.getActiveMapBin());
                             obj.put("axisSource", snap.getAxisSource());
+                            obj.put("petrolAxisSource", snap.getPetrolAxisSource());
+                            obj.put("lpgAxisSource", snap.getLpgAxisSource());
+                            obj.put("comparisonAxisCompatible", snap.isComparisonAxisCompatible());
+                            obj.put("valueSemantics", "ECU_FUEL_CORRECTION_NOT_MEASURED_RICH_LEAN");
                             obj.put("totalAcceptedSamples", snap.getTotalRecords());
                         }
 
                         String recommendation;
-            if (commonCells == 0) {
+            if (snap != null && !snap.getPetrolData().isEmpty() && !snap.getLpgData().isEmpty()
+                    && !snap.isComparisonAxisCompatible()) {
+                recommendation = "Comparison disabled: Petrol and LPG maps use different axis sources. Recollect both maps with the same source.";
+            } else if (commonCells == 0) {
                 recommendation = "Insufficient overlapping data. Please drive on both Petrol and LPG to collect comparison points.";
             } else {
                 if (avgAbsDev <= 5.0) {
                     recommendation = String.format(Locale.US, "Excellent calibration! Average deviation is %.1f%%, which is within the target +/-5%% range.", avgAbsDev);
                 } else if (maxDev > 10.0) {
-                    recommendation = String.format(Locale.US, "LPG is running significantly LEAN at %s (Deviation: +%.1f%%). Increase gas multiplier factors in high-load/RPM zones.", maxDevCell, maxDev);
+                    recommendation = String.format(Locale.US, "LPG requires significantly MORE FUEL at %s (trim deviation: +%.1f%%). Increase gas multiplier factors after confirming measured Lambda.", maxDevCell, maxDev);
                 } else if (maxDev < -10.0) {
-                    recommendation = String.format(Locale.US, "LPG is running significantly RICH at %s (Deviation: %.1f%%). Decrease gas multiplier factors in high-load/RPM zones.", maxDevCell, maxDev);
+                    recommendation = String.format(Locale.US, "LPG requires significantly LESS FUEL at %s (trim deviation: %.1f%%). Decrease gas multiplier factors after confirming measured Lambda.", maxDevCell, maxDev);
                 } else {
                     recommendation = String.format(Locale.US, "Moderate calibration. Average deviation is %.1f%%. Adjust multiplier map slightly to align trims.", avgAbsDev);
                 }
@@ -634,6 +644,10 @@ public class ApiServer extends NanoHTTPD {
 
     private Response handleMapExport() {
         LiveMapStore store = liveMapStore;
+        if (store != null && !store.isComparisonAxisCompatible()) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain",
+                    "Cannot export correction map: Petrol and LPG axis sources are missing or incompatible.");
+        }
         Map<String, LiveMapStore.TrimData> petrolMap = store != null ? store.getPetrolData() : java.util.Collections.emptyMap();
         Map<String, LiveMapStore.TrimData> lpgMap = store != null ? store.getLpgData() : java.util.Collections.emptyMap();
 
@@ -1111,6 +1125,7 @@ public class ApiServer extends NanoHTTPD {
      */
     private JSONObject buildZoneAnalysis(LiveMapStore.MapSnapshot snap) {
         JSONObject zones = new JSONObject();
+        if (snap == null || !snap.isComparisonAxisCompatible()) return zones;
         try {
             int[][] zoneRanges = {
                 {500, 1000},    // idle
@@ -1170,6 +1185,7 @@ public class ApiServer extends NanoHTTPD {
      */
     private JSONArray buildHotspots(LiveMapStore.MapSnapshot snap) {
         JSONArray hotspots = new JSONArray();
+        if (snap == null || !snap.isComparisonAxisCompatible()) return hotspots;
 
         // Collect, then sort by |deviation| descending
         java.util.List<JSONObject> list = new java.util.ArrayList<>();
@@ -1197,7 +1213,7 @@ public class ApiServer extends NanoHTTPD {
                 h.put("deviation", Math.round(dev * 10) / 10.0);
                 int minHits = Math.min(petrol.getHitCount(), lpg.getHitCount());
                 h.put("hits", minHits);
-                h.put("verdict", dev > 0 ? "LEAN" : "RICH");
+                h.put("verdict", dev > 0 ? "GAS_NEEDS_MORE_FUEL" : "GAS_NEEDS_LESS_FUEL");
                 h.put("suggestion", (dev > 0 ? "+" : "") + Math.round(dev) + "% gas multiplier");
                 h.put("confidence", minHits >= 20 ? "HIGH" : (minHits >= 10 ? "MEDIUM" : "LOW"));
                 list.add(h);
@@ -1221,5 +1237,25 @@ public class ApiServer extends NanoHTTPD {
             hotspots.put(list.get(i));
         }
         return hotspots;
+    }
+
+    private static void putMapCellDiagnostics(JSONObject cell, LiveMapStore.TrimData data)
+            throws JSONException {
+        // "avg" remains for API compatibility; correctionAvg documents the
+        // physical meaning for new clients and AI consumers.
+        cell.put("avg", data.getAverage());
+        cell.put("correctionAvg", data.getAverage());
+        cell.put("stftAvg", data.getAverageStft() != null
+                ? data.getAverageStft() : JSONObject.NULL);
+        cell.put("ltftAvg", data.getAverageLtft() != null
+                ? data.getAverageLtft() : JSONObject.NULL);
+        cell.put("lambdaAvg", data.getAverageLambda() != null
+                ? data.getAverageLambda() : JSONObject.NULL);
+        cell.put("lambdaStdDev", data.getLambdaCount() > 1
+                ? data.getLambdaStandardDeviation() : JSONObject.NULL);
+        cell.put("hits", data.getHitCount());
+        cell.put("confidence", data.getConfidence());
+        cell.put("locked", data.isLocked());
+        cell.put("meaning", "ECU_FUEL_CORRECTION");
     }
 }

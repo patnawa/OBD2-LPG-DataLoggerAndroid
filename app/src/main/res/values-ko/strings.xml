@@ -22,9 +22,9 @@
     <string name="smart_tuning_analysis">스마트 튜닝 분석</string>
     <string name="waiting_for_data">연료 보정 데이터를 대기 중...</string>
     <string name="live_fuel_map">실시간 연료 보정 맵</string>
-    <string name="map_axes">Y = T.inj ms (2.0-18.0), X = RPM (500-6500)</string>
+    <string name="map_axes" formatted="false">Y = MAP kPa (또는 대체 Load % 축), X = RPM (500-6500)</string>
     <string name="how_to_read_map_title">맵 읽는 법</string>
-    <string name="how_to_read_map_desc" formatted="false">총 연료 보정값 (STFT + LTFT)을 표시합니다\n🟢 초록 (±5%) = 완벽\n🔴 빨강 (음수) = 농후 (연료 감소)\n🔵 파랑 (양수) = 희박 (연료 추가)\n\n셀 잠금 및 히트 카운터:\n셀은 투명하게 시작합니다. 데이터를 수집하려면 안정적인 RPM/MAP을 유지하십시오. 히트할수록 투명도가 낮아집니다.\nx20 히트 = 잠김 (금색 테두리).\n\n편차 (DEVIATION): (LPG/CNG - 가솔린)을 나타냅니다.\n+는 LPG가 희박하다는 뜻이고, -는 LPG가 농후하다는 뜻입니다. 0%를 목표로 하십시오.\n\n튜닝 어시스트 (TUNE ASSIST): LPG 맵의 정확한 % 보정치를 보여줍니다 (CSV로 내보내기 가능).\n\n* 참고: 튜닝 어시스트나 편차를 사용하려면 가솔린과 LPG 데이터 모두를 먼저 수집해야 합니다!</string>
+    <string name="how_to_read_map_desc" formatted="false">ECU 연료 보정값 (STFT + LTFT)을 표시하며 실제 농후/희박 판정이 아닙니다.\n음수 = ECU가 연료를 줄임, 양수 = ECU가 연료를 늘림. 측정 Lambda (λ)는 안정된 셀에 표시됩니다. 안정 샘플이 3개 미만인 셀은 회색으로 유지됩니다.\n\n편차 = LPG Trim - 가솔린 Trim. +는 가스를 늘리고 -는 가스를 줄이는 방향입니다. 같은 축 소스의 맵만 비교하십시오.</string>
     <string name="petrol">가솔린</string>
     <string name="petrol_logs_header">가솔린 로그</string>
     <string name="lpg_logs_header">LPG/CNG 로그</string>

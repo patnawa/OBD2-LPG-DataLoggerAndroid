@@ -3596,25 +3596,40 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (fuelMapView != null) {
                 Double liveTrim = meta.stft != null || meta.ltft != null
                         ? meta.trimTotal : null;
+                Double acceptedValue = valueByKey(record, "map_accepted");
+                boolean sampleAccepted = acceptedValue != null
+                        ? acceptedValue >= 0.5 : meta.gatedEligible;
                 fuelMapView.setLiveSample(meta.rpmCell, meta.mapBin, liveTrim,
-                        mode, meta.gatedEligible);
+                        mode, sampleAccepted);
             }
-            updateMapGateStatus(meta);
+            updateMapGateStatus(meta, record);
         }
 
     /** Explain why a live preview is not yet safe to persist as a tune sample. */
-    private void updateMapGateStatus(MapSampleMeta meta) {
-        if (mapConfidenceText == null || meta == null || meta.gatedEligible) return;
+    private void updateMapGateStatus(MapSampleMeta meta, DataRecord record) {
+        if (mapConfidenceText == null || meta == null) return;
         int reasonRes;
-        switch (meta.rejectReason != null ? meta.rejectReason : "") {
-            case "no_fuel_status": reasonRes = R.string.map_wait_loop_pid; break;
-            case "open_loop": reasonRes = R.string.map_wait_closed_loop; break;
-            case "no_coolant": reasonRes = R.string.map_wait_coolant_pid; break;
-            case "cold_engine": reasonRes = R.string.map_wait_warm_engine; break;
-            case "no_trim": reasonRes = R.string.map_wait_fuel_trim; break;
-            case "no_rpm":
-            case "no_axis":
-            default: reasonRes = R.string.map_wait_engine_data; break;
+        if (!meta.gatedEligible) {
+            switch (meta.rejectReason != null ? meta.rejectReason : "") {
+                case "no_fuel_status": reasonRes = R.string.map_wait_loop_pid; break;
+                case "open_loop": reasonRes = R.string.map_wait_closed_loop; break;
+                case "no_coolant": reasonRes = R.string.map_wait_coolant_pid; break;
+                case "cold_engine": reasonRes = R.string.map_wait_warm_engine; break;
+                case "no_trim": reasonRes = R.string.map_wait_fuel_trim; break;
+                case "no_rpm":
+                case "no_axis":
+                default: reasonRes = R.string.map_wait_engine_data; break;
+            }
+        } else {
+            Double rejectCode = valueByKey(record, "map_reject_code");
+            int code = rejectCode != null ? (int) Math.round(rejectCode) : 0;
+            if (code == 11) reasonRes = R.string.map_axis_mismatch;
+            else if (code == 13) reasonRes = R.string.map_wait_lambda_stable;
+            else if (code == 6 || code == 12 || code == 14) {
+                reasonRes = R.string.map_wait_stable_sample;
+            } else {
+                return; // accepted or locked mature cell; retain coverage/confidence status
+            }
         }
         mapConfidenceText.setText(getString(R.string.map_live_preview,
                 getString(reasonRes)));
@@ -3640,6 +3655,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     snapshot.getOverlappingCellCount()));
         }
         if (mapConfidenceText != null) {
+            if (!snapshot.getPetrolData().isEmpty() && !snapshot.getLpgData().isEmpty()
+                    && !snapshot.isComparisonAxisCompatible()) {
+                mapConfidenceText.setText(getString(R.string.map_axis_mismatch));
+                mapConfidenceText.setTextColor(getColorCompat(R.color.danger));
+                return;
+            }
             float matureRatio = cellCount > 0 ? mature / (float) cellCount : 0f;
             String label;
             int color;

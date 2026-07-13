@@ -53,6 +53,7 @@ public class FuelMapView extends View {
     private final Map<String, LiveMapStore.TrimData> lpgData = new ConcurrentHashMap<>();
 
     private MapMode currentMode = MapMode.PETROL;
+    private boolean comparisonAxisCompatible = true;
 
     private int currentRpmCell = -1;
     private float currentMapCell = -1f;
@@ -114,6 +115,8 @@ public class FuelMapView extends View {
             this.petrolData.putAll(snapshot.getPetrolData());
             this.lpgData.clear();
             this.lpgData.putAll(snapshot.getLpgData());
+            this.comparisonAxisCompatible = snapshot.isComparisonAxisCompatible()
+                    || snapshot.getPetrolData().isEmpty() || snapshot.getLpgData().isEmpty();
             if (snapshot.getActiveRpmCell() >= 0) {
                 this.currentRpmCell = snapshot.getActiveRpmCell();
                 this.currentMapCell = snapshot.getActiveMapBin();
@@ -359,7 +362,7 @@ public class FuelMapView extends View {
                 } else if (currentMode == MapMode.LPG && lpg != null) {
                     displayTrim = lpg.getAverage();
                 } else if (currentMode == MapMode.DEVIATION || currentMode == MapMode.CORRECTION) {
-                    if (petrol != null && lpg != null) {
+                    if (comparisonAxisCompatible && petrol != null && lpg != null) {
                         displayTrim = lpg.getAverage() - petrol.getAverage();
                         hitCount = Math.min(petrol.getHitCount(), lpg.getHitCount());
                         isLocked = petrol.isLocked() && lpg.isLocked();
@@ -380,7 +383,8 @@ public class FuelMapView extends View {
                 cellRect.set(xLeft, yTop, xRight, yBottom);
 
                 if (displayTrim != null) {
-                    highlightPaint.setColor(getColorForTrim(displayTrim));
+                    highlightPaint.setColor(getColorForCorrection(displayTrim, hitCount,
+                            showingLivePreview));
                     
                     int alpha = Math.min(255, 40 + (int)((hitCount / (float)LiveMapStore.TrimData.MAX_HITS) * 215));
                     if (isLocked) alpha = 255;
@@ -403,9 +407,24 @@ public class FuelMapView extends View {
                     if (currentMode == MapMode.CORRECTION) {
                         textToDraw = (displayTrim > 0 ? "+" : "") + Math.round(displayTrim) + "%";
                     } else {
-                        textToDraw = String.format(Locale.US, "%.1f", displayTrim);
+                        textToDraw = String.format(Locale.US, "%+.1f", displayTrim);
                     }
-                    canvas.drawText(textToDraw, xLeft + cellWidth / 2, yBottom - cellHeight / 3, textPaint);
+
+                    Double cellLambda = activeData != null ? activeData.getAverageLambda() : null;
+                    boolean showLambda = (currentMode == MapMode.PETROL || currentMode == MapMode.LPG)
+                            && cellLambda != null && activeData.getLambdaCount() >= 3;
+                    float centerX = xLeft + cellWidth / 2;
+                    if (showLambda) {
+                        canvas.drawText(textToDraw, centerX, yTop + cellHeight * 0.48f, textPaint);
+                        float oldSize = textPaint.getTextSize();
+                        textPaint.setTextSize(7f * density);
+                        textPaint.setColor(0xFFE2E8F0);
+                        canvas.drawText(String.format(Locale.US, "λ%.3f", cellLambda),
+                                centerX, yTop + cellHeight * 0.82f, textPaint);
+                        textPaint.setTextSize(oldSize);
+                    } else {
+                        canvas.drawText(textToDraw, centerX, yBottom - cellHeight / 3, textPaint);
+                    }
                     textPaint.setColor(oldColor);
                     textPaint.setTextAlign(oldAlign);
                     
@@ -470,18 +489,22 @@ public class FuelMapView extends View {
         }
     }
 
-    private int getColorForTrim(double trim) {
-        if (trim < -10) return 0xFFEF4444; // Red (Very Rich)
-        if (trim < -5) return 0xFFF59E0B;  // Orange (Rich)
-        if (trim <= 5) return 0xFF22C55E;  // Green (Perfect)
-        if (trim <= 10) return 0xFF0EA5E9; // Light Blue (Lean)
-        return 0xFF3B82F6;                 // Blue (Very Lean)
+    private int getColorForCorrection(double correction, int hits, boolean livePreview) {
+        // One/two-hit cells are provisional. Keep them neutral so a transient
+        // cannot visually masquerade as a diagnosed rich/lean condition.
+        if (livePreview || hits < 3) return 0xFF64748B;
+        if (correction < -10) return 0xFFEF4444; // ECU removing fuel: high
+        if (correction < -5) return 0xFFF59E0B;  // ECU removing fuel
+        if (correction <= 5) return 0xFF22C55E;  // Low learned correction
+        if (correction <= 10) return 0xFF0EA5E9; // ECU adding fuel
+        return 0xFF3B82F6;                       // ECU adding fuel: high
     }
 
     /**
      * Checks if there is any overlapping Petrol+LPG data to produce a correction value.
      */
     public boolean hasAnyCorrection() {
+        if (!comparisonAxisCompatible) return false;
         for (String key : petrolData.keySet()) {
             if (lpgData.containsKey(key)) {
                 return true;

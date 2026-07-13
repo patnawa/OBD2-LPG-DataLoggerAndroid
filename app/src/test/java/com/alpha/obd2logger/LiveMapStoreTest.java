@@ -131,6 +131,117 @@ public class LiveMapStoreTest {
     }
 
     @Test
+    public void acceptedCellKeepsCorrectionComponentsAndMeasuredLambdaSeparate() {
+        LiveMapStore store = new LiveMapStore();
+        MapSampleMeta meta = mapMeta(1500, 95, -1.5, 8.5, 0.9998, 1.0, 34.0, "ok");
+
+        store.pushFromMeta(meta, FuelMode.E20); // debounce prime
+        LiveMapStore.PushResult result = store.pushFromMeta(meta, FuelMode.E20);
+
+        assertTrue(result.accepted);
+        LiveMapStore.TrimData cell = store.getPetrolData().get(meta.cellKey);
+        assertNotNull(cell);
+        assertEquals(7.0, cell.getAverage(), 0.0001);
+        assertEquals(-1.5, cell.getAverageStft(), 0.0001);
+        assertEquals(8.5, cell.getAverageLtft(), 0.0001);
+        assertEquals(0.9998, cell.getAverageLambda(), 0.0001);
+        assertEquals(1, cell.getLambdaCount());
+    }
+
+    @Test
+    public void lambdaSpikeIsRejectedInsteadOfLearningFalseMixtureCondition() {
+        LiveMapStore store = new LiveMapStore();
+        MapSampleMeta spike = mapMeta(1500, 95, 0.0, 7.0, 1.2329, 1.0, 30.0, "ok");
+
+        LiveMapStore.PushResult result = store.pushFromMeta(spike, FuelMode.E20);
+
+        assertFalse(result.accepted);
+        assertEquals("lambda_unstable", result.reason);
+        assertTrue(store.getPetrolData().isEmpty());
+        assertEquals(13.0, MapSampleMeta.rejectCode(result.reason), 0.0);
+    }
+
+    @Test
+    public void oscillatingShortTermTrimIsRejectedAsUnstable() {
+        LiveMapStore store = new LiveMapStore();
+        MapSampleMeta low = mapMeta(1500, 95, -10.0, 5.0, 1.0, 1.0, 30.0, "ok");
+        MapSampleMeta high = mapMeta(1500, 95, 10.0, 5.0, 1.0, 1.0, 30.0, "ok");
+        store.pushFromMeta(low, FuelMode.E20);
+        assertTrue(store.pushFromMeta(high, FuelMode.E20).accepted);
+
+        LiveMapStore.PushResult result = store.pushFromMeta(low, FuelMode.E20);
+
+        assertFalse(result.accepted);
+        assertEquals("trim_unstable", result.reason);
+        assertEquals(14.0, MapSampleMeta.rejectCode(result.reason), 0.0);
+        assertEquals(1, store.getPetrolData().get(low.cellKey).getHitCount());
+    }
+
+    @Test
+    public void rapidMovementInsideOneCellIsRejectedAsTransient() {
+        LiveMapStore store = new LiveMapStore();
+        MapSampleMeta first = mapMeta(1000, 95, 0.0, 5.0, 1.0, 1.0, 20.0, "ok");
+        MapSampleMeta jump = mapMeta(1499, 95, 0.0, 5.0, 1.0, 1.0, 20.0, "ok");
+
+        store.pushFromMeta(first, FuelMode.PETROL);
+        LiveMapStore.PushResult result = store.pushFromMeta(jump, FuelMode.PETROL);
+
+        assertFalse(result.accepted);
+        assertEquals("transient", result.reason);
+        assertTrue(store.getPetrolData().isEmpty());
+    }
+
+    @Test
+    public void comparisonIsDisabledWhenFuelMapsUseDifferentAxisSources() {
+        LiveMapStore store = new LiveMapStore();
+        MapSampleMeta petrol = mapMeta(2000, 60, 0.0, 3.0, 1.0, 1.0, 25.0, "ok");
+        MapSampleMeta gasSynth = mapMeta(2000, 60, 0.0, 5.0, 1.0, 1.0, 25.0, "synth");
+
+        store.pushFromMeta(petrol, FuelMode.PETROL);
+        store.pushFromMeta(petrol, FuelMode.PETROL);
+        store.clear(FuelMode.LPG);
+        store.pushFromMeta(gasSynth, FuelMode.LPG);
+        store.pushFromMeta(gasSynth, FuelMode.LPG);
+
+        LiveMapStore.MapSnapshot snapshot = store.snapshot();
+        assertFalse(snapshot.isComparisonAxisCompatible());
+        assertEquals(MapSampleMeta.AXIS_MAP, snapshot.getPetrolAxisSource());
+        assertEquals(MapSampleMeta.AXIS_SYNTH_MAP, snapshot.getLpgAxisSource());
+        assertEquals(0, snapshot.getOverlappingCellCount());
+        assertFalse(store.hasAnyCorrection());
+    }
+
+    @Test
+    public void oneFuelMapCannotSilentlyMixMeasuredAndSyntheticAxes() {
+        LiveMapStore store = new LiveMapStore();
+        MapSampleMeta measured = mapMeta(2000, 60, 0.0, 3.0, 1.0, 1.0, 25.0, "ok");
+        MapSampleMeta synthetic = mapMeta(2000, 60, 0.0, 3.0, 1.0, 1.0, 25.0, "synth");
+        store.pushFromMeta(measured, FuelMode.PETROL);
+        store.pushFromMeta(measured, FuelMode.PETROL);
+
+        LiveMapStore.PushResult result = store.pushFromMeta(synthetic, FuelMode.PETROL);
+
+        assertFalse(result.accepted);
+        assertEquals("axis_mismatch", result.reason);
+        assertEquals(1, store.getPetrolData().get(measured.cellKey).getHitCount());
+    }
+
+    @Test
+    public void fuelChangeoverCannotReusePreviousFuelDebounceHistory() {
+        LiveMapStore store = new LiveMapStore();
+        MapSampleMeta stable = mapMeta(2000, 60, 0.0, 4.0, 1.0, 1.0, 25.0, "ok");
+        store.pushFromMeta(stable, FuelMode.PETROL);
+        assertTrue(store.pushFromMeta(stable, FuelMode.PETROL).accepted);
+
+        LiveMapStore.PushResult firstGasSample = store.pushFromMeta(stable, FuelMode.LPG);
+
+        assertFalse(firstGasSample.accepted);
+        assertEquals("debounce", firstGasSample.reason);
+        assertTrue(store.getLpgData().isEmpty());
+        assertTrue(store.pushFromMeta(stable, FuelMode.LPG).accepted);
+    }
+
+    @Test
     public void synthesizedMapIsExplicitAndMissingSafetySignalsAreRejected() {
         java.util.List<SensorSample> samples = new java.util.ArrayList<>();
         samples.add(new SensorSample("01_0C", "Engine RPM", 2000.0, "rpm", "ok"));
@@ -216,5 +327,21 @@ public class LiveMapStoreTest {
         LiveMapStore.PushResult accepted = store.pushFromMeta(meta, FuelMode.PETROL);
         assertTrue(accepted.accepted);
         assertFalse(store.getPetrolData().isEmpty());
+    }
+
+    private static MapSampleMeta mapMeta(double rpm, double map, double stft, double ltft,
+                                         double lambda, double commandedLambda, double throttle,
+                                         String mapStatus) {
+        java.util.List<SensorSample> samples = new java.util.ArrayList<>();
+        samples.add(new SensorSample("01_0C", "Engine RPM", rpm, "rpm", "ok"));
+        samples.add(new SensorSample("01_0B", "MAP", map, "kPa", mapStatus));
+        samples.add(new SensorSample("01_06", "STFT", stft, "%", "ok"));
+        samples.add(new SensorSample("01_07", "LTFT", ltft, "%", "ok"));
+        samples.add(new SensorSample("01_34", "Lambda", lambda, "", "ok"));
+        samples.add(new SensorSample("01_44", "Commanded Lambda", commandedLambda, "", "ok"));
+        samples.add(new SensorSample("01_11", "Throttle", throttle, "%", "ok"));
+        samples.add(new SensorSample("01_05", "ECT", 88.0, "C", "ok"));
+        samples.add(new SensorSample("01_03", "FuelStatus", 2.0, "", "ok"));
+        return MapSampleMeta.from(new DataRecord("t", 1.0, "petrol", "Test", "VIN", samples));
     }
 }
