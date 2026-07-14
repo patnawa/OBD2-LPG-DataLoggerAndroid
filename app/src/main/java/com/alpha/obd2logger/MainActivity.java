@@ -23,6 +23,7 @@ import android.os.SystemClock;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
@@ -72,6 +73,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private TextView headerStatus, headerVin, headerVehicle, headerFuelMode, headerApiStatus;
     private TextView txtHomeVin, txtHomeVoltage, txtHomeAdapter, txtHomeProtocol, txtHomeRpm, txtHomeSpeed, txtHomeCoolant;
     private ImageView cockpitAdapterIcon;
+    private View cockpitAdapterIconBg;
     private View cockpitSignalBars;
     private View signalBar1, signalBar2, signalBar3, signalBar4;
     private TextView cockpitAdapterVoltage;
@@ -643,6 +645,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtHomeAdapter = findViewById(R.id.cockpitAdapter);
         // Adapter flashcard extras
         cockpitAdapterIcon = findViewById(R.id.cockpitAdapterIcon);
+        cockpitAdapterIconBg = findViewById(R.id.cockpitAdapterIconBg);
         cockpitSignalBars = findViewById(R.id.cockpitSignalBars);
         signalBar1 = findViewById(R.id.signalBar1);
         signalBar2 = findViewById(R.id.signalBar2);
@@ -4598,28 +4601,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     /** Updates the adapter flashcard on the Home screen with transport icon, signal bars, and voltage. */
     private void updateAdapterFlashcard(int state, String deviceName) {
+        String transport = resolveAdapterTransportLabel(state, deviceName);
+        int iconRes = transportIconForLabel(transport);
+        int tintColor = state == 2 ? R.color.primary : (state == 1 ? R.color.warning : R.color.muted);
+        int bgColor = state == 2
+                ? getColorCompat(R.color.colorPrimaryContainer)
+                : (state == 1 ? getColorCompat(R.color.colorSecondaryContainer) : getColorCompat(R.color.surface2));
+
         if (cockpitAdapterIcon != null) {
-            int iconRes = R.drawable.ic_usb; // default
-            int tintColor = R.color.muted;
-            String transport = DriverFactory.getLastResolvedTransport();
-            if (transport != null) {
-                String tl = transport.toLowerCase(Locale.ROOT);
-                if (tl.contains("wi-fi") || tl.contains("wifi")) {
-                    iconRes = R.drawable.ic_wifi;
-                    tintColor = state == 2 ? R.color.accent : R.color.muted;
-                } else if (tl.contains("bluetooth") || tl.contains("ble")) {
-                    iconRes = R.drawable.ic_bluetooth;
-                    tintColor = state == 2 ? R.color.accent : R.color.muted;
-                } else if (tl.contains("usb")) {
-                    iconRes = R.drawable.ic_usb;
-                    tintColor = state == 2 ? R.color.accent : R.color.muted;
-                } else if (tl.contains("simulation")) {
-                    iconRes = R.drawable.ic_speed;
-                    tintColor = state == 2 ? R.color.primary : R.color.muted;
-                }
-            }
             cockpitAdapterIcon.setImageResource(iconRes);
             cockpitAdapterIcon.setImageTintList(android.content.res.ColorStateList.valueOf(getColorCompat(tintColor)));
+            if (state == 1) {
+                cockpitAdapterIcon.startAnimation(AnimationUtils.loadAnimation(this, R.anim.pulse_connecting));
+            } else {
+                cockpitAdapterIcon.clearAnimation();
+            }
+        }
+        if (cockpitAdapterIconBg != null) {
+            cockpitAdapterIconBg.setBackgroundColor(bgColor);
         }
 
         // Signal bars: show 4 bars when connected, hide when not
@@ -4654,6 +4653,63 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 cockpitAdapterVoltage.setVisibility(View.GONE);
             }
         }
+    }
+
+    /** Resolve the transport label used to pick the flashcard icon. */
+    private String resolveAdapterTransportLabel(int state, String deviceName) {
+        String transport = DriverFactory.getLastResolvedTransport();
+        if (transport != null && isUsableTransportLabel(transport)) {
+            return transport;
+        }
+        LoggerConfig cfg = activeInProcessConfig;
+        if (cfg == null && transportSpinner != null) {
+            cfg = readConfigFromUi();
+        }
+        if (cfg != null && cfg.transportMode != null) {
+            switch (cfg.transportMode) {
+                case WIFI:
+                    return "Wi-Fi TCP";
+                case USB:
+                    return "USB Serial";
+                case SERIAL:
+                    return "Bluetooth SPP";
+                case BLE:
+                    return "Bluetooth BLE";
+                case SIM:
+                    return "Simulation";
+                case AUTO:
+                    return "Auto";
+                default:
+                    break;
+            }
+        }
+        if (deviceName != null) {
+            String dl = deviceName.toLowerCase(Locale.ROOT);
+            if (dl.contains("wifi") || dl.contains("wi-fi")) return "Wi-Fi TCP";
+            if (dl.contains("ble")) return "Bluetooth BLE";
+            if (dl.contains("bluetooth")) return "Bluetooth SPP";
+            if (dl.contains("usb")) return "USB Serial";
+            if (dl.contains("sim")) return "Simulation";
+            if (dl.contains("auto")) return "Auto";
+        }
+        return "Auto";
+    }
+
+    private static boolean isUsableTransportLabel(String transport) {
+        String tl = transport.toLowerCase(Locale.ROOT);
+        return !tl.contains("not connected")
+                && !tl.contains("auto detection failed")
+                && !tl.contains("failed");
+    }
+
+    private int transportIconForLabel(String transport) {
+        if (transport == null) return R.drawable.ic_auto;
+        String tl = transport.toLowerCase(Locale.ROOT);
+        if (tl.contains("wi-fi") || tl.contains("wifi")) return R.drawable.ic_wifi;
+        if (tl.contains("bluetooth") || tl.contains("ble")) return R.drawable.ic_bluetooth;
+        if (tl.contains("usb")) return R.drawable.ic_usb;
+        if (tl.contains("simulation") || tl.contains("sim")) return R.drawable.ic_speed;
+        return R.drawable.ic_auto;
     }
 
     private void updateDtcBadge(int storedCount, int pendingCount, int permanentCount) {

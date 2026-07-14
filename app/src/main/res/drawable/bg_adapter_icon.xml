@@ -2,6 +2,6 @@
 <!-- Rounded square icon background for adapter flashcard transport icon -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#1A3B82F6" />
+    <solid android:color="@color/colorPrimaryContainer" />
     <corners android:radius="12dp" />
 </shape>
