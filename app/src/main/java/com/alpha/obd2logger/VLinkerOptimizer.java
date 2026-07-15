@@ -169,7 +169,7 @@ public final class VLinkerOptimizer {
         // vLinker FS has much faster response time than generic clones.
         // ELM327 AT commands must NOT contain internal spaces in the parameter
         // and must use the correct mnemonic. Use the no-space form to match
-        // initializeElm327() (ATAT2, ATST19) and avoid any firmware that does
+        // initializeElm327() (ATAT1, ATST32) and avoid any firmware that does
         // not strip embedded spaces.
         //
         // ATAT1 = adaptive timing mode 1 (auto-adjusting, good for most vehicles)

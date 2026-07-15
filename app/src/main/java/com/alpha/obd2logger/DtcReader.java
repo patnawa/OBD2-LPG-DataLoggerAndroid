@@ -629,14 +629,17 @@ public final class DtcReader {
             ));
         }
 
-        // Always restore to auto-detect and re-probe so the ELM327 re-locks
-        // onto the correct protocol before PID detection runs. Without this,
-        // the first PID query after the DTC scan can get an unreliable response
-        // because the adapter may still be on a non-default protocol.
-        driver.sendCommandRaw("ATSP0");
-        try { Thread.sleep(150); } catch (InterruptedException ignored) {}
-        // Send a throwaway 0100 probe to trigger auto-detect re-lock
-        driver.sendCommandRaw("0100");
+        // Restore the exact live-polling state. In particular, do not leave
+        // ATCFC0 behind and do not overwrite an explicitly selected protocol
+        // with ATSP0. Both caused "connected but empty" data after scans.
+        if (driver instanceof ElmDriver) {
+            ((ElmDriver) driver).restorePollingState();
+        } else {
+            driver.sendCommandRaw("ATCFC1");
+            driver.sendCommandRaw("ATH0");
+            driver.sendCommandRaw("ATSP0");
+            driver.sendCommandRaw("0100");
+        }
         try { Thread.sleep(200); } catch (InterruptedException ignored) {}
 
         int totalDtcCount = allStored.size() + allPending.size() + allPermanent.size();
@@ -758,8 +761,8 @@ public final class DtcReader {
 
             } finally {
             driver.sendCommandRaw("ATH0");
-            // Restore flow control to default (off — let ELM327 handle normally)
-            driver.sendCommandRaw("ATCFC0");
+            // Restore automatic ISO-TP flow control for normal PID polling.
+            driver.sendCommandRaw("ATCFC1");
         }
 
         // Build module list

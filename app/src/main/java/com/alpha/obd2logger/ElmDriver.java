@@ -98,13 +98,28 @@ public abstract class ElmDriver extends BaseDriver {
             sendCommand("ATS0"); // Spaces off (compact response)
             sendCommand("ATH0"); // Headers off — critical!
             sendCommand("ATAL"); // Allow Long messages
-            sendCommand("ATAT2"); // Aggressive adaptive timing
-            sendCommand("ATST19"); // 100ms timeout
+            // Start conservatively. A 100 ms ELM timeout is too short for a
+            // number of diesel PCMs (including some Ford powertrains), and can
+            // make the adapter appear connected while every OBD request returns
+            // NO DATA. Device-specific optimization may shorten this later.
+            sendCommand("ATAT1"); // Adaptive timing, conservative first lock
+            sendCommand("ATST32"); // 200ms ECU response timeout
             sendCommand("ATSP" + config.obdProtocol.getElmValue());
 
             // Detect vLinker device and apply firmware-specific optimizations
             vlinkerType = VLinkerOptimizer.detectDevice(this);
             VLinkerOptimizer.applyOptimizations(this, vlinkerType, config);
+
+            // A working AT command channel only proves that Android reached the
+            // adapter. Require a positive Mode 01 response before reporting a
+            // vehicle connection; otherwise the UI can say "Connected" forever
+            // while all gauges remain empty.
+            if (!probeVehicle()) {
+                android.util.Log.e("OBD2Logger",
+                        "ELM327 adapter responded, but vehicle ECU did not answer PID 0100");
+                disconnect();
+                return false;
+            }
 
             return true;
         } catch (Exception e) {
@@ -129,6 +144,45 @@ public abstract class ElmDriver extends BaseDriver {
      */
     public String sendCommandRaw(String command) {
         return sendCommand(command);
+    }
+
+    /** Restore normal PID polling after a DTC/deep-bus scan. */
+    void restorePollingState() {
+        // ATD clears receive filters, custom headers, programmable-bus state,
+        // and scan-only options without performing the long hardware reset.
+        sendCommand("ATD");
+        sendCommand("ATE0");
+        sendCommand("ATL0");
+        sendCommand("ATS0");
+        sendCommand("ATH0");
+        sendCommand("ATAL");
+        sendCommand("ATCFC1");
+        sendCommand("ATAT1");
+        sendCommand("ATST32");
+        sendCommand("ATSP" + config.obdProtocol.getElmValue());
+
+        // Re-apply safe performance settings for known vLinker hardware.
+        VLinkerOptimizer.applyOptimizations(this, vlinkerType, config);
+        probeVehicle();
+    }
+
+    private boolean probeVehicle() {
+        String response = sendCommand("0100");
+        if (PidAvailabilityChecker.hasPositiveResponse(response, "4100")) {
+            return true;
+        }
+
+        // Auto discovery may take longer on the first request than it does
+        // after a protocol is locked. Retry once with the maximum ELM timeout.
+        sendCommand("ATAT0");
+        sendCommand("ATSTFF");
+        response = sendCommand("0100");
+        boolean answered = PidAvailabilityChecker.hasPositiveResponse(response, "4100");
+
+        // Keep reconnect attempts deterministic even when the probe failed.
+        sendCommand("ATAT1");
+        sendCommand("ATST32");
+        return answered;
     }
 
     protected Double queryPidResponse(PIDDefinition pidDef, String response) {

@@ -106,7 +106,7 @@ public class VLinkerOptimizerTest {
     @Test
     public void atCommandsHaveNoInternalSpaces() {
         // ELM327 AT commands are sent without internal spaces (matching
-        // initializeElm327's ATAT2/ATST19 style). Verify the optimizer's command
+        // initializeElm327's conservative ATAT1/ATST32 style). Verify the optimizer's command
         // stream contains no space-separated AT mnemonics that older code used
         // (e.g. "AT AT 1", "AT ST 32", "AT NL").
         RecordingElmDriver drv = run(VLinkerOptimizer.DeviceType.VLINKER_FS_USB);
