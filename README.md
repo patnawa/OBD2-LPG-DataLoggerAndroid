@@ -1,6 +1,6 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.28.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
+**Version 3.29.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
 

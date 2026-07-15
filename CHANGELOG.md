@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.29.0] - Unreleased — Development
+
+_Current development version. Upcoming changes will be listed here before release._
+
 ## [3.28.0] - 2026-07-15 — Dashboard Readability & Air-Density Cleanup
 
 ### Dashboard tab
