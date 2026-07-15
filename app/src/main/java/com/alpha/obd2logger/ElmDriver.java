@@ -167,22 +167,35 @@ public abstract class ElmDriver extends BaseDriver {
     }
 
     private boolean probeVehicle() {
-        String response = sendCommand("0100");
-        if (PidAvailabilityChecker.hasPositiveResponse(response, "4100")) {
-            return true;
+        // ATSP0 may need to try every supported bus before it finds the car.
+        // ATSTFF only extends the ELM's ECU wait; each transport also enforces
+        // config.connectionTimeoutMs, whose 2 s default previously cut off the
+        // SEARCHING response on slow Ford diesel and legacy K-line vehicles.
+        int normalTimeoutMs = config.connectionTimeoutMs;
+        if (config.obdProtocol == ObdProtocol.AUTO) {
+            config.connectionTimeoutMs = Math.max(normalTimeoutMs, 12_000);
         }
 
-        // Auto discovery may take longer on the first request than it does
-        // after a protocol is locked. Retry once with the maximum ELM timeout.
-        sendCommand("ATAT0");
-        sendCommand("ATSTFF");
-        response = sendCommand("0100");
-        boolean answered = PidAvailabilityChecker.hasPositiveResponse(response, "4100");
+        try {
+            String response = sendCommand("0100");
+            if (PidAvailabilityChecker.hasPositiveResponse(response, "4100")) {
+                return true;
+            }
 
-        // Keep reconnect attempts deterministic even when the probe failed.
-        sendCommand("ATAT1");
-        sendCommand("ATST32");
-        return answered;
+            // Retry once with the maximum ELM timeout. The longer Android-side
+            // timeout above is equally important: otherwise this response is
+            // abandoned before auto protocol discovery can finish.
+            sendCommand("ATAT0");
+            sendCommand("ATSTFF");
+            response = sendCommand("0100");
+            return PidAvailabilityChecker.hasPositiveResponse(response, "4100");
+        } finally {
+            // Restore the Android-side timeout before issuing cleanup commands;
+            // a missing ELM prompt must not make each cleanup wait 12 seconds.
+            config.connectionTimeoutMs = normalTimeoutMs;
+            sendCommand("ATAT1");
+            sendCommand("ATST32");
+        }
     }
 
     protected Double queryPidResponse(PIDDefinition pidDef, String response) {

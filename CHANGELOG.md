@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### OBD connection reliability
+- Fixed AUTO protocol discovery being cut off by the Android transport's 2-second command timeout while ELM327 was still returning `SEARCHING...`; discovery now receives a temporary 12-second budget and restores the configured steady-state timeout afterward. This improves connection reliability for slow Ford diesel ECUs and legacy K-Line vehicles.
+- Restored the configured OBD protocol, automatic ISO-TP flow control, headers, and conservative timing after DTC/deep-bus scans so Ford live-data polling does not remain connected with empty gauges.
+
 ## [3.24.2] - 2026-07-13 — Flashcard Icons Fixed + Map Layout Shift Fixed
 
 - Versioned the program as `3.24.2` (`versionCode 125`).
