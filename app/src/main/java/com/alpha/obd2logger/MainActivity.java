@@ -307,6 +307,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private String lastBackgroundError = null;
 
     private androidx.activity.result.ActivityResultLauncher<Intent> folderPickerLauncher;
+    private androidx.activity.result.ActivityResultLauncher<Intent> wizardLauncher;
+    // Set true once the on-failure transport picker has been offered for the
+    // current Start attempt, so a failure cascade cannot reopen it repeatedly.
+    private boolean transportPickerOfferedThisAttempt = false;
     private boolean pendingStartLoggingAfterFolderSelect = false;
     private static volatile boolean isConnecting = false;
     private static volatile boolean pendingStartLoggingAfterPermission = false;
@@ -356,11 +360,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     this, usbPermissionReceiver, new IntentFilter(ACTION_USB_PERMISSION),
                     androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED);
 
-            // First-run: guide the user through adapter connection before the
-            // main UI. Pure UI; writes transport prefs, touches no map logic.
-            if (ConnectionWizardActivity.shouldShow(this)) {
-                startActivity(new Intent(this, ConnectionWizardActivity.class));
-            }
+            // No mandatory first-run screen: AUTO is the default and covers the
+            // common case. The transport picker is shown on demand only when a
+            // connect attempt fails (see maybeOfferTransportPicker()). When it
+            // returns we re-apply the chosen transport, which restoreConfigPrefs()
+            // could not have known when it ran at startup.
+            wizardLauncher = registerForActivityResult(
+                    new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (transportSpinner != null && transportSpinner.getAdapter() != null) {
+                            int pos = getSharedPreferences("OBD2Prefs", MODE_PRIVATE)
+                                    .getInt("pref_transport_position", transportSpinnerToPosition(TransportMode.AUTO));
+                            if (pos >= 0 && pos < transportSpinner.getAdapter().getCount()) {
+                                transportSpinner.setSelection(pos);
+                            }
+                        }
+                    });
 
             LoggerService.dtcClearTrigger = () -> {
                 // Remote API requests must still require the same physical-user
@@ -579,6 +594,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (pendingBackgroundConfig == null) {
                 renderBackgroundLoggingState(BackgroundUiState.OFF, 0, null);
             }
+        }
+    }
+
+    /**
+     * Shows the transport picker after a failed connect so the user can switch
+     * adapters (and see the Wi‑Fi/BT/USB readiness hint) instead of hunting
+     * through Settings. Fires at most once per Start attempt; when the picker
+     * returns, the wizardLauncher callback re-applies the chosen transport.
+     */
+    private void maybeOfferTransportPicker() {
+        if (transportPickerOfferedThisAttempt || wizardLauncher == null || isFinishing()) return;
+        transportPickerOfferedThisAttempt = true;
+        try {
+            wizardLauncher.launch(new Intent(this, ConnectionWizardActivity.class));
+        } catch (Exception ignored) {
+            // Activity unavailable (e.g. mid-teardown) — skip silently.
         }
     }
 
@@ -3060,6 +3091,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private boolean startLogging() {
         if (!ensureTransportPermissions()) return false;
+        // Fresh attempt: allow the transport picker to be offered again if this
+        // connect fails.
+        transportPickerOfferedThisAttempt = false;
         isConnecting = true;
 
         LoggerConfig config = readConfigFromUi();
@@ -3372,6 +3406,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         active.setFabState(false);
                     }
                     active.setConfigUiEnabled(true);
+                    // Connect failed — offer the transport picker so the user can
+                    // switch adapters and see why (Wi‑Fi/BT/USB readiness), then
+                    // tap Start again. Replaces the old mandatory first-run screen.
+                    active.maybeOfferTransportPicker();
                 }
             });
             return;
@@ -8677,7 +8715,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void restoreConfigPrefs() {
         android.content.SharedPreferences prefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
         if (transportSpinner != null) {
-            int pos = prefs.getInt("pref_transport_position", 0);
+            int pos = prefs.getInt("pref_transport_position", transportSpinnerToPosition(TransportMode.AUTO));
             if (pos >= 0 && pos < transportSpinner.getAdapter().getCount()) {
                 transportSpinner.setSelection(pos);
             }

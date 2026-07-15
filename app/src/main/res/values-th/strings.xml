@@ -28,6 +28,16 @@
     <string name="wizard_opt_sim_desc">ไม่ต้องใช้อุปกรณ์ณ์ — ทดสอบทุกฟังก์ชัน</string>
     <string name="wizard_continue">ดำเนินการต่อ</string>
     <string name="wizard_skip">ตั้งค่าในภายหลัง</string>
+    <string name="wizard_sim_badge">โหมดสาธิต</string>
+    <string name="wizard_selected">เลือกอยู่</string>
+    <string name="wizard_ready_wifi_ok">✓ โทรศัพท์เชื่อมต่อ Wi‑Fi อยู่</string>
+    <string name="wizard_ready_wifi_no">⚠ ยังไม่ได้ต่อ Wi‑Fi — เชื่อมต่อเครือข่ายของอแดปเตอร์ก่อน</string>
+    <string name="wizard_ready_usb_ok">✓ พบอุปกรณ์ USB</string>
+    <string name="wizard_ready_usb_no">⚠ ไม่พบอุปกรณ์ USB — เสียบอแดปเตอร์เข้าสาย OTG</string>
+    <string name="wizard_ready_bt_ok">✓ เปิดบลูทูธอยู่</string>
+    <string name="wizard_ready_bt_no">⚠ บลูทูธปิดอยู่ — เปิดแล้วจับคู่อแดปเตอร์</string>
+    <string name="wizard_ready_auto">ตรวจหาอัตโนมัติจะลอง USB, Wi‑Fi และบลูทูธตามลำดับ</string>
+    <string name="wizard_ready_sim">ไม่ต้องใช้อุปกรณ์ — เหมาะสำหรับทดลองใช้แอป</string>
 
 
     <string name="tab_dashboard">หน้าปัด</string>

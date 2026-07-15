@@ -27,6 +27,16 @@
     <string name="wizard_opt_sim_desc">No hardware — test every feature</string>
     <string name="wizard_continue">Continue</string>
     <string name="wizard_skip">Set up later</string>
+    <string name="wizard_sim_badge">Demo only</string>
+    <string name="wizard_selected">selected</string>
+    <string name="wizard_ready_wifi_ok">✓ Phone is on a Wi‑Fi network</string>
+    <string name="wizard_ready_wifi_no">⚠ Not on Wi‑Fi — join your adapter\'s network first</string>
+    <string name="wizard_ready_usb_ok">✓ USB device detected</string>
+    <string name="wizard_ready_usb_no">⚠ No USB device — plug the adapter into the OTG cable</string>
+    <string name="wizard_ready_bt_ok">✓ Bluetooth is on</string>
+    <string name="wizard_ready_bt_no">⚠ Bluetooth is off — turn it on and pair your adapter</string>
+    <string name="wizard_ready_auto">Auto‑detect will try USB, Wi‑Fi and Bluetooth in turn</string>
+    <string name="wizard_ready_sim">No hardware needed — great for trying the app</string>
 
 
     <string name="tab_dashboard">Dashboard</string>

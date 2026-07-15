@@ -241,7 +241,8 @@
                     android:layout_width="26dp"
                     android:layout_height="26dp"
                     android:layout_marginEnd="14dp"
-                    android:src="@drawable/ic_bluetooth"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_bluetooth_le"
                     app:tint="@color/primary" />
 
                 <LinearLayout
@@ -363,8 +364,9 @@
                     android:layout_width="26dp"
                     android:layout_height="26dp"
                     android:layout_marginEnd="14dp"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_play"
-                    app:tint="@color/primary" />
+                    app:tint="@color/muted" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -376,8 +378,23 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/wizard_opt_sim"
-                        android:textColor="@color/text"
+                        android:textColor="@color/muted"
                         android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:background="@drawable/bg_wizard_badge"
+                        android:paddingStart="8dp"
+                        android:paddingTop="1dp"
+                        android:paddingEnd="8dp"
+                        android:paddingBottom="1dp"
+                        android:text="@string/wizard_sim_badge"
+                        android:textAllCaps="true"
+                        android:textColor="@color/muted"
+                        android:textSize="10sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -399,11 +416,23 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Live readiness hint for the selected transport. Reflects system state
+             only (Wi‑Fi/BT/USB presence); it does not open a driver connection. -->
+        <TextView
+            android:id="@+id/wizardReady"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:minHeight="20dp"
+            android:text=""
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnWizardContinue"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:layout_marginTop="22dp"
+            android:layout_marginTop="14dp"
             android:text="@string/wizard_continue"
             android:textSize="15sp"
             android:textStyle="bold"

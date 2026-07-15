@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.26.0] - 2026-07-15 — Frictionless Onboarding & Unified Icon Set
+
+### Onboarding flow
+- **Removed the mandatory first-run connection wizard.** New users now land directly on the main screen; AUTO transport discovery covers the common case without an upfront setup screen.
+- **Transport picker now appears only on demand** — when a connect attempt actually fails — so the happy path has zero blocking screens. When it returns, the chosen transport is applied immediately (previously the pre-wizard value stuck until the next app launch).
+- **Fixed a default-transport regression:** with the wizard gone, a fresh install fell back to transport position `0` = Simulation, so a first Start would silently connect to the simulator instead of a real adapter. Fresh installs now default to AUTO. Users with a saved selection are unaffected.
+
+### Connection picker quality
+- **Selection outline is now visible** — `MaterialCardView.setStrokeWidth()` takes pixels, so the hard-coded `2` was ~invisible on high-density screens; it is now converted from dp.
+- **Live readiness hint per option** — selecting Wi‑Fi/USB/Bluetooth shows whether the phone is actually on Wi‑Fi, has a USB device attached, or has Bluetooth enabled. Inspects system state only; never opens a driver connection.
+- **Distinct BLE icon** — classic Bluetooth (SPP) and BLE no longer share the same glyph.
+- **Simulation is clearly marked "Demo only"** (muted styling + badge) so it is not mistaken for a real adapter.
+- **Accessibility** — each option card now exposes a single, complete TalkBack label including its selected state.
+- **"Set up later" keeps the highlighted choice** instead of silently discarding it.
+
+### Unified icon set
+- **All 21 in-app function icons rebuilt from Material Symbols Rounded (filled)** — the set previously mixed two different Google icon families (classic Material Icons + Material Symbols), which read as inconsistent weight/proportion when placed side by side.
+- **Fixed the diagnostics wrench icon overflowing its 24×24 viewport** (coordinates ran to 24.3), which clipped it at the edge and made it heavier than its neighbours; it now sits on-grid with normal keyline padding.
+- **Removed baked-in `android:tint` from icon vectors** so the app controls icon colour uniformly via `app:tint` (some icons previously carried their own tint and rendered a different shade in the same row).
+- `ic_signal_bars` (a functional layer-list whose bars are tinted individually) and the launcher/hero logo are intentionally left as-is.
+
 ## [3.25.0] - 2026-07-15 — Codebase-Wide Bug Hunt: Parsing, Drivers, Sessions & DTCs
 
 A full audit pass across the app (transport drivers, OBD/DTC parsing, background

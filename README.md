@@ -1,8 +1,19 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.22.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
+**Version 3.26.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
+
+---
+
+## What's New in 3.26.0 — Frictionless Onboarding & Unified Icon Set
+
+- **No more mandatory setup screen** — new users land straight on the main screen. AUTO transport discovery covers the common case; the transport picker only appears if a connection attempt actually fails, now with live Wi‑Fi/Bluetooth/USB readiness hints.
+- **Fixed onboarding regression** — a fresh install used to fall back to Simulation as the default transport; it now correctly defaults to AUTO so the first Start connects to a real adapter.
+- **Connection picker polish** — visible selection outline (dp→px stroke fix), distinct BLE vs classic-Bluetooth icons, Simulation clearly labelled "Demo only", full TalkBack labels, and "Set up later" keeps your highlighted choice.
+- **Unified icon set** — all 21 in-app function icons rebuilt from Material Symbols Rounded (one family, consistent weight), fixed the diagnostics wrench overflowing its viewport, and removed inconsistent baked-in tints so icon colours match across the app.
+
+> Release notes for 3.23–3.25 live in [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
