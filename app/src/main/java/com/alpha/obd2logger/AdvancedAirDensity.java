@@ -123,12 +123,11 @@ public final class AdvancedAirDensity {
         // If IAT is cooler than ambient (sensor glitch / ambient heat soak), reject.
         if (actualDeltaT < 1.0) return null;
         double ce = (idealDeltaT / actualDeltaT) * 100.0;
-        // Clamp: street cars with only post-IC IAT often synthesize >100%
-        if (ce < 10.0 || ce > 95.0) {
-            // Cap display to physical compressor island range
-            if (ce > 95.0) ce = 95.0;
-            if (ce < 10.0) return null;
-        }
+        // Street cars with only post-IC IAT often synthesize an unphysical CE:
+        // below the compressor island floor it's noise → reject; above the
+        // ceiling, cap to the physical island range for display.
+        if (ce < 10.0) return null;
+        if (ce > 95.0) ce = 95.0;
         return Math.round(ce * 10.0) / 10.0;
     }
 

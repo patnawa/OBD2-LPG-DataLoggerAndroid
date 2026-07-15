@@ -115,6 +115,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private MaterialButton btnDashboardMinus, btnDashboardPlus;
     private TextView dashboardSlotCountText;
     private int dashboardSlotCount = 4;
+    /** Last time (elapsedRealtime) each dashboard slot received a fresh value; 0 = never. */
+    private final long[] dashLastUpdateMs = new long[4];
+    /** A slot with no fresh value for this long is dimmed so a frozen reading isn't mistaken for live. */
+    private static final long DASH_STALE_MS = 4000L;
     private TextView tuningStatusText;
     private TextView mapEctText, mapLoopStatusText;
     private TextView mapCoverageText, mapConfidenceText;
@@ -1617,6 +1621,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         for (int i=0; i<4; i++) {
             if (titles[i] == null || values[i] == null) continue;
             String pidKey = prefDashPids[i];
+            values[i].setAlpha(1f);
+            dashLastUpdateMs[i] = 0;
             if ("none".equalsIgnoreCase(pidKey)) {
                 titles[i].setText(getString(R.string.tap_to_add));
                 titles[i].setTextColor(getColorCompat(R.color.muted));
@@ -3174,7 +3180,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         countText.setText(getString(R.string.records_count, 0));
         TextView[] values = {dashValue1, dashValue2, dashValue3, dashValue4};
         for (int i=0; i<4; i++) {
-            if (values[i] != null) values[i].setText("—");
+            if (values[i] != null) {
+                values[i].setText("—");
+                values[i].setAlpha(1f);
+            }
+            dashLastUpdateMs[i] = 0;
         }
 
         // Reset analyzer history so STFT std-dev window does not bleed across sessions/fuels.
@@ -3874,6 +3884,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     active.headerStatus.setText("Disconnected");
                     active.updateStatusStripConnection(0, "Disconnected");
                     active.setConfigUiEnabled(true);
+                    active.markDashboardStale();
                 }
             });
         }
@@ -4855,15 +4866,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void updateDashboard(DataRecord record) {
         if (record == null) return;
+        long now = android.os.SystemClock.elapsedRealtime();
         TextView[] values = {dashValue1, dashValue2, dashValue3, dashValue4};
         for (int i=0; i<4; i++) {
-            if ("none".equalsIgnoreCase(prefDashPids[i])) {
+            if ("none".equalsIgnoreCase(prefDashPids[i]) || values[i] == null) {
                 continue;
             }
             Double val = valueByKey(record, prefDashPids[i]);
-            if (val != null && values[i] != null) {
+            if (val != null) {
                 PIDDefinition pid = findPidDefinition(prefDashPids[i]);
-                values[i].setText(String.format(Locale.US, "%.2f %s", val, pid != null ? pid.getUnit() : ""));
+                int decimals = dashDecimals(pid);
+                String unit = pid != null ? pid.getUnit() : "";
+                values[i].setText(String.format(Locale.US, "%." + decimals + "f %s", val, unit));
+                // Safety-critical PIDs turn amber/red near their danger zone.
+                int threat = dashThresholdColor(prefDashPids[i], val);
+                values[i].setTextColor(threat != 0 ? threat : getColorCompat(R.color.text));
+                values[i].setAlpha(1f);
+                dashLastUpdateMs[i] = now;
+            } else if (dashLastUpdateMs[i] != 0 && now - dashLastUpdateMs[i] > DASH_STALE_MS) {
+                // Still logging, but this PID has stopped reporting — dim the last
+                // value so it isn't read as a live number.
+                values[i].setAlpha(0.4f);
             }
         }
         
@@ -4914,6 +4937,53 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 dashTuningStatus.setText("Ready to Tune");
                 dashTuningStatus.setTextColor(getColorCompat(R.color.accent));
             }
+        }
+    }
+
+    /** Sensible decimal places for a dashboard value from its magnitude (no per-PID config needed). */
+    private static int dashDecimals(PIDDefinition pid) {
+        if (pid == null) return 1;
+        double span = Math.max(Math.abs(pid.getMaxVal()), Math.abs(pid.getMinVal()));
+        if (span >= 100) return 0;   // RPM, speed, temps, %, MAP
+        if (span >= 10) return 1;    // voltage, boost psi
+        return 2;                    // lambda and other small ratios
+    }
+
+    /**
+     * Amber/red for safety-critical PIDs approaching their danger zone, else 0
+     * (keep normal colour). Curated to universal automotive thresholds only, so
+     * routine PIDs like throttle/speed never raise a false alarm.
+     */
+    private int dashThresholdColor(String pidKey, double val) {
+        if (pidKey == null) return 0;
+        switch (pidKey) {
+            case "01_05": // Engine coolant temp (°C)
+                if (val >= 115) return getColorCompat(R.color.danger);
+                if (val >= 105) return getColorCompat(R.color.warning);
+                return 0;
+            case "01_5C": // Engine oil temp (°C)
+                if (val >= 130) return getColorCompat(R.color.danger);
+                if (val >= 120) return getColorCompat(R.color.warning);
+                return 0;
+            case "01_0F": // Intake air temp (°C) — heat soak
+                if (val >= 75) return getColorCompat(R.color.danger);
+                if (val >= 60) return getColorCompat(R.color.warning);
+                return 0;
+            case "01_42": // Control module voltage (V) — charging health
+                if (val < 11.8 || val > 15.2) return getColorCompat(R.color.danger);
+                if (val < 12.2 || val > 14.9) return getColorCompat(R.color.warning);
+                return 0;
+            default:
+                return 0;
+        }
+    }
+
+    /** Dim every dashboard slot — called when logging stops so frozen values read as stale. */
+    private void markDashboardStale() {
+        TextView[] values = {dashValue1, dashValue2, dashValue3, dashValue4};
+        for (int i = 0; i < 4; i++) {
+            if (values[i] != null) values[i].setAlpha(0.4f);
+            dashLastUpdateMs[i] = 0;
         }
     }
 

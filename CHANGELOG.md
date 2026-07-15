@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.28.0] - 2026-07-15 — Dashboard Readability & Air-Density Cleanup
+
+### Dashboard tab
+- **Correct number precision per metric** — dashboard slots no longer render every value with two decimals (`3200.00 RPM`, `80.00 km/h`). Precision is now chosen from each PID's range: whole numbers for RPM/speed/temperatures/percentages, one decimal for voltage/boost, two for lambda and other small ratios.
+- **Safety-critical threshold colouring** — a slot's value turns amber then red as it enters a danger zone: engine coolant (≥105 / ≥115 °C), oil temp (≥120 / ≥130 °C), intake air temp (≥60 / ≥75 °C), and control-module voltage (charging out of the 12.2–14.9 V band, hard limits below 11.8 / above 15.2 V). Curated to universal automotive thresholds only, so routine PIDs such as throttle or speed never raise a false alarm.
+- **Stale-value dimming** — each slot tracks when it last received a fresh value; if a PID stops reporting for more than 4 seconds (or logging stops entirely) the card dims to 40% so a frozen reading is no longer mistaken for a live one. Brightness restores automatically when data resumes or a new session starts.
+
+### Air-density internals (no behavioural change)
+- Flattened the tangled compressor-efficiency clamp in `AdvancedAirDensity` into a straight floor-reject / ceiling-cap; identical outputs, clearer intent.
+- Corrected the `DerivedSensors.manifoldAirDensity(map, iat, rh)` legacy-overload documentation to state that it algebraically reduces to the naive "RH held at IAT" density — verified against the SAE J1349/J607 reference densities and the AeroDensity regression suite (17/17 passing).
+
 ## [3.27.0] - 2026-07-15 — Live Telemetry Graph Readability
 
 ### Home cockpit live data graph

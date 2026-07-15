@@ -374,11 +374,16 @@ public final class DerivedSensors {
     }
 
     /**
-     * Legacy MAD signature kept for older call sites / tests: approximates with RH at IAT.
-     * Prefer the absolute-humidity overload.
+     * Legacy MAD signature kept for older call sites / tests.
+     *
+     * With MAP and IAT supplied as both the manifold AND the ambient reference,
+     * the absolute-humidity conversion in the 5-arg overload algebraically
+     * cancels (Pv is derived and inverted at the same pressure/temperature), so
+     * this reduces exactly to the naive "RH held at IAT" density. It carries no
+     * benefit over that plain formula — prefer the absolute-humidity overload
+     * with real ambient baro/temp/RH whenever they are available.
      */
     public static Double manifoldAirDensity(Double mapKpa, Double iatTempC, Double humidityPct) {
-        // Delegate via absolute-humidity using MAP as ambient proxy (degraded but compatible).
         return manifoldAirDensity(mapKpa, iatTempC, mapKpa, iatTempC, humidityPct);
     }
 
