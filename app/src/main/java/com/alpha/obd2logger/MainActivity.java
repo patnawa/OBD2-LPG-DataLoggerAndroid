@@ -1872,12 +1872,32 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 }
             });
         }
-        View legendRpm = findViewById(R.id.cockpitLegendRpm);
-        if (legendRpm != null && homeRpmTrend != null) legendRpm.setOnClickListener(v -> homeRpmTrend.toggleSeries(0));
-        View legendSpeed = findViewById(R.id.cockpitLegendSpeed);
-        if (legendSpeed != null && homeRpmTrend != null) legendSpeed.setOnClickListener(v -> homeRpmTrend.toggleSeries(1));
-        View legendBoost = findViewById(R.id.cockpitLegendBoost);
-        if (legendBoost != null && homeRpmTrend != null) legendBoost.setOnClickListener(v -> homeRpmTrend.toggleSeries(2));
+        TextView legendRpm = findViewById(R.id.cockpitLegendRpm);
+        if (legendRpm != null && homeRpmTrend != null) legendRpm.setOnClickListener(v -> {
+            homeRpmTrend.toggleSeries(0);
+            updateLegendState(legendRpm, homeRpmTrend.isSeriesShown(0));
+        });
+        TextView legendSpeed = findViewById(R.id.cockpitLegendSpeed);
+        if (legendSpeed != null && homeRpmTrend != null) legendSpeed.setOnClickListener(v -> {
+            homeRpmTrend.toggleSeries(1);
+            updateLegendState(legendSpeed, homeRpmTrend.isSeriesShown(1));
+        });
+        TextView legendBoost = findViewById(R.id.cockpitLegendBoost);
+        if (legendBoost != null && homeRpmTrend != null) legendBoost.setOnClickListener(v -> {
+            homeRpmTrend.toggleSeries(2);
+            updateLegendState(legendBoost, homeRpmTrend.isSeriesShown(2));
+        });
+    }
+
+    /** Dim a legend label and strike it through when its series is hidden. */
+    private void updateLegendState(TextView legend, boolean shown) {
+        legend.setAlpha(shown ? 1f : 0.4f);
+        int flags = legend.getPaintFlags();
+        if (shown) {
+            legend.setPaintFlags(flags & ~android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+        } else {
+            legend.setPaintFlags(flags | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+        }
     }
 
     /** Keep the fixed cockpit navigation honest about the visible destination. */

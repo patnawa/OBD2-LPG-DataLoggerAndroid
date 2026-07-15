@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.27.0] - 2026-07-15 — Live Telemetry Graph Readability
+
+### Home cockpit live data graph
+- **Auto-scaling per series** — the live RPM/speed/boost trace no longer normalizes each channel against a hard-coded ceiling (`8000 rpm / 240 km/h / 30 psi`). Each series now scales to its own rolling peak (padded 10%, with sensible floors of `3000 rpm / 60 km/h / 5 psi`), so high-revving engines stop clipping at the top and modest boost fills the plot instead of hugging the baseline.
+- **Inline current-value readouts** — each visible series prints its latest value at the top of the graph in its own colour (blue RPM, green speed, purple boost), so an actual number can be read at a glance without tap-to-inspect. These hide automatically while the inspect cursor is active to avoid overlapping the tooltip.
+- **Legend on/off feedback** — tapping a series legend to hide it now dims the label to 40% and strikes it through; previously the toggle worked but gave no visual indication of which series were showing.
+
 ## [3.26.0] - 2026-07-15 — Frictionless Onboarding & Unified Icon Set
 
 ### Onboarding flow

@@ -15,6 +15,14 @@ import java.util.Deque;
 /** Compact normalized multi-series chart for the Home scanner cockpit. */
 public final class LiveMultiGraphView extends View {
     private static final int MAX_POINTS = 90;
+
+    // Minimum full-scale value per series, so a small/quiet signal still uses a
+    // sensible slice of the height instead of the hard-coded ceilings that used
+    // to clip high-revving engines and flatten modest boost.
+    private static final float RPM_FLOOR = 3000f;
+    private static final float SPEED_FLOOR = 60f;
+    private static final float BOOST_FLOOR = 5f;
+
     private final Deque<Float> rpm = new ArrayDeque<>(MAX_POINTS + 1);
     private final Deque<Float> speed = new ArrayDeque<>(MAX_POINTS + 1);
     private final Deque<Float> boost = new ArrayDeque<>(MAX_POINTS + 1);
@@ -78,6 +86,13 @@ public final class LiveMultiGraphView extends View {
         invalidate();
     }
 
+    public boolean isSeriesShown(int series) {
+        if (series == 0) return showRpm;
+        if (series == 1) return showSpeed;
+        if (series == 2) return showBoost;
+        return false;
+    }
+
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         float d = getResources().getDisplayMetrics().density;
@@ -102,9 +117,28 @@ public final class LiveMultiGraphView extends View {
         labels.setTextAlign(Paint.Align.RIGHT);
         canvas.drawText(paused ? "paused" : "now", left + w, getHeight() - 4f * d, labels);
 
-        if (showRpm) drawSeries(canvas, rpm, rpmPaint, 8000f, left, top, w, h);
-        if (showSpeed) drawSeries(canvas, speed, speedPaint, 240f, left, top, w, h);
-        if (showBoost) drawSeries(canvas, boost, boostPaint, 30f, left, top, w, h);
+        // Auto-scale each series to its own rolling peak (with a floor), so all
+        // three fill the plot regardless of engine/setup instead of clipping.
+        float rpmMax = dynamicMax(rpm, RPM_FLOOR);
+        float speedMax = dynamicMax(speed, SPEED_FLOOR);
+        float boostMax = dynamicMax(boost, BOOST_FLOOR);
+
+        if (showRpm) drawSeries(canvas, rpm, rpmPaint, rpmMax, left, top, w, h);
+        if (showSpeed) drawSeries(canvas, speed, speedPaint, speedMax, left, top, w, h);
+        if (showBoost) drawSeries(canvas, boost, boostPaint, boostMax, left, top, w, h);
+
+        // Current value of each visible series, drawn in its own colour at the
+        // top of the plot so a value can be read without tapping to inspect.
+        if (inspectIndex < 0) {
+            float labelX = left + 2f * d;
+            float labelY = top + 11f * d;
+            labels.setTextAlign(Paint.Align.LEFT);
+            labels.setTextSize(10f * d);
+            if (showRpm)   labelX = drawCurrentValue(canvas, labels, rpm, rpmPaint.getColor(), "", 0, labelX, labelY, d);
+            if (showSpeed) labelX = drawCurrentValue(canvas, labels, speed, speedPaint.getColor(), "", 0, labelX, labelY, d);
+            if (showBoost) labelX = drawCurrentValue(canvas, labels, boost, boostPaint.getColor(), "", 1, labelX, labelY, d);
+            labels.setTextSize(9f * d);
+        }
 
         if (inspectIndex >= 0 && !rpm.isEmpty()) {
             int index = Math.min(inspectIndex, rpm.size() - 1);
@@ -155,6 +189,38 @@ public final class LiveMultiGraphView extends View {
             index++;
         }
         if (started) canvas.drawPath(path, paint);
+    }
+
+    /** Full-scale value for a series: its rolling peak padded 10%, never below floor. */
+    private static float dynamicMax(Deque<Float> values, float floor) {
+        float peak = floor;
+        for (Float raw : values) {
+            if (raw != null && !raw.isNaN() && raw > peak) peak = raw;
+        }
+        return peak <= floor ? floor : peak * 1.1f;
+    }
+
+    /** Draws the latest non-NaN value in the series colour; returns the next free X. */
+    private float drawCurrentValue(Canvas canvas, Paint paint, Deque<Float> values,
+                                   int color, String unit, int decimals,
+                                   float x, float y, float density) {
+        Float value = lastValid(values);
+        if (value == null) return x;
+        String text = format(value, decimals) + unit;
+        int prev = paint.getColor();
+        paint.setColor(color);
+        canvas.drawText(text, x, y, paint);
+        float advance = paint.measureText(text) + 8f * density;
+        paint.setColor(prev);
+        return x + advance;
+    }
+
+    private static Float lastValid(Deque<Float> values) {
+        Float found = null;
+        for (Float raw : values) {
+            if (raw != null && !raw.isNaN()) found = raw;
+        }
+        return found;
     }
 
     private static Float valueAt(Deque<Float> values, int index) {
