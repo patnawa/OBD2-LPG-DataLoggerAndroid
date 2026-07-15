@@ -47,6 +47,8 @@ public final class AirDensityMonitor implements SensorEventListener {
     private volatile Double obdAmbientTempC = null; // PID 0x46
     private volatile Double obdMapKpa = null;        // PID 0x0B
     private volatile Double obdIatTempC = null;      // PID 0x0F
+    /** True when obdMapKpa was synthesized from Engine Load, not measured. */
+    private volatile boolean obdMapSynthesized = false;
 
     // ── Android sensors ───────────────────────────────────────
     private volatile Double sensorPressureHpa = null;
@@ -247,6 +249,17 @@ public final class AirDensityMonitor implements SensorEventListener {
     }
 
     public void onObdBatch(java.util.Map<String, Double> batch) {
+        onObdBatch(batch, false);
+    }
+
+    /**
+     * @param mapSynthesized true when "Intake Manifold Pressure" in this batch was
+     *        synthesized from Engine Load (LoggerService MAP fallback) rather than
+     *        measured by PID 0x0B. The value is still used, but the derived
+     *        density samples that depend on it are stamped "est" instead of
+     *        being logged as measured.
+     */
+    public void onObdBatch(java.util.Map<String, Double> batch, boolean mapSynthesized) {
         if (batch == null) return;
         // Only overwrite with non-null so a single failed PID doesn't wipe prior sample
         Double baro = batch.get("Barometric Pressure");
@@ -255,7 +268,10 @@ public final class AirDensityMonitor implements SensorEventListener {
         Double iat = batch.get("Intake Air Temp");
         if (baro != null) obdBaroKpa = baro;
         if (amb != null) obdAmbientTempC = amb;
-        if (map != null) obdMapKpa = map;
+        if (map != null) {
+            obdMapKpa = map;
+            obdMapSynthesized = mapSynthesized;
+        }
         if (iat != null) obdIatTempC = iat;
     }
 
@@ -264,7 +280,10 @@ public final class AirDensityMonitor implements SensorEventListener {
                             Double mapKpa, Double iatTempC) {
         if (baroKpa != null && !Double.isNaN(baroKpa)) obdBaroKpa = baroKpa;
         if (ambientTempC != null && !Double.isNaN(ambientTempC)) obdAmbientTempC = ambientTempC;
-        if (mapKpa != null && !Double.isNaN(mapKpa)) obdMapKpa = mapKpa;
+        if (mapKpa != null && !Double.isNaN(mapKpa)) {
+            obdMapKpa = mapKpa;
+            obdMapSynthesized = false;
+        }
         if (iatTempC != null && !Double.isNaN(iatTempC)) obdIatTempC = iatTempC;
     }
 
@@ -408,9 +427,11 @@ public final class AirDensityMonitor implements SensorEventListener {
         double humidity = getHumidity();
         double baroKpa = getBaroKpa();
         double ambientTempC = getAmbientTempC();
-        boolean mapFromObd = obdMapKpa != null;
+        // MAP synthesized from Engine Load counts as NOT measured — the value
+        // is still used, but dependent samples degrade to "est" quality.
+        boolean mapFromObd = obdMapKpa != null && !obdMapSynthesized;
         boolean iatFromObd = obdIatTempC != null;
-        double mapKpa = mapFromObd ? obdMapKpa : baroKpa;
+        double mapKpa = (obdMapKpa != null) ? obdMapKpa : baroKpa;
         double iatTempC = iatFromObd ? obdIatTempC : ambientTempC;
 
         Double aad = DerivedSensors.ambientAirDensity(baroKpa, ambientTempC, humidity);
@@ -564,8 +585,12 @@ public final class AirDensityMonitor implements SensorEventListener {
             if (ar == null) return;
 
             String advBase = q;
-            String displStatus = displacementUserSet ? advBase : "assumed";
-            String ceStatus = ar.ceIsEstimate ? "estimate" : advBase;
+            // Samples whose math depends on manifold pressure inherit the MAD
+            // status, so a MAP synthesized from Engine Load degrades them to
+            // "est" instead of logging them as measured.
+            String mapDepStatus = madStatus;
+            String displStatus = displacementUserSet ? mapDepStatus : "assumed";
+            String ceStatus = ar.ceIsEstimate ? "estimate" : mapDepStatus;
 
             if (ar.omdLbs != null) {
                 samples.add(new SensorSample("derived_omd", "Oxygen Mass Density",
@@ -585,7 +610,7 @@ public final class AirDensityMonitor implements SensorEventListener {
             }
             if (ar.dcafr != null) {
                 samples.add(new SensorSample("derived_dcafr",
-                        "Density-Corrected AFR", ar.dcafr, "", advBase));
+                        "Density-Corrected AFR", ar.dcafr, "", mapDepStatus));
             }
             if (ar.tmfGs != null) {
                 samples.add(new SensorSample("derived_tmf",
@@ -601,7 +626,7 @@ public final class AirDensityMonitor implements SensorEventListener {
             }
             if (ar.effectiveDensityKgM3 != null) {
                 samples.add(new SensorSample("derived_eff_density",
-                        "Effective Air Density", ar.effectiveDensityKgM3, "kg/m3", advBase));
+                        "Effective Air Density", ar.effectiveDensityKgM3, "kg/m3", mapDepStatus));
             }
             if (ar.eccDeltaT != null) {
                 samples.add(new SensorSample("derived_ecc_dt",
@@ -609,7 +634,7 @@ public final class AirDensityMonitor implements SensorEventListener {
             }
             if (ar.eccCorrectedMAD != null) {
                 samples.add(new SensorSample("derived_ecc_mad",
-                        "Evap-Corrected MAD", ar.eccCorrectedMAD, "lbs/1000ft3", advBase));
+                        "Evap-Corrected MAD", ar.eccCorrectedMAD, "lbs/1000ft3", mapDepStatus));
             }
             if (ar.pdi != null) {
                 samples.add(new SensorSample("derived_pdi",

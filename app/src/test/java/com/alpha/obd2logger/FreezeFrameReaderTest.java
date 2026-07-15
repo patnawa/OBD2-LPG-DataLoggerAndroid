@@ -32,15 +32,17 @@ public class FreezeFrameReaderTest {
                     // Stored DTC: P0171 (01 71)
                     return "43 01 01 71 00 00";
                 }
+                // SAE J1979 Mode 02 responses echo the frame number after
+                // the PID: 42 [PID] [frame] [data...]
                 if ("020200".equals(command)) {
                     // Mode 02 PID 02 for frame 00: P0171
-                    return "42 02 01 71";
+                    return "42 02 00 01 71";
                 }
                 if (command.startsWith("020C")) { // Engine RPM in frame 00
-                    return "42 0C 1A F8"; // 1726 RPM
+                    return "42 0C 00 1A F8"; // 1726 RPM
                 }
                 if (command.startsWith("020D")) { // Speed in frame 00
-                    return "42 0D 32"; // 50 km/h
+                    return "42 0D 00 32"; // 50 km/h
                 }
                 return "";
             }

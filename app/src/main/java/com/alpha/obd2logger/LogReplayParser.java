@@ -37,6 +37,10 @@ public final class LogReplayParser {
             public int lambdaIdx = -1;  // measured PID 0x34 only; never commanded PID 0x44
             // Optional ≥3.13 AI map columns (used when present to prefer accepted samples)
             public int mapRpmCellIdx = -1, mapAxisValueIdx = -1, mapAcceptedIdx = -1, mapTrimTotalIdx = -1;
+            // Axis source decided ONCE per file (on the first row with a usable
+            // axis value): FALSE = MAP column, TRUE = Engine Load fallback.
+            // Deciding per row would mix kPa-binned and %-binned points in one map.
+            public Boolean axisFromLoad = null;
             public int axisIdx() { return (mapIdx != -1) ? mapIdx : loadIdx; }
             public boolean hasRequired() {
                 if (rpmIdx != -1 && axisIdx() != -1) return true;
@@ -213,8 +217,20 @@ public final class LogReplayParser {
                     rpm = Double.parseDouble(cell(parts, c.rpmIdx));
 
                     String axisStr = cell(parts, c.axisIdx());
-                    if (axisStr.isEmpty() && c.mapIdx != -1 && c.loadIdx != -1) {
-                        axisStr = cell(parts, c.loadIdx);
+                    if (c.mapIdx != -1 && c.loadIdx != -1) {
+                        // Decide the axis source once per file. Engine Load is used
+                        // only when the MAP column is effectively empty (MAF-based
+                        // vehicles logged before the MAP synthesis fix — those files
+                        // have an empty MAP column throughout). Once decided, stick
+                        // with that source; a MAP dropout row is skipped rather than
+                        // mixing a %-binned point into a kPa-binned map.
+                        if (c.axisFromLoad == null) {
+                            if (!axisStr.isEmpty()) c.axisFromLoad = Boolean.FALSE;
+                            else if (!cell(parts, c.loadIdx).isEmpty()) c.axisFromLoad = Boolean.TRUE;
+                        }
+                        if (Boolean.TRUE.equals(c.axisFromLoad)) {
+                            axisStr = cell(parts, c.loadIdx);
+                        }
                     }
                     if (axisStr.isEmpty()) return null;
                     axis = Double.parseDouble(axisStr);
@@ -229,21 +245,24 @@ public final class LogReplayParser {
                 }
 
                 double stft = 0.0;
+                boolean stftPresent = false;
                 if (c.stftIdx != -1 && parts.length > c.stftIdx) {
                     String s = cell(parts, c.stftIdx);
-                    if (!s.isEmpty()) stft = Double.parseDouble(s);
+                    if (!s.isEmpty()) { stft = Double.parseDouble(s); stftPresent = true; }
                 }
                 double ltft = 0.0;
+                boolean ltftPresent = false;
                 if (c.ltftIdx != -1 && parts.length > c.ltftIdx) {
                     String s = cell(parts, c.ltftIdx);
-                    if (!s.isEmpty()) ltft = Double.parseDouble(s);
+                    if (!s.isEmpty()) { ltft = Double.parseDouble(s); ltftPresent = true; }
                 }
                 trim = stft + ltft;
                 // Lambda fallback: LPG/CNG vehicles often have no STFT/LTFT PIDs but
-                // DO have measured wideband lambda (PID 0x34). When both trims are
-                // absent (0), derive a "synthetic trim" from lambda deviation:
+                // DO have measured wideband lambda (PID 0x34). Only when both trim
+                // CELLS are absent/empty — a measured 0.0% trim is healthy data, not
+                // missing data — derive a "synthetic trim" from lambda deviation:
                 //   trim% = (lambda - 1.0) * 100
-                if (stft == 0.0 && ltft == 0.0 && c.lambdaIdx != -1 && parts.length > c.lambdaIdx) {
+                if (!stftPresent && !ltftPresent && c.lambdaIdx != -1 && parts.length > c.lambdaIdx) {
                     String lamStr = cell(parts, c.lambdaIdx);
                     if (!lamStr.isEmpty()) {
                         double lambda = Double.parseDouble(lamStr);

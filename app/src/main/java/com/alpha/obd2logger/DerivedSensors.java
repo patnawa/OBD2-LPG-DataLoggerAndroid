@@ -73,6 +73,34 @@ public final class DerivedSensors {
         return Math.round(l100 * 100.0) / 100.0;
     }
 
+    /**
+     * Compute fuel consumption in km/kg — for fuels dispensed by MASS (NGV/CNG).
+     *
+     * NGV's densityGL in {@link FuelProperties} is the gas-phase density
+     * (0.72 g/L), so the liquid-volume km/L formula above always produces
+     * < 1 km/L and is discarded by its sanity check — NGV fuel economy was
+     * silently always null. NGV is sold per kilogram, so mass-basis economy
+     * is the meaningful metric.
+     *
+     *   fuel_g_s = MAF_g_s / AFR
+     *   fuel_kg_h = fuel_g_s * 3600 / 1000
+     *   km_kg = speed_kmh / fuel_kg_h
+     */
+    public static Double fuelConsumptionKmKg(Double mafGs, Double speedKmh, FuelMode fuelMode) {
+        if (mafGs == null || speedKmh == null) return null;
+        if (mafGs <= 0) return null;
+        if (speedKmh < 2.0) return null; // avoid divide-by-zero / absurd values at idle
+
+        double afr = FuelProperties.get(fuelMode).stoichAFR;
+        double fuelKgH = (mafGs / afr) * 3600.0 / 1000.0;
+        if (fuelKgH <= 0) return null;
+        double kmkg = speedKmh / fuelKgH;
+
+        // Sanity check: NGV passenger cars are typically ~10-30 km/kg
+        if (kmkg < 1.0 || kmkg > 100.0) return null;
+        return Math.round(kmkg * 100.0) / 100.0;
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  Turbo Boost Pressure
     // ═══════════════════════════════════════════════════════════════

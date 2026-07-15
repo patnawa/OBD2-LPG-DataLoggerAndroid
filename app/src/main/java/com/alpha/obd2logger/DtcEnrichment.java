@@ -32,12 +32,11 @@ public final class DtcEnrichment {
         if (initialized) return;
         try {
             AssetManager am = context.getAssets();
-            InputStream is = am.open("dtc_enrichment.json");
-            int size = is.available();
-            byte[] buffer = new byte[size];
-            is.read(buffer);
-            is.close();
-            String jsonStr = new String(buffer, StandardCharsets.UTF_8);
+            String jsonStr;
+            // Read to EOF — available() is a hint and read() may return short.
+            try (InputStream is = am.open("dtc_enrichment.json")) {
+                jsonStr = new String(DtcDatabase.readFully(is), StandardCharsets.UTF_8);
+            }
             JSONObject json = new JSONObject(jsonStr);
 
             java.util.Iterator<String> iter = json.keys();

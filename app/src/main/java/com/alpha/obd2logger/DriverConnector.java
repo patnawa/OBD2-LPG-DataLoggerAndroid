@@ -61,8 +61,21 @@ public final class DriverConnector {
                 safeDisconnect(driver);
                 return null;
             }
-            if (driver.isConnected() || driver.connect()) {
+            if (driver.isConnected()) {
                 return driver;
+            }
+            // Serialize connect() per driver: a timed-out attempt may still be
+            // running connect() on this instance when the caller retries.
+            if (!driver.tryAcquireConnectGate(boundedTimeoutMs)) {
+                safeDisconnect(driver);
+                return driver;
+            }
+            try {
+                if (driver.connect()) {
+                    return driver;
+                }
+            } finally {
+                driver.releaseConnectGate();
             }
             safeDisconnect(driver);
             return driver;
@@ -109,7 +122,22 @@ public final class DriverConnector {
             return thread;
         };
         ExecutorService executor = Executors.newSingleThreadExecutor(factory);
-        Future<Boolean> future = executor.submit(() -> driver.isConnected() || driver.connect());
+        Future<Boolean> future = executor.submit(() -> {
+            if (driver.isConnected()) {
+                return true;
+            }
+            // A previous, abandoned connect attempt may still be inside
+            // connect() on this driver — wait for it to exit (bounded)
+            // instead of re-entering connect() concurrently.
+            if (!driver.tryAcquireConnectGate(boundedTimeoutMs)) {
+                return false;
+            }
+            try {
+                return driver.connect();
+            } finally {
+                driver.releaseConnectGate();
+            }
+        });
         try {
             boolean connected = Boolean.TRUE.equals(
                     future.get(boundedTimeoutMs, TimeUnit.MILLISECONDS));

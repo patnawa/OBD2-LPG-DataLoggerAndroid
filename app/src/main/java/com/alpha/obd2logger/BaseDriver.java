@@ -25,8 +25,34 @@ public abstract class BaseDriver {
     protected final java.util.concurrent.locks.ReentrantLock commandLock =
             new java.util.concurrent.locks.ReentrantLock();
 
+    /**
+     * Gate that prevents two threads from running connect() on the same
+     * driver concurrently. DriverConnector's timeout path abandons its worker
+     * thread while it may still be inside connect(); a retry must wait for
+     * that worker to exit before re-entering connect() on this driver.
+     * Deliberately NOT taken by disconnect() — closing the transport from
+     * another thread is how a hung connect() gets unblocked.
+     */
+    private final java.util.concurrent.Semaphore connectGate =
+            new java.util.concurrent.Semaphore(1);
+
     protected BaseDriver(LoggerConfig config) {
         this.config = config;
+    }
+
+    /** Acquire the exclusive connect slot, waiting at most maxWaitMs. */
+    boolean tryAcquireConnectGate(long maxWaitMs) {
+        try {
+            return connectGate.tryAcquire(maxWaitMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    /** Release the connect slot taken by {@link #tryAcquireConnectGate}. */
+    void releaseConnectGate() {
+        connectGate.release();
     }
 
     public abstract boolean connect();

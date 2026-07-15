@@ -152,15 +152,11 @@ public final class CustomPidManager {
     public static Double testFormula(String formula, String rawHex) {
         if (rawHex == null || rawHex.isEmpty()) return null;
         try {
-            // Parse raw hex into bytes
-            int len = rawHex.length();
-            int a = (len >= 2) ? Integer.parseInt(rawHex.substring(0, 2), 16) : 0;
-            int b = (len >= 4) ? Integer.parseInt(rawHex.substring(2, 4), 16) : 0;
-            int c = (len >= 6) ? Integer.parseInt(rawHex.substring(4, 6), 16) : 0;
-            int d = (len >= 8) ? Integer.parseInt(rawHex.substring(6, 8), 16) : 0;
-
-            // Use PIDParser's formula evaluator
-            PIDDefinition tempPid = new PIDDefinition("test", "01", "FF", "", formula, -999999, 999999, false, 4);
+            // Use PIDParser's formula evaluator. Derive dataBytes from the
+            // input length — a hardcoded 4 made any preview input shorter
+            // than 8 hex chars always return null.
+            int dataBytes = Math.max(1, rawHex.length() / 2);
+            PIDDefinition tempPid = new PIDDefinition("test", "01", "FF", "", formula, -999999, 999999, false, dataBytes);
             return PIDParser.parse(tempPid, rawHex);
         } catch (Exception e) {
             return null;

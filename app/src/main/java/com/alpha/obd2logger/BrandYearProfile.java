@@ -149,7 +149,9 @@ public final class BrandYearProfile {
         if (wmi.startsWith("VF1")) return Brand.RENAULT;
         if (wmi.startsWith("VF7")) return Brand.CITROEN;
         if (wmi.startsWith("VF3")) return Brand.PEUGEOT;
-        if (wmi.startsWith("VS") || wmi.startsWith("VSS")) return Brand.VOLVO;
+        // VS* is Spain (VSS = SEAT, a VAG brand); Volvo WMIs start with YV.
+        if (wmi.startsWith("VSS")) return Brand.VAG;
+        if (wmi.startsWith("YV")) return Brand.VOLVO;
         if (wmi.startsWith("ZFA")) return Brand.FIAT;
         if (wmi.startsWith("ZAR")) return Brand.ALFA_ROMEO;
         

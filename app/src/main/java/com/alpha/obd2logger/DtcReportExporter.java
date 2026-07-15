@@ -20,6 +20,47 @@ import java.util.Map;
  */
 public final class DtcReportExporter {
 
+    // A4 at 72 DPI. Content past BOTTOM_LIMIT starts a new page — a scan
+    // with many DTCs plus Mode 06 results easily overflows a single page.
+    private static final int PAGE_WIDTH = 595;
+    private static final int PAGE_HEIGHT = 842;
+    private static final int BOTTOM_LIMIT = 790;
+    private static final int LEFT_MARGIN = 40;
+
+    /** Tracks the current page/canvas and starts new pages on overflow. */
+    private static final class Pager {
+        final PdfDocument doc;
+        PdfDocument.Page page;
+        Canvas canvas;
+        int y;
+        int pageNum = 0;
+
+        Pager(PdfDocument doc, PdfDocument.Page firstPage, int startY) {
+            this.doc = doc;
+            this.page = firstPage;
+            this.canvas = firstPage.getCanvas();
+            this.pageNum = 1;
+            this.y = startY;
+        }
+
+        void line(String text, Paint paint, int advance) {
+            if (y + advance > BOTTOM_LIMIT) {
+                doc.finishPage(page);
+                pageNum++;
+                page = doc.startPage(
+                    new PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNum).create());
+                canvas = page.getCanvas();
+                y = 50;
+            }
+            canvas.drawText(text, LEFT_MARGIN, y, paint);
+            y += advance;
+        }
+
+        void space(int pts) {
+            y += pts;
+        }
+    }
+
     private DtcReportExporter() {
     }
 
@@ -50,8 +91,7 @@ public final class DtcReportExporter {
             List<DtcReader.ProtocolScanStatus> protocolStatuses,
             String driveCycleGuide) {
         PdfDocument document = new PdfDocument();
-        // Standard A4 dimensions at 72 DPI: 595 x 842 points
-        PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
+        PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create();
         PdfDocument.Page page = document.startPage(pageInfo);
         Canvas canvas = page.getCanvas();
 
@@ -80,7 +120,7 @@ public final class DtcReportExporter {
         linePaint.setStrokeWidth(1);
         canvas.drawLine(40, 110, 555, 110, linePaint);
 
-        int y = 140;
+        Pager pager = new Pager(document, page, 140);
 
         // Sections
         Paint sectionHeaderPaint = new Paint();
@@ -89,157 +129,133 @@ public final class DtcReportExporter {
         sectionHeaderPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
 
         // Stored DTCs
-        canvas.drawText("Stored Active Trouble Codes (" + stored.size() + ")", 40, y, sectionHeaderPaint);
-        y += 20;
+        pager.line("Stored Active Trouble Codes (" + stored.size() + ")", sectionHeaderPaint, 20);
         if (stored.isEmpty()) {
-            canvas.drawText("  No active stored trouble codes found.", 40, y, paint);
-            y += 20;
+            pager.line("  No active stored trouble codes found.", paint, 20);
         } else {
             for (DtcCode c : stored) {
-                canvas.drawText("  • " + c.getCode() + " : " + c.getDescription(), 40, y, paint);
-                y += 18;
+                pager.line("  • " + c.getCode() + " : " + c.getDescription(), paint, 18);
             }
         }
-        y += 10;
+        pager.space(10);
 
         // Pending DTCs
-        canvas.drawText("Pending Trouble Codes (" + pending.size() + ")", 40, y, sectionHeaderPaint);
-        y += 20;
+        pager.line("Pending Trouble Codes (" + pending.size() + ")", sectionHeaderPaint, 20);
         if (pending.isEmpty()) {
-            canvas.drawText("  No pending trouble codes found.", 40, y, paint);
-            y += 20;
+            pager.line("  No pending trouble codes found.", paint, 20);
         } else {
             for (DtcCode c : pending) {
-                canvas.drawText("  • " + c.getCode() + " : " + c.getDescription(), 40, y, paint);
-                y += 18;
+                pager.line("  • " + c.getCode() + " : " + c.getDescription(), paint, 18);
             }
         }
-        y += 10;
+        pager.space(10);
 
         // Permanent DTCs
-        canvas.drawText("Permanent Trouble Codes (" + permanent.size() + ")", 40, y, sectionHeaderPaint);
-        y += 20;
+        pager.line("Permanent Trouble Codes (" + permanent.size() + ")", sectionHeaderPaint, 20);
         if (permanent.isEmpty()) {
-            canvas.drawText("  No permanent trouble codes found.", 40, y, paint);
-            y += 20;
+            pager.line("  No permanent trouble codes found.", paint, 20);
         } else {
             for (DtcCode c : permanent) {
-                canvas.drawText("  • " + c.getCode() + " : " + c.getDescription(), 40, y, paint);
-                y += 18;
+                pager.line("  • " + c.getCode() + " : " + c.getDescription(), paint, 18);
             }
         }
-        y += 15;
+        pager.space(15);
 
         // Freeze Frame Snapshot
         if (freezeFrame != null && !freezeFrame.getValues().isEmpty()) {
-            canvas.drawText("Engine Snapshot at Time of Fault (Freeze Frame)", 40, y, sectionHeaderPaint);
-            y += 20;
-            
+            pager.line("Engine Snapshot at Time of Fault (Freeze Frame)", sectionHeaderPaint, 20);
+
             Map<String, Double> ffVals = freezeFrame.getValues();
             String[] displayPids = {"0C", "0D", "05", "04", "06", "07", "0B", "0F"};
             String[] displayNames = {"Engine RPM", "Vehicle Speed", "Coolant Temp", "Calculated Load", "STFT Bank 1", "LTFT Bank 1", "Intake MAP", "Intake Air Temp"};
-            
+
             for (int i = 0; i < displayPids.length; i++) {
                 String pidHex = displayPids[i];
                 if (ffVals.containsKey(pidHex)) {
-                    canvas.drawText("  • " + displayNames[i] + ": " + freezeFrame.getFormattedValue(pidHex), 40, y, paint);
-                    y += 18;
+                    pager.line("  • " + displayNames[i] + ": " + freezeFrame.getFormattedValue(pidHex), paint, 18);
                 }
             }
         }
 
         // ── Readiness Monitor Status ──
         if (readiness != null) {
-            canvas.drawText("Emission Readiness Monitor Status", 40, y, sectionHeaderPaint);
-            y += 20;
+            pager.line("Emission Readiness Monitor Status", sectionHeaderPaint, 20);
             String milStr = readiness.isMilOn() ? "ON" : "OFF";
-            canvas.drawText("  MIL Status: " + milStr + "  |  DTC Count: " + readiness.getDtcCount()
-                + "  |  Fuel: " + (readiness.isDiesel() ? "Diesel" : "Gasoline"), 40, y, paint);
-            y += 18;
+            pager.line("  MIL Status: " + milStr + "  |  DTC Count: " + readiness.getDtcCount()
+                + "  |  Fuel: " + (readiness.isDiesel() ? "Diesel" : "Gasoline"), paint, 18);
             for (ReadinessMonitor.MonitorStatus m : readiness.getMonitors()) {
                 String status = m.available ? (m.complete ? "Complete" : "INCOMPLETE") : "N/A";
-                canvas.drawText("  " + m.name + ": " + status, 40, y, paint);
-                y += 14;
+                pager.line("  " + m.name + ": " + status, paint, 14);
             }
-            y += 10;
+            pager.space(10);
         }
 
         // ── Mode 06 Test Results ──
         if (mode06Results != null && !mode06Results.isEmpty()) {
-            canvas.drawText("Mode 06 On-Board Monitor Test Results (" + mode06Results.size() + ")", 40, y, sectionHeaderPaint);
-            y += 20;
+            pager.line("Mode 06 On-Board Monitor Test Results (" + mode06Results.size() + ")", sectionHeaderPaint, 20);
             for (Mode06Result r : mode06Results) {
                 String passFail = r.isPassed() ? "PASS" : "FAIL";
-                canvas.drawText("  MID " + String.format("%02X", r.getObdMid())
+                pager.line("  MID " + String.format("%02X", r.getObdMid())
                     + " TID " + String.format("%02X", r.getTid())
                     + " UASID " + String.format("%02X", r.getUasId())
                     + ": " + r.getFormattedValue() + " " + r.getUnit()
                     + " (min:" + r.getFormattedMin() + " max:" + r.getFormattedMax() + ") "
-                    + passFail, 40, y, paint);
-                y += 14;
+                    + passFail, paint, 14);
             }
-            y += 10;
+            pager.space(10);
         }
 
         // ── ECU Module List ──
         if (modules != null && !modules.isEmpty()) {
-            canvas.drawText("Detected ECU Modules (" + modules.size() + ")", 40, y, sectionHeaderPaint);
-            y += 20;
+            pager.line("Detected ECU Modules (" + modules.size() + ")", sectionHeaderPaint, 20);
             for (DtcReader.ModuleInfo mod : modules) {
-                canvas.drawText("  " + mod.canId + " " + mod.moduleName
+                pager.line("  " + mod.canId + " " + mod.moduleName
                     + " [" + mod.protocolLabel + "]"
                     + " Stored:" + mod.storedDtcCount
                     + " Pending:" + mod.pendingDtcCount
-                    + " Permanent:" + mod.permanentDtcCount, 40, y, paint);
-                y += 14;
+                    + " Permanent:" + mod.permanentDtcCount, paint, 14);
             }
-            y += 10;
+            pager.space(10);
         }
 
         // ── Protocol Bus Scan Results ──
         if (protocolStatuses != null && !protocolStatuses.isEmpty()) {
-            canvas.drawText("Protocol Bus Scan Results (" + protocolStatuses.size() + ")", 40, y, sectionHeaderPaint);
-            y += 20;
+            pager.line("Protocol Bus Scan Results (" + protocolStatuses.size() + ")", sectionHeaderPaint, 20);
             for (DtcReader.ProtocolScanStatus ps : protocolStatuses) {
                 String status = ps.responded ? "RESPONDED" : "No response";
-                canvas.drawText("  " + ps.bus.label + ": " + status
+                pager.line("  " + ps.bus.label + ": " + status
                     + "  Modules:" + ps.modulesFound
-                    + "  DTCs:" + ps.totalDtcCount, 40, y, paint);
-                y += 14;
+                    + "  DTCs:" + ps.totalDtcCount, paint, 14);
             }
-            y += 10;
+            pager.space(10);
         }
 
         // ── Drive Cycle Guidance ──
         if (driveCycleGuide != null && !driveCycleGuide.isEmpty()) {
-            canvas.drawText("Drive Cycle Guidance", 40, y, sectionHeaderPaint);
-            y += 20;
+            pager.line("Drive Cycle Guidance", sectionHeaderPaint, 20);
             for (String line : driveCycleGuide.split("\n")) {
-                if (y > 780) break;
-                canvas.drawText("  " + line, 40, y, paint);
-                y += 12;
+                pager.line("  " + line, paint, 12);
             }
-            y += 10;
+            pager.space(10);
         }
 
-        // Footer note
+        // Footer note on the last page
         Paint footerPaint = new Paint();
         footerPaint.setColor(Color.GRAY);
         footerPaint.setTextSize(9);
-        canvas.drawText("Report generated by OBD2-LPG Data Logger Android App.", 40, 800, footerPaint);
+        pager.canvas.drawText("Report generated by OBD2-LPG Data Logger Android App.", LEFT_MARGIN, 810, footerPaint);
 
-        document.finishPage(page);
+        document.finishPage(pager.page);
 
         File dir = context.getExternalFilesDir(null);
         File pdfFile = new File(dir, "OBD2_Diagnostic_Report_" + System.currentTimeMillis() + ".pdf");
-        
-        try {
-            FileOutputStream fos = new FileOutputStream(pdfFile);
+
+        try (FileOutputStream fos = new FileOutputStream(pdfFile)) {
             document.writeTo(fos);
-            fos.close();
             Log.d("DtcReportExporter", "Successfully exported report to PDF: " + pdfFile.getAbsolutePath());
         } catch (Exception e) {
             Log.e("DtcReportExporter", "Failed to write PDF file", e);
+            pdfFile.delete();
             pdfFile = null;
         } finally {
             document.close();

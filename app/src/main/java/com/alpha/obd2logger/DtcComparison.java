@@ -127,6 +127,18 @@ public final class DtcComparison {
             List<DtcHistoryDb.DtcHistoryRecord> history,
             List<DtcCode> currentStored,
             List<DtcCode> currentPending) {
+        return compareWithHistory(history, currentStored, currentPending, null);
+    }
+
+    /**
+     * Compare using DtcHistoryDb records from the last scan, including
+     * permanent (Mode 0A) codes on both sides of the comparison.
+     */
+    public static DtcComparison compareWithHistory(
+            List<DtcHistoryDb.DtcHistoryRecord> history,
+            List<DtcCode> currentStored,
+            List<DtcCode> currentPending,
+            List<DtcCode> currentPermanent) {
 
         if (history == null || history.isEmpty()) {
             return new DtcComparison(
@@ -134,10 +146,12 @@ public final class DtcComparison {
             );
         }
 
-        // Find the most recent scan date
+        // Find the most recent scan date. "clean" placeholder records count:
+        // they mark a real scan that found zero codes, so codes from an older
+        // scan must not be resurrected as the comparison baseline.
         String latestDate = null;
         for (DtcHistoryDb.DtcHistoryRecord rec : history) {
-            if (!"clean".equals(rec.type) && (latestDate == null || rec.date.compareTo(latestDate) > 0)) {
+            if (latestDate == null || rec.date.compareTo(latestDate) > 0) {
                 latestDate = rec.date;
             }
         }
@@ -148,17 +162,22 @@ public final class DtcComparison {
             );
         }
 
-        // Collect all codes from the latest scan
+        // Collect all codes from the latest scan ("clean" rows carry no code).
+        // Permanent codes were present last scan, so they count toward the
+        // previous-code set — otherwise a code surviving only as Mode 0A
+        // permanent would be misreported as NEW on the next scan.
         List<DtcCode> prevStored = new ArrayList<>();
         List<DtcCode> prevPending = new ArrayList<>();
         for (DtcHistoryDb.DtcHistoryRecord rec : history) {
-            if (latestDate.equals(rec.date)) {
+            if (latestDate.equals(rec.date) && !"clean".equals(rec.type)) {
                 DtcCode c = new DtcCode(rec.code, rec.description);
-                if ("stored".equals(rec.type)) prevStored.add(c);
-                else if ("pending".equals(rec.type)) prevPending.add(c);
+                if ("pending".equals(rec.type)) prevPending.add(c);
+                else prevStored.add(c);
             }
         }
 
-        return compare(prevStored, prevPending, currentStored, currentPending);
+        List<DtcCode> currStored = new ArrayList<>(currentStored);
+        if (currentPermanent != null) currStored.addAll(currentPermanent);
+        return compare(prevStored, prevPending, currStored, currentPending);
     }
 }

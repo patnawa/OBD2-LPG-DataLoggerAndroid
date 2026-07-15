@@ -63,8 +63,9 @@ public final class SerialDriver extends ElmDriver {
             } catch (IOException e) {
                 android.util.Log.w("OBD2Logger", "Standard RFCOMM connection failed, trying reflection fallback...", e);
                 // Close the failed socket before creating a new one to avoid
-                // leaking the native Bluetooth socket resource.
-                try { socket.close(); } catch (IOException ignored) {}
+                // leaking the native Bluetooth socket resource. socket is null
+                // when createRfcommSocketToServiceRecord itself threw.
+                try { if (socket != null) socket.close(); } catch (IOException ignored) {}
                 try {
                     socket = (BluetoothSocket) device.getClass().getMethod("createRfcommSocket", int.class).invoke(device, 1);
                     socket.connect();
@@ -126,6 +127,13 @@ public final class SerialDriver extends ElmDriver {
         }
         commandLock.lock();
         try {
+            // Drain any stale bytes left by a previous timed-out response so
+            // old data cannot be mistaken for this command's reply (which
+            // would permanently desync request/response pairing).
+            while (inputStream.available() > 0 && inputStream.read() >= 0) {
+                // discard
+            }
+
             outputStream.write((command + "\r").getBytes(StandardCharsets.US_ASCII));
             outputStream.flush();
 
@@ -166,6 +174,40 @@ public final class SerialDriver extends ElmDriver {
             trackResponseLiveness("");
             android.util.Log.w("OBD2Logger", "Bluetooth command failed", failure);
             return "";
+        } finally {
+            commandLock.unlock();
+        }
+    }
+
+    /**
+     * Read and discard any bytes currently in the socket buffer (ATZ boot
+     * banner, late tail of a timed-out response). Bounded by {@code maxMillis}.
+     *
+     * Holds the command lock so it cannot race with concurrent sendCommand.
+     */
+    @Override
+    protected void drainStaleBytes(long maxMillis) {
+        if (inputStream == null) {
+            return;
+        }
+        commandLock.lock();
+        try {
+            long deadline = System.currentTimeMillis() + maxMillis;
+            int discarded = 0;
+            try {
+                while (System.currentTimeMillis() < deadline && inputStream.available() > 0) {
+                    if (inputStream.read() < 0) {
+                        connected = false;
+                        break;
+                    }
+                    discarded++;
+                }
+            } catch (IOException ioe) {
+                android.util.Log.w("OBD2Logger", "drainStaleBytes error: " + ioe.getMessage());
+            }
+            if (discarded > 0) {
+                android.util.Log.i("OBD2Logger", "drained " + discarded + " stale byte(s)");
+            }
         } finally {
             commandLock.unlock();
         }

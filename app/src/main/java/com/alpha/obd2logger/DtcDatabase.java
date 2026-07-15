@@ -18,8 +18,10 @@ import java.util.Map;
  */
 public final class DtcDatabase {
     private static final String TAG = "DtcDatabase";
-    private static final Map<String, String> genericCache = new HashMap<>();
-    private static final Map<String, String> brandCache = new HashMap<>();
+    // Published as complete, never-mutated maps so lookup() can read them
+    // from scan threads without locking while init/initForVin swap them.
+    private static volatile Map<String, String> genericCache = java.util.Collections.emptyMap();
+    private static volatile Map<String, String> brandCache = java.util.Collections.emptyMap();
     private static boolean initialized = false;
     private static VinBrandDetector.Brand currentBrand = null;
     private static Context appContext = null;
@@ -42,8 +44,20 @@ public final class DtcDatabase {
     public static synchronized void init(Context context) {
         if (initialized) return;
         appContext = context.getApplicationContext();
-        loadDatabase(context, "dtc_database.json", genericCache);
+        genericCache = loadDatabase(context, "dtc_database.json");
         initialized = true;
+    }
+
+    /**
+     * Drop all cached databases and reload from storage. Needed after an
+     * OTA update: init() alone is a no-op once initialized, so without
+     * this the process would keep serving stale descriptions until killed.
+     */
+    public static synchronized void reload(Context context) {
+        initialized = false;
+        currentBrand = null;
+        brandCache = java.util.Collections.emptyMap();
+        init(context);
     }
 
     /**
@@ -64,13 +78,12 @@ public final class DtcDatabase {
             return VinBrandDetector.getBrandName(brand);
         }
 
-        // Clear previous brand cache
-        brandCache.clear();
-
+        // Swap in the new brand cache atomically so concurrent lookup()
+        // calls never observe a half-populated or cleared map.
         String assetFile = VinBrandDetector.getDtcDatabaseAsset(brand);
-        if (assetFile != null) {
-            loadDatabase(context, assetFile, brandCache);
-        }
+        brandCache = assetFile != null
+                ? loadDatabase(context, assetFile)
+                : java.util.Collections.<String, String>emptyMap();
         currentBrand = brand;
         // Propagate brand to DtcReader so ECU module names use the correct
         // manufacturer labels (Toyota vs Nissan vs Mazda, etc.) instead of
@@ -83,11 +96,12 @@ public final class DtcDatabase {
         return brandName;
     }
 
-    private static void loadDatabase(Context context, String assetFile, Map<String, String> cache) {
+    private static Map<String, String> loadDatabase(Context context, String assetFile) {
+        Map<String, String> cache = new HashMap<>();
+        InputStream is = null;
         try {
-            InputStream is = null;
             java.io.File localUpdate = new java.io.File(context.getFilesDir(), assetFile);
-            
+
             // 1. Try to load the OTA updated file from internal storage first
             if (localUpdate.exists() && localUpdate.length() > 0) {
                 is = new java.io.FileInputStream(localUpdate);
@@ -96,12 +110,10 @@ public final class DtcDatabase {
                 // 2. Fallback to the bundled app assets
                 is = context.getAssets().open(assetFile);
             }
-            
-            int size = is.available();
-            byte[] buffer = new byte[size];
-            is.read(buffer);
-            is.close();
-            String jsonStr = new String(buffer, StandardCharsets.UTF_8);
+
+            // available() is only a hint and a single read() may return
+            // short — read to EOF so large/compressed streams load fully.
+            String jsonStr = new String(readFully(is), StandardCharsets.UTF_8);
             JSONObject json = new JSONObject(jsonStr);
             Iterator<String> keys = json.keys();
             while (keys.hasNext()) {
@@ -111,7 +123,22 @@ public final class DtcDatabase {
             Log.i(TAG, "Loaded " + cache.size() + " codes from " + assetFile);
         } catch (Exception e) {
             Log.w(TAG, "Could not load " + assetFile + ": " + e.getMessage());
+        } finally {
+            if (is != null) {
+                try { is.close(); } catch (Exception ignored) {}
+            }
         }
+        return cache;
+    }
+
+    static byte[] readFully(InputStream is) throws java.io.IOException {
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int len;
+        while ((len = is.read(buffer)) != -1) {
+            baos.write(buffer, 0, len);
+        }
+        return baos.toByteArray();
     }
 
     /**

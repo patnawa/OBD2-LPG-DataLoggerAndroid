@@ -653,13 +653,23 @@ public final class BatteryTester {
      * @param hours    Hours elapsed between the two readings
      */
     public static BatteryTestResult testParasiticDrain(double vStart, double vEnd, double hours) {
+        return testParasiticDrain(vStart, vEnd, hours, Chemistry.FLOODED);
+    }
+
+    /**
+     * Chemistry-aware parasitic drain estimate. The chemistry-less overload used
+     * the FLOODED SoC table for every battery, so e.g. a LiFePO4 drain from a
+     * flat-curve voltage read as 0%/h and always passed.
+     */
+    public static BatteryTestResult testParasiticDrain(double vStart, double vEnd, double hours,
+                                                       Chemistry chem) {
         if (hours <= 0) {
             return new BatteryTestResult("Parasitic Drain", "Insufficient time",
                     Severity.INFO, "Need measurements at least 1 hour apart", 0);
         }
 
         double dropPerHour = (vStart - vEnd) / hours;
-        double socLossPerHour = voltageToSoC(vStart) - voltageToSoC(vEnd);
+        double socLossPerHour = voltageToSoC(vStart, chem) - voltageToSoC(vEnd, chem);
         double socRate = socLossPerHour / hours;
 
         Severity sev;
@@ -1015,8 +1025,10 @@ public final class BatteryTester {
             results.add(testVoltageDrop(noLoadV, fullLoadV));
         }
 
-        // Test 5: Voltage Recovery
-        if (postLoadV > 0 && recoveredV > 0) {
+        // Test 5: Voltage Recovery — needs the pre-load voltage too. noLoadV
+        // defaults to -1 when unmeasured, and delta = -1 - recoveredV would
+        // always look like an "excellent recovery" (fabricated PASS/100).
+        if (noLoadV > 0 && postLoadV > 0 && recoveredV > 0) {
             double rs = recoverySec > 0 ? recoverySec : 0;
             results.add(testVoltageRecovery(noLoadV, postLoadV, recoveredV, rs));
         }
@@ -1032,9 +1044,9 @@ public final class BatteryTester {
             results.add(testRipple(rippleSamples));
         }
 
-        // Test 8: Parasitic Drain
+        // Test 8: Parasitic Drain (chemistry-aware SoC table)
         if (drainStartV > 0 && drainEndV > 0 && drainHours > 0) {
-            results.add(testParasiticDrain(drainStartV, drainEndV, drainHours));
+            results.add(testParasiticDrain(drainStartV, drainEndV, drainHours, chem));
         }
 
         // Test 9: Charging Efficiency

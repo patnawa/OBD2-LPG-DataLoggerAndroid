@@ -125,9 +125,11 @@ public final class Mode06Reader {
         normalized = normalized.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "");
         normalized = normalized.trim();
 
-        // Extract all hex digits from the response
-        // Handle multi-frame: strip line prefixes like "0:", "1:", "2:"
-        StringBuilder hexBuf = new StringBuilder();
+        // Reassemble record data per ECU. Parsing per line (instead of one
+        // indexOf("46") over the concatenated hex) means length lines, CAN ID
+        // prefixes and a second ECU's "46" header are never consumed as record
+        // bytes, and the header can't match at a nibble-straddled position.
+        java.util.Map<String, StringBuilder> perEcu = new java.util.LinkedHashMap<>();
         for (String line : normalized.split("\\n")) {
             String clean = line.trim();
             if (clean.isEmpty()) continue;
@@ -138,36 +140,60 @@ public final class Mode06Reader {
             // Strip frame number prefix: "0:", "1:", "2:" etc.
             int colonIdx = clean.indexOf(':');
             if (colonIdx >= 0) {
-                clean = clean.substring(colonIdx + 1);
+                clean = clean.substring(colonIdx + 1).trim();
             }
 
-            // Remove everything except hex digits
-            String hex = clean.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
-            hexBuf.append(hex);
+            // Strip CAN ID prefix when headers are on ("7E8 06 46 ..."),
+            // keeping the CAN ID as the ECU key so multi-ECU responses
+            // stay separated. Also strip the ISO-TP PCI byte.
+            String ecuKey = "";
+            String hex;
+            String[] tokens = clean.split("\\s+");
+            if (tokens.length >= 2 && tokens[0].matches("[0-9A-Fa-f]{3}|[0-9A-Fa-f]{8}")) {
+                ecuKey = tokens[0].toUpperCase();
+                StringBuilder rest = new StringBuilder();
+                for (int i = 1; i < tokens.length; i++) {
+                    rest.append(tokens[i]);
+                }
+                hex = rest.toString().replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
+                // ISO-TP PCI: single frame 0X, first frame 1X LL, consecutive 2X
+                if (hex.startsWith("1") && hex.length() >= 4) {
+                    hex = hex.substring(4);
+                } else if (hex.startsWith("0") || hex.startsWith("2")) {
+                    hex = hex.substring(2);
+                }
+            } else {
+                hex = clean.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
+            }
+
+            if (hex.isEmpty()) continue;
+            // Drop ELM327 multi-frame total-length lines (e.g. "013")
+            if (hex.length() <= 3 && !hex.startsWith("46")) continue;
+
+            StringBuilder buf = perEcu.computeIfAbsent(ecuKey, k -> new StringBuilder());
+            // Re-sync on this line's own "46" mode header (Mode 06 positive
+            // response); lines without it are continuation frames.
+            if (hex.startsWith("46")) {
+                buf.append(hex.substring(2));
+            } else {
+                buf.append(hex);
+            }
         }
 
-        String allHex = hexBuf.toString();
-        if (allHex.isEmpty()) {
-            return results;
+        for (StringBuilder buf : perEcu.values()) {
+            parseRecords(buf.toString(), results);
         }
+        return results;
+    }
 
-        // Find "46" header (Mode 06 positive response)
-        // The response starts with "46" followed by data
-        int headerIdx = allHex.indexOf("46");
-        if (headerIdx < 0) {
-            return results;
-        }
-
-        // Skip the "46" header
-        String data = allHex.substring(headerIdx + 2);
+    /**
+     * Parse 9-byte records: MID(1) + TID(1) + UASID(1) + value(2) + min(2) + max(2)
+     * from reassembled record data (mode header already stripped).
+     */
+    private static void parseRecords(String data, List<Mode06Result> results) {
         if (data.isEmpty()) {
-            return results;
+            return;
         }
-
-        // Parse 9-byte records: MID(1-2) + TID(1) + UASID(1) + value(2) + min(2) + max(2)
-        // Note: MID can be 1 byte (0x00-0xFF) for standard Mode 06
-        // We need at least 8 bytes after the header for one result
-        // Total hex chars needed: 8 bytes = 16 hex chars minimum
 
         int pos = 0;
         while (pos + 18 <= data.length()) {
@@ -233,8 +259,6 @@ public final class Mode06Reader {
                 break;
             }
         }
-
-        return results;
     }
 
     /**

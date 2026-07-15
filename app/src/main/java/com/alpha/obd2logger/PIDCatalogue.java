@@ -225,7 +225,9 @@ public final class PIDCatalogue {
         list.add(new PIDDefinition("OBD Standards Compliance", "01", "1C", "", "A", 0, 255, false, 1, false));
 
         // --- EVAP ---
-        list.add(new PIDDefinition("EVAP System Vapor Pressure", "01", "32", "Pa", "(A*256+B)/4-8192", -8192, 8192, false, 2, false));
+        // SAE J1979 PID 0x32: two's-complement signed 16-bit, 0.25 Pa per bit
+        // ("S" = signed 16-bit from bytes A,B in the formula evaluator).
+        list.add(new PIDDefinition("EVAP System Vapor Pressure", "01", "32", "Pa", "S/4", -8192, 8191.75, false, 2, false));
 
         return list;
     }

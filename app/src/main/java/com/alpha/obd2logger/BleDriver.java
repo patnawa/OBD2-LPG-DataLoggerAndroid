@@ -67,6 +67,12 @@ public final class BleDriver extends ElmDriver {
                 g.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 connected = false;
+                // Release the GATT client — without close() the BluetoothGatt
+                // instance leaks until the next explicit disconnect().
+                try {
+                    g.close();
+                } catch (Exception ignored) {
+                }
             }
         }
 
@@ -164,6 +170,12 @@ public final class BleDriver extends ElmDriver {
             return false;
         }
 
+        // Clean up any previous session first — otherwise the old BluetoothGatt
+        // leaks (connectGatt below overwrites the field without closing it) and
+        // stale notifyEnabled/writeChar/buffer state from the prior connection
+        // can make the wait loop below pass without a real link.
+        disconnect();
+
         try {
             gatt = config.bluetoothDevice.connectGatt(context, false, gattCallback,
                     BluetoothDevice.TRANSPORT_LE);
@@ -180,7 +192,9 @@ public final class BleDriver extends ElmDriver {
             }
 
             connected = initializeElm327();
-            if (!connected) {
+            if (connected) {
+                resetLiveness();
+            } else {
                 disconnect();
             }
             return connected;

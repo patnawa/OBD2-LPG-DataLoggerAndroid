@@ -106,9 +106,11 @@ public abstract class ElmDriver extends BaseDriver {
             sendCommand("ATST32"); // 200ms ECU response timeout
             sendCommand("ATSP" + config.obdProtocol.getElmValue());
 
-            // Detect vLinker device and apply firmware-specific optimizations
+            // Detect the vLinker device type. The firmware-specific timing
+            // optimizations are applied AFTER the vehicle probe below, because
+            // probeVehicle()'s finally block restores conservative ATAT1/ATST32
+            // and would clobber them.
             vlinkerType = VLinkerOptimizer.detectDevice(this);
-            VLinkerOptimizer.applyOptimizations(this, vlinkerType, config);
 
             // A working AT command channel only proves that Android reached the
             // adapter. Require a positive Mode 01 response before reporting a
@@ -120,6 +122,10 @@ public abstract class ElmDriver extends BaseDriver {
                 disconnect();
                 return false;
             }
+
+            // Apply firmware-specific optimizations now that probeVehicle()
+            // has finished restoring its conservative timing.
+            VLinkerOptimizer.applyOptimizations(this, vlinkerType, config);
 
             return true;
         } catch (Exception e) {
@@ -161,9 +167,11 @@ public abstract class ElmDriver extends BaseDriver {
         sendCommand("ATST32");
         sendCommand("ATSP" + config.obdProtocol.getElmValue());
 
-        // Re-apply safe performance settings for known vLinker hardware.
-        VLinkerOptimizer.applyOptimizations(this, vlinkerType, config);
         probeVehicle();
+        // Re-apply safe performance settings for known vLinker hardware —
+        // after probeVehicle(), whose finally block restores conservative
+        // ATAT1/ATST32 and would otherwise clobber them.
+        VLinkerOptimizer.applyOptimizations(this, vlinkerType, config);
     }
 
     private boolean probeVehicle() {

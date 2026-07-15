@@ -360,6 +360,14 @@ public final class Mode09Reader {
         trimmed = trimmed.replaceAll("^18DAF1[0-9A-F]{2}[0-2][0-9A-F]", "");
 
         // 5. Remove any non-hex characters
-        return trimmed.replaceAll("[^0-9A-Fa-f]", "");
+        trimmed = trimmed.replaceAll("[^0-9A-Fa-f]", "");
+
+        // 6. Ignore multi-frame total-length lines (e.g. "014") — otherwise
+        //    their 3 hex chars are prepended and nibble-misalign the payload.
+        if (trimmed.length() <= 3 && !trimmed.startsWith("49")) {
+            return "";
+        }
+
+        return trimmed;
     }
 }

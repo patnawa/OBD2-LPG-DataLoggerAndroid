@@ -796,6 +796,11 @@ public final class DtcReader {
      * Parse a mode response with AT H1 headers enabled.
      * Response lines: "7E8 06 43 04 01 33 00 00 00 00"
      * First token = CAN ID (11-bit or 29-bit hex).
+     *
+     * Frames are reassembled per ECU (keyed by CAN ID) before parsing so a
+     * DTC that straddles an ISO-TP frame boundary is decoded correctly, and
+     * the ISO-TP PCI byte(s) after the CAN ID are stripped so they are never
+     * decoded as phantom DTCs (e.g. "06 43 ..." → P0643).
      */
     private static ScanLineResult parseWithModuleHeaders(
             String response, String modeHeader, String protocolLabel) {
@@ -804,7 +809,8 @@ public final class DtcReader {
         if (response == null || response.isEmpty()) return result;
 
         String[] lines = response.replace("\r", "\n").split("\n");
-        ScanLineResult tempResult = new ScanLineResult();
+        Map<Integer, StringBuilder> perEcuHex = new LinkedHashMap<>();
+        List<StringBuilder> fallbackSegments = new ArrayList<>();
 
         for (String line : lines) {
             String clean = line.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "").trim();
@@ -816,7 +822,7 @@ public final class DtcReader {
                 clean = clean.substring(colonIdx + 1);
             }
 
-            String[] tokens = clean.split("\\s+");
+            String[] tokens = clean.trim().split("\\s+");
             if (tokens.length < 2) continue;
 
             // Parse CAN ID — first token
@@ -827,26 +833,72 @@ public final class DtcReader {
                 }
                 ecuId = Integer.parseInt(tokens[0], 16);
             } catch (NumberFormatException e) {
-                // Not a CAN header line — try legacy parse
-                List<DtcCode> fallbackCodes = parseDtcPayload(
-                    clean.replaceAll("\\s+", ""), modeHeader);
-                result.codes.addAll(fallbackCodes);
+                // Not a CAN header line — legacy / headers-off fallback.
+                String hex = clean.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
+                // Drop ELM327 multi-frame total-length lines (e.g. "010")
+                if (hex.length() <= 3 && !hex.startsWith(modeHeader)) continue;
+                // 3-byte K-line header (e.g. "48 6B 10 43 ..."): mode byte is
+                // followed directly by DTC pairs (no CAN count byte) and the
+                // line ends with a checksum byte.
+                if (!hex.startsWith(modeHeader)
+                        && hex.length() >= 10
+                        && hex.startsWith(modeHeader, 6)
+                        && hex.substring(0, 2).matches("48|68|8[0-9A-F]|C[0-9A-F]")) {
+                    result.codes.addAll(parseDtcPairs(
+                        hex.substring(6 + modeHeader.length(), hex.length() - 2)));
+                    continue;
+                }
+                // Reassemble continuation lines onto the previous segment so a
+                // DTC straddling a line boundary is not dropped or misaligned.
+                if (hex.startsWith(modeHeader) || fallbackSegments.isEmpty()) {
+                    fallbackSegments.add(new StringBuilder(hex));
+                } else {
+                    fallbackSegments.get(fallbackSegments.size() - 1).append(hex);
+                }
                 continue;
             }
 
-            // Build hex from data bytes (skip CAN ID)
+            // Build hex from data bytes (skip CAN ID), then strip the ISO-TP
+            // PCI byte(s) before accumulating this ECU's payload.
             StringBuilder hexData = new StringBuilder();
             for (int i = 1; i < tokens.length; i++) {
                 hexData.append(tokens[i]);
             }
+            String payload = stripIsoTpPci(
+                hexData.toString().replaceAll("[^0-9A-Fa-f]", "").toUpperCase(), modeHeader);
+            perEcuHex.computeIfAbsent(ecuId, k -> new StringBuilder()).append(payload);
+        }
 
-            List<DtcCode> lineCodes = parseDtcPayload(hexData.toString(), modeHeader);
-            result.codes.addAll(lineCodes);
-
-            result.perModule.computeIfAbsent(ecuId, k -> new ArrayList<>()).addAll(lineCodes);
+        for (Map.Entry<Integer, StringBuilder> e : perEcuHex.entrySet()) {
+            List<DtcCode> ecuCodes = parseDtcPayload(e.getValue().toString(), modeHeader);
+            result.codes.addAll(ecuCodes);
+            result.perModule.computeIfAbsent(e.getKey(), k -> new ArrayList<>()).addAll(ecuCodes);
+        }
+        for (StringBuilder segment : fallbackSegments) {
+            result.codes.addAll(parseDtcPayload(segment.toString(), modeHeader));
         }
 
         return result;
+    }
+
+    /**
+     * Strip the ISO-TP PCI byte(s) that follow the CAN ID when AT H1 headers
+     * are enabled: single frame "0L", first frame "1L LL", consecutive "2N".
+     * Without this, the PCI + mode bytes get decoded as phantom DTCs.
+     */
+    private static String stripIsoTpPci(String hex, String modeHeader) {
+        if (hex.length() < 2 || hex.startsWith(modeHeader)) return hex;
+        char pciType = hex.charAt(0);
+        if (pciType == '0' && hex.startsWith(modeHeader, 2)) {
+            return hex.substring(2);   // single frame
+        }
+        if (pciType == '1' && hex.length() >= 4 && hex.startsWith(modeHeader, 4)) {
+            return hex.substring(4);   // first frame (PCI = 1L LL)
+        }
+        if (pciType == '2') {
+            return hex.substring(2);   // consecutive frame
+        }
+        return hex;
     }
 
     /**
@@ -869,17 +921,23 @@ public final class DtcReader {
         if (cleanHex.length() < 4) return codes;
 
         int pos = skipModeHeaderAndCount(cleanHex, modeHeader);
+        codes.addAll(parseDtcPairs(cleanHex.substring(pos)));
+        return codes;
+    }
 
-        while (pos + 4 <= cleanHex.length()) {
-            int byteA = Integer.parseInt(cleanHex.substring(pos, pos + 2), 16);
-            int byteB = Integer.parseInt(cleanHex.substring(pos + 2, pos + 4), 16);
+    /** Parse consecutive 2-byte DTC pairs, skipping "00 00" padding. */
+    private static List<DtcCode> parseDtcPairs(String hex) {
+        List<DtcCode> codes = new ArrayList<>();
+        int pos = 0;
+        while (pos + 4 <= hex.length()) {
+            int byteA = Integer.parseInt(hex.substring(pos, pos + 2), 16);
+            int byteB = Integer.parseInt(hex.substring(pos + 2, pos + 4), 16);
 
             if (byteA != 0x00 || byteB != 0x00) {
                 codes.add(DtcCode.fromHexBytes(byteA, byteB));
             }
             pos += 4;
         }
-
         return codes;
     }
 
@@ -930,6 +988,11 @@ public final class DtcReader {
         if (response == null || response.isEmpty()) return codes;
 
         String[] lines = response.replace("\r", "\n").split("\n");
+        // Reassemble multi-line responses before parsing: a new segment starts
+        // whenever a line begins with the mode header; every other line is an
+        // ISO-TP continuation of the previous segment. This keeps a DTC that
+        // straddles a line boundary intact instead of dropping/misaligning it.
+        List<StringBuilder> segments = new ArrayList<>();
         for (String line : lines) {
             String clean = line.replaceAll("(?i)(SEARCHING|BUSINIT|BUS INIT|\\.)", "").trim();
             if (clean.isEmpty() || clean.matches("(?i)NODATA|NO DATA")) continue;
@@ -938,18 +1001,18 @@ public final class DtcReader {
             if (colonIdx >= 0) clean = clean.substring(colonIdx + 1);
 
             String hex = clean.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
-            if (hex.length() < 4) continue;
+            // Drop ELM327 multi-frame total-length lines (e.g. "010")
+            if (hex.length() <= 3 && !hex.startsWith(modeHeader)) continue;
 
-            int pos = skipModeHeaderAndCount(hex, modeHeader);
-
-            while (pos + 4 <= hex.length()) {
-                int byteA = Integer.parseInt(hex.substring(pos, pos + 2), 16);
-                int byteB = Integer.parseInt(hex.substring(pos + 2, pos + 4), 16);
-                if (byteA != 0x00 || byteB != 0x00) {
-                    codes.add(DtcCode.fromHexBytes(byteA, byteB));
-                }
-                pos += 4;
+            if (hex.startsWith(modeHeader) || segments.isEmpty()) {
+                segments.add(new StringBuilder(hex));
+            } else {
+                segments.get(segments.size() - 1).append(hex);
             }
+        }
+
+        for (StringBuilder segment : segments) {
+            codes.addAll(parseDtcPayload(segment.toString(), modeHeader));
         }
         return codes;
     }
@@ -1117,9 +1180,18 @@ public final class DtcReader {
                 codes.addAll(parseDtcResponse(raw0A, "4A"));
             }
         } finally {
-            // Reset to defaults
-            driver.sendCommandRaw("ATCRA000");
-            driver.sendCommandRaw("ATSH000");  // auto header
+            // Clear the receive filter. Bare "ATCRA" removes the filter;
+            // "ATCRA000" would instead SET the filter to CAN ID 0x000 and
+            // make every subsequent poll return NO DATA.
+            driver.sendCommandRaw("ATCRA");
+            driver.sendCommandRaw("ATAR");  // restore automatic receive addressing
+            // Restore the functional (broadcast) request header for normal
+            // polling — "ATSH000" would set a literal 000 header, not a default.
+            if (txHeader != null && txHeader.length() > 3) {
+                driver.sendCommandRaw("ATSH18DB33F1");  // 29-bit functional address
+            } else {
+                driver.sendCommandRaw("ATSH7DF");       // 11-bit functional address
+            }
         }
         return codes;
     }

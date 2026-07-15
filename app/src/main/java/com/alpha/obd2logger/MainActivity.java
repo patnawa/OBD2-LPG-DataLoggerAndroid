@@ -179,6 +179,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private final Runnable connectionWatchdog = new Runnable() {
         @Override
         public void run() {
+            // A watchdog posted by a destroyed Activity instance (e.g. before a
+            // rotation) must never kill the session owned by the live instance.
+            if (activeInstance != MainActivity.this) return;
             if (running || isConnecting) {
                 boolean backgroundAttempt = backgroundUiState != BackgroundUiState.OFF
                         || LoggerService.isLoggingActive();
@@ -466,6 +469,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (LoggerService.isLoggingActive()) {
             running = true;
             LoggerService.setCallback(this);
+            // Restore the session clock after Activity recreation — otherwise
+            // updateLiveMetrics computes duration/Hz from startTimeMs == 0.
+            if (loggingStartTime == 0 && LoggerService.sessionStartElapsedMs > 0) {
+                loggingStartTime = LoggerService.sessionStartElapsedMs;
+            }
             
             if (fabLog != null) {
                 setFabState(true);
@@ -2026,13 +2034,33 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Older builds exposed incomplete locale packs. Normalize a persisted
         // legacy choice so the spinner and the resources cannot disagree.
         if (!languageSupported) {
-            currentLang = LocaleHelper.LANG_ENGLISH;
-            LocaleHelper.setLocale(this, currentLang);
+            if (LocaleHelper.LANG_SYSTEM.equals(currentLang)) {
+                // "Follow system" is a valid state — resolve the effective system
+                // language for spinner display only, WITHOUT calling setLocale
+                // (which would pin an explicit locale and stop following system).
+                String sysLang = Locale.getDefault().getLanguage();
+                for (int i = 0; i < langCodes.length; i++) {
+                    if (langCodes[i].equals(sysLang)) {
+                        langIndex = i;
+                        break;
+                    }
+                }
+            } else {
+                currentLang = LocaleHelper.LANG_ENGLISH;
+                LocaleHelper.setLocale(this, currentLang);
+            }
         }
         languageSpinner.setSelection(langIndex);
         languageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            private boolean isInitial = true;
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                // Skip the layout-time initial fire: it must not convert a
+                // "follow system" preference into an explicit locale choice.
+                if (isInitial) {
+                    isInitial = false;
+                    return;
+                }
                 String selectedLang = langCodes[position];
                 if (!selectedLang.equals(LocaleHelper.getLanguage(MainActivity.this))) {
                     LocaleHelper.setLocale(MainActivity.this, selectedLang);
@@ -3043,8 +3071,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 UsbSerialDriver driver = availableDrivers.get(0);
                 if (!manager.hasPermission(driver.getDevice())) {
                     Intent permissionIntent = new Intent(ACTION_USB_PERMISSION).setPackage(getPackageName());
-                    PendingIntent pi = PendingIntent.getBroadcast(this, 0, permissionIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                    // Must be MUTABLE: UsbManager fills the grant result into this
+                    // PendingIntent's extras; an immutable one silently drops it.
+                    int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        piFlags |= PendingIntent.FLAG_MUTABLE;
+                    }
+                    PendingIntent pi = PendingIntent.getBroadcast(this, 0, permissionIntent, piFlags);
                     pendingStartLoggingAfterUsbPermission = true;
                     manager.requestPermission(driver.getDevice(), pi);
                     setStatus("Requesting USB permission...", R.color.warning);
@@ -5123,6 +5156,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             runningVoltage = idleV;
             // Also try high-RPM reading (ask user to rev)
             runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
                 if (idleV > 0) {
                     batteryStatusText.setText(getString(R.string.battery_alt_step2));
                     new android.app.AlertDialog.Builder(this)
@@ -5189,6 +5223,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             double noLoad = readBatteryVoltage();
             noLoadVoltage = noLoad;
             runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
                 batteryStatusText.setText(getString(R.string.battery_load_step2));
                 new android.app.AlertDialog.Builder(this)
                         .setTitle(getString(R.string.battery_load_drop_title))
@@ -5202,6 +5237,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                                 double fullLoad = readBatteryVoltage();
                                 fullLoadVoltage = fullLoad;
                                 runOnUiThread(() -> {
+                                    if (isFinishing() || isDestroyed()) return;
                                     if (noLoad > 0 && fullLoad > 0) {
                                         // Now show Step 3: Turn OFF accessories to test recovery
                                         batteryStatusText.setText(getString(R.string.battery_load_step3));
@@ -5658,7 +5694,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
                 if (vinStr.isEmpty()) vinStr = "UNKNOWN_VIN";
                 List<DtcHistoryDb.DtcHistoryRecord> history = dtcHistoryDb.getHistory(vinStr);
-                DtcComparison comparison = DtcComparison.compareWithHistory(history, stored, pending);
+                DtcComparison comparison = DtcComparison.compareWithHistory(history, stored, pending, permanent);
                 
                 lastStoredDtcs.clear();
                 lastStoredDtcs.addAll(stored);
@@ -6012,13 +6048,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return;
         }
 
-        // Temporary bypass VmPolicy restriction to share file
-        android.os.StrictMode.VmPolicy.Builder builder = new android.os.StrictMode.VmPolicy.Builder();
-        android.os.StrictMode.setVmPolicy(builder.build());
+        // Share via FileProvider — file:// URIs are rejected by receiving apps
+        // on Android 7+ and previously needed a global StrictMode bypass.
+        android.net.Uri pdfUri;
+        try {
+            pdfUri = androidx.core.content.FileProvider.getUriForFile(this,
+                    getApplicationContext().getPackageName() + ".fileprovider", pdfFile);
+        } catch (IllegalArgumentException e) {
+            android.util.Log.e("MainActivity", "Failed to get content URI for PDF", e);
+            Toast.makeText(this, "Failed to share PDF report.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Intent intent = new Intent(Intent.ACTION_SEND);
         intent.setType("application/pdf");
-        intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(pdfFile));
+        intent.putExtra(Intent.EXTRA_STREAM, pdfUri);
         intent.putExtra(Intent.EXTRA_SUBJECT, "OBD2 Vehicle Diagnostic Report - " + vin);
         intent.putExtra(Intent.EXTRA_TEXT, "Attached is the OBD2 PDF diagnostic report for vehicle VIN: " + vin);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -6220,7 +6264,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
                 if (vinStr.isEmpty()) vinStr = "UNKNOWN_VIN";
                 DtcComparison comparison = DtcComparison.compareWithHistory(
-                    dtcHistoryDb.getHistory(vinStr), stored, pending);
+                    dtcHistoryDb.getHistory(vinStr), stored, pending, permanent);
 
                 lastStoredDtcs.clear(); lastStoredDtcs.addAll(stored);
                 lastPendingDtcs.clear(); lastPendingDtcs.addAll(pending);
@@ -8063,7 +8107,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 } else if (!pidFilterActive && hideDerivedSensors && pidKey != null && pidKey.startsWith("derived_")) {
                     continue;
                 }
-                if (!rowCache.containsKey(sample.getName())) {
+                if (!rowCache.containsKey(pidKey != null ? pidKey : sample.getName())) {
                     rebuildNeeded = true;
                     break;
                 }
@@ -8108,8 +8152,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 pidCountValues.put(pidKey, (currentCount != null ? currentCount : 0) + 1);
             }
 
-            TextView valueView = rowCache.get(pidName);
-            TextView statusView = statusCache.get(pidName);
+            // Cache rows by pidKey, not display name: derived samples can share a
+            // display name (e.g. "Fuel Economy" for km/L and L/100km), which would
+            // force a full rebuild every record and overwrite one cell with the other.
+            String cacheKey = pidKey != null ? pidKey : pidName;
+            TextView valueView = rowCache.get(cacheKey);
+            TextView statusView = statusCache.get(cacheKey);
 
             if (valueView == null) {
                 if (index % 2 == 0) {
@@ -8161,8 +8209,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     currentRow.addView(card);
                 }
 
-                rowCache.put(pidName, valueView);
-                statusCache.put(pidName, statusView);
+                rowCache.put(cacheKey, valueView);
+                statusCache.put(cacheKey, statusView);
             }
 
             valueView.setText(formatValue(sample.getValue(), sample.getUnit()));
@@ -8231,6 +8279,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (txtSessionRecords != null) {
             txtSessionRecords.setText(String.valueOf(count));
         }
+        // No valid session start time (e.g. Activity recreated mid-session):
+        // skip duration/Hz rather than showing an absurd elapsed time.
+        if (startTimeMs <= 0) return;
         long elapsedMs = SystemClock.elapsedRealtime() - startTimeMs;
         if (txtSessionDuration != null) {
             long secs = elapsedMs / 1000;
@@ -8756,6 +8807,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     @Override
     protected void onDestroy() {
         isPaused = false; // Clear any stuck pause from diagnostic features
+        watchdogHandler.removeCallbacks(connectionWatchdog);
         ExecutorService dtc = dtcExecutor;
         if (dtc != null) {
             dtc.shutdownNow();

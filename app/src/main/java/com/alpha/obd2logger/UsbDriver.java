@@ -54,6 +54,8 @@ public class UsbDriver extends ElmDriver {
 
         if (driver.getPorts().isEmpty()) {
             Log.e(TAG, "No ports found on USB device.");
+            connection.close();
+            connection = null;
             return false;
         }
         usbSerialPort = driver.getPorts().get(0); // Most devices have just one port (port 0)
@@ -62,7 +64,9 @@ public class UsbDriver extends ElmDriver {
             usbSerialPort.setParameters(config.baud, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
             
             connected = initializeElm327();
-            if (!connected) {
+            if (connected) {
+                resetLiveness();
+            } else {
                 disconnect();
             }
             return connected;
@@ -101,8 +105,20 @@ public class UsbDriver extends ElmDriver {
         }
         commandLock.lock();
         try {
-            // 1. Flush any leftover data from previous command before sending
-            usbSerialPort.purgeHwBuffers(true, true);
+            // 1. Flush any leftover data from previous command before sending.
+            //    purgeHwBuffers is not supported by every driver (CDC-ACM throws
+            //    UnsupportedOperationException) — fall back to a short manual drain.
+            try {
+                usbSerialPort.purgeHwBuffers(true, true);
+            } catch (Exception purgeUnsupported) {
+                try {
+                    byte[] drain = new byte[256];
+                    while (usbSerialPort.read(drain, 50) > 0) {
+                        // discard stale bytes from a previous response
+                    }
+                } catch (Exception ignored) {
+                }
+            }
 
             // 2. Send command with CR (ELM327 expects \r as command terminator)
             usbSerialPort.write((command + "\r").getBytes(), 1000);

@@ -39,6 +39,11 @@ public class FuelMapView extends View {
     private Paint textPaint;
     private Paint highlightPaint;
     private Paint badgePaint;
+    private Paint glowPaint;
+    // uptimeMillis() of the last live data push — the pulsing-glow self-invalidation
+    // loop only runs while data is recent, so it stops shortly after logging ends.
+    private long lastLiveUpdateMs = 0;
+    private static final long GLOW_ANIMATION_TIMEOUT_MS = 3000;
     private final RectF cellRect = new RectF();
 
     // Grid configuration — delegated to MapBinning (single source of truth).
@@ -120,6 +125,7 @@ public class FuelMapView extends View {
             if (snapshot.getActiveRpmCell() >= 0) {
                 this.currentRpmCell = snapshot.getActiveRpmCell();
                 this.currentMapCell = snapshot.getActiveMapBin();
+                this.lastLiveUpdateMs = android.os.SystemClock.uptimeMillis();
             }
             postInvalidate();
         }
@@ -128,6 +134,7 @@ public class FuelMapView extends View {
         public void setActiveCell(int rpmCell, float mapBin) {
             this.currentRpmCell = rpmCell;
             this.currentMapCell = mapBin;
+            this.lastLiveUpdateMs = android.os.SystemClock.uptimeMillis();
             postInvalidate();
         }
 
@@ -145,6 +152,7 @@ public class FuelMapView extends View {
             this.liveTrim = trim != null && Double.isFinite(trim) ? trim : null;
             this.liveFuelMode = fuelMode != null ? fuelMode : FuelMode.PETROL;
             this.liveSampleEligible = eligible;
+            this.lastLiveUpdateMs = android.os.SystemClock.uptimeMillis();
             postInvalidate();
         }
 
@@ -183,6 +191,9 @@ public class FuelMapView extends View {
         badgePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         badgePaint.setColor(0xCCFFFFFF); // slightly transparent white
         badgePaint.setTextAlign(Paint.Align.RIGHT);
+
+        glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        glowPaint.setStyle(Paint.Style.STROKE);
     }
 
     public void setMapMode(MapMode mode) {
@@ -192,6 +203,7 @@ public class FuelMapView extends View {
 
     public void pushData(double rpm, double map, double trim, FuelMode fuelMode) {
         pushDataInternal(rpm, map, trim, fuelMode);
+        lastLiveUpdateMs = android.os.SystemClock.uptimeMillis();
         invalidate();
     }
 
@@ -453,9 +465,7 @@ public class FuelMapView extends View {
                     gridPaint.setStrokeWidth(2f);
                     canvas.drawRect(cellRect, gridPaint);
 
-                    // Draw pulsing neon glow border
-                    Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                    glowPaint.setStyle(Paint.Style.STROKE);
+                    // Draw pulsing neon glow border (paint reused — never allocate in onDraw)
                     glowPaint.setStrokeWidth(3.5f * density);
                     long time = android.os.SystemClock.uptimeMillis();
                     int glowAlpha = 140 + (int)(115 * Math.sin(time * 0.008));
@@ -471,7 +481,11 @@ public class FuelMapView extends View {
                     canvas.drawRect(cellRect.left - 1.5f * density, cellRect.top - 1.5f * density, 
                                    cellRect.right + 1.5f * density, cellRect.bottom + 1.5f * density, glowPaint);
                     
-                    postInvalidateDelayed(40); // Request redraw to animate the pulsing glow
+                    // Re-post the animation frame only while live data is still
+                    // arriving — otherwise the 25fps loop runs forever after stop.
+                    if (time - lastLiveUpdateMs < GLOW_ANIMATION_TIMEOUT_MS) {
+                        postInvalidateDelayed(40); // Request redraw to animate the pulsing glow
+                    }
                 } else if (isLocked) {
                     gridPaint.setColor(0xFFFDE047);
                     gridPaint.setStrokeWidth(5f);

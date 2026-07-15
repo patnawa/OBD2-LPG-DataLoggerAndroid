@@ -18,6 +18,9 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -84,11 +87,14 @@ public class ApiServer extends NanoHTTPD {
     private void broadcastMapSse(int recordCount) {
         if (sseClients.isEmpty()) return;
 
-        LiveMapStore store = liveMapStore;
-        if (store == null) return;
+        // Reuse the TTL-cached snapshot (same cache as /api/agent). Two full
+        // store.snapshot() deep copies per record ran synchronously on the OBD
+        // polling thread and delayed every PID poll cycle.
+        LiveMapStore.MapSnapshot snap = getFreshSnapshot();
+        if (snap == null) return;
 
         // map_update — lightweight per-record push
-        String lastCell = store.getLastCellKey();
+        String lastCell = snap.getLastCellKey();
         if (lastCell != null && !lastCell.isEmpty()) {
             try {
                 JSONObject updateObj = new JSONObject();
@@ -96,7 +102,6 @@ public class ApiServer extends NanoHTTPD {
                 updateObj.put("recordCount", recordCount);
                 updateObj.put("timestamp", System.currentTimeMillis());
                 // Include deviation if available
-                LiveMapStore.MapSnapshot snap = store.snapshot();
                 LiveMapStore.TrimData petrol = snap.getPetrolData().get(lastCell);
                 LiveMapStore.TrimData lpg = snap.getLpgData().get(lastCell);
                 if (petrol != null) {
@@ -121,7 +126,6 @@ public class ApiServer extends NanoHTTPD {
         // map_summary — every 5 records
         if (recordCount % 5 == 0) {
             try {
-                LiveMapStore.MapSnapshot snap = store.snapshot();
                 JSONObject summaryObj = new JSONObject();
                 summaryObj.put("petrolCells", snap.getPetrolData().size());
                 summaryObj.put("lpgCells", snap.getLpgData().size());
@@ -150,6 +154,44 @@ public class ApiServer extends NanoHTTPD {
      * feeds NanoHTTPD's chunked response.
      */
     private final Set<SseClient> sseClients = new CopyOnWriteArraySet<>();
+
+    /**
+     * SSE keep-alive: dead clients are otherwise only reaped when a broadcast
+     * runs, so with no vehicle data flowing (paused / reconnecting) dropped
+     * connections accumulate until MAX_SSE_CLIENTS locks streaming out. A
+     * periodic SSE comment frame goes through the same send path, so a dead
+     * pipe fails on write and gets reaped even when no data flows.
+     */
+    private static final long SSE_KEEPALIVE_INTERVAL_MS = 15_000L;
+    private volatile ScheduledExecutorService sseKeepAliveExecutor;
+
+    @Override
+    public void start() throws IOException {
+        super.start();
+        if (sseKeepAliveExecutor == null) {
+            ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "obd-api-sse-keepalive");
+                t.setDaemon(true);
+                return t;
+            });
+            exec.scheduleWithFixedDelay(this::sendSseKeepAlive,
+                    SSE_KEEPALIVE_INTERVAL_MS, SSE_KEEPALIVE_INTERVAL_MS, TimeUnit.MILLISECONDS);
+            sseKeepAliveExecutor = exec;
+        }
+    }
+
+    private void sendSseKeepAlive() {
+        try {
+            if (sseClients.isEmpty()) return;
+            // ": ..." is an SSE comment — ignored by every SSE client.
+            for (SseClient client : sseClients) {
+                client.send(": ping\n\n");
+            }
+            sseClients.removeIf(c -> c.closed);
+        } catch (Exception ignored) {
+            // Keep-alive must never kill the scheduler.
+        }
+    }
 
     private static class SseClient {
         final PipedOutputStream out;
@@ -934,10 +976,15 @@ public class ApiServer extends NanoHTTPD {
     }
 
     /**
-     * Clean up SSE clients on server stop.
+     * Clean up SSE clients and the keep-alive scheduler on server stop.
      */
     @Override
     public void stop() {
+        ScheduledExecutorService keepAlive = sseKeepAliveExecutor;
+        sseKeepAliveExecutor = null;
+        if (keepAlive != null) {
+            keepAlive.shutdownNow();
+        }
         for (SseClient client : sseClients) {
             client.close();
         }

@@ -16,7 +16,7 @@ import java.util.TreeSet;
  *
  * OBD2 Mode 02 format:
  *   Request: 02 [PID] [FrameNumber]
- *   Response: 42 [PID] [Data...]
+ *   Response: 42 [PID] [FrameNumber] [Data...]
  *
  * When a DTC triggers, the ECU saves a snapshot of sensor values.
  * Each stored DTC has its own freeze frame (up to frame numbers 00-07).
@@ -138,16 +138,17 @@ public final class FreezeFrameReader {
         }
 
         // Try to map frames to DTCs using Mode 02 PID 02 (DTC that triggered frame)
-        // This PID returns: 42 02 [DTC_hi] [DTC_lo]
+        // This PID returns: 42 02 [frame] [DTC_hi] [DTC_lo]
         Map<Integer, String> frameToDtc = new HashMap<>();
         for (int frame = 0; frame < stored.size() && frame < 8; frame++) {
-            String response = driver.sendCommandRaw("0202" + String.format(java.util.Locale.US, "%02X", frame));
+            String frameHex = String.format(java.util.Locale.US, "%02X", frame);
+            String response = driver.sendCommandRaw("0202" + frameHex);
             if (response != null) {
                 String hex = response.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
-                int idx = hex.indexOf("4202");
-                if (idx >= 0 && idx + 8 <= hex.length()) {
+                int idx = hex.indexOf("4202" + frameHex);
+                if (idx >= 0 && idx + 10 <= hex.length()) {
                     try {
-                        String tcHex = hex.substring(idx + 4, idx + 8);
+                        String tcHex = hex.substring(idx + 6, idx + 10);
                         int byteA = Integer.parseInt(tcHex.substring(0, 2), 16);
                         int byteB = Integer.parseInt(tcHex.substring(2, 4), 16);
                         if (byteA != 0 || byteB != 0) {
@@ -190,7 +191,7 @@ public final class FreezeFrameReader {
      * Query which PIDs are supported in freeze frame (Mode 02 PID 00).
      * Returns a bitmap where each bit = one PID is supported.
      *
-     * Response format: 42 00 [4 bytes bitmap]
+     * Response format: 42 00 [frame] [4 bytes bitmap]
      *   Bit 0 = PID 01 supported, bit 1 = PID 02, ..., bit 31 = PID 20
      *
      * @return set of supported PID hex strings (e.g. {"04","05","0B","0C","0D"}),
@@ -198,15 +199,16 @@ public final class FreezeFrameReader {
      */
     private static Set<String> querySupportedFreezeFramePids(BaseDriver driver, int frameNumber) {
         try {
-            String cmd = "0200" + String.format(java.util.Locale.US, "%02X", frameNumber);
+            String frameHex = String.format(java.util.Locale.US, "%02X", frameNumber);
+            String cmd = "0200" + frameHex;
             String response = driver.sendCommandRaw(cmd);
             if (response == null || response.isEmpty()) return null;
 
             String hex = response.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
-            int idx = hex.indexOf("4200");
+            int idx = hex.indexOf("4200" + frameHex);
             if (idx < 0) return null;
 
-            String bitmapHex = hex.substring(idx + 4);
+            String bitmapHex = hex.substring(idx + 6);
             if (bitmapHex.length() < 8) return null;
 
             Set<String> pids = new TreeSet<>();
@@ -239,12 +241,15 @@ public final class FreezeFrameReader {
         if (pidDef == null) return null;
 
         // Command: 02 + pidHex + frameNumber (2 hex digits)
-        String cmd = "02" + pidHex + String.format(java.util.Locale.US, "%02X", frameNumber);
+        String frameHex = String.format(java.util.Locale.US, "%02X", frameNumber);
+        String cmd = "02" + pidHex + frameHex;
         String response = driver.sendCommandRaw(cmd);
         if (response == null || response.isEmpty()) return null;
 
-        // Expected response header: 42 + pidHex
-        return PIDParser.extractAndParse(pidDef, response, "42" + pidHex);
+        // Expected response header: 42 + pidHex + frame number (SAE J1979
+        // Mode 02 echoes the frame number after the PID; without it the
+        // frame byte would be consumed as data byte A).
+        return PIDParser.extractAndParse(pidDef, response, "42" + pidHex + frameHex);
     }
 
     /**

@@ -149,6 +149,14 @@ public final class WiFiDriver extends ElmDriver {
         }
         commandLock.lock();
         try {
+            // A late tail from a previous timed-out response desyncs every
+            // subsequent command — flush anything already buffered before
+            // writing. (commandLock is reentrant, so the nested lock in
+            // drainStaleBytes is fine.)
+            if (inputStream.available() > 0) {
+                drainStaleBytes(100L);
+            }
+
             outputStream.write((command + "\r").getBytes(StandardCharsets.US_ASCII));
             outputStream.flush();
 
@@ -165,10 +173,12 @@ public final class WiFiDriver extends ElmDriver {
                     //
                     // Steady-state policy: if we got any bytes, the timeout
                     // signals end-of-message (ELM327 sent `>` already and
-                    // there's nothing more to read).
-                    if (!initializing) {
-                        // Either we got bytes (treat as complete) or nothing
-                        // arrived and the steady-state budget is exhausted.
+                    // there's nothing more to read). With zero bytes received
+                    // a single SO_TIMEOUT tick must NOT end the read — keep
+                    // waiting until the overall deadline, otherwise we return
+                    // a premature empty response and the late tail desyncs
+                    // the next command.
+                    if (!initializing && response.length() > 0) {
                         break;
                     }
                     continue;

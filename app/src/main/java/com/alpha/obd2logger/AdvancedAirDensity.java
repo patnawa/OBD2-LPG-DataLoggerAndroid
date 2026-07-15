@@ -262,6 +262,15 @@ public final class AdvancedAirDensity {
     //  7. LPG/CNG VAPOR DISPLACEMENT (LVD)
     // ═══════════════════════════════════════════════════════════
 
+    /** Molar mass of air (g/mol) — for molar vapor-displacement fraction. */
+    private static final double AIR_MOLAR_MASS = 28.97;
+
+    /**
+     * Fraction of the intake charge displaced by fuel vapor — a MOLE
+     * (≈ volume) fraction nFuel/(nFuel+nAir), not a mass fraction. The old
+     * mass-based fraction overstated LPG (~50 g/mol, heavier than air per
+     * mole) by ~50% and understated NGV (~16.7 g/mol methane) by ~40%.
+     */
     public static Double vaporDisplacementFraction(Double mafGs, FuelMode fuel, Double lambda) {
         if (mafGs == null || mafGs <= 0 || lambda == null || lambda <= 0) return null;
         if (fuel != null && fuel.isDiesel()) return 0.0;
@@ -269,9 +278,13 @@ public final class AdvancedAirDensity {
         double afr = lambda * stoichAFR(fuel);
         if (afr <= 0) return null;
         double fuelGs = mafGs / afr;
-        double totalFlow = mafGs + fuelGs;
-        if (totalFlow <= 0) return null;
-        return Math.round((fuelGs / totalFlow) * 10000.0) / 10000.0;
+        double fuelMolarMass = FuelProperties.get(fuel).molarMassGmol;
+        if (fuelMolarMass <= 0) return null;
+        double nFuel = fuelGs / fuelMolarMass;
+        double nAir = mafGs / AIR_MOLAR_MASS;
+        double totalMoles = nFuel + nAir;
+        if (totalMoles <= 0) return null;
+        return Math.round((nFuel / totalMoles) * 10000.0) / 10000.0;
     }
 
     public static Double effectiveAirDensity(Double manifoldDensityKgM3, Double lvdFraction) {

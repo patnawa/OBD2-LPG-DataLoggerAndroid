@@ -86,8 +86,6 @@ public final class DtcUpdater {
             return;
         }
 
-        prefs.edit().putLong(KEY_LAST_CHECK, now).apply();
-
         AsyncTask.execute(() -> {
             try {
                 String manifestJson = downloadText(GITHUB_RAW_BASE + MANIFEST_FILE);
@@ -95,6 +93,11 @@ public final class DtcUpdater {
                     Log.d(TAG, "No manifest found at " + GITHUB_RAW_BASE);
                     return;
                 }
+
+                // Stamp the throttle only after the manifest actually
+                // downloaded — a failed check (offline in the garage) must
+                // not suppress retries for the next 6 hours.
+                prefs.edit().putLong(KEY_LAST_CHECK, now).apply();
 
                 JSONObject root = new JSONObject(manifestJson);
                 JSONArray files = root.optJSONArray("files");
@@ -150,15 +153,15 @@ public final class DtcUpdater {
 
             if (conn.getResponseCode() != 200) return null;
 
+            // Accumulate raw bytes and decode once — decoding each chunk
+            // separately corrupts multi-byte UTF-8 sequences that straddle
+            // a read boundary (accented/Thai DTC descriptions).
             InputStream is = conn.getInputStream();
-            StringBuilder sb = new StringBuilder();
-            byte[] buffer = new byte[8192];
-            int len;
-            while ((len = is.read(buffer)) != -1) {
-                sb.append(new String(buffer, 0, len, StandardCharsets.UTF_8));
+            try {
+                return new String(DtcDatabase.readFully(is), StandardCharsets.UTF_8);
+            } finally {
+                is.close();
             }
-            is.close();
-            return sb.toString();
         } catch (Exception e) {
             Log.w(TAG, "downloadText failed for " + urlStr + ": " + e.getMessage());
             return null;
@@ -195,7 +198,14 @@ public final class DtcUpdater {
         if (!tmpFile.renameTo(outFile)) {
             // Fallback: delete and rename (renameTo can fail on some Android FS)
             if (outFile.exists()) outFile.delete();
-            tmpFile.renameTo(outFile);
+            if (!tmpFile.renameTo(outFile)) {
+                // Install failed after the old file was deleted — do NOT bump
+                // the version marker, or the updater would consider the
+                // (now missing) database up to date and never re-download.
+                Log.w(TAG, "Failed to install " + filename + " (rename failed twice)");
+                tmpFile.delete();
+                return false;
+            }
         }
 
         // Write version marker
@@ -231,11 +241,12 @@ public final class DtcUpdater {
      * available immediately without restarting the app.
      */
     public static void reloadDtcDatabase(Context context) {
-        // Clear the caches and re-init
-        DtcDatabase.init(context);
-        VinBrandDetector.Brand brand = DtcDatabase.getCurrentBrand();
-        if (brand != null) {
-            DtcDatabase.initForVin(context, getLastVin(context));
+        // Drop the static caches and re-init — init() alone is a no-op
+        // once initialized, so it would keep serving stale descriptions.
+        DtcDatabase.reload(context);
+        String lastVin = getLastVin(context);
+        if (lastVin != null && !lastVin.isEmpty()) {
+            DtcDatabase.initForVin(context, lastVin);
         }
     }
 

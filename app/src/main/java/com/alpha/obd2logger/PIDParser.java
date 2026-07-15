@@ -301,6 +301,12 @@ public final class PIDParser {
                 }
                 return Double.parseDouble(input.substring(start, pos));
             }
+            if (ch == 'S') {
+                // Signed 16-bit value from bytes A,B (two's complement),
+                // e.g. SAE J1979 PID 0x32 EVAP vapor pressure ("S/4").
+                pos++;
+                return (short) ((a << 8) | b);
+            }
             if (ch == 'A') {
                 pos++;
                 return a;

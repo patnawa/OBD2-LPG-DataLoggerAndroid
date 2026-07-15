@@ -116,8 +116,8 @@ public final class Mode08Controller {
      * Sends "0800" which returns supported TIDs in some vehicles.
      *
      * SAE J2190: The response after "4800" contains a bitmap where each bit
-     * represents a TID. Bit 0 of the first byte = TID 01, bit 7 = TID 08,
-     * bit 0 of the second byte = TID 09, etc.
+     * represents a TID. J1979-style bitmaps are MSB-first: bit 7 (MSB) of the
+     * first byte = TID 01, bit 0 = TID 08, bit 7 of the second byte = TID 09, etc.
      */
     public static java.util.List<String> querySupportedTests(BaseDriver driver) {
         java.util.List<String> supported = new java.util.ArrayList<>();
@@ -137,7 +137,8 @@ public final class Mode08Controller {
             try {
                 int bitmap = Integer.parseInt(data.substring(i, i + 2), 16);
                 for (int bit = 0; bit < 8; bit++) {
-                    if ((bitmap & (1 << bit)) != 0) {
+                    // MSB-first: bit 7 = first TID of this byte (mirrors PidAvailabilityChecker)
+                    if ((bitmap & (1 << (7 - bit))) != 0) {
                         supported.add(String.format("%02X", tid));
                     }
                     tid++;

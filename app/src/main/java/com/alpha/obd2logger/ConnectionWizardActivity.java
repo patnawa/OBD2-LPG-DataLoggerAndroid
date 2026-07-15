@@ -47,7 +47,7 @@ public class ConnectionWizardActivity extends AppCompatActivity {
             R.id.checkBle, R.id.checkAuto, R.id.checkSim
     };
     private final int[] POSITIONS = {
-            POS_WIFI, POS_USB, POS_BLE, POS_BLE, POS_AUTO, POS_SIM
+            POS_WIFI, POS_USB, POS_SERIAL, POS_BLE, POS_AUTO, POS_SIM
     };
 
     @Override

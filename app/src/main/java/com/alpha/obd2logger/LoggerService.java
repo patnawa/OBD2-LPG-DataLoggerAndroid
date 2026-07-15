@@ -42,6 +42,8 @@ public final class LoggerService extends Service {
     private static volatile LoggerConfig pendingConfig;
     private static volatile WeakReference<LoggerCallback> callbackRef;
     private static volatile long currentSessionToken = 0;
+    /** elapsedRealtime() when the current session started — lets a recreated Activity restore its duration clock. */
+    public static volatile long sessionStartElapsedMs = 0;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private LoggerCallback getCallback() {
@@ -143,6 +145,22 @@ public final class LoggerService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null) {
+            // Sticky/system restart after process death: the session state
+            // (pendingConfig, callbacks, executor) is gone and cannot be
+            // rebuilt. On Android 8-11 the system still expects a pending
+            // startForeground() call after such a restart — skipping it
+            // crashes with RemoteServiceException. Satisfy the contract with
+            // a minimal notification, then stop cleanly.
+            try {
+                startForeground(NOTIFICATION_ID,
+                        buildNotification(localizedString(
+                                R.string.background_notification_starting,
+                                "Stopping OBD2 logger…"), 0));
+            } catch (Exception e) {
+                Log.w(TAG, "startForeground on restart failed", e);
+            }
+            stopForeground(true);
+            stopSelf();
             return START_NOT_STICKY;
         }
         String action = intent.getAction();
@@ -219,7 +237,10 @@ public final class LoggerService extends Service {
             Log.w(TAG, "acquireWakeLock failed", e);
         }
         startLogging(config, sessionToken);
-        return START_STICKY;
+        // NOT_STICKY: after a kill the session (pendingConfig, callbacks,
+        // driver) cannot be rebuilt, so a sticky restart would only flash a
+        // notification and stop again (see the intent == null path above).
+        return START_NOT_STICKY;
     }
 
     private void startLogging(LoggerConfig config, long sessionToken) {
@@ -231,6 +252,7 @@ public final class LoggerService extends Service {
         }
         running = true;
         recordCount = 0;
+        sessionStartElapsedMs = android.os.SystemClock.elapsedRealtime();
         executor = Executors.newSingleThreadExecutor();
         dtcExecutor = Executors.newSingleThreadExecutor();
         executor.submit(() -> runLogger(config, sessionToken));
@@ -320,9 +342,13 @@ public final class LoggerService extends Service {
         }
         
         // ── Initialize LiveMapStore (single source of truth for fuel map) ──
-        liveMapStore = new LiveMapStore();
+        // Per-session local reference; only the CURRENT session may publish it
+        // to the instance field, otherwise a stale worker from a quick
+        // stop/restart would overwrite the new session's store.
+        LiveMapStore localMapStore = new LiveMapStore();
         if (currentSessionToken == sessionToken) {
             // Expose via instance getter for MainActivity to read snapshots
+            liveMapStore = localMapStore;
         }
 
         ApiServer localApiServer = null;
@@ -356,7 +382,7 @@ public final class LoggerService extends Service {
                 localApiServer.setTransportMode(DriverFactory.getLastResolvedTransport());
                 localApiServer.setAdapterConnected(true);
                 localApiServer.setVehicleBrand(config.vehicleBrand);
-                localApiServer.setLiveMapStore(liveMapStore);
+                localApiServer.setLiveMapStore(localMapStore);
                 localApiServer.resetSession();
                 if (currentSessionToken == sessionToken) {
                     apiServer = localApiServer;
@@ -368,16 +394,24 @@ public final class LoggerService extends Service {
         }
 
         // --- Initialize Air Density Monitor (AAD/MAD/BAD) ---
+        // Per-session local reference (mirrors localDriver/localWriter): the
+        // worker only publishes to the instance field while it is the current
+        // session, and only ever stops ITS OWN monitor in the finally block —
+        // never a newer session's.
+        AirDensityMonitor localAirDensity = null;
         if (config.showAirDensity) {
             try {
-                airDensityMonitor = new AirDensityMonitor(this);
-                airDensityMonitor.startPhoneSensors();
+                localAirDensity = new AirDensityMonitor(this);
+                localAirDensity.startPhoneSensors();
+                if (currentSessionToken == sessionToken) {
+                    airDensityMonitor = localAirDensity;
+                }
                 // Sync fetch — LoggerService runs on background thread so this is safe.
                 // The initial fetch populates humidity (not available via OBD2) before
                 // the first logging loop iteration, so the first record has AAD/MAD/BAD.
                 // Wrapped in try/catch: network may be unavailable (e.g. unit tests,
                 // offline environments) — air density falls back to last-good / default RH.
-                airDensityMonitor.refreshWeatherSync();
+                localAirDensity.refreshWeatherSync();
                 Log.i(TAG, "AirDensityMonitor initialized");
             } catch (Exception e) {
                 Log.w(TAG, "AirDensityMonitor init failed (weather unavailable) — using defaults", e);
@@ -601,6 +635,7 @@ public final class LoggerService extends Service {
                         // value (status="synth") so it's transparent in logs and UI.
                         // The fuel map and Tune Assist can now work on ALL vehicles,
                         // not just those with MAP sensors.
+                        boolean mapSynthesized = false;
                         if (mapValue == null) {
                             Double engineLoad = batch.get("Engine Load");
                             Double baroForSynth = baroValue != null ? baroValue : 101.3; // sea-level fallback
@@ -617,6 +652,7 @@ public final class LoggerService extends Service {
                                 synthMap = Math.round(synthMap * 10.0) / 10.0; // 1 decimal place
                                 batch.put("Intake Manifold Pressure", synthMap);
                                 mapValue = synthMap;
+                                mapSynthesized = true;
 
                                 // Update the sample we already created with the synthesized value
                                 for (int si = 0; si < samples.size(); si++) {
@@ -632,12 +668,23 @@ public final class LoggerService extends Service {
 
                         // Fuel Consumption
                         if (config.showFuelConsumption && mafValue != null && speedValue != null) {
-                            Double kml = DerivedSensors.fuelConsumptionKmL(mafValue, speedValue, config.fuelMode);
-                            if (kml != null) {
-                                samples.add(new SensorSample("derived_fuel_kmL", "Fuel Economy", kml, "km/L", "ok"));
-                                Double l100 = DerivedSensors.fuelConsumptionL100km(mafValue, speedValue, config.fuelMode);
-                                if (l100 != null) {
-                                    samples.add(new SensorSample("derived_fuel_l100", "Fuel Economy", l100, "L/100km", "ok"));
+                            if (config.fuelMode == FuelMode.NGV) {
+                                // NGV densityGL is gas-phase (0.72 g/L), so the liquid
+                                // km/L formula always yields < 1 km/L and is discarded —
+                                // NGV fuel economy was silently always null. NGV is
+                                // dispensed and priced per kilogram, so report km/kg.
+                                Double kmkg = DerivedSensors.fuelConsumptionKmKg(mafValue, speedValue, config.fuelMode);
+                                if (kmkg != null) {
+                                    samples.add(new SensorSample("derived_fuel_kmkg", "Fuel Economy", kmkg, "km/kg", "ok"));
+                                }
+                            } else {
+                                Double kml = DerivedSensors.fuelConsumptionKmL(mafValue, speedValue, config.fuelMode);
+                                if (kml != null) {
+                                    samples.add(new SensorSample("derived_fuel_kmL", "Fuel Economy", kml, "km/L", "ok"));
+                                    Double l100 = DerivedSensors.fuelConsumptionL100km(mafValue, speedValue, config.fuelMode);
+                                    if (l100 != null) {
+                                        samples.add(new SensorSample("derived_fuel_l100", "Fuel Economy", l100, "L/100km", "ok"));
+                                    }
                                 }
                             }
                         }
@@ -672,13 +719,16 @@ public final class LoggerService extends Service {
                         // ── Air Density (AeroDensity Intelligence) ──
                         // OBD + phone sensors + last-good weather; soft async refresh by TTL.
                         // Status carries quality: ok / est / default / assumed / estimate.
-                        if (config.showAirDensity && airDensityMonitor != null) {
-                            airDensityMonitor.onObdBatch(batch);
+                        if (config.showAirDensity && localAirDensity != null) {
+                            // Tell the monitor whether MAP in this batch is measured or
+                            // synthesized from Engine Load — otherwise invented MAP is
+                            // treated as measured and MAD/BAD/VE/TMF get logged as real.
+                            localAirDensity.onObdBatch(batch, mapSynthesized);
                             Double rpmValue = batch.get("Engine RPM");
                             Double lambdaValue = batch.get("Lambda (B1S1)");
                             Double commandedLambda = batch.get("Commanded Equivalence Ratio");
                             try {
-                                airDensityMonitor.appendSamples(
+                                localAirDensity.appendSamples(
                                         samples, mafValue, rpmValue, lambdaValue, commandedLambda,
                                         config.fuelMode,
                                         config.engineDisplacementCC,
@@ -709,8 +759,8 @@ public final class LoggerService extends Service {
                                                 // and map_ai columns match what the store actually accepted.
                                                 LiveMapStore.PushResult mapPush = null;
                                                 MapSampleMeta mapMeta = MapSampleMeta.from(record);
-                                                if (liveMapStore != null) {
-                                                    mapPush = liveMapStore.pushFromMeta(mapMeta, config.fuelMode);
+                                                if (localMapStore != null) {
+                                                    mapPush = localMapStore.pushFromMeta(mapMeta, config.fuelMode);
                                                 }
                                                 mapMeta.appendLogSamples(samples,
                                                         mapPush != null && mapPush.accepted,
@@ -803,16 +853,23 @@ public final class LoggerService extends Service {
             if (localDriver != null) {
                             try { localDriver.disconnect(); } catch (Exception ignored) {}
                         }
+                        // Stop THIS session's sensor monitor (per-session local), never
+                        // the instance field: on a quick stop/restart the field already
+                        // belongs to the NEW session and stopping it would silently
+                        // stall its phone sensors.
                         try {
-                            if (airDensityMonitor != null) airDensityMonitor.stopPhoneSensors();
+                            if (localAirDensity != null) localAirDensity.stopPhoneSensors();
                         } catch (Exception ignored) {}
-                        releaseWakeLock();
 
                         if (currentSessionToken == sessionToken) {
                             writer = null;
                             apiServer = null;
                             driver = null;
                             airDensityMonitor = null;
+                            // Only the CURRENT session may release the wakelock — a
+                            // stale worker would otherwise release the lock the new
+                            // session just acquired and background logging would stall.
+                            releaseWakeLock();
                 // Keep liveMapStore alive briefly — MainActivity may still read
                 // the last snapshot when restoring after stop. It gets replaced
                 // on the next startLogging session.
@@ -964,16 +1021,20 @@ public final class LoggerService extends Service {
         }
     }
 
-    private void acquireWakeLock() {
+    private synchronized void acquireWakeLock() {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if (pm != null) {
+            // Release any lock left over from a previous session BEFORE
+            // overwriting the field — otherwise the old lock leaks (held
+            // until its 8h timeout) with no reference left to release it.
+            releaseWakeLock();
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OBD2Logger::LoggingWakeLock");
             wakeLock.setReferenceCounted(false);
             wakeLock.acquire(8 * 60 * 60 * 1000L); // 8 hours max
         }
     }
 
-    private void releaseWakeLock() {
+    private synchronized void releaseWakeLock() {
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
             wakeLock = null;

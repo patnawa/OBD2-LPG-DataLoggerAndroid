@@ -47,6 +47,7 @@ public final class FuelProperties {
         public final String shortCode;       // for CSV/log (compact)
         public final double stoichAFR;       // stoichiometric air-fuel ratio
         public final double densityGL;        // density (g/L) at 15°C, 1 atm
+        public final double molarMassGmol;   // avg fuel vapor molar mass (g/mol) — for molar LVD
         public final double lhvVapKJkg;      // latent heat of vaporization (kJ/kg)
         public final double ethanolPct;      // ethanol content (0–100%)
         public final double thermalEff;      // typical brake thermal efficiency
@@ -55,12 +56,13 @@ public final class FuelProperties {
         public final boolean hasFuelTrim;    // false = diesel (no STFT/LTFT PID)
 
         Props(String displayName, String shortCode, double stoichAFR, double densityGL,
-              double lhvVapKJkg, double ethanolPct, double thermalEff,
+              double molarMassGmol, double lhvVapKJkg, double ethanolPct, double thermalEff,
               double energyDensityMJL, boolean isGaseous, boolean hasFuelTrim) {
             this.displayName = displayName;
             this.shortCode = shortCode;
             this.stoichAFR = stoichAFR;
             this.densityGL = densityGL;
+            this.molarMassGmol = molarMassGmol;
             this.lhvVapKJkg = lhvVapKJkg;
             this.ethanolPct = ethanolPct;
             this.thermalEff = thermalEff;
@@ -79,37 +81,41 @@ public final class FuelProperties {
     // Density at 15°C, 1 atm unless noted
     // LHV_vap: 0 for diesel (DI, no manifold evap) and NGV (already gas)
 
+    // molarMassGmol: average molar mass of the fuel vapor (g/mol), used for the
+    // molar/volumetric vapor-displacement fraction (LVD). Blends use the
+    // mass-harmonic average M = 1 / Σ(w_i / M_i). Air is 28.97 g/mol.
+
     /** Petrol RON91 (E10) — 91 octane, up to 10% ethanol */
     public static final Props PETROL_91 = new Props(
-        "Gasohol 91", "G91", 14.23, 741.0, 340.0, 10.0, 0.28, 32.2, false, true);
+        "Gasohol 91", "G91", 14.23, 741.0, 100.0, 340.0, 10.0, 0.28, 32.2, false, true);
 
     /** Petrol RON95 (E10) — 95 octane, up to 10% ethanol */
     public static final Props PETROL_95 = new Props(
-        "Gasohol 95", "G95", 14.23, 741.0, 340.0, 10.0, 0.28, 32.2, false, true);
+        "Gasohol 95", "G95", 14.23, 741.0, 100.0, 340.0, 10.0, 0.28, 32.2, false, true);
 
     /** E20 — RON95, 20% ethanol (popular in Thailand) */
     public static final Props E20 = new Props(
-        "Gasohol E20", "E20", 13.75, 745.0, 330.0, 20.0, 0.29, 30.8, false, true);
+        "Gasohol E20", "E20", 13.75, 745.0, 81.0, 330.0, 20.0, 0.29, 30.8, false, true);
 
     /** E85 — 85% ethanol (flex-fuel vehicles) */
     public static final Props E85 = new Props(
-        "Gasohol E85", "E85", 9.77, 783.0, 280.0, 85.0, 0.30, 25.8, false, true);
+        "Gasohol E85", "E85", 9.77, 783.0, 50.0, 280.0, 85.0, 0.30, 25.8, false, true);
 
-    /** LPG autogas — propane/butane mix (Thai ratio ~60:40) */
+    /** LPG autogas — propane/butane mix (Thai ratio ~60:40 → ~50 g/mol) */
     public static final Props LPG = new Props(
-        "LPG", "LPG", 15.5, 510.0, 370.0, 0.0, 0.30, 25.0, true, true);
+        "LPG", "LPG", 15.5, 510.0, 50.0, 370.0, 0.0, 0.30, 25.0, true, true);
 
-    /** NGV/CNG — compressed natural gas (mostly methane) */
+    /** NGV/CNG — compressed natural gas (mostly methane, ~16.7 g/mol) */
     public static final Props NGV = new Props(
-        "NGV/CNG", "NGV", 17.2, 0.72, 0.0, 0.0, 0.30, 8.8, true, true);
+        "NGV/CNG", "NGV", 17.2, 0.72, 16.7, 0.0, 0.0, 0.30, 8.8, true, true);
 
     /** Diesel B7 — 7% biodiesel blend */
     public static final Props DIESEL_B7 = new Props(
-        "Diesel B7", "D7", 14.45, 833.0, 0.0, 0.0, 0.38, 35.8, false, false);
+        "Diesel B7", "D7", 14.45, 833.0, 200.0, 0.0, 0.0, 0.38, 35.8, false, false);
 
     /** Diesel B20 — 20% biodiesel blend */
     public static final Props DIESEL_B20 = new Props(
-        "Diesel B20", "B20", 14.30, 835.0, 0.0, 0.0, 0.38, 35.6, false, false);
+        "Diesel B20", "B20", 14.30, 835.0, 205.0, 0.0, 0.0, 0.38, 35.6, false, false);
 
     /**
      * Get fuel properties for a FuelMode.

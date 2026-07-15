@@ -4,9 +4,56 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.25.0] - 2026-07-15 — Codebase-Wide Bug Hunt: Parsing, Drivers, Sessions & DTCs
+
+A full audit pass across the app (transport drivers, OBD/DTC parsing, background
+logging service, and UI) that found and fixed roughly 48 confirmed defects,
+several of them silently corrupting data or breaking connectivity. Verified
+against the existing 212-case unit test suite (all green after fixes; a few
+fixtures were corrected where they had encoded the pre-fix buggy byte formats).
+
 ### OBD connection reliability
 - Fixed AUTO protocol discovery being cut off by the Android transport's 2-second command timeout while ELM327 was still returning `SEARCHING...`; discovery now receives a temporary 12-second budget and restores the configured steady-state timeout afterward. This improves connection reliability for slow Ford diesel ECUs and legacy K-Line vehicles.
 - Restored the configured OBD protocol, automatic ISO-TP flow control, headers, and conservative timing after DTC/deep-bus scans so Ford live-data polling does not remain connected with empty gauges.
+
+### DTC scanning & reporting (data correctness)
+- **Freeze-frame values were all shifted one byte.** Mode 02 responses echo the frame number after the PID (`42 [PID] [frame] [data]`); every parse site was reading that frame byte as data byte A, so RPM, temps, loads, the PID-support bitmap, and the frame→DTC mapping were all wrong. Fixed to the correct SAE J1979 format.
+- **Deep DTC scan invented phantom trouble codes** (e.g. P0643, P0201) because the ISO-TP PCI byte was never stripped before decoding, and 3-byte K-line headers were mangled the same way. Multiline/multi-frame responses are now reassembled per-ECU before decoding, so codes straddling a frame boundary decode correctly instead of being dropped or shifted.
+- Fixed `scanEcuDirectly` sending `ATCRA000` to "restore" state after a per-ECU scan — that actually *sets* a receive filter to ID 0x000, silently blocking every subsequent response ("connected but no data" until the adapter is reset). Now sends bare `ATCRA`/`ATAR` and restores the functional broadcast header.
+- Fixed scan-comparison ("3 NEW, 1 CLEARED") excluding clean scans from the comparison baseline, so a repaired-then-recurring code kept re-reporting as CLEARED forever and masked real recurrences; permanent (Mode 0A) codes are now included on both sides of the comparison instead of being dropped.
+- Fixed VIN reading and Mode 09 parsing dropping/misaligning data because the ELM327 multiline total-length line (e.g. `014`) wasn't filtered out, nibble-shifting the whole payload — the most common multiline response format from real adapters.
+- Fixed the DTC OTA updater: a failed rename-fallback could delete the local DTC database and still mark the update as installed, permanently losing all offline DTC descriptions until reinstall; downloads are now decoded as one UTF-8 stream instead of per-chunk (was corrupting multi-byte/Thai text); a failed connectivity check no longer blocks retries for 6 hours; "reload after update" now actually reloads instead of being a no-op; `DtcDatabase`'s in-memory caches are now thread-safe (atomically swapped immutable maps) instead of a plain `HashMap` read/written from different threads.
+- Fixed the PDF diagnostic report being silently truncated to one page — reports with many DTCs, Mode 06 results, and readiness data now paginate correctly instead of drawing content off-canvas.
+- Fixed Mode 06 (on-board monitor) decoding: the UAS (unit-and-scaling) table didn't match the SAE J1979 standard (misfire counts showed as "L/s", O2 switch times were mis-scaled), signed UAS values were unhandled, and a second ECU's response header could be consumed as data. EVAP Vapor Pressure (PID 0x32) also decoded with the wrong sign convention (offset binary instead of two's-complement).
+- Fixed the Mode 08 (actuator test) supported-TID bitmap being decoded bit-reversed (LSB-first instead of the standard's MSB-first), offering the wrong actuator tests to the user.
+- Fixed a VIN WMI mapping bug misclassifying SEAT (`VSS`) as Volvo while never recognizing real Volvo VINs (`YV`).
+
+### Transport & connectivity
+- Fixed BLE reconnects leaking the previous `BluetoothGatt` client and stale notification state — after a few connection drops, Android's per-app GATT client cap was exhausted and BLE stopped working until app/Bluetooth restart.
+- Fixed Serial and WiFi drivers having no stale-byte drain: one slow or timed-out ELM327 response would leave data in the buffer that permanently desynchronized every subsequent command/response pair.
+- Fixed USB connections crashing on CDC-ACM adapters (an unsupported buffer-purge call threw an uncaught exception) and leaking an open `UsbDeviceConnection` when a probed driver exposed no ports.
+- Fixed the USB permission request using an immutable `PendingIntent`, which silently drops the system's grant result on Android 12+ — USB logging could never start on modern devices.
+- Fixed a race where a timed-out connection attempt and its retry could both be inside `connect()` on the same driver at once; connect attempts are now serialized per driver.
+- Fixed vLinker adapter timing optimizations being immediately overwritten by a hard-coded restore right after being applied.
+
+### Background logging & sessions
+- Fixed a wakelock/sensor-monitor race: stopping and quickly restarting logging could let the old session's cleanup release the *new* session's wakelock and stop its phone sensors, silently stalling background logging with the screen off.
+- Fixed a crash (`RemoteServiceException`) if the logging service was restarted by the system after being killed for memory.
+- Fixed the connection watchdog surviving screen rotation and killing a perfectly healthy logging session ~45 seconds after the original start.
+- Fixed session-summary JSON files becoming unparseable on custom storage folders — rewriting a shorter summary via a content URI doesn't truncate the old file unless opened in `"wt"` mode.
+- Fixed synthesized MAP (estimated from engine load on vehicles without a MAP sensor) being logged as a real measurement, silently skewing derived air-density and volumetric-efficiency numbers; it's now flagged as an estimate.
+- Fixed LPG/NGV vapor displacement using mass fraction instead of the correct molar fraction (LPG readings overstated ~50%, NGV understated ~40%), and NGV fuel economy always being null (gas-phase density made every km/L calculation fail its own sanity check) — NGV consumption is now reported in km/kg, matching how it's sold.
+- Fixed a false "excellent recovery" battery-test pass when the pre-load voltage reading was never taken, and the parasitic-drain test ignoring the selected battery chemistry.
+- Fixed log-replay treating a real 0% fuel trim as "no data" and substituting a phantom lambda-derived value, and mixing kPa- and %-binned map points when the MAP column dropped out mid-file.
+- Fixed the live API server's SSE stream slots filling up with dead connections when no vehicle data was flowing (paused/reconnecting), locking out new AI-agent stream clients.
+
+### UI
+- Fixed the connection wizard's "Bluetooth (classic)" card connecting via BLE instead of classic SPP — first-run users with a standard ELM327 adapter could never connect.
+- Fixed the Live Readings grid rebuilding itself on every single data record (visible flicker/jank) and one derived fuel-economy value silently overwriting another, because two different PIDs shared a display name.
+- Fixed PDF report sharing failing on Android 7+ (`file://` URIs aren't readable by other apps) — now shared via `FileProvider`.
+- Fixed battery-test result dialogs crashing if the user backed out or rotated the screen mid-test.
+- Fixed the fuel map view redrawing at ~25fps indefinitely after logging stopped, wasting battery.
+- Fixed "Follow system language" being silently overridden to English on first launch instead of respecting the device's Thai/English locale.
 
 ## [3.24.2] - 2026-07-13 — Flashcard Icons Fixed + Map Layout Shift Fixed
 

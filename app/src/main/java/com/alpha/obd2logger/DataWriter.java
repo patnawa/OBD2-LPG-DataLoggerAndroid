@@ -172,6 +172,7 @@ public final class DataWriter implements AutoCloseable {
         // Derived sensors appended by LoggerService / MainActivity logging loops.
         registerDerived("derived_fuel_kmL", "Fuel Economy (km/L)");
         registerDerived("derived_fuel_l100", "Fuel Economy (L/100km)");
+        registerDerived("derived_fuel_kmkg", "Fuel Economy (km/kg)");
         registerDerived("derived_boost_kpa", "Turbo Boost (kPa)");
         registerDerived("derived_boost_psi", "Turbo Boost (psi)");
         registerDerived("derived_dpf_health", "DPF Health (status)");
@@ -721,6 +722,27 @@ public final class DataWriter implements AutoCloseable {
         return raw;
     }
 
+    /**
+     * Open a content URI for writing with guaranteed truncation. Mode "w" alone
+     * does not truncate on every provider (SAF/MediaStore providers may keep the
+     * old length), so rewriting a SHORTER summary JSON checkpoint could leave
+     * trailing bytes of the previous version and make the file unparseable.
+     * Try "wt" first; fall back to "w" for providers that reject the mode.
+     */
+    private OutputStream openTruncatedOutputStream(Uri uri) throws IOException {
+        OutputStream stream = null;
+        try {
+            stream = context.getContentResolver().openOutputStream(uri, "wt");
+        } catch (Exception modeRejected) {
+            Log.w(TAG, "Provider rejected \"wt\" mode for " + uri + "; retrying with \"w\"",
+                    modeRejected);
+        }
+        if (stream == null) {
+            stream = context.getContentResolver().openOutputStream(uri, "w");
+        }
+        return stream;
+    }
+
     private DownloadTarget createDownloadTarget(String displayName, String mimeType) throws IOException {
         String savedUriStr = context.getSharedPreferences("OBD2Prefs", Context.MODE_PRIVATE).getString("custom_log_folder_uri", null);
         if (savedUriStr != null) {
@@ -749,7 +771,7 @@ public final class DataWriter implements AutoCloseable {
                         return new DownloadTarget(null, newFile.getUri()) {
                             @Override
                             OutputStream openOutputStream() throws IOException {
-                                OutputStream stream = context.getContentResolver().openOutputStream(newFile.getUri(), "w");
+                                OutputStream stream = openTruncatedOutputStream(newFile.getUri());
                                 if (stream == null) {
                                     throw new IOException("Could not open custom folder output stream");
                                 }
@@ -780,7 +802,7 @@ public final class DataWriter implements AutoCloseable {
                         return new DownloadTarget(null, uri) {
                             @Override
                             OutputStream openOutputStream() throws IOException {
-                                OutputStream stream = context.getContentResolver().openOutputStream(uri, "w");
+                                OutputStream stream = openTruncatedOutputStream(uri);
                                 if (stream == null) {
                                     throw new IOException("Could not open Download output stream: " + uri);
                                 }
