@@ -22,8 +22,12 @@ public abstract class BaseDriver {
      * executor thread both call sendCommand() concurrently on the same driver.
      * Without this lock, writes/reads interleave and corrupt OBD responses.
      */
+    // The fair ReentrantLock is a FIFO command queue supplied by the JDK's
+    // synchronizer. It prevents polling, DTC work and VIN reads from starving
+    // each other on ELM327's strictly half-duplex command channel.
+    // Reentrancy is required by setup/restore command sequences.
     protected final java.util.concurrent.locks.ReentrantLock commandLock =
-            new java.util.concurrent.locks.ReentrantLock();
+            new java.util.concurrent.locks.ReentrantLock(true);
 
     /**
      * Gate that prevents two threads from running connect() on the same

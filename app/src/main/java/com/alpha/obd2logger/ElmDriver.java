@@ -145,11 +145,54 @@ public abstract class ElmDriver extends BaseDriver {
     protected abstract String sendCommand(String command);
 
     /**
+     * Upper bound for Mode-01 PIDs sent in one request on this transport.
+     * Classic serial/Wi-Fi can use the adapter optimum; BLE must stay below
+     * the default ATT payload until an MTU upgrade is known to be complete.
+     */
+    protected int getTransportPidChunkLimit() {
+        return Integer.MAX_VALUE;
+    }
+
+    /**
      * Public method for sending raw OBD2/ELM327 commands (used by DTC reader,
      * VIN reader, readiness monitor). Returns the raw response string.
      */
     public String sendCommandRaw(String command) {
         return sendCommand(command);
+    }
+
+    /**
+     * Run one slow/multi-frame diagnostic request with an extended ECU timeout.
+     *
+     * <p>Mode 09 VIN responses are much slower than ordinary Mode 01 polling on
+     * some ECUs. The entire setup/request/restore sequence holds the reentrant
+     * command lock so the logger cannot interleave a PID request after ATSTFF.
+     * Polling timing is restored before returning.</p>
+     */
+    String sendCommandRawWithExtendedTimeout(String command) {
+        commandLock.lock();
+        int normalTimeoutMs = config.connectionTimeoutMs;
+        try {
+            // A response-pending ECU may legitimately need several seconds.
+            config.connectionTimeoutMs = Math.max(normalTimeoutMs, 7_000);
+            sendCommand("ATAL");
+            sendCommand("ATCAF1");
+            sendCommand("ATCFC1");
+            sendCommand("ATAT0");
+            sendCommand("ATSTFF"); // 0xFF * 4 ms = about 1.02 s maximum ECU wait
+            return sendCommand(command);
+        } finally {
+            // Restore the Android-side timeout first so a failed AT command does
+            // not block cleanup for seven seconds.
+            config.connectionTimeoutMs = normalTimeoutMs;
+            try {
+                sendCommand("ATAT1");
+                sendCommand("ATST32");
+                VLinkerOptimizer.applyOptimizations(this, vlinkerType, config);
+            } finally {
+                commandLock.unlock();
+            }
+        }
     }
 
     /** Restore normal PID polling after a DTC/deep-bus scan. */
@@ -260,7 +303,8 @@ public abstract class ElmDriver extends BaseDriver {
         }
 
         // Use vLinker-optimized chunk size (6 for vLinker, 4 for generic clones)
-        int chunkSize = VLinkerOptimizer.getRecommendedChunkSize(vlinkerType);
+        int chunkSize = Math.min(VLinkerOptimizer.getRecommendedChunkSize(vlinkerType),
+                getTransportPidChunkLimit());
 
         for (Map.Entry<String, List<PIDDefinition>> entry : byMode.entrySet()) {
             String mode = entry.getKey();

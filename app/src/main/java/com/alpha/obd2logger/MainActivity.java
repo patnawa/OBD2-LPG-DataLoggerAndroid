@@ -3409,26 +3409,54 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         setConfigUiEnabled(true);
     }
 
+    /** Foreground-only logger uses the same bounded exponential policy as LoggerService. */
+    private DriverConnector.Result connectInProcessWithBackoff(LoggerConfig config) {
+        DriverConnector.Result last = null;
+        for (int attempt = 1; running; attempt++) {
+            last = DriverConnector.connect(config, 30_000L);
+            if (last.isConnected()) return last;
+            if (!running) break;
+            long delayMs = ReconnectBackoff.delayForAttempt(attempt);
+            final int displayAttempt = attempt;
+            runOnActiveActivity(() -> {
+                MainActivity active = activeInstance;
+                if (active != null) {
+                    active.setStatus("Connection attempt " + displayAttempt
+                            + " failed. Retrying in " + (delayMs / 1000) + "s...", R.color.warning);
+                    active.updateStatusStripConnection(1, "Reconnecting...");
+                }
+            });
+            try {
+                Thread.sleep(delayMs);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return last;
+    }
+
     private void runLogger(LoggerConfig config) {
         String fuelPrefix = config.fuelMode != null ? config.fuelMode.name() + "_" : "";
         String simPrefix = (config.transportMode == TransportMode.SIM) ? "Sim_" : "";
         String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
         String sessionId = simPrefix + fuelPrefix + timeStr;
-        DriverConnector.Result connection = DriverConnector.connect(config, 30_000L);
-        BaseDriver driver = connection.getDriver();
+        DriverConnector.Result connection = connectInProcessWithBackoff(config);
+        BaseDriver driver = connection != null ? connection.getDriver() : null;
         currentDriver = driver;
 
-        if (!connection.isConnected()) {
-            DriverFactory.markConnectionFailure(connection.getError());
+        if (connection == null || !connection.isConnected()) {
+            String connectionError = connection != null ? connection.getError() : "Connection cancelled";
+            DriverFactory.markConnectionFailure(connectionError);
             running = false;
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
                 if (active != null) {
                     active.isConnecting = false;
                     active.running = false;
-                    String message = connection.isTimedOut()
+                    String message = connection != null && connection.isTimedOut()
                             ? "Connection timed out. Check adapter power and transport settings."
-                            : "Connection failed: " + connection.getError();
+                            : "Connection failed: " + connectionError;
                     active.setStatus(message, R.color.danger);
                     active.headerStatus.setText(R.string.status_disconnected);
                     active.updateStatusStripConnection(0, message);
@@ -3597,7 +3625,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
 
             int retryCount = 0;
-            int maxRetries = 10;
 
             while (running) {
                 try {
@@ -3607,7 +3634,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             runOnActiveActivity(() -> {
                                 MainActivity active = activeInstance;
                                 if (active != null) {
-                                    active.setStatus("Connection lost. Reconnecting (" + finalRetry + "/" + maxRetries + ")...", R.color.warning);
+                                    active.setStatus("Connection lost. Reconnecting (attempt " + finalRetry + ")...", R.color.warning);
                                     active.updateStatusStripConnection(1, "Reconnecting...");
                                 }
                             });
@@ -3812,27 +3839,30 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             || e instanceof java.net.SocketException;
                     if (isConnectionError) {
                         retryCount++;
-                        Log.w("OBD2Logger", "Connection error (" + retryCount + "/" + maxRetries + "): " + e.getMessage());
+                        Log.w("OBD2Logger", "Connection error (attempt " + retryCount + "): " + e.getMessage());
                     } else {
                         Log.w("OBD2Logger", "Non-fatal logger exception (not counted toward retry cap)", e);
                     }
                     if (retryCount > 3 && driver != null) {
                         driver.disconnect();
                     }
-                    if (retryCount > maxRetries) {
-                        running = false;
-                        runOnActiveActivity(() -> {
-                            MainActivity active = activeInstance;
-                            if (active != null) {
-                                active.setStatus("Connection failed permanently: " + e.getMessage(), R.color.danger);
-                                active.updateStatusStripConnection(0, "Disconnected");
-                                if (active.fabLog != null) active.setFabState(false);
-                            }
-                        });
-                        break;
-                    }
                     try {
-                        Thread.sleep(1000);
+                        long delayMs = retryCount > 0
+                                ? ReconnectBackoff.delayForAttempt(retryCount) : 250L;
+                        if (retryCount > 0) {
+                            final long displayDelayMs = delayMs;
+                            final int displayRetry = retryCount;
+                            runOnActiveActivity(() -> {
+                                MainActivity active = activeInstance;
+                                if (active != null) {
+                                    active.setStatus("Connection lost. Retrying in "
+                                            + (displayDelayMs / 1000) + "s (attempt "
+                                            + displayRetry + ")...", R.color.warning);
+                                    active.updateStatusStripConnection(1, "Reconnecting...");
+                                }
+                            });
+                        }
+                        Thread.sleep(delayMs);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         break;
@@ -4083,10 +4113,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
 
         /** Lazy in-process store so map survives Activity recreation during foreground logging. */
-        private static LiveMapStore inProcessMapStore;
+        // Written by the logger executor and read on the main/UI thread.  Without
+        // safe publication the UI can observe null (or race to create a separate,
+        // empty store) while foreground logging is already adding map samples.
+        private static volatile LiveMapStore inProcessMapStore;
         private static volatile boolean mapOwnedByBackgroundService;
 
-        private static LiveMapStore ensureInProcessMapStore() {
+        private static synchronized LiveMapStore ensureInProcessMapStore() {
             if (inProcessMapStore == null) {
                 inProcessMapStore = new LiveMapStore();
             }

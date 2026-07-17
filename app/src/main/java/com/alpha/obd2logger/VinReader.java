@@ -23,13 +23,22 @@ public final class VinReader {
             return null;
         }
 
-        // Send 0902 with headers off — ELM327 handles ISO-TP reassembly
+        // First try the normal polling profile. Most vehicles answer immediately.
         String response = driver.sendCommandRaw("0902");
-        if (response == null || response.isEmpty()) {
-            return null;
+        String vin = parseVinResponse(response);
+        if (vin != null) {
+            return vin;
         }
 
-        return parseVinResponse(response);
+        // Toyota and other ECUs can take longer to produce the multi-frame Mode
+        // 09 response than the live-PID timeout permits. Retry once with CAN
+        // formatting/flow control enabled and an extended ELM timeout. The
+        // ElmDriver helper restores the live polling profile before it returns.
+        if (driver instanceof ElmDriver) {
+            response = ((ElmDriver) driver).sendCommandRawWithExtendedTimeout("0902");
+            return parseVinResponse(response);
+        }
+        return null;
     }
 
     /**
@@ -82,24 +91,39 @@ public final class VinReader {
             String byteHex = payloadHex.substring(i, i + 2);
             try {
                 int charVal = Integer.parseInt(byteHex, 16);
-                // VIN chars are uppercase letters and digits only (no O, I, Q)
-                if (charVal >= 0x30 && charVal <= 0x39       // 0-9
-                        || charVal >= 0x41 && charVal <= 0x5A) { // A-Z
+                // ISO 3779 VIN alphabet: uppercase letters/digits, excluding I/O/Q.
+                if (isVinCharacter(charVal)) {
                     vin.append((char) charVal);
                 }
             } catch (NumberFormatException ignored) {
             }
         }
 
-        String result = vin.toString().trim();
+        String candidates = vin.toString();
 
-        // VIN is exactly 17 characters
-        if (result.length() >= 17) {
-            return result.substring(0, 17);
+        // More than one ECU may answer a functional request. Search every
+        // 17-character window, preferring a recognized WMI while still allowing
+        // valid makes that are not in the local brand table.
+        String firstValid = null;
+        for (int start = 0; start + 17 <= candidates.length(); start++) {
+            String candidate = candidates.substring(start, start + 17);
+            if (!VinBrandDetector.isStructurallyValid(candidate)) continue;
+            if (firstValid == null) firstValid = candidate;
+            if (VinBrandDetector.detect(candidate) != VinBrandDetector.Brand.UNKNOWN) {
+                return candidate;
+            }
         }
-        // Reject anything shorter than 17 — don't propagate garbage VINs
+        if (firstValid != null) return firstValid;
+
+        // Reject anything shorter/invalid — don't propagate garbage VINs
         // that would create wrong folder names or break PID caching.
         return null;
+    }
+
+    private static boolean isVinCharacter(int value) {
+        return (value >= '0' && value <= '9')
+                || (value >= 'A' && value <= 'Z'
+                && value != 'I' && value != 'O' && value != 'Q');
     }
 
     private static String cleanVinLine(String line) {

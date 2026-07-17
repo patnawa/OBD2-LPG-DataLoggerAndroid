@@ -17,11 +17,15 @@ import java.util.UUID;
 @SuppressLint("MissingPermission")
 public final class SerialDriver extends ElmDriver {
     private static final UUID SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+    private static final int MAX_COMMAND_ATTEMPTS = 2;
 
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothSocket socket;
     private InputStream inputStream;
     private OutputStream outputStream;
+    // Guarded by commandLock. Exactly one recovery retry is permitted for a
+    // damaged adapter response, avoiding an unbounded resend storm.
+    private boolean recoveryRetryInProgress;
 
     public SerialDriver(LoggerConfig config) {
         super(config);
@@ -148,7 +152,10 @@ public final class SerialDriver extends ElmDriver {
                             break;
                         }
                         char ch = (char) b;
-                        response.append(ch);
+                        if (!ElmResponseSanitizer.appendValidated(response, b)) {
+                            response.append("BUFFER FULL>");
+                            break;
+                        }
                         if (ch == '>') {
                             break;
                         }
@@ -164,7 +171,22 @@ public final class SerialDriver extends ElmDriver {
                     break;
                 }
             }
-            String result = response.toString();
+            String result = ElmResponseSanitizer.sanitize(response.toString());
+            if (ElmResponseSanitizer.needsTransportRecovery(result)
+                    && !recoveryRetryInProgress) {
+                recoveryRetryInProgress = true;
+                try {
+                    drainStaleBytes(100L);
+                    return sendCommand(command);
+                } finally {
+                    recoveryRetryInProgress = false;
+                }
+            }
+            if (ElmResponseSanitizer.needsTransportRecovery(result)) {
+                // Persistent BUFFER FULL / STOPPED / CAN ERROR indicates a
+                // broken adapter session, not an unsupported PID.
+                connected = false;
+            }
             // Track liveness: consecutive empty responses mean the BT
             // socket is half-open and needs reconnecting.
             trackResponseLiveness(result);

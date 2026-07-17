@@ -49,24 +49,35 @@ public final class BleDriver extends ElmDriver {
     private static final UUID ALT_NOTIFY_UUID  = UUID.fromString("bef8d6c8-9c21-4c9e-b632-bd58c1009f9f");
 
     private Context context;
-    private BluetoothGatt gatt;
+    private volatile BluetoothGatt gatt;
     private BluetoothGattCharacteristic writeChar;
     private BluetoothGattCharacteristic notifyChar;
     private final LinkedBlockingQueue<String> responseQueue = new LinkedBlockingQueue<>();
-    private final StringBuffer notifyBuffer = new StringBuffer();
+    // Access is explicitly synchronized at callback/read boundaries, so an
+    // unsynchronised builder avoids StringBuffer's redundant per-call lock.
+    private final StringBuilder notifyBuffer = new StringBuilder();
     private volatile boolean notifyEnabled = false;
+    // Accessed only while commandLock is held by sendCommand().
+    private boolean recoveryRetryInProgress;
 
     private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt g, int status, int newState) {
+            if (g != gatt) {
+                try { g.close(); } catch (Exception ignored) {}
+                return;
+            }
             if (!hasBluetoothConnectPermission()) {
                 connected = false;
+                responseQueue.offer("");
                 return;
             }
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 g.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 connected = false;
+                notifyEnabled = false;
+                responseQueue.offer(""); // wake a command waiting for its prompt
                 // Release the GATT client — without close() the BluetoothGatt
                 // instance leaks until the next explicit disconnect().
                 try {
@@ -78,6 +89,7 @@ public final class BleDriver extends ElmDriver {
 
         @Override
         public void onServicesDiscovered(BluetoothGatt g, int status) {
+            if (g != gatt || status != BluetoothGatt.GATT_SUCCESS) return;
             if (!hasBluetoothConnectPermission()) return;
             // Try standard service first
             writeChar = findCharacteristic(g, SERVICE_UUID, WRITE_UUID);
@@ -129,6 +141,7 @@ public final class BleDriver extends ElmDriver {
 
         @Override
         public void onDescriptorWrite(BluetoothGatt g, BluetoothGattDescriptor descriptor, int status) {
+            if (g != gatt) return;
             if (descriptor.getUuid().equals(CCCD_UUID)) {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     notifyEnabled = true;
@@ -140,17 +153,28 @@ public final class BleDriver extends ElmDriver {
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic characteristic) {
+            if (g != gatt) return;
             byte[] data = characteristic.getValue();
             if (data == null) return;
-            String chunk = new String(data, java.nio.charset.StandardCharsets.US_ASCII);
             synchronized (notifyBuffer) {
-                notifyBuffer.append(chunk);
-
-                // ELM327 responses end with '>' prompt
-                if (notifyBuffer.indexOf(">") != -1) {
-                    String full = notifyBuffer.toString();
-                    notifyBuffer.setLength(0);
-                    responseQueue.offer(full);
+                for (byte datum : data) {
+                    if (!ElmResponseSanitizer.appendValidated(notifyBuffer, datum)) {
+                        // A bounded reset prevents a noisy notification stream
+                        // from retaining data indefinitely. The waiter receives
+                        // an explicit recovery marker instead of timing out.
+                        notifyBuffer.setLength(0);
+                        responseQueue.offer("BUFFER FULL>");
+                        return;
+                    }
+                }
+                // ELM327 responses end with a prompt. Preserve any late tail
+                // after the first prompt so it can be drained before the next
+                // request rather than being merged into this response.
+                int prompt = notifyBuffer.indexOf(">");
+                if (prompt >= 0) {
+                    String full = notifyBuffer.substring(0, prompt + 1);
+                    notifyBuffer.delete(0, prompt + 1);
+                    responseQueue.offer(ElmResponseSanitizer.sanitize(full));
                 }
             }
         }
@@ -232,6 +256,13 @@ public final class BleDriver extends ElmDriver {
     }
 
     @Override
+    protected int getTransportPidChunkLimit() {
+        // "01 03 04 05 06 07" plus CR exceeds the common 20-byte ATT
+        // payload. Five PIDs remain below it even before MTU negotiation.
+        return 5;
+    }
+
+    @Override
     protected String sendCommand(String command) {
         if (gatt == null || writeChar == null || !hasBluetoothConnectPermission()) {
             return "";
@@ -263,7 +294,23 @@ public final class BleDriver extends ElmDriver {
 
                 // Wait for response with '>' prompt
                 String response = responseQueue.poll(config.connectionTimeoutMs, TimeUnit.MILLISECONDS);
-                String result = response != null ? response : "";
+                String result = ElmResponseSanitizer.sanitize(response != null ? response : "");
+                if (ElmResponseSanitizer.needsTransportRecovery(result)
+                        && !recoveryRetryInProgress) {
+                    recoveryRetryInProgress = true;
+                    try {
+                        responseQueue.clear();
+                        synchronized (notifyBuffer) {
+                            notifyBuffer.setLength(0);
+                        }
+                        return sendCommand(command);
+                    } finally {
+                        recoveryRetryInProgress = false;
+                    }
+                }
+                if (ElmResponseSanitizer.needsTransportRecovery(result)) {
+                    connected = false;
+                }
                 trackResponseLiveness(result);
                 return result;
             } catch (Exception e) {
