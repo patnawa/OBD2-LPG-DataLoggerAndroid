@@ -4067,23 +4067,28 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
          */
         private LiveMapStore getLiveMapStore() {
             LoggerService service = LoggerService.getInstance();
-            if (LoggerService.isLoggingActive() && service != null
-                    && service.getLiveMapStore() != null) {
-                return service.getLiveMapStore();
+            LiveMapStore serviceStore = service != null ? service.getLiveMapStore() : null;
+            if (LoggerService.isLoggingActive() && serviceStore != null) {
+                return serviceStore;
+            }
+            // A background session owns the map for its whole lifetime. This check
+            // must come BEFORE the in-process fallback: `running` is also true for
+            // background logging, so testing it first made this branch unreachable
+            // exactly when it was needed, and handed the UI an unrelated map.
+            if (mapOwnedByBackgroundService && serviceStore != null) {
+                return serviceStore;
             }
             // Foreground logging writes exclusively to inProcessMapStore. A
             // stopped service may still retain its last snapshot, so selecting
             // merely by non-null service instance returned stale/empty data.
             if (running || !mapOwnedByBackgroundService) return ensureInProcessMapStore();
-            if (mapOwnedByBackgroundService && service != null
-                    && service.getLiveMapStore() != null) {
-                return service.getLiveMapStore();
-            }
             return inProcessMapStore != null ? inProcessMapStore : ensureInProcessMapStore();
         }
 
         /** Lazy in-process store so map survives Activity recreation during foreground logging. */
-        private static LiveMapStore inProcessMapStore;
+        // volatile: the logging worker thread and the UI thread both resolve this
+        // field, like the sibling statics above.
+        private static volatile LiveMapStore inProcessMapStore;
         private static volatile boolean mapOwnedByBackgroundService;
 
         private static LiveMapStore ensureInProcessMapStore() {
