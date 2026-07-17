@@ -116,12 +116,23 @@ public class FuelMapView extends View {
          */
         public void syncFromStore(LiveMapStore.MapSnapshot snapshot) {
             if (snapshot == null) return;
-            this.petrolData.clear();
-            this.petrolData.putAll(snapshot.getPetrolData());
-            this.lpgData.clear();
-            this.lpgData.putAll(snapshot.getLpgData());
-            this.comparisonAxisCompatible = snapshot.isComparisonAxisCompatible()
-                    || snapshot.getPetrolData().isEmpty() || snapshot.getLpgData().isEmpty();
+            // A snapshot with no cells at all carries no learned data, and copying it
+            // would wipe a grid that is already drawn. That happens whenever the UI is
+            // briefly handed a store other than the one being written to (e.g. the
+            // background service has not published its store yet). Explicit resets go
+            // through clearData()/clearData(fuelMode), which clear the view directly,
+            // so skipping the copy here cannot strand data after a user-requested clear.
+            // The cursor below still tracks, so a fresh session highlights normally.
+            boolean hasCells = !snapshot.getPetrolData().isEmpty()
+                    || !snapshot.getLpgData().isEmpty();
+            if (hasCells) {
+                this.petrolData.clear();
+                this.petrolData.putAll(snapshot.getPetrolData());
+                this.lpgData.clear();
+                this.lpgData.putAll(snapshot.getLpgData());
+                this.comparisonAxisCompatible = snapshot.isComparisonAxisCompatible()
+                        || snapshot.getPetrolData().isEmpty() || snapshot.getLpgData().isEmpty();
+            }
             if (snapshot.getActiveRpmCell() >= 0) {
                 this.currentRpmCell = snapshot.getActiveRpmCell();
                 this.currentMapCell = snapshot.getActiveMapBin();
