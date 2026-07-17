@@ -41,7 +41,7 @@ public final class VLinkerOptimizer {
     public enum DeviceType {
         VLINKER_FS_USB,     // MIC3322, USB CDC
         VLINKER_MC_WIFI,    // MIC3313, WiFi+BLE
-        VLINKER_MC_BT,      // MIC3313, Bluetooth
+        VLINKER_MC_BT,      // vLinker Bluetooth family (MC/MS; SPP or BLE)
         GENERIC_ELM327,     // Unknown/generic clone
         UNKNOWN
     }
@@ -75,26 +75,20 @@ public final class VLinkerOptimizer {
                     // Distinguish FS vs MC by checking transport
                     // FS is USB-only, MC has WiFi+BT
                     String version = elm.sendCommandRaw("ATI");
-                    if (version != null && version.toUpperCase().contains("MIC3322")) {
+                    DeviceType detected = classifyVLinkerVersion(version,
+                            elm instanceof BleDriver || elm instanceof SerialDriver);
+                    if (detected == DeviceType.VLINKER_FS_USB) {
                         Log.i(TAG, "Detected: vLinker FS USB (MIC3322)");
                         return DeviceType.VLINKER_FS_USB;
                     }
-                    if (version != null && version.toUpperCase().contains("MIC3313")) {
-                        // Distinguish WiFi vs BT by the driver class — the MC3313
-                        // chip is used in both MC WiFi and MC BT adapters, but
-                        // they need different timing/chunk optimizations.
-                        // BT (SerialDriver/BleDriver) has higher latency than
-                        // WiFi, so it must use the MC_BT profile.
-                        if (elm instanceof BleDriver || elm instanceof SerialDriver) {
-                            Log.i(TAG, "Detected: vLinker MC BT (MIC3313 via BT)");
-                            return DeviceType.VLINKER_MC_BT;
-                        }
+                    if (detected == DeviceType.VLINKER_MC_BT) {
+                        Log.i(TAG, "Detected: vLinker Bluetooth family");
+                        return DeviceType.VLINKER_MC_BT;
+                    }
+                    if (detected == DeviceType.VLINKER_MC_WIFI) {
                         Log.i(TAG, "Detected: vLinker MC WiFi (MIC3313)");
                         return DeviceType.VLINKER_MC_WIFI;
                     }
-                    // vLinker but unknown chip — assume MC class
-                    Log.i(TAG, "Detected: vLinker (unknown chip)");
-                    return DeviceType.VLINKER_MC_WIFI;
                 }
             }
         } catch (Exception e) {
@@ -103,6 +97,20 @@ public final class VLinkerOptimizer {
 
         Log.i(TAG, "Detected: Generic ELM327");
         return DeviceType.GENERIC_ELM327;
+    }
+
+    /**
+     * Classify a confirmed vLinker without assuming every unversioned device is
+     * the Wi-Fi MC model. vLinker MS Bluetooth commonly identifies itself by
+     * product name without exposing the older MIC3313 chip string. Treating it
+     * as Wi-Fi selected a larger PID batch and a shorter ECU timeout, which
+     * truncated live-map responses on the real adapter.
+     */
+    static DeviceType classifyVLinkerVersion(String version, boolean bluetoothTransport) {
+        String upper = version != null ? version.toUpperCase(java.util.Locale.US) : "";
+        if (upper.contains("MIC3322")) return DeviceType.VLINKER_FS_USB;
+        if (bluetoothTransport) return DeviceType.VLINKER_MC_BT;
+        return DeviceType.VLINKER_MC_WIFI;
     }
 
     /**
@@ -245,11 +253,12 @@ public final class VLinkerOptimizer {
     private static void applyMcBtOptimizations(ElmDriver elm, LoggerConfig config) {
         Log.i(TAG, "Applying vLinker MC Bluetooth optimizations");
 
-        // BT has higher and more variable latency than USB/WiFi
-        // Use adaptive timing mode 1 (safer) with longer timeout.
+        // BT has higher and more variable latency than USB/WiFi. Keep the ELM
+        // default 200 ms ceiling: ATST23 was only 140 ms (not "longer") and
+        // could end a multi-PID response before MAP/trim/status bytes arrived.
         // No-space AT command form (matches initializeElm327).
         elm.sendCommandRaw("ATAT1");  // Adaptive timing mode 1
-        elm.sendCommandRaw("ATST23"); // 0x23*4ms = 140ms timeout — BT needs more headroom
+        elm.sendCommandRaw("ATST32"); // 0x32*4ms = 200ms — safe ELM default for BT
 
         // CRITICAL: ATAL (Allow Long) — NOT ATNL. See applyFsUsbOptimizations:
         // ATNL truncates multi-PID batch responses and empties the fuel map.

@@ -2,6 +2,7 @@ package com.alpha.obd2logger;
 
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -92,6 +93,22 @@ public class VLinkerOptimizerTest {
         RecordingElmDriver drv = run(VLinkerOptimizer.DeviceType.VLINKER_MC_BT);
         assertTrue("MC BT must send ATAL", drv.sentContains("ATAL"));
         assertFalse("MC BT must NOT send ATNL", drv.sentContains("ATNL"));
+        assertTrue("Bluetooth vLinker must retain the safe 200 ms ELM timeout",
+                drv.sentContains("ATST32"));
+        assertFalse("Bluetooth vLinker must not use the former 140 ms timeout",
+                drv.sentContains("ATST23"));
+    }
+
+    @Test
+    public void unversionedBluetoothVlinkerUsesBluetoothProfile() {
+        assertEquals(VLinkerOptimizer.DeviceType.VLINKER_MC_BT,
+                VLinkerOptimizer.classifyVLinkerVersion("vLinker MS", true));
+        assertEquals(VLinkerOptimizer.DeviceType.VLINKER_MC_BT,
+                VLinkerOptimizer.classifyVLinkerVersion(null, true));
+        assertEquals(VLinkerOptimizer.DeviceType.VLINKER_MC_WIFI,
+                VLinkerOptimizer.classifyVLinkerVersion("vLinker", false));
+        assertEquals(4, VLinkerOptimizer.getRecommendedChunkSize(
+                VLinkerOptimizer.classifyVLinkerVersion("vLinker MS", true)));
     }
 
     @Test

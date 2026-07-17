@@ -258,6 +258,32 @@ public final class LoggerService extends Service {
         executor.submit(() -> runLogger(config, sessionToken));
     }
 
+    /**
+     * First connection deserves the same resilience as a mid-drive reconnect.
+     * The previous path stopped the foreground service after one failed RFCOMM
+     * attempt, even when the adapter was still waking up after ignition-on.
+     */
+    private DriverConnector.Result connectWithBackoff(LoggerConfig config, long sessionToken) {
+        DriverConnector.Result last = null;
+        for (int attempt = 1; running
+                && currentSessionToken == sessionToken; attempt++) {
+            last = DriverConnector.connect(config, 30_000L);
+            if (last.isConnected()) return last;
+            if (!running || currentSessionToken != sessionToken) break;
+
+            long delayMs = ReconnectBackoff.delayForAttempt(attempt);
+            notifyStatus("Connection attempt " + attempt
+                    + " failed. Retrying in " + (delayMs / 1000) + "s...", false);
+            try {
+                Thread.sleep(delayMs);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return last;
+    }
+
     private void runLogger(LoggerConfig config, long sessionToken) {
         if (currentSessionToken == sessionToken) {
             activeConfig = config;
@@ -267,19 +293,19 @@ public final class LoggerService extends Service {
         String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
         String sessionId = simPrefix + fuelPrefix + timeStr;
         
-        DriverConnector.Result connection = DriverConnector.connect(config, 30_000L);
-        BaseDriver localDriver = connection.getDriver();
+        DriverConnector.Result connection = connectWithBackoff(config, sessionToken);
+        BaseDriver localDriver = connection != null ? connection.getDriver() : null;
         if (currentSessionToken == sessionToken) {
             driver = localDriver;
         }
 
-        if (!connection.isConnected()) {
-            String connectionError = connection.getError();
+        if (connection == null || !connection.isConnected()) {
+            String connectionError = connection != null ? connection.getError() : "Connection cancelled";
             DriverFactory.markConnectionFailure(connectionError);
             if (currentSessionToken == sessionToken) {
                 running = false;
                 driver = null;
-                notifyStatus(connection.isTimedOut()
+                notifyStatus(connection != null && connection.isTimedOut()
                         ? "Connection timed out. Check adapter power and transport settings."
                         : "Connection failed: " + connectionError, true);
                 notifyStopped();
@@ -523,14 +549,13 @@ public final class LoggerService extends Service {
             updateNotification("Logging: 0 records", 0);
             long lastDtcCheckMs = android.os.SystemClock.elapsedRealtime();
             int retryCount = 0;
-            int maxRetries = 10;
 
             while (running) {
                 try {
                     if (!localDriver.isConnected()) {
                         if (retryCount > 0) {
                             final int finalRetry = retryCount;
-                            notifyStatus("Connection lost. Reconnecting (" + finalRetry + "/" + maxRetries + ")...", false);
+                            notifyStatus("Connection lost. Reconnecting (attempt " + finalRetry + ")...", false);
                         }
                         DriverConnector.Result reconnect =
                                 DriverConnector.reconnect(localDriver, 30_000L);
@@ -813,7 +838,7 @@ public final class LoggerService extends Service {
                             || e instanceof java.net.SocketException;
                     if (isConnectionError) {
                         retryCount++;
-                        Log.w(TAG, "Connection error (" + retryCount + "/" + maxRetries + "): " + e.getMessage());
+                        Log.w(TAG, "Connection error (attempt " + retryCount + "): " + e.getMessage());
                     } else {
                         // Non-IO exception (data parsing, NPE, etc.) — log and
                         // continue without incrementing the connection retry counter.
@@ -823,14 +848,17 @@ public final class LoggerService extends Service {
                         localDriver.disconnect();
                         if (localApiServer != null) localApiServer.setAdapterConnected(false);
                     }
-                    if (retryCount > maxRetries) {
-                        running = false;
-                        notifyStatus("Logger disconnected permanently: " + e.getMessage(), true);
-                        if (localApiServer != null) localApiServer.setAdapterConnected(false);
-                        break;
-                    }
                     try {
-                        Thread.sleep(1000);
+                        // Back off only after an actual transport failure.
+                        // Parsing/derived-sensor faults receive a short yield
+                        // so they cannot turn into a tight CPU loop either.
+                        long delayMs = retryCount > 0
+                                ? ReconnectBackoff.delayForAttempt(retryCount) : 250L;
+                        if (retryCount > 0) {
+                            notifyStatus("Connection lost. Retrying in "
+                                    + (delayMs / 1000) + "s (attempt " + retryCount + ")...", false);
+                        }
+                        Thread.sleep(delayMs);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         break;

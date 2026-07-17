@@ -17,6 +17,8 @@ public class UsbDriver extends ElmDriver {
     private Context context;
     private UsbSerialPort usbSerialPort;
     private UsbDeviceConnection connection;
+    // Guarded by commandLock; no more than one resend follows a corrupt frame.
+    private boolean recoveryRetryInProgress;
 
     public UsbDriver(LoggerConfig config) {
         super(config);
@@ -136,20 +138,22 @@ public class UsbDriver extends ElmDriver {
             while (System.currentTimeMillis() < deadline) {
                 int len = usbSerialPort.read(buffer, 200);
                 if (len > 0) {
+                    boolean overflow = false;
                     for (int i = 0; i < len; i++) {
                         char ch = (char) buffer[i];
-                        response.append(ch);
+                        if (!ElmResponseSanitizer.appendValidated(response, buffer[i])) {
+                            response.append("BUFFER FULL>");
+                            overflow = true;
+                            break;
+                        }
                         if (ch == '>') {
-                            String result = response.toString();
-                            trackResponseLiveness(result);
-                            return result;
+                            return finishResponse(command, response.toString());
                         }
                     }
+                    if (overflow) break;
                 }
             }
-            String result = response.toString();
-            trackResponseLiveness(result);
-            return result;
+            return finishResponse(command, response.toString());
         } catch (IOException e) {
             connected = false;
             trackResponseLiveness("");
@@ -161,5 +165,28 @@ public class UsbDriver extends ElmDriver {
         } finally {
             commandLock.unlock();
         }
+    }
+
+    /** Applies the same bounded recovery policy as Bluetooth and Wi-Fi transports. */
+    private String finishResponse(String command, String rawResponse) {
+        String result = ElmResponseSanitizer.sanitize(rawResponse);
+        if (ElmResponseSanitizer.needsTransportRecovery(result) && !recoveryRetryInProgress) {
+            recoveryRetryInProgress = true;
+            try {
+                try {
+                    usbSerialPort.purgeHwBuffers(true, true);
+                } catch (Exception ignored) {
+                    // Not all CDC-ACM implementations expose hardware purge.
+                }
+                return sendCommand(command);
+            } finally {
+                recoveryRetryInProgress = false;
+            }
+        }
+        if (ElmResponseSanitizer.needsTransportRecovery(result)) {
+            connected = false;
+        }
+        trackResponseLiveness(result);
+        return result;
     }
 }

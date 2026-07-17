@@ -21,6 +21,8 @@ public final class WiFiDriver extends ElmDriver {
      *  ATZ/ATI/AT@1 a longer per-read timeout since ELM327 needs ~500ms-1.5s
      *  to produce its first prompt after a reset. */
     private volatile boolean initializing = false;
+    // Guarded by commandLock; caps transport recovery at one resend.
+    private boolean recoveryRetryInProgress;
 
     public WiFiDriver(LoggerConfig config) {
         super(config);
@@ -188,12 +190,28 @@ public final class WiFiDriver extends ElmDriver {
                     break;
                 }
                 char ch = (char) b;
-                response.append(ch);
+                if (!ElmResponseSanitizer.appendValidated(response, b)) {
+                    response.append("BUFFER FULL>");
+                    break;
+                }
                 if (ch == '>') {
                     break;
                 }
             }
-            String result = response.toString();
+            String result = ElmResponseSanitizer.sanitize(response.toString());
+            if (ElmResponseSanitizer.needsTransportRecovery(result)
+                    && !recoveryRetryInProgress) {
+                recoveryRetryInProgress = true;
+                try {
+                    drainStaleBytes(100L);
+                    return sendCommand(command);
+                } finally {
+                    recoveryRetryInProgress = false;
+                }
+            }
+            if (ElmResponseSanitizer.needsTransportRecovery(result)) {
+                connected = false;
+            }
             trackResponseLiveness(result);
             return result;
         } catch (IOException e) {

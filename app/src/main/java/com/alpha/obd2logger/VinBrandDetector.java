@@ -53,8 +53,10 @@ public final class VinBrandDetector {
         if (isOneOf(wmi, "JH5")) return Brand.HINO;
 
         // ── Toyota ──
-        // Thailand: JTH, JTN, MNH, MNT | Japan: JT | Turkey: NLT | France: JTE
-        if (wmi.startsWith("JT") || wmi.startsWith("MN") || wmi.startsWith("NL")) {
+        // Thailand: MR0/MNH | Japan: JT | Turkey: NMT | other major Toyota plants.
+        // MR0 is especially common on Thai-built Hilux/Fortuner vehicles.
+        if (wmi.startsWith("JT") || wmi.startsWith("MN") || wmi.startsWith("NL")
+                || wmi.equals("MR0")) {
             if (wmi.equals("JTH") || wmi.equals("JTF")) return Brand.LEXUS;
             return Brand.TOYOTA;
         }
