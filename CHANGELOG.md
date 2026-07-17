@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.30.0] - 2026-07-17 — Production Transport Hardening & Passive Diagnostics
+
+- Versioned the program as `3.30.0` (`versionCode 131`).
+- Reworked foreground and background connection recovery to use a capped exponential schedule (1, 2, 4, 8, 16, then 30 seconds) until the user stops logging; a transient vLinker/Bluetooth wake-up failure no longer ends the session after a fixed retry count.
+- Made ELM command serialization fair/FIFO across polling, VIN, DTC, and raw diagnostic callers so half-duplex transport I/O cannot interleave or starve a command source.
+- Added bounded ELM response validation for Classic Bluetooth, BLE, Wi-Fi, and USB: binary noise is discarded, a response is limited to 4 KiB, and a missing `>` prompt is treated as a partial frame rather than parsed as live vehicle data.
+- Added one bounded drain-and-retry for adapter faults (`BUFFER FULL`, `STOPPED`, `CAN ERROR`, `?`); `NO DATA` remains an ECU-level response and is deliberately not retried at poll frequency.
+- Fixed BLE reconnect isolation from stale GATT callbacks and limited pre-negotiation multi-PID requests to five PIDs so a command plus CR fits the default 20-byte ATT payload.
+- Improved Toyota/vLinker VIN identification with a serialized extended Mode 09 retry, vLinker Bluetooth profile handling, robust VIN candidate parsing, and Toyota `MR0` WMI support.
+- Added a passive, read-only CAN/ISO-TP/UDS diagnostic foundation with bounded ring buffering, ISO-TP reassembly, UDS response decoding, bus-health/anomaly reporting, and Thai system documentation. It contains no CAN injection, ECU programming, security unlock, or memory-write API.
+- Added regression coverage for transport response sanitization/backoff, VIN/vLinker detection, and passive CAN components; `testDebugUnitTest assembleDebug` passes.
+
 ## [3.29.0] - Unreleased — Development
 
 _Current development version. Upcoming changes will be listed here before release._

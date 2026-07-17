@@ -1,8 +1,18 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.29.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
+**Version 3.30.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
+
+---
+
+## What's New in 3.30.0 — Transport Resilience & Toyota/vLinker Reliability
+
+- **Reconnects that survive real driving conditions** — foreground and background logging now use capped exponential backoff (1, 2, 4, 8, 16, then 30 seconds) until you press Stop, rather than giving up after a fixed retry count.
+- **Cleaner ELM327 command channel** — Classic Bluetooth, BLE, Wi-Fi, and USB responses are byte-validated, bounded, and require the ELM `>` prompt. A corrupt or partial frame is drained and retried once before the connection state machine takes over.
+- **BLE multi-PID safety** — BLE polling stays within the default ATT payload before MTU negotiation, avoiding lost/truncated ELM commands on vLinker-class adapters.
+- **Toyota VIN improvements** — extended, serialized Mode 09 VIN retry and Toyota `MR0` WMI recognition improve identification with vLinker MS/MC Bluetooth adapters.
+- **Passive CAN diagnostics foundation** — optional read-only ISO-TP/UDS reassembly, bounded telemetry buffering, and anomaly reporting; it never injects CAN frames or performs ECU programming.
 
 ---
 
