@@ -3,6 +3,7 @@ package com.alpha.obd2logger;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.LinkedHashSet;
 
@@ -330,6 +331,10 @@ public final class DtcReader {
     /** Get the per-brand ECU name map for the detected vehicle brand. */
     private static Map<Integer, String> getBrandEcuMap(VinBrandDetector.Brand brand) {
             if (brand == null) return null;
+            // brand_profiles.json is authoritative when present so a new brand's
+            // module names ship over the air; the switch is the offline fallback.
+            Map<Integer, String> fromProfile = BrandProfile.ecuNamesFor(brand);
+            if (fromProfile != null) return fromProfile;
             switch (brand) {
                 case TOYOTA: case LEXUS: return TOYOTA_ECU;
                 case HONDA:             return HONDA_ECU;
@@ -530,7 +535,8 @@ public final class DtcReader {
             buses.add(ALL_BUSES.get(0)); // MS-CAN
         }
 
-        return scanBuses(driver, buses, fordMsCan, listener != null ? listener : NULL_LISTENER);
+        return scanBuses(driver, buses, fordMsCan, false,
+                listener != null ? listener : NULL_LISTENER);
     }
 
     /**
@@ -560,7 +566,9 @@ public final class DtcReader {
         buses.add(FAST_BUSES.get(0)); // auto-detect first
         buses.addAll(ALL_BUSES);       // then all secondary buses
 
-        return scanBuses(driver, buses, fordMode, listener != null ? listener : NULL_LISTENER);
+        // Deep scan additionally sweeps physical ECU addresses.
+        return scanBuses(driver, buses, fordMode, true,
+                listener != null ? listener : NULL_LISTENER);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -573,6 +581,7 @@ public final class DtcReader {
      * collect module info, restore auto protocol.
      */
     private static DtcScanResult scanBuses(BaseDriver driver, List<ProtocolBus> buses,
+                                           boolean physicalSweep,
                                            boolean fordMode, DtcScanProgressListener listener) {
         List<DtcCode> allStored = new ArrayList<>();
         List<DtcCode> allPending = new ArrayList<>();
@@ -592,7 +601,7 @@ public final class DtcReader {
 
             BusScanResult result;
             try {
-                result = scanSingleBus(driver, bus, fordMode, listener);
+                result = scanSingleBus(driver, bus, fordMode, physicalSweep, listener);
             } catch (Exception e) {
                 android.util.Log.e("DtcReader", "Bus scan failed: " + bus.label, e);
                 statuses.add(new ProtocolScanStatus(bus, false, 0, 0));
@@ -673,7 +682,8 @@ public final class DtcReader {
     }
 
     private static BusScanResult scanSingleBus(BaseDriver driver, ProtocolBus bus,
-                                                   boolean fordMode, DtcScanProgressListener listener) {
+                                                   boolean fordMode, boolean physicalSweep,
+                                                   DtcScanProgressListener listener) {
             List<DtcCode> stored = new ArrayList<>();
             List<DtcCode> pending = new ArrayList<>();
             List<DtcCode> permanent = new ArrayList<>();
@@ -700,16 +710,38 @@ public final class DtcReader {
             // This avoids false "NO DATA" results from a bus that has no ECU at all.
             String probe = sendWithRetry(driver, "0100", 2, 150);
             if (!isValidResponse(probe)) {
-                // No ECU responded on this protocol — skip DTC scan entirely
-                driver.sendCommandRaw("ATCFC0");
-                return new BusScanResult(stored, pending, permanent, new ArrayList<>(), false);
+                // Mode 01 PID 00 is a powertrain-emissions service. The body and
+                // comfort buses (MS-CAN, SW-CAN, LS-CAN) carry BCM / IPC / door /
+                // seat modules that never implement it but do answer Mode 03 —
+                // so gating solely on 0100 skipped exactly the buses this scan
+                // was added to reach. Try a DTC-service probe before giving up.
+                probe = sendWithRetry(driver, "03", 2, 150);
+                if (!isValidResponse(probe)) {
+                    // Nothing on this protocol at all — skip the DTC scan.
+                    driver.sendCommandRaw("ATCFC0");
+                    return new BusScanResult(stored, pending, permanent, new ArrayList<>(), false);
+                }
             }
             // A valid Mode 01 probe proves this bus responded even when the ECU has
             // zero DTCs or does not implement one of Modes 07/0A.
             anyResponse = true;
 
-            // Enable headers to see CAN IDs
+            // Enable headers to see CAN IDs.
             driver.sendCommandRaw("ATH1");
+            // Spaces MUST be on for the header parser to separate the CAN ID
+            // from the payload. Polling runs with ATS0 (compact) for speed, and
+            // enabling headers without re-enabling spaces yields "7E80643..." —
+            // one token — which the parser cannot split, so every CAN frame was
+            // dropped and no module or DTC was ever reported. Restored to ATS0
+            // in the finally block below.
+            driver.sendCommandRaw("ATS1");
+            // Polling runs at ATST32 (200 ms) because a PID reply comes from one
+            // ECU. A functionally-addressed Mode 03 must collect replies from
+            // every module on the bus, and gatewayed body/ABS/SRS modules answer
+            // well past 200 ms — they were being cut off. Adaptive timing stays
+            // on (ATAT1 from init), so this raises the ceiling to ~1.02 s
+            // without making fast buses wait for it. Restored in the finally.
+            driver.sendCommandRaw("ATSTFF");
             try { Thread.sleep(50); } catch (InterruptedException ignored) {}
 
             try {
@@ -759,8 +791,19 @@ public final class DtcReader {
                 }
                 listener.onModeScanComplete(bus.label, "Mode 0A (Permanent)", permanent.size());
 
+                // Functional addressing only reaches modules that answer the
+                // broadcast. Sweep physical addresses to find the rest.
+                if (physicalSweep) {
+                    sweepPhysicalAddresses(driver, bus, fordMode, moduleBuilders,
+                            stored, pending, permanent, listener);
+                }
+
             } finally {
             driver.sendCommandRaw("ATH0");
+            // Restore the compact (spaces-off) format the polling loop expects.
+            driver.sendCommandRaw("ATS0");
+            // Restore the fast polling timeout raised for the scan above.
+            driver.sendCommandRaw("ATST32");
             // Restore automatic ISO-TP flow control for normal PID polling.
             driver.sendCommandRaw("ATCFC1");
         }
@@ -784,10 +827,162 @@ public final class DtcReader {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    //  Physical Address Sweep
+    // ═══════════════════════════════════════════════════════════════
+
+    /** Standard 11-bit OBD request addresses; responses are request + 8. */
+    private static final int PHYSICAL_SWEEP_FIRST = 0x7E0;
+    private static final int PHYSICAL_SWEEP_LAST = 0x7E7;
+
+    /** 11-bit UDS convention: an ECU answers 8 above its request address. */
+    private static final int RESPONSE_OFFSET = 0x08;
+
+    /**
+     * ELM protocols that carry 11-bit CAN and therefore accept an
+     * {@code ATSH7Ex} request header. 29-bit (ATSP7) and the K-line / VPW
+     * protocols use different addressing and are deliberately excluded rather
+     * than swept with headers that cannot apply to them.
+     */
+    static boolean supportsElevenBitPhysicalAddressing(ProtocolBus bus) {
+        if (bus == null || bus.atSpCommand == null) return false;
+        switch (bus.atSpCommand) {
+            case "ATSP0":   // auto — usually resolves to 11-bit CAN
+            case "ATSP6":
+            case "ATSP8":
+            case "ATSPA":   // SW-CAN
+            case "ATSPB":   // MS-CAN
+            case "ATSPC":   // CH-CAN
+            case "ATSPD":   // LS-CAN
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Query each ECU address directly instead of relying on the broadcast.
+     *
+     * <p>The scan previously used functional addressing ({@code 7DF}) only, so a
+     * module was found solely if it chose to answer the broadcast. Gatewayed
+     * body, ABS and SRS modules routinely do not, which is why the module list
+     * was far shorter than the vehicle's real module count — the ECU name table
+     * knows ~60 CAN IDs but only 6 were ever queried.
+     *
+     * <p>Cost is bounded: a missing address costs one Mode 03 request, because
+     * Modes 07/0A are only sent to addresses that actually answered. Addresses
+     * already discovered functionally are skipped entirely.
+     */
+    private static void sweepPhysicalAddresses(BaseDriver driver, ProtocolBus bus,
+                                               boolean fordMode,
+                                               Map<Integer, ModuleInfo.Builder> moduleBuilders,
+                                               List<DtcCode> stored, List<DtcCode> pending,
+                                               List<DtcCode> permanent,
+                                               DtcScanProgressListener listener) {
+        if (!supportsElevenBitPhysicalAddressing(bus)) return;
+
+        // Standard powertrain block plus every request-side ID the brand table
+        // knows about, so brand-specific modules (Honda 7C0, Mitsubishi 762…)
+        // are reached too.
+        java.util.LinkedHashSet<Integer> candidates = new java.util.LinkedHashSet<>();
+        for (int id = PHYSICAL_SWEEP_FIRST; id <= PHYSICAL_SWEEP_LAST; id++) {
+            candidates.add(id);
+        }
+        Map<Integer, String> brandMap = getBrandEcuMap(currentBrand);
+        if (brandMap != null) {
+            for (Integer id : brandMap.keySet()) {
+                // Keep request addresses only — a response ID is what an ECU
+                // replies on, addressing it as a request reaches nothing.
+                if (id != null && id > 0 && id <= 0x7FF
+                        && !isLikelyResponseAddress(id, brandMap)) {
+                    candidates.add(id);
+                }
+            }
+        }
+
+        listener.onModeScanStart(bus.label, "Physical address sweep");
+        int found = 0;
+        try {
+            for (Integer tx : candidates) {
+                int rx = tx + RESPONSE_OFFSET;
+                // Already answered the broadcast — nothing to gain.
+                if (moduleBuilders.containsKey(rx)) continue;
+
+                String txHex = String.format(Locale.US, "%03X", tx);
+                String rxHex = String.format(Locale.US, "%03X", rx);
+                String setHeader = driver.sendCommandRaw("ATSH" + txHex);
+                if (setHeader != null && setHeader.contains("?")) {
+                    // Adapter rejected the header (e.g. ATSP0 resolved to 29-bit).
+                    // Sweeping the rest would fail identically, so stop here.
+                    break;
+                }
+                driver.sendCommandRaw("ATCRA" + rxHex);
+
+                // One probe decides whether this address exists at all.
+                String raw03 = sendWithRetry(driver, "03", 1, 100);
+                if (!isValidResponse(raw03)) continue;
+
+                List<DtcCode> ecuStored = parseDtcResponse(raw03, "43");
+                ModuleInfo.Builder mb = moduleBuilders.computeIfAbsent(rx,
+                        k -> new ModuleInfo.Builder(k, bus.label, fordMode));
+                mb.storedOk = true;
+                mb.storedDtcCount = ecuStored.size();
+                addNewCodes(stored, ecuStored);
+                found++;
+
+                String raw07 = sendWithRetry(driver, "07", 1, 100);
+                if (isValidResponse(raw07)) {
+                    List<DtcCode> ecuPending = parseDtcResponse(raw07, "47");
+                    mb.pendingOk = true;
+                    mb.pendingDtcCount = ecuPending.size();
+                    addNewCodes(pending, ecuPending);
+                }
+
+                String raw0A = sendWithRetry(driver, "0A", 1, 100);
+                if (isValidResponse(raw0A)) {
+                    List<DtcCode> ecuPermanent = parseDtcResponse(raw0A, "4A");
+                    mb.permanentOk = true;
+                    mb.permanentDtcCount = ecuPermanent.size();
+                    addNewCodes(permanent, ecuPermanent);
+                }
+
+                // No onModuleDetected here on purpose: these builders flow into
+                // the bus result, and scanBuses fires the callback for every
+                // module it contains (deduplicated by CAN ID + protocol).
+                // Announcing here as well would double every swept module.
+            }
+        } finally {
+            // Bare ATCRA clears the filter; restore functional addressing so the
+            // next bus (and the polling loop) is not left talking to one ECU.
+            driver.sendCommandRaw("ATCRA");
+            driver.sendCommandRaw("ATSH7DF");
+        }
+        listener.onModeScanComplete(bus.label, "Physical address sweep", found);
+    }
+
+    /**
+     * A brand table lists both request and response IDs. Only request IDs are
+     * worth sweeping, and the response entries are the ones whose name says so
+     * or that sit {@link #RESPONSE_OFFSET} above a listed request.
+     */
+    static boolean isLikelyResponseAddress(int id, Map<Integer, String> brandMap) {
+        String name = brandMap.get(id);
+        if (name != null && name.toLowerCase(Locale.US).contains("response")) return true;
+        return brandMap.containsKey(id - RESPONSE_OFFSET);
+    }
+
+    /** Append only codes not already present, preserving existing dedup. */
+    private static void addNewCodes(List<DtcCode> target, List<DtcCode> incoming) {
+        for (DtcCode code : incoming) {
+            if (!target.contains(code)) target.add(code);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     //  Response Parsing with Module Headers
     // ═══════════════════════════════════════════════════════════════
 
-    private static class ScanLineResult {
+    // Package-private so the header parser can be regression-tested.
+    static class ScanLineResult {
         final List<DtcCode> codes = new ArrayList<>();
         final Map<Integer, List<DtcCode>> perModule = new LinkedHashMap<>();
     }
@@ -802,7 +997,48 @@ public final class DtcReader {
      * the ISO-TP PCI byte(s) after the CAN ID are stripped so they are never
      * decoded as phantom DTCs (e.g. "06 43 ..." → P0643).
      */
-    private static ScanLineResult parseWithModuleHeaders(
+    /**
+     * Split a CAN ID off an unspaced response line.
+     *
+     * <p>With {@code ATH1} but {@code ATS0} the adapter emits one token per
+     * frame ({@code 7E80643040133...}) instead of the spaced form the parser
+     * documents. The scan now sets {@code ATS1}, but several ELM327 clones
+     * ignore it, so this keeps module attribution working regardless.
+     *
+     * <p>A line that starts with the mode header is a headers-off response and
+     * returns null so the caller falls through to the legacy branch. That check
+     * is what stops {@code "4304013300"} being misread as CAN ID {@code 0x430}.
+     *
+     * @return {@code {canIdHex, payloadHex}}, or null when this is not a header line
+     */
+    static String[] splitUnspacedHeader(String line, String modeHeader) {
+        if (line == null) return null;
+        String hex = line.replaceAll("[^0-9A-Fa-f]", "").toUpperCase();
+        if (hex.isEmpty()) return null;
+        // Headers-off payload — the mode byte leads the line.
+        if (modeHeader != null && hex.startsWith(modeHeader)) return null;
+
+        // 29-bit addressing (e.g. 18DAF110) uses an 8-char header.
+        int headerLen = hex.startsWith("18") && hex.length() >= 10 ? 8 : 3;
+        if (hex.length() < headerLen + 2) return null;
+
+        String header = hex.substring(0, headerLen);
+        String payload = hex.substring(headerLen);
+        // Payload must be whole bytes; an odd length means this isn't a frame.
+        if (payload.length() % 2 != 0) return null;
+
+        try {
+            int canId = Integer.parseInt(header, 16);
+            // 11-bit IDs are bounded by 0x7FF; reject anything outside so a
+            // stray hex run isn't promoted to a module.
+            if (headerLen == 3 && (canId <= 0 || canId > 0x7FF)) return null;
+        } catch (NumberFormatException notAHeader) {
+            return null;
+        }
+        return new String[] { header, payload };
+    }
+
+    static ScanLineResult parseWithModuleHeaders(
             String response, String modeHeader, String protocolLabel) {
 
         ScanLineResult result = new ScanLineResult();
@@ -823,7 +1059,17 @@ public final class DtcReader {
             }
 
             String[] tokens = clean.trim().split("\\s+");
-            if (tokens.length < 2) continue;
+            if (tokens.length < 2) {
+                // Spaces-off output ("7E80643040133..."): the CAN ID is not a
+                // separate token. Split the header off by width so the scan
+                // still works against an adapter that ignores ATS1 — several
+                // ELM327 clones do. Falls through to the headers-off branch
+                // below when no plausible header is present.
+                String[] split = splitUnspacedHeader(clean.trim(), modeHeader);
+                // Not a header line — hand the whole blob to the headers-off
+                // branch below (an empty first token fails the width check).
+                tokens = split != null ? split : new String[] { "", clean };
+            }
 
             // Parse CAN ID — first token
             int ecuId;
@@ -1298,7 +1544,12 @@ public final class DtcReader {
         java.util.Set<String> modeHeaderPairs = new java.util.LinkedHashSet<>();
         // Each entry is "mode,responseHeader" e.g. "21,61"
 
-        if (brand == null) {
+        List<String> profileModes = BrandProfile.enhancedModesFor(brand);
+        if (profileModes != null) {
+            // brand_profiles.json is authoritative when present, so a new brand's
+            // enhanced modes ship over the air rather than in a Play release.
+            modeHeaderPairs.addAll(profileModes);
+        } else if (brand == null) {
             // Unknown VIN — try all unique enhanced mode pairs
             modeHeaderPairs.add("21,61");
             modeHeaderPairs.add("1A,5A");
