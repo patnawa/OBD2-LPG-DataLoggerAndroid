@@ -32,11 +32,28 @@ public final class VinReader {
 
         // Toyota and other ECUs can take longer to produce the multi-frame Mode
         // 09 response than the live-PID timeout permits. Retry once with CAN
-        // formatting/flow control enabled and an extended ELM timeout. The
-        // ElmDriver helper restores the live polling profile before it returns.
+        // flow control, raw ISO-TP frame visibility and an extended ELM timeout.
+        // The ElmDriver helper restores the compact live-polling profile before
+        // it returns.
         if (driver instanceof ElmDriver) {
-            response = ((ElmDriver) driver).sendCommandRawWithExtendedTimeout("0902");
-            return parseVinResponse(response);
+            ElmDriver elm = (ElmDriver) driver;
+            response = elm.sendCommandRawWithExtendedTimeout("0902");
+            vin = parseVinResponse(response);
+            if (vin != null) {
+                return vin;
+            }
+
+            // Some Toyota ECUs answer Mode 01 through the standard functional
+            // address (7DF), yet only return their multi-frame VIN when the
+            // request is addressed to the engine ECU (7E0). Only attempt this
+            // on a confirmed 11-bit CAN bus: an ATSH7E0 command is not valid
+            // for a 29-bit or K-line vehicle.
+            String activeProtocol = elm.sendCommandRaw("ATDPN");
+            if (ElmDriver.isElevenBitCanProtocol(activeProtocol)) {
+                response = elm.sendCommandRawToEcuWithExtendedTimeout(
+                        "0902", "7E0", "7E8");
+                return parseVinResponse(response);
+            }
         }
         return null;
     }

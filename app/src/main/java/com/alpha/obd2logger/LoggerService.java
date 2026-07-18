@@ -94,7 +94,10 @@ public final class LoggerService extends Service {
      * (FuelMapView) and the API server (ApiServer). Set when the logging
      * session starts, cleared when it stops.
      */
-    private LiveMapStore liveMapStore;
+    // Written by the logging executor and read by MainActivity / API threads.
+    // Without volatile publication, Bluetooth background logging could update
+    // a store that the UI still observed as null or an earlier empty store.
+    private volatile LiveMapStore liveMapStore;
 
     public LiveMapStore getLiveMapStore() {
         return liveMapStore;
@@ -374,7 +377,14 @@ public final class LoggerService extends Service {
         // Per-session local reference; only the CURRENT session may publish it
         // to the instance field, otherwise a stale worker from a quick
         // stop/restart would overwrite the new session's store.
-        LiveMapStore localMapStore = new LiveMapStore();
+        // Reuse the retained store across sessions. Allocating a fresh one per
+        // ACTION_START silently destroyed both fuels' learned cells, which
+        // defeats the Tune Assist workflow outright: that flow logs Petrol, then
+        // switches to LPG and logs again to compare the two. MainActivity
+        // deliberately clears only the fuel about to be re-logged, and this
+        // allocation threw away the comparison fuel it had just preserved —
+        // leaving Deviation/Correction permanently empty.
+        LiveMapStore localMapStore = liveMapStore != null ? liveMapStore : new LiveMapStore();
         if (currentSessionToken == sessionToken) {
             // Expose via instance getter for MainActivity to read snapshots
             liveMapStore = localMapStore;

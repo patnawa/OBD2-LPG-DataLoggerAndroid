@@ -470,6 +470,9 @@ RPM %1$s • Coolant %2$s °C • Voltage %3$s V • Fuel trim %4$s%%</string>
     <string name="map_wait_fuel_trim">WAITING FOR FUEL TRIM</string>
     <string name="map_wait_engine_data">WAITING FOR RPM / LOAD</string>
     <string name="map_wait_stable_sample">STABILIZING…</string>
+    <string name="map_wait_debounce">HOLD THIS CELL — need 2 samples in a row</string>
+    <string name="map_wait_transient">TRANSIENT — RPM / load / throttle moving too fast</string>
+    <string name="map_wait_trim_unstable">FUEL TRIM UNSTABLE — noisy or over ±50%</string>
     <string name="map_wait_lambda_stable">WAITING FOR LAMBDA TO REACH COMMANDED TARGET</string>
     <string name="map_axis_mismatch">MAP AXIS MISMATCH • comparison disabled</string>
     <string name="home_nav_drive">Drive</string>

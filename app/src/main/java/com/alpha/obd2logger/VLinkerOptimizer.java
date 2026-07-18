@@ -320,9 +320,10 @@ public final class VLinkerOptimizer {
         switch (deviceType) {
             case VLINKER_FS_USB:
             case VLINKER_MC_WIFI:
-                return 6;  // vLinker handles 6 PID multi-query reliably
             case VLINKER_MC_BT:
-                return 4;  // BT — smaller chunks for reliability
+                // vLinker MS SPP advertises a 3 Mbps host link and accepts
+                // 4K requests.  BleDriver separately caps BLE at five PIDs.
+                return 6;
             case GENERIC_ELM327:
                 return 4;  // Generic clones — conservative
             default:

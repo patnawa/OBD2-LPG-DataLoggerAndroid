@@ -3213,6 +3213,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // logs again to compare. Wiping the entire map on every Start would erase the
         // Petrol data the moment LPG logging begins, leaving Deviation/Correction
         // permanently empty. clearData(fuelMode) preserves the comparison fuel.
+        // Establish ownership BEFORE the clear below. getLiveMapStore() reads
+        // this flag, and it is otherwise not updated until startInProcessLogging
+        // / actuallyStartBackgroundLogging further down — so the clear resolved
+        // against the *previous* session's owner and wiped a store this session
+        // will never write to, while leaving the real one populated.
+        mapOwnedByBackgroundService = backgroundLoggingCheckbox.isChecked();
+
         if (fuelMapView != null) {
             fuelMapView.clearData(config.fuelMode);
             // Also clear the corresponding fuel in LiveMapStore (service or in-process)
@@ -3927,11 +3934,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         } else {
             Double rejectCode = valueByKey(record, "map_reject_code");
             int code = rejectCode != null ? (int) Math.round(rejectCode) : 0;
+            // Name the specific blocker. These three used to collapse into one
+            // "STABILIZING…" chip, which is indistinguishable from normal
+            // settling — so a map that never stores anything looked identical
+            // to one that was about to. Each has a different remedy: hold the
+            // cell, drive more gently, or fix the trim/sensor noise.
             if (code == 11) reasonRes = R.string.map_axis_mismatch;
             else if (code == 13) reasonRes = R.string.map_wait_lambda_stable;
-            else if (code == 6 || code == 12 || code == 14) {
-                reasonRes = R.string.map_wait_stable_sample;
-            } else {
+            else if (code == 6) reasonRes = R.string.map_wait_debounce;
+            else if (code == 12) reasonRes = R.string.map_wait_transient;
+            else if (code == 14) reasonRes = R.string.map_wait_trim_unstable;
+            else {
                 return; // accepted or locked mature cell; retain coverage/confidence status
             }
         }
@@ -4012,24 +4025,31 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     /**
-         * Returns the LiveMapStore from LoggerService if available.
-         * Falls back to the in-process store for foreground-only logging.
+         * Returns the store the active session actually writes to.
+         *
+         * <p>{@link FuelMapView#syncFromStore} is a wholesale replace, not a
+         * merge, so this method returning the wrong store for a single record
+         * blanks every learned cell on screen. It therefore keys off exactly one
+         * fact — who owns this session — and nothing else.
+         *
+         * <p>It previously also consulted {@code LoggerService.isLoggingActive()}
+         * and {@code running}, which are two different flags updated on two
+         * different threads. When a background session ended, the service
+         * cleared its own {@code running} while {@code MainActivity.running} was
+         * still true (it is only cleared later, in {@code onStopped}). Any record
+         * still draining out of the worker in that window selected the empty
+         * in-process store and wiped the grid, with nothing to re-sync it because
+         * the Map tab was already open.
          */
         private LiveMapStore getLiveMapStore() {
-            LoggerService service = LoggerService.getInstance();
-            if (LoggerService.isLoggingActive() && service != null
-                    && service.getLiveMapStore() != null) {
-                return service.getLiveMapStore();
+            if (mapOwnedByBackgroundService) {
+                LoggerService service = LoggerService.getInstance();
+                LiveMapStore serviceStore = service != null ? service.getLiveMapStore() : null;
+                // Fall through to the in-process store only when the service has
+                // not built its store yet; never swap stores mid-session.
+                if (serviceStore != null) return serviceStore;
             }
-            // Foreground logging writes exclusively to inProcessMapStore. A
-            // stopped service may still retain its last snapshot, so selecting
-            // merely by non-null service instance returned stale/empty data.
-            if (running || !mapOwnedByBackgroundService) return ensureInProcessMapStore();
-            if (mapOwnedByBackgroundService && service != null
-                    && service.getLiveMapStore() != null) {
-                return service.getLiveMapStore();
-            }
-            return inProcessMapStore != null ? inProcessMapStore : ensureInProcessMapStore();
+            return ensureInProcessMapStore();
         }
 
         /** Lazy in-process store so map survives Activity recreation during foreground logging. */
@@ -6820,6 +6840,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     } else {
                         dtcStatusText.setText("VIN not available. Some vehicles don't support Mode 09.");
                         dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+                        promptForManualVin();
                     }
                 });
             } finally {
@@ -6829,6 +6850,71 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 runOnUiThread(() -> setDtcButtonsEnabled(true));
             }
         });
+    }
+
+    /**
+     * Offer manual VIN entry when the vehicle does not answer Mode 09 PID 02.
+     *
+     * <p>Without a VIN the app falls back to the "General" log folder and loses
+     * brand detection, the brand DTC database and per-vehicle PID caching. The
+     * VIN is on the windscreen and the door jamb, so letting the user type it
+     * once — and remembering it — restores all of those consumers on vehicles
+     * that will never report it over OBD.
+     */
+    private void promptForManualVin() {
+        final EditText input = new EditText(this);
+        input.setHint("e.g. MR0FZ29G1J1234567");
+        input.setSingleLine(true);
+        input.setFilters(new android.text.InputFilter[]{
+                new android.text.InputFilter.LengthFilter(17),
+                new android.text.InputFilter.AllCaps()});
+        String existing = ManualVinStore.get(this);
+        if (existing != null) {
+            input.setText(existing);
+            input.setSelection(existing.length());
+        }
+
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        android.widget.FrameLayout wrapper = new android.widget.FrameLayout(this);
+        wrapper.setPadding(pad, pad / 2, pad, 0);
+        wrapper.addView(input);
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Enter VIN manually")
+                .setMessage("This vehicle did not answer Mode 09. Enter the VIN "
+                        + "from the windscreen or door jamb and it will be reused "
+                        + "for future sessions.")
+                .setView(wrapper)
+                .setPositiveButton("Save", (d, which) -> {
+                    String entered = ManualVinStore.normalize(input.getText().toString());
+                    if (entered == null) {
+                        dtcStatusText.setText("That is not a valid 17-character VIN.");
+                        dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+                        return;
+                    }
+                    applyManualVin(entered);
+                })
+                .setNegativeButton("Skip", null)
+                .show();
+    }
+
+    /** Persist a user-supplied VIN and drive the same wiring as a Mode 09 read. */
+    private void applyManualVin(String vin) {
+        ManualVinStore.set(this, vin);
+        DtcReader.setBrand(VinBrandDetector.detect(vin));
+
+        LoggerService service = LoggerService.getInstance();
+        LoggerConfig activeConfig = service != null ? service.getConfig() : activeInProcessConfig;
+        if (activeConfig != null) {
+            activeConfig.vin = vin;
+        }
+
+        dtcStatusText.setText("VIN set manually: " + vin);
+        dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+
+        // Reuses the Mode 09 success path: header/home VIN, brand DTC database,
+        // the DTC vehicle card and the diesel auto-detect heuristic.
+        onVinRead(vin);
     }
 
     private void checkReadiness() {
@@ -7280,6 +7366,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         config.engineDisplacementCC = densPrefs.getInt("pref_engine_displacement_cc", 1998);
         config.engineDisplacementUserSet = densPrefs.getBoolean("pref_engine_displacement_user_set", false);
         config.ratedRPM = densPrefs.getInt("pref_rated_rpm", 6000);
+        // Seed a previously entered VIN for vehicles that don't answer Mode 09.
+        // runLogger only probes when config.vin is unset, so this both skips a
+        // pointless 0902 round-trip and restores brand detection, the brand DTC
+        // database, PID caching and per-VIN log folders on those vehicles.
+        String manualVin = ManualVinStore.get(this);
+        if (manualVin != null) {
+            config.vin = manualVin;
+        }
         return config;
     }
 

@@ -99,8 +99,8 @@ public final class MapSampleMeta {
                 valueByKey(record, "01_0C"),
                 mapSample != null ? mapSample.getValue() : null,
                 valueByKey(record, "01_04"),
-                valueByKey(record, "01_06"),
-                valueByKey(record, "01_07"),
+                firstAvailable(valueByKey(record, "01_06"), valueByKey(record, "01_08")),
+                firstAvailable(valueByKey(record, "01_07"), valueByKey(record, "01_09")),
                 valueByKey(record, "01_34"),
                 valueByKey(record, "01_44"),
                 valueByKey(record, "01_11"),
@@ -211,6 +211,16 @@ public final class MapSampleMeta {
     private static Double valueByKey(DataRecord record, String key) {
         SensorSample sample = sampleByKey(record, key);
         return sample != null ? sample.getValue() : null;
+    }
+
+    /**
+     * Some real ECUs expose trims only for bank 2.  Treating that as "no trim"
+     * made the live map stay empty even though the adapter was returning valid
+     * closed-loop fuel feedback.  Prefer bank 1 where it exists, preserving the
+     * conventional primary-bank behaviour on vehicles that report both.
+     */
+    private static Double firstAvailable(Double preferred, Double fallback) {
+        return preferred != null && Double.isFinite(preferred) ? preferred : fallback;
     }
 
     private static SensorSample sampleByKey(DataRecord record, String key) {
