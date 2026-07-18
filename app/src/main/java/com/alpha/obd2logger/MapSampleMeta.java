@@ -18,6 +18,24 @@ public final class MapSampleMeta {
     public static final String AXIS_LOAD = "LOAD";
     public static final String AXIS_NONE = "NONE";
 
+    /**
+     * True when two axis sources may be compared or accumulated together.
+     *
+     * <p>Deliberately strict. {@link #AXIS_SYNTH_MAP} shares the kPa grid with
+     * {@link #AXIS_MAP} but is computed from engine load
+     * ({@code 30 + (baro-30)*load/100}), i.e. an estimate rather than a reading.
+     * Binning measured trim against an estimated axis files samples into cells
+     * they may not belong to, so the two are never merged — the map would
+     * degrade silently and nothing downstream could tell.
+     *
+     * <p>{@link #AXIS_NONE} means unknown and never matches a known axis.
+     */
+    public static boolean axesCompatible(String a, String b) {
+        if (a == null || b == null) return false;
+        if (AXIS_NONE.equals(a) || AXIS_NONE.equals(b)) return false;
+        return a.equals(b);
+    }
+
     public final Double rpm;
     public final Double mapKpa;
     public final Double engineLoad;
@@ -261,7 +279,7 @@ public final class MapSampleMeta {
      * 0=accepted, 1=no_rpm, 2=no_axis, 3=open_loop, 4=cold, 5=no_trim,
      * 6=debounce, 7=locked, 8=null_record, 9=no_coolant,
      * 10=no_fuel_status, 11=axis_mismatch, 12=transient,
-     * 13=lambda_unstable, 14=trim_unstable, 99=other.
+     * 13=lambda_unstable, 14=trim_unstable, 15=non_finite_trim, 99=other.
      */
     public static double rejectCode(String reason) {
         if (reason == null || reason.isEmpty()) return 0.0;
@@ -280,6 +298,7 @@ public final class MapSampleMeta {
             case "transient": return 12.0;
             case "lambda_unstable": return 13.0;
             case "trim_unstable": return 14.0;
+            case "non_finite_trim": return 15.0;
             default: return 99.0;
         }
     }

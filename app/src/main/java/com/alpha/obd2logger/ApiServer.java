@@ -577,6 +577,12 @@ public class ApiServer extends NanoHTTPD {
                 }
             }
             obj.put("petrolMap", petrolJson);
+            // Declare which axis these cells were binned on so a re-import can
+            // restore it instead of assuming MAP. A baseline captured on a
+            // vehicle without PID 0x0B is binned on engine-load %, and treating
+            // that as kPa lets the correction export subtract across axes.
+            obj.put("petrolAxisSource", store != null
+                    ? store.getPetrolAxisSource() : MapSampleMeta.AXIS_NONE);
 
             JSONObject lpgJson = new JSONObject();
             for (Map.Entry<String, LiveMapStore.TrimData> entry : lpgMap.entrySet()) {
@@ -587,6 +593,8 @@ public class ApiServer extends NanoHTTPD {
                 }
             }
             obj.put("lpgMap", lpgJson);
+            obj.put("lpgAxisSource", store != null
+                    ? store.getLpgAxisSource() : MapSampleMeta.AXIS_NONE);
 
             JSONObject deviationJson = new JSONObject();
             JSONObject tuneAssistJson = new JSONObject();
@@ -743,13 +751,37 @@ public class ApiServer extends NanoHTTPD {
          * {
          *   "petrolMap": { "2000_40.00": { "avg": -2.5, "hits": 10 }, ... },
          *   "lpgMap":    { "2000_40.00": { "avg":  1.5, "hits": 12 }, ... },
+         *   "petrolAxisSource": "MAP" | "SYNTH_MAP" | "LOAD",  // optional
+         *   "lpgAxisSource":    "MAP" | "SYNTH_MAP" | "LOAD",  // optional
          *   "replace": true|false   // default true for petrol/lpg sides present
          * }
+         *
+         * The axis fields say which quantity the cells were binned on. They are
+         * optional for compatibility with payloads written before they existed;
+         * when omitted the store assumes MAP and logs a warning, which is only
+         * correct for vehicles that actually reported PID 0x0B. GET /api/map now
+         * emits them, so an export/import round trip preserves the axis.
          *
          * Keys are normalized through MapBinning so legacy ROUND keys (e.g. 750_40)
          * land on the same cells as the live FLOOR grid. Enables AI/baseline compare:
          * import a prior petrol session, then live-drive LPG and read /api/map deviation.
          */
+        /**
+         * Accept only axis names this build understands. An unrecognised value
+         * becomes NONE (undeclared) rather than being stored verbatim, which
+         * would lock the map to an axis nothing can ever match.
+         */
+        private static String normalizedAxis(String declared) {
+            if (declared == null) return null;
+            String trimmed = declared.trim().toUpperCase(java.util.Locale.US);
+            if (MapSampleMeta.AXIS_MAP.equals(trimmed)
+                    || MapSampleMeta.AXIS_SYNTH_MAP.equals(trimmed)
+                    || MapSampleMeta.AXIS_LOAD.equals(trimmed)) {
+                return trimmed;
+            }
+            return null;
+        }
+
         private Response handleMapImport(IHTTPSession session) {
             LiveMapStore store = liveMapStore;
             if (store == null) {
@@ -880,8 +912,13 @@ public class ApiServer extends NanoHTTPD {
                             "{\"error\":\"Import contains no valid map cells\"}");
                 }
 
-                if (petrolPresent) store.importPetrol(pendingPetrol, replace);
-                if (lpgPresent) store.importLpg(pendingLpg, replace);
+                // Honour a declared axis when the payload carries one. Absent —
+                // as in every payload written before this field existed — the
+                // store keeps its legacy MAP assumption and logs the risk.
+                String petrolAxis = normalizedAxis(root.optString("petrolAxisSource", null));
+                String lpgAxis = normalizedAxis(root.optString("lpgAxisSource", null));
+                if (petrolPresent) store.importPetrol(pendingPetrol, replace, petrolAxis);
+                if (lpgPresent) store.importLpg(pendingLpg, replace, lpgAxis);
 
                 JSONObject resp = new JSONObject();
                 resp.put("status", "imported");

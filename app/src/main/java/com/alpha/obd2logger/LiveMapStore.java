@@ -41,10 +41,14 @@ public final class LiveMapStore {
         }
 
         public TrimData(double sum, int hitCount) {
-            this.sum = sum;
-            this.hitCount = hitCount;
+            // Clamp like setFromImport already does. Unclamped, this could mint
+            // a cell that is born past MAX_HITS and therefore permanently
+            // locked against ever learning from the vehicle.
+            int bounded = Math.max(0, Math.min(MAX_HITS, hitCount));
             double average = hitCount > 0 ? sum / hitCount : 0.0;
-            this.sumSquares = average * average * hitCount;
+            this.hitCount = bounded;
+            this.sum = average * bounded;
+            this.sumSquares = average * average * bounded;
             this.lastUpdateMs = System.currentTimeMillis();
         }
 
@@ -60,9 +64,17 @@ public final class LiveMapStore {
             lastUpdateMs = System.currentTimeMillis();
         }
 
-        /** Store one quality-gated sample together with its diagnostic components. */
-        public synchronized void addStableSample(MapSampleMeta meta) {
-            if (meta == null || hitCount >= MAX_HITS || !Double.isFinite(meta.trimTotal)) return;
+        /**
+         * Store one quality-gated sample together with its diagnostic components.
+         *
+         * @return true when the sample was stored; false when it was dropped as
+         * null, non-finite, or past the hit cap. Callers must not treat a
+         * dropped sample as accepted — see pushFromMeta.
+         */
+        public synchronized boolean addStableSample(MapSampleMeta meta) {
+            if (meta == null || hitCount >= MAX_HITS || !Double.isFinite(meta.trimTotal)) {
+                return false;
+            }
             sum += meta.trimTotal;
             sumSquares += meta.trimTotal * meta.trimTotal;
             hitCount++;
@@ -80,6 +92,7 @@ public final class LiveMapStore {
                 lambdaCount++;
             }
             lastUpdateMs = System.currentTimeMillis();
+            return true;
         }
 
         /** Overwrite from an imported baseline with bounded automotive values. */
@@ -265,8 +278,20 @@ public final class LiveMapStore {
         public String getLpgAxisSource() { return lpgAxisSource; }
 
         public boolean isComparisonAxisCompatible() {
-            return !MapSampleMeta.AXIS_NONE.equals(petrolAxisSource)
-                    && petrolAxisSource.equals(lpgAxisSource);
+            // axesCompatible() rejects NONE on either side, so imported data of
+            // unknown provenance is never silently compared against a live map.
+            return MapSampleMeta.axesCompatible(petrolAxisSource, lpgAxisSource);
+        }
+
+        /**
+         * A cell with no hits carries no measurement, but {@code getAverage()}
+         * returns 0 for it — so an empty cell reads as a genuine "0% trim"
+         * unless it is filtered here. {@code putImportedCell} still accepts
+         * {@code hits == 0}, so this guard is needed regardless of the write
+         * path being fixed.
+         */
+        private static boolean hasData(TrimData cell) {
+            return cell != null && cell.getHitCount() > 0;
         }
 
         public int getOverlappingCellCount() {
@@ -285,7 +310,7 @@ public final class LiveMapStore {
             for (String key : petrol.keySet()) {
                 TrimData p = petrol.get(key);
                 TrimData l = lpg.get(key);
-                if (p != null && l != null) {
+                if (hasData(p) && hasData(l)) {
                     sumAbs += Math.abs(l.getAverage() - p.getAverage());
                     common++;
                 }
@@ -299,7 +324,7 @@ public final class LiveMapStore {
             for (String key : petrol.keySet()) {
                 TrimData p = petrol.get(key);
                 TrimData l = lpg.get(key);
-                if (p != null && l != null) {
+                if (hasData(p) && hasData(l)) {
                     double dev = l.getAverage() - p.getAverage();
                     if (Math.abs(dev) > Math.abs(maxDev)) {
                         maxDev = dev;
@@ -316,7 +341,7 @@ public final class LiveMapStore {
             for (String key : petrol.keySet()) {
                 TrimData p = petrol.get(key);
                 TrimData l = lpg.get(key);
-                if (p != null && l != null) {
+                if (hasData(p) && hasData(l)) {
                     double dev = Math.abs(l.getAverage() - p.getAverage());
                     if (dev > maxAbs) {
                         maxAbs = dev;
@@ -427,9 +452,16 @@ public final class LiveMapStore {
             String reason = null;
 
             boolean sameCell = previous != null && meta.cellKey.equals(previous.cellKey);
+            // The STFT window is per-cell, so a cell change still resets it.
             if (!sameCell) resetStft();
 
-            if (sameCell && isTransient(previous, meta)) {
+            // The step test is NOT restricted to same-cell samples. It used to
+            // be, which meant a hard pedal step large enough to move the
+            // operating point into a different cell skipped the check entirely —
+            // exactly the moment fuel-trim lag makes a reading least
+            // trustworthy. Only the 2-of-4 debounce stood between that sample
+            // and the map.
+            if (previous != null && isTransient(previous, meta)) {
                 reason = "transient";
                 resetStft();
             }
@@ -438,6 +470,10 @@ public final class LiveMapStore {
             if (reason == null && Math.abs(meta.trimTotal) > MAX_TOTAL_TRIM) {
                 reason = "trim_unstable";
             }
+            // Three samples minimum, deliberately. A standard deviation over
+            // two points is dominated by noise and would reject legitimate
+            // steady-state pairs; the 2-of-4 debounce is the first-level filter
+            // and this gate takes over from the third sample in a cell onward.
             if (reason == null && stftFill >= 3 && stftStdDev() > MAX_STFT_STDDEV) {
                 reason = "trim_unstable";
             }
@@ -503,8 +539,25 @@ public final class LiveMapStore {
     private volatile long lastUpdateMs = 0;
     private volatile String lastCellKey = "";
     private volatile int totalRecords = 0;
-    private volatile int activeRpmCell = -1;
-    private volatile float activeMapBin = -1f;
+    /**
+     * RPM cell and MAP bin of the live cursor, published as one value.
+     *
+     * <p>These were two independent volatiles, so a reader could pair sample
+     * N's RPM cell with sample N+1's MAP bin and highlight a cell the vehicle
+     * was never in. An immutable holder makes the pair atomic.
+     */
+    private static final class ActiveCell {
+        final int rpmCell;
+        final float mapBin;
+
+        ActiveCell(int rpmCell, float mapBin) {
+            this.rpmCell = rpmCell;
+            this.mapBin = mapBin;
+        }
+    }
+
+    private static final ActiveCell NO_ACTIVE_CELL = new ActiveCell(-1, -1f);
+    private volatile ActiveCell activeCell = NO_ACTIVE_CELL;
     private volatile String axisSource = MapSampleMeta.AXIS_NONE;
     private volatile String petrolAxisSource = MapSampleMeta.AXIS_NONE;
     private volatile String lpgAxisSource = MapSampleMeta.AXIS_NONE;
@@ -530,8 +583,7 @@ public final class LiveMapStore {
         // Always track cursor so the live highlight follows the right cell,
         // even when the sample is gated out or debounced away.
         if (meta.rpmCell >= 0 && meta.mapBin >= 0f) {
-            activeRpmCell = meta.rpmCell;
-            activeMapBin = meta.mapBin;
+            activeCell = new ActiveCell(meta.rpmCell, meta.mapBin);
             lastCellKey = meta.cellKey;
             axisSource = meta.axisSource;
         }
@@ -547,8 +599,12 @@ public final class LiveMapStore {
         }
 
         String targetAxis = gaseous ? lpgAxisSource : petrolAxisSource;
+        // Strict: a measured MAP axis and a load-synthesized one are different
+        // axes, not two spellings of the same one. Resetting the window here is
+        // correct — the entries it holds were binned on the other axis and are
+        // not comparable.
         if (!MapSampleMeta.AXIS_NONE.equals(targetAxis)
-                && !targetAxis.equals(meta.axisSource)) {
+                && !MapSampleMeta.axesCompatible(targetAxis, meta.axisSource)) {
             debounce.reset();
             stabilityGate.reset();
             return PushResult.rejected("axis_mismatch", meta, gaseous);
@@ -564,15 +620,29 @@ public final class LiveMapStore {
         }
 
         Map<String, TrimData> target = gaseous ? lpgData : petrolData;
-        TrimData cell = target.get(meta.cellKey);
-        if (cell == null) {
-            cell = new TrimData();
-            target.put(meta.cellKey, cell);
-        }
-        if (cell.isLocked()) {
+        TrimData existing = target.get(meta.cellKey);
+        if (existing != null && existing.isLocked()) {
             return PushResult.rejected("locked", meta, gaseous);
         }
-        cell.addStableSample(meta);
+
+        // Populate BEFORE publishing, and only publish if the sample was
+        // actually stored. Interning the cell first had two consequences:
+        //
+        //  1. addStableSample silently drops a non-finite trim, so a NaN
+        //     produced a permanent hitCount==0 cell that this method still
+        //     reported as accepted. Nothing downstream filters empty cells, and
+        //     getAverage() returns 0 for them, so the phantom read as a real
+        //     "0% trim measured" — corrupting the correction export and the
+        //     session deviation stats.
+        //  2. snapshot() is not synchronized, so a reader could observe the
+        //     cell in the window between the put and the value being added.
+        TrimData cell = existing != null ? existing : new TrimData();
+        if (!cell.addStableSample(meta)) {
+            return PushResult.rejected("non_finite_trim", meta, gaseous);
+        }
+        if (existing == null) {
+            target.put(meta.cellKey, cell);
+        }
 
         if (gaseous) lpgAxisSource = meta.axisSource;
         else petrolAxisSource = meta.axisSource;
@@ -595,14 +665,16 @@ public final class LiveMapStore {
     }
 
     public MapSnapshot snapshot() {
+        // Read the cursor once so both coordinates come from the same sample.
+        ActiveCell cursor = activeCell;
         return new MapSnapshot(
                 petrolData,
                 lpgData,
                 lastUpdateMs,
                 lastCellKey,
                 totalRecords,
-                activeRpmCell,
-                activeMapBin,
+                cursor.rpmCell,
+                cursor.mapBin,
                 axisSource,
                 petrolAxisSource,
                 lpgAxisSource
@@ -634,6 +706,23 @@ public final class LiveMapStore {
      * unless {@code replaceAll} is true.
      */
     public synchronized void importPetrol(Map<String, TrimData> data, boolean replaceAll) {
+        importPetrol(data, replaceAll, MapSampleMeta.AXIS_NONE);
+    }
+
+    /**
+     * @param axisSource the axis the imported cells were binned on, or
+     * {@link MapSampleMeta#AXIS_NONE} when the payload does not say.
+     *
+     * <p>An undeclared axis stays {@code NONE} rather than being assumed to be
+     * {@code MAP}. Asserting MAP was actively harmful: a baseline captured on a
+     * vehicle with no MAP PID is binned on engine-load %, and relabelling it kPa
+     * let the correction export subtract %-binned cells from kPa-binned ones
+     * with no warning. It also locked the axis, so every subsequent live sample
+     * on a LOAD-axis vehicle was rejected as {@code axis_mismatch} and the map
+     * never learned again.
+     */
+    public synchronized void importPetrol(Map<String, TrimData> data, boolean replaceAll,
+                                          String axisSource) {
         if (replaceAll) {
             petrolData.clear();
             petrolAxisSource = MapSampleMeta.AXIS_NONE;
@@ -645,12 +734,18 @@ public final class LiveMapStore {
             petrolData.put(e.getKey(), src.copy());
         }
         if (!data.isEmpty() && MapSampleMeta.AXIS_NONE.equals(petrolAxisSource)) {
-            petrolAxisSource = MapSampleMeta.AXIS_MAP;
+            petrolAxisSource = resolveImportedAxis(axisSource, "petrol");
         }
         lastUpdateMs = System.currentTimeMillis();
     }
 
     public synchronized void importLpg(Map<String, TrimData> data, boolean replaceAll) {
+        importLpg(data, replaceAll, MapSampleMeta.AXIS_NONE);
+    }
+
+    /** @see #importPetrol(Map, boolean, String) */
+    public synchronized void importLpg(Map<String, TrimData> data, boolean replaceAll,
+                                       String axisSource) {
         if (replaceAll) {
             lpgData.clear();
             lpgAxisSource = MapSampleMeta.AXIS_NONE;
@@ -662,9 +757,40 @@ public final class LiveMapStore {
             lpgData.put(e.getKey(), src.copy());
         }
         if (!data.isEmpty() && MapSampleMeta.AXIS_NONE.equals(lpgAxisSource)) {
-            lpgAxisSource = MapSampleMeta.AXIS_MAP;
+            lpgAxisSource = resolveImportedAxis(axisSource, "lpg");
         }
         lastUpdateMs = System.currentTimeMillis();
+    }
+
+    /**
+     * Axis for imported cells: the declared one when the payload carries it,
+     * otherwise the historical {@code MAP} assumption.
+     *
+     * <p>The assumption is kept for compatibility with existing payloads and
+     * saved baselines, but it is now logged rather than silent, because it is
+     * only correct for vehicles that actually reported PID 0x0B. A baseline
+     * captured on a MAF-only vehicle was binned on engine-load %, and calling
+     * that kPa lets the correction export subtract %-binned cells from
+     * kPa-binned ones. Callers that know the axis must pass it.
+     */
+    private static String resolveImportedAxis(String declared, String side) {
+        // Validate here, not only at the API boundary: the store owns the axis
+        // invariant, and an unrecognised name stored verbatim would lock the map
+        // to an axis no live sample can ever match, silently ending learning.
+        if (MapSampleMeta.AXIS_MAP.equals(declared)
+                || MapSampleMeta.AXIS_SYNTH_MAP.equals(declared)
+                || MapSampleMeta.AXIS_LOAD.equals(declared)) {
+            return declared;
+        }
+        if (declared != null && !MapSampleMeta.AXIS_NONE.equals(declared)) {
+            android.util.Log.w("LiveMapStore", "Ignoring unrecognised axis source '"
+                    + declared + "' on " + side + " import");
+        }
+        android.util.Log.w("LiveMapStore", "Imported " + side + " map declares no axis source; "
+                + "assuming " + MapSampleMeta.AXIS_MAP + ". If this baseline was captured on a "
+                + "vehicle without a MAP sensor it was binned on engine load and must not be "
+                + "compared against a MAP-axis map.");
+        return MapSampleMeta.AXIS_MAP;
     }
 
     /** Backward-compat: replace all. */
@@ -720,8 +846,7 @@ public final class LiveMapStore {
         lastUpdateMs = 0;
         lastCellKey = "";
         totalRecords = 0;
-        activeRpmCell = -1;
-        activeMapBin = -1f;
+        activeCell = NO_ACTIVE_CELL;
         axisSource = MapSampleMeta.AXIS_NONE;
         petrolAxisSource = MapSampleMeta.AXIS_NONE;
         lpgAxisSource = MapSampleMeta.AXIS_NONE;
@@ -739,6 +864,11 @@ public final class LiveMapStore {
             petrolAxisSource = MapSampleMeta.AXIS_NONE;
         }
         // Keep active cursor so next sample can still highlight position.
+        // totalRecords counts accepted samples for the fuel side being cleared,
+        // so leaving it made it accumulate across every session and fuel switch
+        // — useless as the per-session acceptance counter it is read as.
+        totalRecords = 0;
+        lastCellKey = "";
         lastFuelSideGaseous = null;
         debounce.reset();
         stabilityGate.reset();
@@ -747,8 +877,8 @@ public final class LiveMapStore {
     public long getLastUpdateMs() { return lastUpdateMs; }
     public String getLastCellKey() { return lastCellKey; }
     public int getTotalRecords() { return totalRecords; }
-    public int getActiveRpmCell() { return activeRpmCell; }
-    public float getActiveMapBin() { return activeMapBin; }
+    public int getActiveRpmCell() { return activeCell.rpmCell; }
+    public float getActiveMapBin() { return activeCell.mapBin; }
     public String getAxisSource() { return axisSource; }
     public String getPetrolAxisSource() { return petrolAxisSource; }
     public String getLpgAxisSource() { return lpgAxisSource; }
@@ -799,7 +929,11 @@ public final class LiveMapStore {
                 TrimData petrol = petrolData.get(key);
                 TrimData lpg = lpgData.get(key);
 
-                if (petrol != null && lpg != null) {
+                // Both sides must hold a real measurement. An empty cell
+                // averages to 0, which would print the full LPG trim as a
+                // correction against a petrol baseline that never existed.
+                if (petrol != null && petrol.getHitCount() > 0
+                        && lpg != null && lpg.getHitCount() > 0) {
                     double correction = lpg.getAverage() - petrol.getAverage();
                     sb.append(",").append(Math.round(correction));
                 } else {
