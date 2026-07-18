@@ -124,6 +124,21 @@ public final class SerialDriver extends ElmDriver {
         return queryPidResponse(pidDef, response);
     }
 
+    /**
+     * Test seam: drive the response read loop over in-memory streams.
+     *
+     * <p>The prompt detection, stale-byte drain, byte validation and
+     * single-retry recovery below are the subtlest code in the app and the
+     * hardest to reproduce on a bench — every failure mode involves a
+     * misbehaving adapter mid-drive. They are otherwise unreachable without a
+     * real {@link BluetoothSocket}, which is why they went untested.
+     */
+    void attachStreamsForTest(InputStream in, OutputStream out) {
+        this.inputStream = in;
+        this.outputStream = out;
+        this.connected = true;
+    }
+
     @Override
     protected String sendCommand(String command) {
         if (outputStream == null || inputStream == null) {
