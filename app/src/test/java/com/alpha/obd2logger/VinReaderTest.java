@@ -61,8 +61,35 @@ public class VinReaderTest {
         assertTrue(driver.sent.contains("ATSTFF"));
         assertTrue(driver.sent.contains("ATCAF1"));
         assertTrue(driver.sent.contains("ATCFC1"));
+        assertTrue(driver.sent.contains("ATH1"));
+        assertTrue(driver.sent.contains("ATS1"));
+        assertTrue(driver.sent.contains("ATH0"));
+        assertTrue(driver.sent.contains("ATS0"));
         assertTrue(driver.sent.contains("ATST32"));
         assertEquals(2_000, config.connectionTimeoutMs);
+    }
+
+    @Test
+    public void vinFallsBackToToyotaEngineEcuWhenFunctionalMode09IsIgnored() {
+        LoggerConfig config = new LoggerConfig();
+        DirectToyotaVinDriver driver = new DirectToyotaVinDriver(config);
+
+        assertEquals("MR0FZ29G901234567", VinReader.readVin(driver));
+        assertEquals(3, driver.vinAttempts);
+        assertTrue(driver.sent.contains("ATDPN"));
+        assertTrue(driver.sent.contains("ATSH7E0"));
+        assertTrue(driver.sent.contains("ATCRA7E8"));
+        assertTrue(driver.sent.contains("ATCRA"));
+        assertTrue(driver.sent.contains("ATAR"));
+        assertTrue(driver.sent.contains("ATSH7DF"));
+    }
+
+    @Test
+    public void detectsOnlyElevenBitCanForPhysicalVinFallback() {
+        assertTrue(ElmDriver.isElevenBitCanProtocol("A6\r>"));
+        assertTrue(ElmDriver.isElevenBitCanProtocol("8\r>"));
+        assertFalse(ElmDriver.isElevenBitCanProtocol("A7\r>"));
+        assertFalse(ElmDriver.isElevenBitCanProtocol("5\r>"));
     }
 
     private static final class SlowVinDriver extends ElmDriver {
@@ -85,7 +112,39 @@ public class VinReaderTest {
             if ("0902".equals(command)) {
                 vinAttempts++;
                 if (vinAttempts == 1) return "NO DATA\r>";
-                return "014\r0:4902014D523046\r1:5A3239473930313233\r2:34353637\r>";
+                // The VIN retry now uses ATH1 + ATS1, so it must parse raw
+                // CAN/ISO-TP frames rather than adapter-specific numbered rows.
+                return "7E8 10 14 49 02 01 4D 52 30\r"
+                        + "7E8 21 46 5A 32 39 47 39 30\r"
+                        + "7E8 22 31 32 33 34 35 36 37\r>";
+            }
+            return "OK\r>";
+        }
+    }
+
+    private static final class DirectToyotaVinDriver extends ElmDriver {
+        final List<String> sent = new ArrayList<>();
+        int vinAttempts;
+
+        DirectToyotaVinDriver(LoggerConfig config) {
+            super(config);
+            connected = true;
+        }
+
+        @Override public boolean connect() { return true; }
+        @Override public void disconnect() { connected = false; }
+        @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+
+        @Override
+        protected String sendCommand(String command) {
+            sent.add(command);
+            if ("ATDPN".equals(command)) return "A6\r>";
+            if ("0902".equals(command)) {
+                vinAttempts++;
+                if (vinAttempts < 3) return "NO DATA\r>";
+                return "7E8 10 14 49 02 01 4D 52 30\r"
+                        + "7E8 21 46 5A 32 39 47 39 30\r"
+                        + "7E8 22 31 32 33 34 35 36 37\r>";
             }
             return "OK\r>";
         }

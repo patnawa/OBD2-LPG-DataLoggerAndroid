@@ -195,7 +195,7 @@ public final class DerivedSensors {
     //
     // AeroDensity display unit: lbs/1000ft³ (kg/m³ × 62.428)
     //   SAE J1349: 99.0 kPa dry, 25°C → ~72.2 lbs/1000ft³
-    //   SAE J607:  101.325 kPa dry, 15°C ≈ 76.4 lbs/1000ft³
+    //   SAE J607:  101.325 kPa dry, 15.56°C (60°F) ≈ 76.4 lbs/1000ft³
 
     /** Specific gas constant for dry air, J/(kg·K) */
     public static final double R_DRY = 287.058;
@@ -332,9 +332,21 @@ public final class DerivedSensors {
      * Callers should pass real baro/ambient when available; nulls indicate fallback.
      */
     public static Double ambientAirDensity(Double baroKpa, Double ambientTempC, Double humidityPct) {
+        Double kgM3 = ambientAirDensityKgM3(baroKpa, ambientTempC, humidityPct);
+        if (kgM3 == null) return null;
+        return Math.round(kgM3 * KG_M3_TO_LBS_1000FT3 * 10.0) / 10.0;
+    }
+
+    /**
+     * Ambient Air Density in kg/m³ — the unrounded primitive behind
+     * {@link #ambientAirDensity}. Downstream math (BAD, density altitude, SAE
+     * factors) must use this rather than re-inflating the rounded display value.
+     */
+    public static Double ambientAirDensityKgM3(Double baroKpa, Double ambientTempC,
+                                               Double humidityPct) {
         double baro = (baroKpa != null && baroKpa > 50.0) ? baroKpa : SEA_LEVEL_PRESSURE_KPA;
         double temp = (ambientTempC != null) ? ambientTempC : 25.0;
-        return airDensityLbs1000ft3(baro, temp, humidityPct);
+        return airDensityKgM3(baro, temp, humidityPct);
     }
 
     /**
@@ -354,23 +366,10 @@ public final class DerivedSensors {
     public static Double manifoldAirDensity(Double mapKpa, Double iatTempC,
                                             Double ambientBaroKpa, Double ambientTempC,
                                             Double ambientRhPct) {
-        if (mapKpa == null) return null;
-        double temp = (iatTempC != null) ? iatTempC : ((ambientTempC != null) ? ambientTempC : 25.0);
-        double ambBaro = (ambientBaroKpa != null && ambientBaroKpa > 50.0)
-                ? ambientBaroKpa : SEA_LEVEL_PRESSURE_KPA;
-        double ambTemp = (ambientTempC != null) ? ambientTempC : temp;
-        Double w = humidityRatio(ambBaro, ambTemp, ambientRhPct);
-        if (w == null) {
-            // Fallback: direct RH path (legacy behaviour)
-            return airDensityLbs1000ft3(mapKpa, temp, ambientRhPct);
-        }
-        // Pv_map = w * P_map / (0.62198 + w)
-        double mapHpa = mapKpa * 10.0;
-        double pvMap = (w * mapHpa) / (0.62198 + w);
-        // Also never exceed saturation at IAT (condensation drop)
-        double satIat = saturationVaporPressureHpa(temp);
-        if (pvMap > satIat) pvMap = satIat;
-        return airDensityLbs1000ft3FromVapor(mapKpa, temp, pvMap);
+        Double kgM3 = manifoldAirDensityKgM3(mapKpa, iatTempC, ambientBaroKpa,
+                ambientTempC, ambientRhPct);
+        if (kgM3 == null) return null;
+        return Math.round(kgM3 * KG_M3_TO_LBS_1000FT3 * 10.0) / 10.0;
     }
 
     /**
@@ -389,14 +388,34 @@ public final class DerivedSensors {
 
 
     /**
-     * Manifold density kg/m³ with absolute-humidity conservation.
+     * Manifold density kg/m³ with absolute-humidity conservation — the unrounded
+     * primitive behind {@link #manifoldAirDensity}.
+     *
+     * This used to divide the rounded lbs/1000ft³ display value back down, which
+     * stamped a 0.1 lbs/1000ft³ (≈0.0016 kg/m³) quantisation onto every consumer
+     * of manifold density — VE, TMF and MAF-deviation all inherited it for no
+     * reason, since the full-precision value was computed one call earlier.
      */
     public static Double manifoldAirDensityKgM3(Double mapKpa, Double iatTempC,
                                                 Double ambientBaroKpa, Double ambientTempC,
                                                 Double ambientRhPct) {
-        Double lbs = manifoldAirDensity(mapKpa, iatTempC, ambientBaroKpa, ambientTempC, ambientRhPct);
-        if (lbs == null) return null;
-        return lbs / KG_M3_TO_LBS_1000FT3;
+        if (mapKpa == null) return null;
+        double temp = (iatTempC != null) ? iatTempC : ((ambientTempC != null) ? ambientTempC : 25.0);
+        double ambBaro = (ambientBaroKpa != null && ambientBaroKpa > 50.0)
+                ? ambientBaroKpa : SEA_LEVEL_PRESSURE_KPA;
+        double ambTemp = (ambientTempC != null) ? ambientTempC : temp;
+        Double w = humidityRatio(ambBaro, ambTemp, ambientRhPct);
+        if (w == null) {
+            // Fallback: direct RH path (legacy behaviour)
+            return airDensityKgM3(mapKpa, temp, ambientRhPct);
+        }
+        // Pv_map = w * P_map / (0.62198 + w)
+        double mapHpa = mapKpa * 10.0;
+        double pvMap = (w * mapHpa) / (0.62198 + w);
+        // Also never exceed saturation at IAT (condensation drop)
+        double satIat = saturationVaporPressureHpa(temp);
+        if (pvMap > satIat) pvMap = satIat;
+        return airDensityKgM3FromVapor(mapKpa, temp, pvMap);
     }
 
     /**
@@ -410,6 +429,22 @@ public final class DerivedSensors {
     }
 
     /**
+     * BAD from the unrounded kg/m³ densities. Prefer this over
+     * {@link #boostAirDensity(Double, Double)} when both primitives are on hand.
+     *
+     * BAD is a difference of two similar numbers, so it is the value most hurt
+     * by rounding its operands first: two independent ±0.05 lbs/1000ft³ display
+     * roundings put up to ±0.1 of error on a quantity that is only a few
+     * lbs/1000ft³ near atmospheric MAP. Subtracting at full precision and
+     * rounding once keeps the error inside the last displayed digit.
+     */
+    public static Double boostAirDensityFromKgM3(Double madKgM3, Double aadKgM3) {
+        if (madKgM3 == null || aadKgM3 == null) return null;
+        double bad = (madKgM3 - aadKgM3) * KG_M3_TO_LBS_1000FT3;
+        return Math.round(bad * 10.0) / 10.0;
+    }
+
+    /**
      * Air Density Percentage — compared to SAE J1349 standard (72.2 lbs/1000ft³).
      */
     public static Double airDensityPercent(Double aad) {
@@ -418,13 +453,28 @@ public final class DerivedSensors {
         return Math.round(pct * 10.0) / 10.0;
     }
 
+    /** ISA sea-level density (kg/m³). */
+    private static final double ISA_SEA_LEVEL_DENSITY = 1.225;
+    /** 1 / lapse-rate constant 6.87535e-6 — the ISA density-profile scale in ft. */
+    private static final double ISA_DENSITY_ALT_SCALE_FT = 145442.16;
+    /** 1 / 4.2559 — inverse of the ISA density-profile exponent. */
+    private static final double ISA_DENSITY_ALT_EXPONENT = 0.234969;
+
     /**
-     * Density Altitude (ft) using pressure altitude + virtual-temperature ISA offset.
+     * Density Altitude (ft) — closed-form inversion of the ISA troposphere
+     * density profile ρ/ρ0 = (1 − 6.87535e−6·h)^4.2559:
      *
-     * Steps:
-     *   1) Pressure altitude (ft) from barometric station pressure
-     *   2) Virtual temperature from humidity
-     *   3) ISA temp at PA and 120 ft/°C approx density-altitude correction
+     *   DA = 145442.16 × (1 − (ρ/ρ0)^0.234969)
+     *
+     * This is exact within the troposphere and consumes the same humid density
+     * the rest of AeroDensity already computes, so DA can never disagree with the
+     * AAD shown beside it.
+     *
+     * The previous implementation chained three approximations — a pressure
+     * altitude, a virtual-temperature substitution, and the "120 ft per °C"
+     * hangar rule of thumb. That rule is a linearisation about sea level, so its
+     * error grew with both altitude and humidity precisely where a density-
+     * altitude readout earns its keep (it ran ~130 ft high at 35°C sea level).
      *
      * At ISA sea level dry 15°C / 1013.25 hPa → ≈ 0 ft.
      */
@@ -432,31 +482,44 @@ public final class DerivedSensors {
         if (baroKpa == null || tempC == null) return null;
         if (baroKpa <= 0) return null;
 
-        double rh = clampHumidity(humidityPct, 50.0);
-        double pressureHpa = baroKpa * 10.0;
+        Double densityKgM3 = airDensityKgM3(baroKpa, tempC, humidityPct);
+        if (densityKgM3 == null || densityKgM3 <= 0) return null;
 
-        // Pressure altitude (ICAO troposphere approximation)
-        double ratio = pressureHpa / 1013.25;
-        if (ratio <= 0) return null;
-        double pressureAltFt = 145366.45 * (1.0 - Math.pow(ratio, 0.190284));
-
-        // Virtual temperature (°C) for humidity correction
-        double pv = vaporPressureHpa(tempC, rh, pressureHpa);
-        double tempK = tempC + 273.15;
-        double virtualK = tempK / (1.0 - (pv / pressureHpa) * 0.378);
-        double virtualC = virtualK - 273.15;
-
-        // ISA temperature at pressure altitude (°C): 15 − 1.98 per 1000 ft
-        double isaTempC = 15.0 - 1.98 * (pressureAltFt / 1000.0);
-
-        // ~120 ft per °C density altitude rule of thumb with virtual temperature
-        double da = pressureAltFt + 120.0 * (virtualC - isaTempC);
+        double sigma = densityKgM3 / ISA_SEA_LEVEL_DENSITY;
+        double da = ISA_DENSITY_ALT_SCALE_FT
+                * (1.0 - Math.pow(sigma, ISA_DENSITY_ALT_EXPONENT));
         return (double) Math.round(da);
     }
 
+    /** J1349 mechanical-efficiency term: 1/0.85, rounded by the standard to 1.18. */
+    private static final double J1349_ME_GAIN = 1.18;
+    /** J1349 mechanical-efficiency term: 0.15/0.85, rounded by the standard to 0.18. */
+    private static final double J1349_ME_OFFSET = 0.18;
+    /** J1349 declares corrected power acceptable only for 0.93 ≤ cf ≤ 1.07. */
+    public static final double J1349_CF_MIN = 0.93;
+    public static final double J1349_CF_MAX = 1.07;
+
     /**
      * SAE J1349 Correction Factor — normalizes horsepower to 99.0 kPa dry / 25°C.
-     * CF = (P_std / P_dry_actual) × sqrt(T_actual / T_std)
+     *
+     *   cf_a = (99 / P_dry_actual) × sqrt(T_actual / 298.15)   ← atmospheric factor
+     *   cf   = 1.18 × cf_a − 0.18                              ← mechanical efficiency
+     *
+     * The 1.18/−0.18 pair is the standard's 85%-mechanical-efficiency term
+     * (1/0.85 and 0.15/0.85, rounded), and it was missing here: the method
+     * returned the bare atmospheric factor. Because the term is affine with a
+     * slope above 1, dropping it does not cancel out — it understates the
+     * correction by ~18% of the deviation from unity. In Bangkok heat (35°C,
+     * 100.5 kPa, 70% RH) the true cf is ≈1.048 while the old code reported
+     * ≈1.041, quietly losing ~0.7% of corrected power. It agreed only at exactly
+     * standard conditions, which is where the existing unit test probes.
+     *
+     * J1349 AUG2004 prefers measured accessory/friction power over the 85%
+     * assumption; with only OBD2 data available the assumption is the honest
+     * fallback the standard names for that case.
+     *
+     * Returns null outside J1349's own ±7% validity band rather than
+     * extrapolating a correction the standard does not vouch for.
      */
     public static Double saeJ1349CorrectionFactor(Double baroKpa, Double tempC, Double humidityPct) {
         if (baroKpa == null || tempC == null) return null;
@@ -471,8 +534,9 @@ public final class DerivedSensors {
 
         double pStd = 990.0; // hPa
         double tStd = 298.15; // K
-        double cf = (pStd / dryPressure) * Math.sqrt(tempK / tStd);
-        if (cf < 0.5 || cf > 1.5) return null;
+        double cfAtmospheric = (pStd / dryPressure) * Math.sqrt(tempK / tStd);
+        double cf = J1349_ME_GAIN * cfAtmospheric - J1349_ME_OFFSET;
+        if (cf < J1349_CF_MIN || cf > J1349_CF_MAX) return null;
         return Math.round(cf * 1000.0) / 1000.0;
     }
 

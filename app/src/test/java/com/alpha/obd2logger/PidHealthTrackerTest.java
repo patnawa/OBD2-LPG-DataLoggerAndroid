@@ -2,7 +2,9 @@ package com.alpha.obd2logger;
 
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -62,5 +64,22 @@ public class PidHealthTrackerTest {
             assertTrue(key + " must remain live for fuel-map continuity",
                     tracker.shouldPoll(pid, 51));
         }
+    }
+
+    @Test
+    public void mapInputsAreScheduledBeforeOptionalDashboardPids() {
+        PidHealthTracker tracker = new PidHealthTracker();
+        PIDDefinition rpm = PIDDefinition.findByKey("01_0C");
+        PIDDefinition map = PIDDefinition.findByKey("01_0B");
+        PIDDefinition trim = PIDDefinition.findByKey("01_06");
+        PIDDefinition optional = optionalPid();
+
+        List<PIDDefinition> selected = tracker.selectForPoll(
+                Arrays.asList(optional, trim, map, rpm), 1);
+
+        assertEquals("01_0C", selected.get(0).key());
+        assertEquals("01_0B", selected.get(1).key());
+        assertEquals("01_06", selected.get(2).key());
+        assertEquals(optional.key(), selected.get(3).key());
     }
 }

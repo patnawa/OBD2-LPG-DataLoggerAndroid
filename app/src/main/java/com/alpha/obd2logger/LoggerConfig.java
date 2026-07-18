@@ -11,7 +11,12 @@ public final class LoggerConfig {
     public String wifiIp;
     public int wifiPort;
     public String vehicleBrand;
-    public FuelMode fuelMode;
+    /**
+     * Volatile: written from the UI thread when the user switches fuel and read
+     * from the polling worker on every cycle. Without it the worker could run on
+     * a stale value indefinitely, filing LPG samples into the petrol map.
+     */
+    public volatile FuelMode fuelMode;
     public ObdProtocol obdProtocol;
     public String vin;
     public long sampleIntervalMs;

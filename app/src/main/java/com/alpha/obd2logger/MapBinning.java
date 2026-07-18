@@ -48,11 +48,18 @@ public final class MapBinning {
     // ── Binning ─────────────────────────────────────────────────────────
 
     /**
-     * FLOOR-based RPM binning — 749 → 500, 750 → 750, 1499 → 1000.
+     * NEAREST-breakpoint RPM binning — 749 → 500, 750 → 1000, 1900 → 2000.
      * Clamped to [RPM_MIN, RPM_MAX].
+     *
+     * <p>This matches {@link #binMap}, which also snaps to the closest bin.
+     * The two axes previously disagreed: RPM floored while MAP rounded, so a
+     * sample at 1900 rpm / 78 kPa was filed into the column <i>labelled</i>
+     * 1500 but the row <i>labelled</i> 80. Reading a value off the grid meant
+     * mentally applying a different rule per axis, and the RPM axis appeared
+     * shifted one column left of where the sample actually occurred.
      */
     public static int binRpm(double rpm) {
-        int cell = (int) (rpm / RPM_STEP) * RPM_STEP;
+        int cell = (int) Math.round(rpm / RPM_STEP) * RPM_STEP;
         return Math.max(RPM_MIN, Math.min(RPM_MAX, cell));
     }
 

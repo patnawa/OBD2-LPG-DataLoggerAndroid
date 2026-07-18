@@ -342,7 +342,12 @@ public class FuelMapView extends View {
 
         // Draw grid and cells
         for (int r = 0; r < rows; r++) {
-            float mapValue = MAP_BINS[r];
+            // Draw the axis inverted: MAP_BINS is ascending, but a fuel/VE table
+            // conventionally puts high load (boost) at the top and vacuum at the
+            // bottom. Rendering MAP_BINS[r] directly put 10 kPa on the top row,
+            // so the whole grid read as vertically flipped. Only the drawing
+            // order changes here — cell keys and stored data are untouched.
+            float mapValue = MAP_BINS[rows - 1 - r];
             float yTop = paddingTop + r * cellHeight;
             float yBottom = yTop + cellHeight;
             

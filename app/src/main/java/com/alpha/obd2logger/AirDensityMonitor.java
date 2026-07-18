@@ -423,6 +423,11 @@ public final class AirDensityMonitor implements SensorEventListener {
         }
     }
 
+    private static Double toLbs1000ft3(Double kgM3) {
+        if (kgM3 == null) return null;
+        return Math.round(kgM3 * DerivedSensors.KG_M3_TO_LBS_1000FT3 * 10.0) / 10.0;
+    }
+
     public AirDensityResult compute() {
         double humidity = getHumidity();
         double baroKpa = getBaroKpa();
@@ -431,21 +436,34 @@ public final class AirDensityMonitor implements SensorEventListener {
         // is still used, but dependent samples degrade to "est" quality.
         boolean mapFromObd = obdMapKpa != null && !obdMapSynthesized;
         boolean iatFromObd = obdIatTempC != null;
-        double mapKpa = (obdMapKpa != null) ? obdMapKpa : baroKpa;
+        // No MAP at all — not even the Engine Load synthesis — means there is no
+        // manifold to measure. Substituting baro here (the old behaviour) did not
+        // produce a degraded MAD, it produced a fabricated one: MAD collapsed to
+        // ambient density evaluated at IAT, so BAD = MAD - AAD became a pure
+        // intake-heat artefact that a driver reads as boost. On a heat-soaked
+        // NA intake that is a steady negative "boost" the car never made.
+        Double mapKpa = obdMapKpa;
         double iatTempC = iatFromObd ? obdIatTempC : ambientTempC;
 
-        Double aad = DerivedSensors.ambientAirDensity(baroKpa, ambientTempC, humidity);
+        // Work in unrounded kg/m³ and round once at the display boundary, so BAD
+        // (a difference of two close densities) does not inherit two roundings.
+        Double aadKgM3 = DerivedSensors.ambientAirDensityKgM3(baroKpa, ambientTempC, humidity);
         // Absolute humidity conservation for MAD
-        Double mad = DerivedSensors.manifoldAirDensity(
+        Double madKgM3 = DerivedSensors.manifoldAirDensityKgM3(
                 mapKpa, iatTempC, baroKpa, ambientTempC, humidity);
-        Double bad = DerivedSensors.boostAirDensity(mad, aad);
-        Double densityPct = DerivedSensors.airDensityPercent(aad);
+
+        Double aad = toLbs1000ft3(aadKgM3);
+        Double mad = toLbs1000ft3(madKgM3);
+        Double bad = DerivedSensors.boostAirDensityFromKgM3(madKgM3, aadKgM3);
+        Double densityPct = DerivedSensors.airDensityPercent(
+                aadKgM3 != null ? aadKgM3 * DerivedSensors.KG_M3_TO_LBS_1000FT3 : null);
         Double densityAlt = DerivedSensors.densityAltitudeFt(baroKpa, ambientTempC, humidity);
         Double saeCF = DerivedSensors.saeJ1349CorrectionFactor(baroKpa, ambientTempC, humidity);
         Double grains = DerivedSensors.grainsH2O(ambientTempC, humidity, baroKpa);
 
         return new AirDensityResult(aad, mad, bad, densityPct, densityAlt, saeCF, grains,
-                humidity, baroKpa, ambientTempC, mapKpa, iatTempC,
+                humidity, baroKpa, ambientTempC,
+                mapKpa != null ? mapKpa : baroKpa, iatTempC,
                 qualityStatus(), getHumiditySource(), getBaroSource(), getAmbientTempSource(),
                 mapFromObd, iatFromObd);
     }
@@ -457,7 +475,11 @@ public final class AirDensityMonitor implements SensorEventListener {
         double humidity = getHumidity();
         double baroKpa = getBaroKpa();
         double ambientTempC = getAmbientTempC();
-        double mapKpa = (obdMapKpa != null) ? obdMapKpa : baroKpa;
+        // Same rule as compute(): with no MAP the manifold is unobserved, so VE,
+        // TMF, DCAFR and the compressor/intercooler estimates must go null rather
+        // than silently evaluate themselves at ambient pressure and read as if
+        // the engine were sitting at wide-open throttle.
+        Double mapKpa = obdMapKpa;
         double iatTempC = (obdIatTempC != null) ? obdIatTempC : ambientTempC;
 
         Double aadKgM3 = DerivedSensors.airDensityKgM3(baroKpa, ambientTempC, humidity);
@@ -641,8 +663,12 @@ public final class AirDensityMonitor implements SensorEventListener {
                         "Power Density Index", ar.pdi, "", displStatus));
             }
             if (ar.saeJ607CF != null) {
+                // Labelled STD, not J607: the math subtracts vapor pressure, which
+                // is Dynojet's humidity-corrected "STD" variant. Classic J607 uses
+                // the observed barometer. Key stays derived_sae_j607 so existing
+                // logs and saved gauge layouts keep resolving.
                 samples.add(new SensorSample("derived_sae_j607",
-                        "SAE J607 CF", ar.saeJ607CF, "", advBase));
+                        "STD CF (J607 + humidity)", ar.saeJ607CF, "", advBase));
             }
             if (ar.saeCFDelta != null) {
                 samples.add(new SensorSample("derived_sae_cf_delta",

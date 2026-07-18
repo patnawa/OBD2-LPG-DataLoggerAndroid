@@ -12,8 +12,19 @@ import java.util.Locale;
  * separators, with a hard cap for each response.</p>
  */
 public final class ElmResponseSanitizer {
-    /** Enough for multi-frame VIN/DTC responses while remaining bounded. */
-    public static final int MAX_RESPONSE_CHARS = 4096;
+    /**
+     * Enough for multi-frame VIN/DTC responses while remaining bounded.
+     *
+     * <p>Raised from 4096 because a functionally-addressed Mode 03 on a vehicle
+     * with many modules and many stored codes could legitimately exceed it. The
+     * overflow path appends {@code BUFFER FULL}, which
+     * {@link #needsTransportRecovery} classifies as a broken adapter session —
+     * so an unusually rich DTC response was being turned into a disconnect,
+     * precisely on the vehicles with the most to report. 8 KiB is still a hard
+     * bound against a runaway frame; this only moves the threshold past what
+     * real responses reach.
+     */
+    public static final int MAX_RESPONSE_CHARS = 8192;
 
     private ElmResponseSanitizer() {
     }

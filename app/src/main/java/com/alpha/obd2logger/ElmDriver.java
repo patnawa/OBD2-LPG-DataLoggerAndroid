@@ -165,19 +165,57 @@ public abstract class ElmDriver extends BaseDriver {
      * Run one slow/multi-frame diagnostic request with an extended ECU timeout.
      *
      * <p>Mode 09 VIN responses are much slower than ordinary Mode 01 polling on
-     * some ECUs. The entire setup/request/restore sequence holds the reentrant
-     * command lock so the logger cannot interleave a PID request after ATSTFF.
-     * Polling timing is restored before returning.</p>
+     * some ECUs.  The retry also exposes CAN headers and spaces: with headers
+     * off, an ELM-compatible adapter is allowed to reformat a multi-frame reply
+     * into numbered data lines, but some vLinker firmware revisions lose part of
+     * that formatted reply.  Raw ISO-TP frames give {@link VinReader} the exact
+     * first/consecutive-frame boundaries to reassemble.</p>
+     *
+     * <p>The entire setup/request/restore sequence holds the reentrant command
+     * lock so the logger cannot interleave a PID request after ATSTFF. Polling
+     * formatting and timing are restored before returning.</p>
      */
     String sendCommandRawWithExtendedTimeout(String command) {
+        return sendCommandRawWithExtendedTimeout(command, null, null);
+    }
+
+    /**
+     * Run a slow multi-frame request against one 11-bit CAN ECU rather than
+     * the functional broadcast address. This is a VIN fallback for ECUs that
+     * answer ordinary Mode 01 broadcasts but ignore functional Mode 09.
+     */
+    String sendCommandRawToEcuWithExtendedTimeout(String command, String txHeader,
+                                                   String rxFilter) {
+        if (txHeader == null || txHeader.length() != 3
+                || rxFilter == null || rxFilter.length() != 3) {
+            return "";
+        }
+        return sendCommandRawWithExtendedTimeout(command, txHeader, rxFilter);
+    }
+
+    private String sendCommandRawWithExtendedTimeout(String command, String txHeader,
+                                                       String rxFilter) {
         commandLock.lock();
         int normalTimeoutMs = config.connectionTimeoutMs;
+        boolean physicalAddressing = txHeader != null && rxFilter != null;
         try {
             // A response-pending ECU may legitimately need several seconds.
             config.connectionTimeoutMs = Math.max(normalTimeoutMs, 7_000);
             sendCommand("ATAL");
             sendCommand("ATCAF1");
             sendCommand("ATCFC1");
+            // VIN is an ISO-TP multi-frame response.  Preserve the CAN ID and
+            // PCI byte during this one request so parser behavior does not rely
+            // on adapter-specific automatic formatting (0:/1:/2: lines).
+            sendCommand("ATH1");
+            sendCommand("ATS1");
+            if (physicalAddressing) {
+                String headerResult = sendCommand("ATSH" + txHeader);
+                if (headerResult == null || headerResult.contains("?")) {
+                    return "";
+                }
+                sendCommand("ATCRA" + rxFilter);
+            }
             sendCommand("ATAT0");
             sendCommand("ATSTFF"); // 0xFF * 4 ms = about 1.02 s maximum ECU wait
             return sendCommand(command);
@@ -186,6 +224,16 @@ public abstract class ElmDriver extends BaseDriver {
             // not block cleanup for seven seconds.
             config.connectionTimeoutMs = normalTimeoutMs;
             try {
+                if (physicalAddressing) {
+                    // Restore automatic reception and the standard 11-bit OBD
+                    // broadcast header before the next live PID request.
+                    sendCommand("ATCRA");
+                    sendCommand("ATAR");
+                    sendCommand("ATSH7DF");
+                }
+                // Live polling uses compact, header-free responses for speed.
+                sendCommand("ATH0");
+                sendCommand("ATS0");
                 sendCommand("ATAT1");
                 sendCommand("ATST32");
                 VLinkerOptimizer.applyOptimizations(this, vlinkerType, config);
@@ -193,6 +241,24 @@ public abstract class ElmDriver extends BaseDriver {
                 commandLock.unlock();
             }
         }
+    }
+
+    /** True only when ATDPN reports an active 11-bit CAN protocol. */
+    static boolean isElevenBitCanProtocol(String atDpnResponse) {
+        if (atDpnResponse == null || atDpnResponse.isEmpty()) return false;
+        String[] lines = atDpnResponse.toUpperCase(java.util.Locale.US)
+                .replace('\r', '\n').split("\\n");
+        for (String line : lines) {
+            String code = line.replaceAll("[^0-9A-F]", "");
+            // ATDPN returns A6/A8 when auto selected CAN 11-bit, or 6/8
+            // when those protocols were selected explicitly. B is User1 CAN.
+            if ("6".equals(code) || "8".equals(code)
+                    || "A6".equals(code) || "A8".equals(code)
+                    || "B".equals(code) || "AB".equals(code)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Restore normal PID polling after a DTC/deep-bus scan. */
@@ -342,15 +408,20 @@ public abstract class ElmDriver extends BaseDriver {
                     PIDParser.extractMulti(parseChunk, response, results);
                 }
 
-                // Retry failed PIDs individually (single-PID query) if the batch
-                // returned no data for them. This handles vehicles that don't
-                // support multi-PID responses well, or where some PIDs in the
-                // chunk were not in the response.
+                // Retry only missing fuel-map inputs individually.  Retrying
+                // every absent optional PID turns one flaky Bluetooth ELM batch
+                // into dozens of serial round trips.  That starves the next map
+                // sample and then its RPM/MAP/trim values are too far apart for
+                // the stability gate to accept. Optional failures are reported
+                // to PidHealthTracker below, where they cool down and retry
+                // later; the map inputs must instead be recovered immediately
+                // so every learned cell is based on a complete, coherent set.
                 for (PIDDefinition pid : chunk) {
                     if (pid.getPidHex().contains("_")) {
                         continue; // Don't query pseudo-PIDs individually
                     }
-                    if (!results.containsKey(pid.getName())) {
+                    if (PidHealthTracker.isMapInput(pid)
+                            && !results.containsKey(pid.getName())) {
                         // Individual retry for this PID
                         String retryCmd = pid.getService() + " " + pid.getPidHex();
                         String retryResp = sendCommand(retryCmd);

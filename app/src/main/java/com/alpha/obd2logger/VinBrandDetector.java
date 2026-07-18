@@ -20,12 +20,30 @@ public final class VinBrandDetector {
         BYD, GWM, NETA, AION, DEEPAL, MG, TESLA, UNKNOWN
     }
 
-    /** Detect brand from VIN. Returns UNKNOWN if not recognized. */
+    /**
+     * Detect brand from VIN. Returns UNKNOWN if not recognized.
+     *
+     * <p>Prefers {@code brand_profiles.json} (longest-prefix-wins, OTA
+     * updatable). The hand-ordered rules below remain only as a fallback for
+     * when the profile is missing or malformed. <b>Do not add new WMIs here</b>
+     * — this chain has overlapping layers where a broad rule above a specific
+     * one makes the specific one unreachable, which is exactly the bug the
+     * data-driven path removes. Add them to the JSON instead.
+     */
     public static Brand detect(String vin) {
         // WMI identification also accepts a partial VIN; the full VIN reader
         // separately enforces the 17-character structure before persistence.
         if (vin == null || vin.trim().length() < 3) return Brand.UNKNOWN;
         String wmi = getWmi(vin);
+
+        Brand fromProfile = BrandProfile.brandForWmi(wmi);
+        if (fromProfile != null) return fromProfile;
+        if (BrandProfile.isLoaded()) {
+            // The profile loaded and genuinely has no rule for this WMI. Falling
+            // through to the legacy chain would resurrect the ordering bugs the
+            // profile exists to replace, so report it as unknown instead.
+            return Brand.UNKNOWN;
+        }
 
         // High-specificity rules precede legacy families. This prevents broad
         // prefixes (JM, MM, KN and LG) from stealing another make's WMI.

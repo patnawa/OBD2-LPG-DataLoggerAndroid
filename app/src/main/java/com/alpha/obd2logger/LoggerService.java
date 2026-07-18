@@ -94,7 +94,10 @@ public final class LoggerService extends Service {
      * (FuelMapView) and the API server (ApiServer). Set when the logging
      * session starts, cleared when it stops.
      */
-    private LiveMapStore liveMapStore;
+    // Written by the logging executor and read by MainActivity / API threads.
+    // Without volatile publication, Bluetooth background logging could update
+    // a store that the UI still observed as null or an earlier empty store.
+    private volatile LiveMapStore liveMapStore;
 
     public LiveMapStore getLiveMapStore() {
         return liveMapStore;
@@ -318,6 +321,9 @@ public final class LoggerService extends Service {
             return;
         }
 
+        // Breadcrumbs for the crash report — a stack trace from the logging
+        // worker is much less useful without knowing which transport it was on.
+        CrashReporter.noteSession(sessionId, DriverFactory.getLastResolvedTransport());
         notifyStatus("Connected via " + DriverFactory.getLastResolvedTransport()
                 + ". Logging in background.", false);
 
@@ -371,7 +377,14 @@ public final class LoggerService extends Service {
         // Per-session local reference; only the CURRENT session may publish it
         // to the instance field, otherwise a stale worker from a quick
         // stop/restart would overwrite the new session's store.
-        LiveMapStore localMapStore = new LiveMapStore();
+        // Reuse the retained store across sessions. Allocating a fresh one per
+        // ACTION_START silently destroyed both fuels' learned cells, which
+        // defeats the Tune Assist workflow outright: that flow logs Petrol, then
+        // switches to LPG and logs again to compare the two. MainActivity
+        // deliberately clears only the fuel about to be re-logged, and this
+        // allocation threw away the comparison fuel it had just preserved —
+        // leaving Deviation/Correction permanently empty.
+        LiveMapStore localMapStore = liveMapStore != null ? liveMapStore : new LiveMapStore();
         if (currentSessionToken == sessionToken) {
             // Expose via instance getter for MainActivity to read snapshots
             liveMapStore = localMapStore;
@@ -532,10 +545,9 @@ public final class LoggerService extends Service {
         }
 
         final List<PIDDefinition> finalPids = pids;
-        SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US);
         long started = android.os.SystemClock.elapsedRealtime();
-        final PidHealthTracker pidHealth = new PidHealthTracker();
-        long pollCycle = 0L;
+        // Shared with the in-process path in MainActivity — see PollingEngine.
+        final PollingEngine engine = new PollingEngine(config, finalPids, started);
 
         DataWriter localWriter = null;
         int localRecordCount = 0;
@@ -615,210 +627,41 @@ public final class LoggerService extends Service {
                             try { Thread.sleep(200); } catch (InterruptedException e) { break; }
                             continue;
                         }
-                        pollCycle++;
-                        List<PIDDefinition> polledPids = pidHealth.selectForPoll(finalPids, pollCycle);
-                        Map<String, Double> batch = localDriver.queryPidBatch(polledPids);
-                        if (!localDriver.isConnected()) {
-                            throw new java.io.IOException("Adapter stopped responding");
+                        PollingEngine.PollOutcome outcome =
+                                engine.poll(localDriver, localAirDensity, localMapStore);
+                        DataRecord record = outcome.record;
+
+                        localWriter.writeRecord(record);
+                        localRecordCount++;
+                        CrashReporter.noteRecordCount(localRecordCount);
+                        // Reset retry counter on every successful record write so
+                        // transient errors don't accumulate across a long session.
+                        // Without this, 11 scattered blips over hours permanently
+                        // kill the logger even though the connection is fine.
+                        retryCount = 0;
+                        if (currentSessionToken == sessionToken) {
+                            recordCount = localRecordCount;
                         }
-                        java.util.Set<String> polledKeys = new java.util.HashSet<>();
-                        for (PIDDefinition polled : polledPids) polledKeys.add(polled.key());
-                        List<SensorSample> samples = new ArrayList<>();
+                        publishRecord(record, localRecordCount);
 
-                        // ── Raw PID samples ──────────────────────
-                        for (PIDDefinition pid : finalPids) {
-                            Double value = batch.get(pid.getName());
-                            boolean wasPolled = polledKeys.contains(pid.key());
-                            if (wasPolled) pidHealth.recordPolled(pid, value, pollCycle);
-                            samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
-                                    pidHealth.statusFor(pid, value, wasPolled)));
+                        // Low-voltage watchdog: a weak alternator / battery cause lean
+                        // misfires that masquerade as fuel-trim problems — especially on
+                        // LPG. Warn once per session (transient dips ignored) when module
+                        // voltage sags below the charging floor.
+                        checkVoltageWatchdog(record);
+
+                        if (localApiServer != null) {
+                            localApiServer.setLatestData(record, true);
                         }
-
-                        // ── Derived sensors ──────────────────────
-                        // Look up raw values from batch by PID name
-                        Double mafValue = batch.get("MAF Air Flow");
-                        Double speedValue = batch.get("Vehicle Speed");
-                        Double mapValue = batch.get("Intake Manifold Pressure");
-                        Double baroValue = batch.get("Barometric Pressure");
-                        Double dpfSoot = batch.get("DPF Soot Load");
-                        Double dpfTemp = batch.get("DPF Inlet Temperature 1");
-                        Double dpfDelta = batch.get("DPF Differential Pressure 1");
-                        Double dpfRegen = batch.get("DPF Regen Status");
-                        Double dpfAsh = batch.get("DPF Ash Load");
-
-                        // ── MAP Fallback: synthesize from Engine Load when MAP is null ──
-                        // Many vehicles (MAF-based Toyota/Honda/Mazda) don't support PID 0x0B
-                        // (Intake Manifold Pressure). Without MAP, the fuel map Y-axis is
-                        // empty and Tune Assist has no load axis. Engine Load (0x04) is
-                        // supported by virtually every OBD2 vehicle and correlates with
-                        // manifold pressure: at idle, load is low (~20-30%) and MAP is low
-                        // (~30-40 kPa vacuum); at full throttle, load is high (~80-100%)
-                        // and MAP approaches barometric (~100 kPa).
-                        //
-                        // We synthesize MAP = baro * (load% / 100) when the real MAP
-                        // sensor is unavailable. This is clearly marked as a synthesized
-                        // value (status="synth") so it's transparent in logs and UI.
-                        // The fuel map and Tune Assist can now work on ALL vehicles,
-                        // not just those with MAP sensors.
-                        boolean mapSynthesized = false;
-                        if (mapValue == null) {
-                            Double engineLoad = batch.get("Engine Load");
-                            Double baroForSynth = baroValue != null ? baroValue : 101.3; // sea-level fallback
-                            if (engineLoad != null) {
-                                // Synthesize MAP from Engine Load:
-                                // - At 0% load (coasting): MAP ≈ 0 (deep vacuum, unrealistic)
-                                // - At 20% load (idle): MAP ≈ 20 kPa (too low for idle)
-                                // - Real idle MAP is ~30-40 kPa at sea level with ~20-30% load
-                                //
-                                // Better formula: MAP = 30 + (baro - 30) * (load/100)
-                                // This gives idle (~25% load) → MAP ≈ 30 + 71*0.25 = 48 kPa (realistic)
-                                // and full throttle (100% load) → MAP ≈ baro (correct)
-                                double synthMap = 30.0 + (baroForSynth - 30.0) * (engineLoad / 100.0);
-                                synthMap = Math.round(synthMap * 10.0) / 10.0; // 1 decimal place
-                                batch.put("Intake Manifold Pressure", synthMap);
-                                mapValue = synthMap;
-                                mapSynthesized = true;
-
-                                // Update the sample we already created with the synthesized value
-                                for (int si = 0; si < samples.size(); si++) {
-                                    SensorSample s = samples.get(si);
-                                    if ("01_0B".equals(s.getPidKey())) {
-                                        samples.set(si, new SensorSample("01_0B", "Intake Manifold Pressure",
-                                                synthMap, "kPa", "synth"));
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-
-                        // Fuel Consumption
-                        if (config.showFuelConsumption && mafValue != null && speedValue != null) {
-                            if (config.fuelMode == FuelMode.NGV) {
-                                // NGV densityGL is gas-phase (0.72 g/L), so the liquid
-                                // km/L formula always yields < 1 km/L and is discarded —
-                                // NGV fuel economy was silently always null. NGV is
-                                // dispensed and priced per kilogram, so report km/kg.
-                                Double kmkg = DerivedSensors.fuelConsumptionKmKg(mafValue, speedValue, config.fuelMode);
-                                if (kmkg != null) {
-                                    samples.add(new SensorSample("derived_fuel_kmkg", "Fuel Economy", kmkg, "km/kg", "ok"));
-                                }
-                            } else {
-                                Double kml = DerivedSensors.fuelConsumptionKmL(mafValue, speedValue, config.fuelMode);
-                                if (kml != null) {
-                                    samples.add(new SensorSample("derived_fuel_kmL", "Fuel Economy", kml, "km/L", "ok"));
-                                    Double l100 = DerivedSensors.fuelConsumptionL100km(mafValue, speedValue, config.fuelMode);
-                                    if (l100 != null) {
-                                        samples.add(new SensorSample("derived_fuel_l100", "Fuel Economy", l100, "L/100km", "ok"));
-                                    }
-                                }
-                            }
-                        }
-
-                        // Turbo Boost
-                        if (config.showTurboBoost && mapValue != null) {
-                            Double boostKpa = DerivedSensors.boostPressureKpa(mapValue, baroValue);
-                            if (boostKpa != null) {
-                                samples.add(new SensorSample("derived_boost_kpa", "Turbo Boost", boostKpa, "kPa", "ok"));
-                                Double boostPsi = DerivedSensors.boostPressurePsi(mapValue, baroValue);
-                                if (boostPsi != null) {
-                                    samples.add(new SensorSample("derived_boost_psi", "Turbo Boost", boostPsi, "psi", "ok"));
-                                }
-                            }
-                        }
-
-                        // DPF Status (derived interpretations)
-                        if (config.dpfMonitorEnabled) {
-                            if (dpfSoot != null) {
-                                String dpfHealth = DerivedSensors.dpfHealthStatus(dpfSoot, dpfAsh);
-                                samples.add(new SensorSample("derived_dpf_health", "DPF Health", 
-                                    "Clean".equals(dpfHealth) ? 1.0 : "Moderate".equals(dpfHealth) ? 2.0 
-                                    : "Warning".equals(dpfHealth) ? 3.0 : 4.0, "status", "ok"));
-                            }
-                            if (dpfRegen != null) {
-                                String regen = DerivedSensors.dpfRegenStatus(dpfRegen);
-                                double regenCode = "Regen Active".equals(regen) ? 1.0 : 0.0;
-                                samples.add(new SensorSample("derived_dpf_regen", "DPF Regen", regenCode, "active=" + regen, "ok"));
-                            }
-                        }
-
-                        // ── Air Density (AeroDensity Intelligence) ──
-                        // OBD + phone sensors + last-good weather; soft async refresh by TTL.
-                        // Status carries quality: ok / est / default / assumed / estimate.
-                        if (config.showAirDensity && localAirDensity != null) {
-                            // Tell the monitor whether MAP in this batch is measured or
-                            // synthesized from Engine Load — otherwise invented MAP is
-                            // treated as measured and MAD/BAD/VE/TMF get logged as real.
-                            localAirDensity.onObdBatch(batch, mapSynthesized);
-                            Double rpmValue = batch.get("Engine RPM");
-                            Double lambdaValue = batch.get("Lambda (B1S1)");
-                            Double commandedLambda = batch.get("Commanded Equivalence Ratio");
-                            try {
-                                localAirDensity.appendSamples(
-                                        samples, mafValue, rpmValue, lambdaValue, commandedLambda,
-                                        config.fuelMode,
-                                        config.engineDisplacementCC,
-                                        config.ratedRPM,
-                                        config.engineDisplacementUserSet);
-                            } catch (Exception densityEx) {
-                                Log.w(TAG, "Air density sample append failed non-fatally", densityEx);
-                            }
-                        } else {
-                            AirDensityMonitor.appendAfrSamples(samples,
-                                    batch.get("Lambda (B1S1)"),
-                                    batch.get("Commanded Equivalence Ratio"),
-                                    config.fuelMode);
-                        }
-
-                        DataRecord record = new DataRecord(
-                                                        iso.format(new Date()),
-                                                        (android.os.SystemClock.elapsedRealtime() - started) / 1000.0,
-                                                        config.fuelMode.getValue(),
-                                                        config.vehicleBrand,
-                                                        config.vin,
-                                                        samples
-                                                );
-
-                                                // ── Single write path into LiveMapStore (before CSV) ──
-                                                // Always update active cell + apply debounce/gates here so
-                                                // the UI can snapshot (never push), hits never double-count,
-                                                // and map_ai columns match what the store actually accepted.
-                                                LiveMapStore.PushResult mapPush = null;
-                                                MapSampleMeta mapMeta = MapSampleMeta.from(record);
-                                                if (localMapStore != null) {
-                                                    mapPush = localMapStore.pushFromMeta(mapMeta, config.fuelMode);
-                                                }
-                                                mapMeta.appendLogSamples(samples,
-                                                        mapPush != null && mapPush.accepted,
-                                                        mapPush != null ? mapPush.reason : mapMeta.rejectReason);
-
-                                                localWriter.writeRecord(record);
-                                                localRecordCount++;
-                                                // Reset retry counter on every successful record write so
-                                                // transient errors don't accumulate across a long session.
-                                                // Without this, 11 scattered blips over hours permanently
-                                                // kill the logger even though the connection is fine.
-                                                retryCount = 0;
-                                                if (currentSessionToken == sessionToken) {
-                                                    recordCount = localRecordCount;
-                                                }
-                                                publishRecord(record, localRecordCount);
-
-                                                // Low-voltage watchdog: a weak alternator / battery cause lean
-                                                // misfires that masquerade as fuel-trim problems — especially on
-                                                // LPG. Warn once per session (transient dips ignored) when module
-                                                // voltage sags below the charging floor.
-                                                checkVoltageWatchdog(record);
-
-                                                if (localApiServer != null) {
-                                                    localApiServer.setLatestData(record, true);
-                                                }
 
                         if (localRecordCount % 10 == 0) {
                             updateNotification("Logging: " + localRecordCount + " records", localRecordCount);
                         }
 
                         try {
-                            Thread.sleep(config.sampleIntervalMs);
+                            // Fixed-rate: sleeping for the full interval here would
+                            // make the achieved period pollDuration + interval.
+                            engine.awaitNextCycle();
                         } catch (InterruptedException ie) {
                             // shutdownNow() interrupted our sleep — exit the loop gracefully
                             running = false;
@@ -894,6 +737,9 @@ public final class LoggerService extends Service {
                             apiServer = null;
                             driver = null;
                             airDensityMonitor = null;
+                            // Stale breadcrumbs would misattribute a later crash
+                            // to a session that already ended.
+                            CrashReporter.noteSessionEnded();
                             // Only the CURRENT session may release the wakelock — a
                             // stale worker would otherwise release the lock the new
                             // session just acquired and background logging would stall.

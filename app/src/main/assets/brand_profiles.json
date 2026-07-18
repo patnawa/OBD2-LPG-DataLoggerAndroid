@@ -1,0 +1,215 @@
+{
+  "_comment": [
+    "Brand knowledge that used to live in Java (VinBrandDetector WMI rules,",
+    "DtcReader ECU-name maps and enhanced-mode switches).",
+    "",
+    "WMI matching is LONGEST-PREFIX-WINS. That is what removes the old",
+    "hand-ordered if-chain, where a broad rule placed above a specific one made",
+    "the specific rule unreachable dead code (editing it changed nothing).",
+    "'JTH' beats 'JT'; 'MNT' beats 'MN'; 'LGX' beats 'LG'. Order here is",
+    "irrelevant, so adding a brand cannot break an existing one.",
+    "",
+    "This is a single file rather than one per brand on purpose: WMI collisions",
+    "are inherently cross-brand, and splitting them across 38 files would hide",
+    "exactly the conflicts that caused the original bug. Per-brand DTC code",
+    "definitions stay in their own dtc_<brand>.json files.",
+    "",
+    "Shipped via the same OTA channel as the DTC databases (dtc_updates/",
+    "manifest.json), so a new brand needs no app release.",
+    "",
+    "ecu_names keys are CAN IDs in hex. enhanced_modes are 'request,response'",
+    "mode pairs for manufacturer-specific DTC reads."
+  ],
+  "version": 1,
+  "brands": {
+    "TOYOTA": {
+      "wmi": ["JT", "MN", "NL", "MR0"],
+      "enhanced_modes": ["21,61"],
+      "ecu_names": {
+        "7E0": "ECM — Engine Control (Toyota)",
+        "7E1": "TCM — Transmission (Toyota)",
+        "7E2": "ABS/VSC — Brakes (Toyota)",
+        "7E3": "SRS — Airbag (Toyota)",
+        "7E4": "HV ECU — Hybrid Vehicle (Toyota)",
+        "7E5": "EPS — Power Steering (Toyota)",
+        "7E6": "A/C — Air Conditioner (Toyota)",
+        "7E7": "BCM — Body Control (Toyota)",
+        "7E8": "ECM Response",
+        "7E9": "TCM Response",
+        "7EA": "ABS Response",
+        "7EB": "SRS Response",
+        "7EC": "HV ECU Response",
+        "7ED": "EPS Response",
+        "7EE": "A/C Response",
+        "7EF": "BCM Response"
+      }
+    },
+    "LEXUS": {
+      "wmi": ["JTH", "JTJ", "JTF", "2T2"],
+      "enhanced_modes": ["21,61"],
+      "ecu_names": {
+        "7E0": "ECM — Engine Control (Lexus)",
+        "7E2": "ABS/VSC — Brakes (Lexus)",
+        "7E3": "SRS — Airbag (Lexus)",
+        "7E5": "EPS — Power Steering (Lexus)",
+        "740": "Door Control (Lexus SW-CAN)",
+        "741": "Lighting Control (Lexus SW-CAN)",
+        "742": "Seat Control (Lexus SW-CAN)",
+        "743": "Air Conditioning (Lexus SW-CAN)"
+      }
+    },
+    "HONDA": {
+      "wmi": ["JH", "MHR", "MRH"],
+      "enhanced_modes": ["21,61"],
+      "ecu_names": {
+        "7C0": "PGM-FI — Fuel Injection (Honda)",
+        "7C1": "AT — Auto Transmission (Honda)",
+        "7C2": "VSA — Stability Assist (Honda)",
+        "7C3": "SRS — Airbag (Honda)",
+        "7C8": "PGM-FI Response"
+      }
+    },
+    "ISUZU": {
+      "wmi": ["JA", "MPA", "MPB"],
+      "enhanced_modes": ["21,61"],
+      "ecu_names": {
+        "18DA00F1": "ECM — Engine (Isuzu D-Max)",
+        "18DA00F2": "TCM — Transmission (Isuzu)",
+        "18DA00F3": "ABS — Brakes (Isuzu)"
+      }
+    },
+    "NISSAN": {
+      "wmi": ["JN", "MNT", "MNF", "SNJ"],
+      "enhanced_modes": ["1A,5A"],
+      "ecu_names": {
+        "7E0": "ECM — Engine (Nissan)",
+        "7E1": "TCM — CVT/Auto (Nissan)",
+        "7E2": "ABS/VDC (Nissan)",
+        "7E3": "SRS — Airbag (Nissan)",
+        "7E8": "ECM Response",
+        "7E9": "TCM Response"
+      }
+    },
+    "MITSUBISHI": {
+      "wmi": ["JM", "MM"],
+      "enhanced_modes": ["21,61"],
+      "ecu_names": {
+        "762": "AWC/S-AWC — All Wheel Control (Mitsubishi)",
+        "763": "ASC — Active Stability (Mitsubishi)",
+        "764": "ETACS — Body Control/BCM (Mitsubishi)",
+        "765": "EPS — Steering (Mitsubishi)",
+        "76A": "KOS/OSS — Keyless Operation (Mitsubishi)",
+        "76B": "TPMS — Tire Pressure (Mitsubishi)",
+        "72E": "4WD — Transfer Case (Mitsubishi Triton/Pajero)",
+        "72F": "AFS — Adaptive Front Light (Mitsubishi)",
+        "744": "MMCS — Multimedia/Navi (Mitsubishi)",
+        "611": "Engine-ECU Diesel (Mitsubishi 4D56/4N15)",
+        "619": "Engine-ECU Response (Mitsubishi Diesel)"
+      }
+    },
+    "MAZDA": {
+      "wmi": ["JM1", "JM3", "JM7", "JMZ", "MM6", "MM7", "MM8"],
+      "enhanced_modes": ["21,61"],
+      "ecu_names": {
+        "7E0": "PCM — Powertrain (Mazda)",
+        "7E1": "TCM — Transmission (Mazda)",
+        "7E2": "ABS/DSC (Mazda)",
+        "7E3": "EPS — Steering (Mazda)",
+        "7E8": "PCM Response",
+        "7E9": "TCM Response"
+      }
+    },
+    "SUZUKI": { "wmi": ["JS", "MA3"], "enhanced_modes": ["21,61"] },
+    "SUBARU": { "wmi": ["JF", "4S3", "4S4"], "enhanced_modes": ["21,61"] },
+    "HINO":   { "wmi": ["JH5"], "enhanced_modes": ["21,61"] },
+    "FORD": {
+      "wmi": ["1F", "MAF", "MLA", "WF0"],
+      "enhanced_modes": ["27,67"],
+      "ecu_names": {
+        "7E0": "PCM — Powertrain Control (Ford)",
+        "7E1": "TCM — Transmission (Ford)",
+        "7E2": "ABS Module (Ford)",
+        "7E3": "RCM — Restraints Control (Ford)",
+        "7E4": "IPC — Instrument Panel (Ford)",
+        "7E5": "PSCM — Power Steering (Ford)",
+        "7E6": "HVAC — Climate Control (Ford)",
+        "7E7": "APIM — Sync/Infotainment (Ford)",
+        "7E8": "PCM Response",
+        "7E9": "TCM Response",
+        "7EA": "ABS Module Response",
+        "7EB": "RCM Response",
+        "7EC": "IPC Response",
+        "7ED": "PSCM Response",
+        "7EE": "HVAC Response",
+        "7EF": "APIM Response"
+      }
+    },
+    "CHEVROLET": {
+      "wmi": ["1G", "KL1", "MMX"],
+      "enhanced_modes": ["2C,6C"],
+      "ecu_names": {
+        "7E0": "ECM — Engine Control (GM)",
+        "7E1": "TCM — Transmission (GM)",
+        "7E2": "EBCM — Electronic Brake (GM)",
+        "7E3": "SDM — Airbag/SIR (GM)",
+        "7E4": "HVAC — Climate (GM)",
+        "7E5": "BCM — Body Control (GM)",
+        "7E8": "ECM Response",
+        "7E9": "TCM Response",
+        "7EA": "EBCM Response",
+        "7EB": "SDM Response",
+        "640": "Driver Door Module (GM SW-CAN)",
+        "641": "Passenger Door Module (GM SW-CAN)",
+        "642": "Rear Left Door Module (GM SW-CAN)",
+        "643": "Rear Right Door Module (GM SW-CAN)",
+        "644": "Driver Seat Module (GM SW-CAN)",
+        "645": "Memory Seat Module (GM SW-CAN)",
+        "680": "Dash/IPC — Instrument Panel (GM LS-CAN)",
+        "681": "Radio/Infotainment (GM LS-CAN)",
+        "682": "HVAC Control (GM LS-CAN)",
+        "683": "Lighting Control (GM LS-CAN)"
+      }
+    },
+    "CHRYSLER": {
+      "wmi": ["1C", "2C"],
+      "ecu_names": {
+        "7E0": "PCM — Powertrain (Chrysler)",
+        "7E1": "TCM — Transmission (Chrysler)",
+        "7E2": "ABS — Brakes (Chrysler)",
+        "7E3": "ORC — Occupant Restraint (Chrysler)",
+        "7E4": "HVAC — Climate (Chrysler)",
+        "7E8": "PCM Response",
+        "7E9": "TCM Response",
+        "710": "BCM — Body Control (Chrysler LS-CAN)",
+        "711": "AMP — Audio Amplifier (Chrysler LS-CAN)",
+        "712": "HVAC Control (Chrysler LS-CAN)",
+        "713": "Radio/Infotainment (Chrysler LS-CAN)",
+        "714": "Instrument Cluster (Chrysler LS-CAN)"
+      }
+    },
+    "JEEP":  { "wmi": ["1J", "1C4"] },
+    "DODGE": { "wmi": ["1D", "2D", "3D"] },
+    "HYUNDAI": { "wmi": ["KM"], "enhanced_modes": ["21,61"] },
+    "KIA":     { "wmi": ["KN", "5XX", "5XY"], "enhanced_modes": ["21,61"] },
+    "VOLVO":   { "wmi": ["YV", "VY"], "enhanced_modes": ["21,61"] },
+    "BMW":     { "wmi": ["WB", "MLB"], "enhanced_modes": ["21,61", "22,62"] },
+    "MERCEDES": { "wmi": ["WD", "WME"], "enhanced_modes": ["22,62"] },
+    "VOLKSWAGEN": { "wmi": ["WVW", "WV1", "WV2", "LFV"] },
+    "AUDI":    { "wmi": ["WAU", "WUA", "TRU"] },
+    "PORSCHE": { "wmi": ["WP0", "WP1"] },
+    "RENAULT": { "wmi": ["VF1"] },
+    "PEUGEOT": { "wmi": ["VF3"] },
+    "CITROEN": { "wmi": ["VF7"] },
+    "FIAT":    { "wmi": ["ZFA", "3C3"] },
+    "LAND_ROVER": { "wmi": ["SAL", "SAD"] },
+    "TATA":     { "wmi": ["MAT"] },
+    "MAHINDRA": { "wmi": ["MA1"] },
+    "BYD":    { "wmi": ["LGX"], "enhanced_modes": ["22,62"] },
+    "GWM":    { "wmi": ["LGW", "LGB", "LGA"], "enhanced_modes": ["22,62"] },
+    "NETA":   { "wmi": ["LUN", "LZ1"], "enhanced_modes": ["22,62"] },
+    "AION":   { "wmi": ["L6G", "LGG"], "enhanced_modes": ["22,62"] },
+    "DEEPAL": { "wmi": ["LSC"], "enhanced_modes": ["22,62"] },
+    "MG":     { "wmi": ["LSJ", "LJS", "LSG"], "enhanced_modes": ["22,62"] },
+    "TESLA":  { "wmi": ["5YJ", "7SA", "LRW", "XP7"], "enhanced_modes": ["22,62"] }
+  }
+}

@@ -14,17 +14,27 @@ import static org.junit.Assert.assertTrue;
 public class LiveMapStoreTest {
 
     @Test
-    public void floorBinningUses500WideCellsNotRound() {
-        // FLOOR: cell = (int)(rpm/500)*500, clamped to [500, 6500].
-        // 749 and 750 both land in the 500 cell (range [500, 1000)).
-        // Previously ROUND put 750 at 1000, making the live highlight 250 RPM ahead.
+    public void rpmBinsToNearestBreakpointLikeMapAxis() {
+        // NEAREST: cell = round(rpm/500)*500, clamped to [500, 6500].
+        // Both axes now snap to the closest labelled breakpoint. Under the old
+        // FLOOR rule 1900 rpm filed into the column labelled 1500 while 78 kPa
+        // filed into the row labelled 80 — one axis shifted, one centred.
         assertEquals(500, MapBinning.binRpm(500));
         assertEquals(500, MapBinning.binRpm(749));
-        assertEquals(500, MapBinning.binRpm(750));
-        assertEquals(500, MapBinning.binRpm(999));
+        assertEquals(1000, MapBinning.binRpm(750));
+        assertEquals(1000, MapBinning.binRpm(999));
         assertEquals(1000, MapBinning.binRpm(1000));
-        assertEquals(1000, MapBinning.binRpm(1499));
+        assertEquals(1500, MapBinning.binRpm(1499));
         assertEquals(1500, MapBinning.binRpm(1500));
+        assertEquals(2000, MapBinning.binRpm(1900));
+    }
+
+    @Test
+    public void rpmBinningClampsToGridEdges() {
+        assertEquals(500, MapBinning.binRpm(0));
+        assertEquals(500, MapBinning.binRpm(200));
+        assertEquals(6500, MapBinning.binRpm(6500));
+        assertEquals(6500, MapBinning.binRpm(9000));
     }
 
     @Test
@@ -128,6 +138,23 @@ public class LiveMapStoreTest {
         assertEquals(3.0, meta.trimTotal, 0.001);
         assertEquals(MapSampleMeta.AXIS_MAP, meta.axisSource);
         assertEquals(MapBinning.cellKey(MapBinning.binRpm(2000), MapBinning.binMap(45)), meta.cellKey);
+    }
+
+    @Test
+    public void bankTwoFuelTrimsKeepMapLearningWhenBankOneIsUnavailable() {
+        java.util.List<SensorSample> samples = new java.util.ArrayList<>();
+        samples.add(new SensorSample("01_0C", "Engine RPM", 2000.0, "rpm", "ok"));
+        samples.add(new SensorSample("01_0B", "MAP", 45.0, "kPa", "ok"));
+        samples.add(new SensorSample("01_08", "STFT B2", 2.0, "%", "ok"));
+        samples.add(new SensorSample("01_09", "LTFT B2", 1.0, "%", "ok"));
+        samples.add(new SensorSample("01_05", "ECT", 88.0, "C", "ok"));
+        samples.add(new SensorSample("01_03", "FuelStatus", 2.0, "", "ok"));
+
+        MapSampleMeta meta = MapSampleMeta.from(
+                new DataRecord("t", 1.0, "petrol", "Test", "VIN", samples));
+
+        assertTrue(meta.gatedEligible);
+        assertEquals(3.0, meta.trimTotal, 0.001);
     }
 
     @Test

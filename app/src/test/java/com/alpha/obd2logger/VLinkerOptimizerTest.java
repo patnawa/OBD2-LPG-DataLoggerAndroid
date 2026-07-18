@@ -107,7 +107,7 @@ public class VLinkerOptimizerTest {
                 VLinkerOptimizer.classifyVLinkerVersion(null, true));
         assertEquals(VLinkerOptimizer.DeviceType.VLINKER_MC_WIFI,
                 VLinkerOptimizer.classifyVLinkerVersion("vLinker", false));
-        assertEquals(4, VLinkerOptimizer.getRecommendedChunkSize(
+        assertEquals(6, VLinkerOptimizer.getRecommendedChunkSize(
                 VLinkerOptimizer.classifyVLinkerVersion("vLinker MS", true)));
     }
 

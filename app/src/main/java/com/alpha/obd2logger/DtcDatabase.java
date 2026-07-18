@@ -92,6 +92,13 @@ public final class DtcDatabase {
         String brandName = VinBrandDetector.getBrandName(brand);
         if (!brandCache.isEmpty()) {
             Log.i(TAG, "Loaded " + brandCache.size() + " brand-specific codes for " + brandName);
+        } else if (assetFile == null && brand != VinBrandDetector.Brand.UNKNOWN) {
+            // Several brands are recognised by VIN but ship no manufacturer DTC
+            // file, so their P1xxx/U1xxx codes fall back to generic text with no
+            // indication that anything is missing. Say so, rather than letting a
+            // thin scan look like a clean one.
+            Log.w(TAG, "No manufacturer DTC database for " + brandName
+                    + " — manufacturer-specific codes will show generic descriptions only");
         }
         return brandName;
     }
