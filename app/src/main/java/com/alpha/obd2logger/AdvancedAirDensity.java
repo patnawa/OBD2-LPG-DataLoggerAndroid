@@ -360,6 +360,20 @@ public final class AdvancedAirDensity {
         return DerivedSensors.saeJ1349CorrectionFactor(baroKpa, tempC, humidityPct);
     }
 
+    /**
+     * SAE J607 correction factor — reference 29.92 inHg / 60°F.
+     *
+     * Unlike J1349 this carries NO mechanical-efficiency term (J607 references
+     * 100% efficiency), which is why it reads ~3-4% higher on the same pull.
+     *
+     * Note: 60°F is 15.56°C = 288.71 K, not the 288.15 K (15°C) ISA value that
+     * was used here. Borrowing the ISA temperature put this factor ~0.1% off its
+     * own reference and, worse, out of step with {@link #SAE_J607_AAD} = 76.4
+     * lbs/1000ft³, which is computed at the correct 288.71 K.
+     *
+     * Subtracting vapor pressure makes this the humidity-corrected variant
+     * (as Dynojet's "STD" does); classic J607 uses the observed barometer.
+     */
     public static Double saeJ607CF(Double baroKpa, Double tempC, Double humidityPct) {
         if (baroKpa == null || tempC == null) return null;
 
@@ -370,8 +384,8 @@ public final class AdvancedAirDensity {
         double dryPressure = pressureHpa - vaporPressure;
         if (dryPressure < 50.0) return null;
 
-        double pStd = 1013.25;
-        double tStd = 288.15;
+        double pStd = 1013.25;   // 29.92 inHg
+        double tStd = 288.71;    // 60°F
         double cf = (pStd / dryPressure) * Math.sqrt(tempK / tStd);
         if (cf < 0.5 || cf > 1.5) return null;
         return Math.round(cf * 1000.0) / 1000.0;

@@ -1986,8 +1986,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             case "derived_ve":         return new DerivedGaugeConfig(0f, 150f, "VE", "%");
             case "derived_maf_dev":    return new DerivedGaugeConfig(-50f, 50f, "MAF Dev", "%");
             case "derived_aad":        return new DerivedGaugeConfig(0f, 80f, "AAD", "lbs/1000ft³");
-            case "derived_mad":        return new DerivedGaugeConfig(0f, 80f, "MAD", "lbs/1000ft³");
-            case "derived_bad":        return new DerivedGaugeConfig(0f, 120f, "BAD", "lbs/1000ft³");
+            // MAD tracks MAP, so it spans idle vacuum up through full boost —
+            // 80 pegged the needle from roughly 130 kPa MAP upward.
+            case "derived_mad":        return new DerivedGaugeConfig(0f, 160f, "MAD", "lbs/1000ft³");
+            // BAD = MAD - AAD is negative under manifold vacuum, which is where a
+            // naturally aspirated car spends most of its life. A 0 floor parked
+            // the needle on the peg at idle and cruise; 120 was never reachable.
+            case "derived_bad":        return new DerivedGaugeConfig(-60f, 90f, "BAD", "lbs/1000ft³");
             case "derived_density_pct": return new DerivedGaugeConfig(50f, 120f, "Density", "%");
             case "derived_density_alt": return new DerivedGaugeConfig(-1000f, 15000f, "Density Alt", "ft");
             case "derived_sae_cf":     return new DerivedGaugeConfig(0.8f, 1.2f, "SAE CF", "");
@@ -1997,7 +2002,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             case "derived_ecc_dt":     return new DerivedGaugeConfig(-30f, 10f, "Evap Cool", "°C");
             case "derived_ecc_mad":    return new DerivedGaugeConfig(0f, 80f, "ECC MAD", "lbs/1000ft³");
             case "derived_pdi":        return new DerivedGaugeConfig(0f, 150f, "PDI", "");
-            case "derived_sae_j607":   return new DerivedGaugeConfig(0.8f, 1.2f, "J607 CF", "");
+            case "derived_sae_j607":   return new DerivedGaugeConfig(0.8f, 1.2f, "STD CF", "");
             case "derived_sae_cf_delta": return new DerivedGaugeConfig(-0.1f, 0.1f, "CF Delta", "");
             case "derived_compressor_eff": return new DerivedGaugeConfig(0f, 100f, "Comp Eff", "%");
             case "derived_intercooler_eff": return new DerivedGaugeConfig(0f, 100f, "IC Eff", "%");

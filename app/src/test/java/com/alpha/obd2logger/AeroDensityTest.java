@@ -216,6 +216,119 @@ public class AeroDensityTest {
     }
 
     @Test
+    public void noMapPid_yieldsNoMadOrBad_ratherThanAmbientEchoedBack() {
+        // Baro + ambient + IAT present, but the vehicle exposes no MAP PID and
+        // no Engine Load synthesis ran. MAD/BAD describe a manifold we never
+        // observed, so they must be absent — not silently computed from baro.
+        AirDensityMonitor mon = new AirDensityMonitor(null);
+        mon.onObdValues(100.0, 30.0, null, 55.0);
+
+        AirDensityMonitor.AirDensityResult r = mon.compute();
+        assertNotNull("AAD only needs baro + ambient", r.aad);
+        assertNull("MAD without MAP is fabricated, not estimated", r.mad);
+        assertNull("BAD without MAP is intake heat masquerading as boost", r.bad);
+        assertFalse(r.mapFromObd);
+
+        List<SensorSample> samples = new ArrayList<>();
+        mon.appendSamples(samples, 25.0, 2500.0, 1.0, FuelMode.PETROL, 2000, 6000, true);
+        for (SensorSample s : samples) {
+            assertFalse("derived_mad must not be logged without MAP",
+                    "derived_mad".equals(s.getPidKey()));
+            assertFalse("derived_bad must not be logged without MAP",
+                    "derived_bad".equals(s.getPidKey()));
+            assertFalse("VE needs manifold density, which needs MAP",
+                    "derived_ve".equals(s.getPidKey()));
+        }
+    }
+
+    @Test
+    public void manifoldDensityKgM3_isNotQuantisedByDisplayRounding() {
+        // The kg/m3 primitive must not be a rounded lbs/1000ft3 value divided back
+        // down: that stamps a 0.1 lbs (~0.0016 kg/m3) grid onto VE/TMF inputs.
+        Double kgM3 = DerivedSensors.manifoldAirDensityKgM3(163.7, 47.3, 99.4, 31.2, 68.0);
+        assertNotNull(kgM3);
+        double grid = 0.1 / DerivedSensors.KG_M3_TO_LBS_1000FT3;
+        double offGrid = Math.abs(kgM3 / grid - Math.round(kgM3 / grid));
+        assertTrue("kg/m3 value looks snapped to the lbs display grid: " + kgM3,
+                offGrid > 1e-6);
+
+        // and it must still agree with the rounded display value
+        Double lbs = DerivedSensors.manifoldAirDensity(163.7, 47.3, 99.4, 31.2, 68.0);
+        assertEquals(lbs, kgM3 * DerivedSensors.KG_M3_TO_LBS_1000FT3, 0.05);
+    }
+
+    @Test
+    public void saeJ1349_includesMechanicalEfficiencyTerm() {
+        // cf = 1.18 * cf_atmospheric - 0.18. Still exactly 1.0 at standard
+        // conditions, but the affine term must show up away from them.
+        Double std = DerivedSensors.saeJ1349CorrectionFactor(99.0, 25.0, 0.0);
+        assertNotNull(std);
+        assertEquals(1.0, std, 0.005);
+
+        // Hot humid day: recompute the spec formula independently.
+        double baro = 100.5, t = 35.0, rh = 70.0;
+        double pv = DerivedSensors.vaporPressureHpa(t, rh, baro * 10.0);
+        double cfa = (990.0 / (baro * 10.0 - pv)) * Math.sqrt((t + 273.15) / 298.15);
+        double expected = 1.18 * cfa - 0.18;
+
+        Double actual = DerivedSensors.saeJ1349CorrectionFactor(baro, t, rh);
+        assertNotNull(actual);
+        assertEquals(expected, actual, 0.002);
+        assertTrue("ME term must move cf away from the bare atmospheric factor",
+                Math.abs(actual - cfa) > 0.005);
+    }
+
+    @Test
+    public void saeJ1349_nullOutsideStandardsValidityBand() {
+        // J1349 only vouches for 0.93 <= cf <= 1.07; extreme altitude is outside it.
+        Double cf = DerivedSensors.saeJ1349CorrectionFactor(70.0, 10.0, 30.0);
+        assertNull("cf beyond +/-7% must not be reported as a J1349 correction", cf);
+    }
+
+    @Test
+    public void densityAltitude_matchesIsaInversionAcrossConditions() {
+        // ISA sea level dry 15C -> ~0 ft (now exact, not a 250 ft approximation)
+        Double isa = DerivedSensors.densityAltitudeFt(101.325, 15.0, 0.0);
+        assertNotNull(isa);
+        assertEquals(0.0, isa, 25.0);
+
+        // 35C at sea level is a well-known ~2300 ft density altitude
+        Double hot = DerivedSensors.densityAltitudeFt(101.325, 35.0, 0.0);
+        assertNotNull(hot);
+        assertEquals(2274.0, hot, 40.0);
+
+        // Must agree with the closed-form inversion of the density we report
+        Double rho = DerivedSensors.airDensityKgM3(94.0, 28.0, 65.0);
+        assertNotNull(rho);
+        double expected = 145442.16 * (1.0 - Math.pow(rho / 1.225, 0.234969));
+        Double da = DerivedSensors.densityAltitudeFt(94.0, 28.0, 65.0);
+        assertNotNull(da);
+        assertEquals(expected, da, 1.0);
+    }
+
+    @Test
+    public void boostAirDensity_fromKgM3_avoidsDoubleRounding() {
+        Double aadKg = DerivedSensors.ambientAirDensityKgM3(100.0, 25.0, 40.0);
+        Double madKg = DerivedSensors.manifoldAirDensityKgM3(103.0, 27.0, 100.0, 25.0, 40.0);
+        assertNotNull(aadKg);
+        assertNotNull(madKg);
+
+        Double precise = DerivedSensors.boostAirDensityFromKgM3(madKg, aadKg);
+        assertNotNull(precise);
+        double exact = (madKg - aadKg) * DerivedSensors.KG_M3_TO_LBS_1000FT3;
+        // Single rounding: within half of the last displayed digit.
+        assertEquals(exact, precise, 0.05);
+    }
+
+    @Test
+    public void saeJ607_usesSixtyFahrenheitReference() {
+        // At J607 reference conditions (1013.25 hPa dry, 60F) cf must be 1.0
+        Double cf = AdvancedAirDensity.saeJ607CF(101.325, 15.56, 0.0);
+        assertNotNull(cf);
+        assertEquals(1.0, cf, 0.002);
+    }
+
+    @Test
     public void humidityRatio_positive() {
         Double w = DerivedSensors.humidityRatio(101.325, 30.0, 70.0);
         assertNotNull(w);

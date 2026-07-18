@@ -237,8 +237,8 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("derived_ecc_dt", "Evap Cooling DeltaT (C)");
         registerDerived("derived_ecc_mad", "Evap-Corrected MAD (lbs/1000ft3)");
         registerDerived("derived_pdi", "Power Density Index");
-        registerDerived("derived_sae_j607", "SAE J607 Correction Factor");
-        registerDerived("derived_sae_cf_delta", "SAE CF Delta (J1349-J607)");
+        registerDerived("derived_sae_j607", "STD Correction Factor (J607 + humidity)");
+        registerDerived("derived_sae_cf_delta", "SAE CF Delta (J1349-STD)");
         // Fuel-map AI columns: cell targeting + accept/reject codes so agents can
         // rebuild LiveMapStore-quality maps from the log alone (without re-deriving
         // binning / closed-loop / warm rules). Numeric only for easy ML ingestion.
