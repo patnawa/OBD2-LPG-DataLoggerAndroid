@@ -1768,6 +1768,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 panelBattery.setVisibility(index == 7 ? View.VISIBLE : View.GONE);
             }
             
+            // The per-record path skips the map snapshot while this panel is
+            // hidden (see updateFuelMap), so entering the tab must re-sync or
+            // the view would show whatever it held when it was last visible.
+            if (index == 2 && fuelMapView != null) {
+                LiveMapStore mapStore = getLiveMapStore();
+                if (mapStore != null) {
+                    LiveMapStore.MapSnapshot snapshot = mapStore.snapshot();
+                    fuelMapView.syncFromStore(snapshot);
+                    updateMapCoverage(snapshot, activeFuelMode());
+                }
+            }
+
             if (onBackPressedCallback != null) {
                 onBackPressedCallback.setEnabled(index != 6);
             }
@@ -3593,9 +3605,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
 
         final List<PIDDefinition> finalPids = pids;
-        SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US);
-        final PidHealthTracker pidHealth = new PidHealthTracker();
-        long pollCycle = 0L;
+        // Shared with the background path in LoggerService — see PollingEngine.
+        // This path used to carry its own copy and had silently lost the NGV
+        // km/kg branch and the mapSynthesized flag; do not inline it again.
+        final PollingEngine engine = new PollingEngine(config, finalPids, started);
 
         try {
             writer = new DataWriter(this, sessionId, finalPids, config.vin,
@@ -3661,142 +3674,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             try { Thread.sleep(100); } catch (InterruptedException ignored) {}
                             continue;
                         }
-                        pollCycle++;
-                        List<PIDDefinition> polledPids = pidHealth.selectForPoll(finalPids, pollCycle);
-                        Map<String, Double> batch = driver.queryPidBatch(polledPids);
-                        if (!driver.isConnected()) {
-                            throw new java.io.IOException("Adapter stopped responding");
-                        }
-                        java.util.Set<String> polledKeys = new java.util.HashSet<>();
-                        for (PIDDefinition polled : polledPids) polledKeys.add(polled.key());
-                        List<SensorSample> samples = new ArrayList<>();
+                        PollingEngine.PollOutcome outcome = engine.poll(
+                                driver, airDensityMonitor, ensureInProcessMapStore());
+                        DataRecord record = outcome.record;
 
-                        for (PIDDefinition pid : finalPids) {
-                            Double value = batch.get(pid.getName());
-                            boolean wasPolled = polledKeys.contains(pid.key());
-                            if (wasPolled) pidHealth.recordPolled(pid, value, pollCycle);
-                            samples.add(new SensorSample(pid.key(), pid.getName(), value, pid.getUnit(),
-                                    pidHealth.statusFor(pid, value, wasPolled)));
-                        }
-
-                        // ── Derived sensors ──────────────────────
-                        // Look up raw values from batch by PID name
-                        Double mafValue = batch.get("MAF Air Flow");
-                        Double speedValue = batch.get("Vehicle Speed");
-                        Double mapValue = batch.get("Intake Manifold Pressure");
-                        Double baroValue = batch.get("Barometric Pressure");
-                        Double dpfSoot = batch.get("DPF Soot Load");
-                        Double dpfAsh = batch.get("DPF Ash Load");
-                        Double dpfRegen = batch.get("DPF Regen Status");
-
-                        // ── MAP Fallback: synthesize from Engine Load when MAP is null ──
-                        // Same logic as LoggerService — see comments there.
-                        if (mapValue == null) {
-                            Double engineLoad = batch.get("Engine Load");
-                            Double baroForSynth = baroValue != null ? baroValue : 101.3;
-                            if (engineLoad != null) {
-                                double synthMap = 30.0 + (baroForSynth - 30.0) * (engineLoad / 100.0);
-                                synthMap = Math.round(synthMap * 10.0) / 10.0;
-                                batch.put("Intake Manifold Pressure", synthMap);
-                                mapValue = synthMap;
-                                for (int si = 0; si < samples.size(); si++) {
-                                    SensorSample s = samples.get(si);
-                                    if ("01_0B".equals(s.getPidKey())) {
-                                        samples.set(si, new SensorSample("01_0B", "Intake Manifold Pressure",
-                                                synthMap, "kPa", "synth"));
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-
-                        // Fuel Consumption
-                        if (config.showFuelConsumption && mafValue != null && speedValue != null) {
-                            Double kml = DerivedSensors.fuelConsumptionKmL(mafValue, speedValue, config.fuelMode);
-                            if (kml != null) {
-                                samples.add(new SensorSample("derived_fuel_kmL", "Fuel Economy", kml, "km/L", "ok"));
-                                Double l100 = DerivedSensors.fuelConsumptionL100km(mafValue, speedValue, config.fuelMode);
-                                if (l100 != null) {
-                                    samples.add(new SensorSample("derived_fuel_l100", "Fuel Economy", l100, "L/100km", "ok"));
-                                }
-                            }
-                        }
-
-                        // Turbo Boost
-                        if (config.showTurboBoost && mapValue != null) {
-                            Double boostKpa = DerivedSensors.boostPressureKpa(mapValue, baroValue);
-                            if (boostKpa != null) {
-                                samples.add(new SensorSample("derived_boost_kpa", "Turbo Boost", boostKpa, "kPa", "ok"));
-                                Double boostPsi = DerivedSensors.boostPressurePsi(mapValue, baroValue);
-                                if (boostPsi != null) {
-                                    samples.add(new SensorSample("derived_boost_psi", "Turbo Boost", boostPsi, "psi", "ok"));
-                                }
-                            }
-                        }
-
-                        // DPF Status (derived interpretations)
-                        if (config.dpfMonitorEnabled) {
-                            if (dpfSoot != null) {
-                                String dpfHealth = DerivedSensors.dpfHealthStatus(dpfSoot, dpfAsh);
-                                samples.add(new SensorSample("derived_dpf_health", "DPF Health", 
-                                    "Clean".equals(dpfHealth) ? 1.0 : "Moderate".equals(dpfHealth) ? 2.0 
-                                    : "Warning".equals(dpfHealth) ? 3.0 : 4.0, "status", "ok"));
-                            }
-                            if (dpfRegen != null) {
-                                String regen = DerivedSensors.dpfRegenStatus(dpfRegen);
-                                double regenCode = "Regen Active".equals(regen) ? 1.0 : 0.0;
-                                samples.add(new SensorSample("derived_dpf_regen", "DPF Regen", regenCode, "active=" + regen, "ok"));
-                            }
-                        }
-
-                        // ── Air Density (AeroDensity Intelligence) ──
-                        if (config.showAirDensity && airDensityMonitor != null) {
-                            airDensityMonitor.onObdBatch(batch);
-                            Double rpmValue = batch.get("Engine RPM");
-                            Double lambdaValue = batch.get("Lambda (B1S1)");
-                            Double commandedLambda = batch.get("Commanded Equivalence Ratio");
-                            try {
-                                airDensityMonitor.appendSamples(
-                                        samples, mafValue, rpmValue, lambdaValue, commandedLambda,
-                                        config.fuelMode,
-                                        config.engineDisplacementCC,
-                                        config.ratedRPM,
-                                        config.engineDisplacementUserSet);
-                            } catch (Exception densityEx) {
-                                Log.w("OBD2Logger", "Air density sample append failed non-fatally", densityEx);
-                            }
-                        } else {
-                            AirDensityMonitor.appendAfrSamples(samples,
-                                    batch.get("Lambda (B1S1)"),
-                                    batch.get("Commanded Equivalence Ratio"),
-                                    config.fuelMode);
-                        }
-
-
-                        DataRecord record = new DataRecord(
-                                                        iso.format(new Date()),
-                                                        (SystemClock.elapsedRealtime() - started) / 1000.0,
-                                                        config.fuelMode.getValue(),
-                                                        config.vehicleBrand,
-                                                        config.vin,
-                                                        samples
-                                                );
-
-                                                // Enrich CSV/JSONL with map AI columns before write. For in-process
-                                                // logging the UI path also owns the LiveMapStore write (no service).
-                                                MapSampleMeta mapMeta = MapSampleMeta.from(record);
-                                                LiveMapStore store = ensureInProcessMapStore();
-                                                LiveMapStore.PushResult mapPush = store.pushFromMeta(mapMeta, config.fuelMode);
-                                                mapMeta.appendLogSamples(samples, mapPush.accepted, mapPush.reason);
-
-                                                writer.writeRecord(record);
-                                                completed++;
-                                                // Reset retry counter on every successful record write so
-                                                // transient errors don't accumulate across a long session.
-                                                retryCount = 0;
-                                                final int finalCompleted = completed;
-                                                sessionRecordCount = finalCompleted;
-                                                runOnActiveActivity(() -> {
+                        writer.writeRecord(record);
+                        completed++;
+                        // Reset retry counter on every successful record write so
+                        // transient errors don't accumulate across a long session.
+                        retryCount = 0;
+                        final int finalCompleted = completed;
+                        sessionRecordCount = finalCompleted;
+                        runOnActiveActivity(() -> {
                             MainActivity active = activeInstance;
                             if (active != null) {
                                 active.latestDataRecord = record;
@@ -3819,7 +3708,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         // survives Activity recreation and is read by both UI and API.
 
                         try {
-                            Thread.sleep(config.sampleIntervalMs);
+                            // Fixed-rate: sleeping for the full interval here would
+                            // make the achieved period pollDuration + interval.
+                            engine.awaitNextCycle();
                         } catch (InterruptedException ie) {
                             // shutdownNow() interrupted our sleep — exit the loop gracefully
                             running = false;
@@ -3984,11 +3875,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             LiveMapStore store = getLiveMapStore();
 
-            if (fuelMapView != null && store != null) {
+            // LiveMapStore.snapshot() deep-copies every TrimData in both the
+            // petrol and LPG maps, and the maps only grow over a session — so
+            // this cost rises the longer you drive. It is pure waste when the
+            // fuel-map panel isn't on screen, which is most of the time.
+            // showTab() re-syncs on entry, so the view is never left stale.
+            if (fuelMapView != null && store != null && fuelMapView.isShown()) {
                 LiveMapStore.MapSnapshot snapshot = store.snapshot();
                 fuelMapView.syncFromStore(snapshot);
                 updateMapCoverage(snapshot, mode);
-            } else if (fuelMapView != null && meta.rpm != null && !Double.isNaN(meta.loadAxis)) {
+            } else if (fuelMapView != null && store == null
+                    && meta.rpm != null && !Double.isNaN(meta.loadAxis)) {
                 if (meta.gatedEligible) {
                     fuelMapView.pushData(meta.rpm, meta.loadAxis, meta.trimTotal, mode);
                 } else if (meta.rpmCell >= 0) {
@@ -4051,6 +3948,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         mapConfidenceText.setTextColor(color);
         lastMapConfidenceText = text;
         lastMapConfidenceColor = color;
+    }
+
+    /**
+     * Fuel mode for UI refreshes that aren't driven by a record (e.g. entering
+     * the fuel-map tab). Prefers the last record so a mid-session fuel switch
+     * is reflected, falling back to the session config and finally petrol.
+     */
+    private FuelMode activeFuelMode() {
+        DataRecord latest = latestDataRecord;
+        if (latest != null && latest.getFuelMode() != null) {
+            return FuelMode.fromString(latest.getFuelMode());
+        }
+        LoggerConfig cfg = activeInProcessConfig;
+        if (cfg == null) {
+            LoggerService service = LoggerService.getInstance();
+            if (service != null) cfg = service.getConfig();
+        }
+        return cfg != null && cfg.fuelMode != null ? cfg.fuelMode : FuelMode.PETROL;
     }
 
     private void updateMapCoverage(LiveMapStore.MapSnapshot snapshot, FuelMode mode) {

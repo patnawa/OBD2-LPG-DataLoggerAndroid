@@ -36,7 +36,27 @@ public final class DataWriter implements AutoCloseable {
     private static final String DOWNLOAD_SUBDIR = "TunerMapPro";
     private static final String NO_VIN_SUBDIR = "General";
     private static final int SUMMARY_SCHEMA_VERSION = 2;
-    private static final int SUMMARY_CHECKPOINT_RECORDS = 10;
+    /**
+     * Summary checkpointing is time-based, not record-based.
+     *
+     * <p>It used to fire every 10 records, which tied a full JSON
+     * re-serialisation plus truncate-and-rewrite (cost scaling with the ~60
+     * column count) to the sample rate: at the 500 ms default that is every
+     * 5 s, and at a 100 ms interval it would fire every second — the faster you
+     * ask the logger to sample, the more of each cycle it spends rewriting a
+     * file that is only a convenience artifact. The raw CSV/JSONL streams are
+     * the source of truth and still flush every 5 records, so a staler summary
+     * costs nothing on a crash.
+     */
+    private static final long SUMMARY_CHECKPOINT_INTERVAL_MS = 30_000L;
+
+    /**
+     * One early checkpoint so a session that dies in its first seconds still
+     * leaves a summary carrying real records rather than the empty one written
+     * at construction. Paid once per session, unlike the old every-10-records
+     * cadence.
+     */
+    private static final int EARLY_CHECKPOINT_RECORDS = 10;
 
     private final Context context;
     private final String vin;
@@ -56,6 +76,8 @@ public final class DataWriter implements AutoCloseable {
     private final String adapter;
     private final long configuredSampleIntervalMs;
     private int recordsSinceFlush = 0;
+    private long lastCheckpointElapsedMs = android.os.SystemClock.elapsedRealtime();
+    private int checkpointSequence = 0;
 
     // Ordered column keys for the CSV/JSONL body. Built once at construction from
     // the poll PID list PLUS every derived sensor that the logging loop may emit
@@ -177,6 +199,15 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("derived_boost_psi", "Turbo Boost (psi)");
         registerDerived("derived_dpf_health", "DPF Health (status)");
         registerDerived("derived_dpf_regen", "DPF Regen (active)");
+        // Loop timing — makes the log self-describing about its own sample rate.
+        // Span bounds intra-record skew; jitter and overrun expose cycles that
+        // missed the configured cadence instead of hiding them in elapsed_s.
+        registerDerived("derived_poll_span_ms", "Poll Acquisition Span (ms)");
+        // No comma inside a column label: every other label in this file avoids
+        // one, so a consumer splitting on "," (rather than parsing quoted CSV)
+        // stays correct. A single comma here would shift every later column.
+        registerDerived("derived_poll_jitter_ms", "Poll Jitter (ms achieved-target)");
+        registerDerived("derived_poll_overrun_ms", "Poll Overrun (ms late vs deadline)");
         // Air Density (AeroDensity Intelligence)
         registerDerived("derived_aad", "Ambient Air Density (lbs/1000ft3)");
         registerDerived("derived_mad", "Manifold Air Density (lbs/1000ft3)");
@@ -331,7 +362,11 @@ public final class DataWriter implements AutoCloseable {
         }
 
         summary.add(record, sampleMap, loopStatus);
-        if (summary.getRecords() % SUMMARY_CHECKPOINT_RECORDS == 0) {
+        long nowMs = android.os.SystemClock.elapsedRealtime();
+        if (nowMs - lastCheckpointElapsedMs >= SUMMARY_CHECKPOINT_INTERVAL_MS
+                || summary.getRecords() == EARLY_CHECKPOINT_RECORDS) {
+            lastCheckpointElapsedMs = nowMs;
+            checkpointSequence++;
             try {
                 writeSummaryCheckpoint(false);
             } catch (IOException checkpointError) {
@@ -588,7 +623,7 @@ public final class DataWriter implements AutoCloseable {
             root.put("app_version", BuildConfig.VERSION_NAME);
             root.put("session_id", sessionId);
             root.put("complete", complete);
-            root.put("checkpoint_sequence", summary.getRecords() / SUMMARY_CHECKPOINT_RECORDS);
+            root.put("checkpoint_sequence", checkpointSequence);
             root.put("updated_at", isoTimestampNow());
             root.put("records", summary.getRecords());
             root.put("started_at", summary.getStartedAt());
