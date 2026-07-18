@@ -4,12 +4,11 @@ import android.content.Context;
 import android.util.Log;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -130,7 +129,11 @@ final class CrashReporter {
                 + "records : " + recordCount + "\n"
                 + stack + "\n";
 
-        Files.write(file.toPath(), report.getBytes(StandardCharsets.UTF_8),
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        // java.nio.file is only available from API 26, while the app supports
+        // API 23. FileOutputStream provides the same create-and-append behavior
+        // on every supported Android release.
+        try (FileOutputStream output = new FileOutputStream(file, true)) {
+            output.write(report.getBytes(StandardCharsets.UTF_8));
+        }
     }
 }
