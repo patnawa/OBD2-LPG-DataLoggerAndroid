@@ -643,6 +643,8 @@ public final class DataWriter implements AutoCloseable {
             vehicle.put("observed_vins", jsonArray(summary.getVins()));
             vehicle.put("observed_brands", jsonArray(summary.getBrands()));
             vehicle.put("fuel_modes", jsonArray(summary.getFuelModes()));
+            JSONObject commonVehicleData = CommonVehicleDataStore.getJson(context, vin);
+            if (commonVehicleData != null) vehicle.put("common_vehicle_data", commonVehicleData);
             root.put("vehicle", vehicle);
 
             JSONObject connection = new JSONObject();

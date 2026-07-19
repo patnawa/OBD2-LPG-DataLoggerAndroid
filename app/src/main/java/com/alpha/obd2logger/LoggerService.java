@@ -70,6 +70,13 @@ public final class LoggerService extends Service {
         return activeConfig;
     }
 
+    /** Publish fresh read-only common vehicle data to the local API, if active. */
+    public void publishVehicleInformation(VehicleInformationReader.Snapshot snapshot) {
+        if (snapshot == null) return;
+        ApiServer currentApiServer = apiServer;
+        if (currentApiServer != null) currentApiServer.setVehicleInformation(snapshot);
+    }
+
     public BaseDriver getDriver() {
         return driver;
     }
@@ -422,6 +429,7 @@ public final class LoggerService extends Service {
                 localApiServer.setAdapterConnected(true);
                 localApiServer.setVehicleBrand(config.vehicleBrand);
                 localApiServer.setLiveMapStore(localMapStore);
+                localApiServer.setVehicleInformation(CommonVehicleDataStore.get(this, config.vin));
                 localApiServer.resetSession();
                 if (currentSessionToken == sessionToken) {
                     apiServer = localApiServer;

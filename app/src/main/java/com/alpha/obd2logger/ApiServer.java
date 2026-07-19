@@ -34,6 +34,7 @@ public class ApiServer extends NanoHTTPD {
     private volatile boolean adapterConnected;
     private volatile String transportMode;
     private volatile String vehicleBrand;
+    private volatile VehicleInformationReader.Snapshot vehicleInformation;
     private volatile int recordCount;
     private volatile long sessionStartMs;
     private final String accessToken;
@@ -47,6 +48,11 @@ public class ApiServer extends NanoHTTPD {
 
     public void setLiveMapStore(LiveMapStore store) {
         this.liveMapStore = store;
+    }
+
+    /** Set the latest read-only vehicle identity/capability snapshot. */
+    public void setVehicleInformation(VehicleInformationReader.Snapshot snapshot) {
+        this.vehicleInformation = snapshot;
     }
 
     public interface DtcProvider {
@@ -492,6 +498,19 @@ public class ApiServer extends NanoHTTPD {
             if (latestData != null) {
                 obj.put("fuelMode", latestData.getFuelMode());
                 obj.put("vin", latestData.getVin());
+            }
+            VehicleInformationReader.Snapshot info = vehicleInformation;
+            if (info != null) {
+                JSONObject common = new JSONObject();
+                common.put("capturedAtEpochMs", info.getCapturedAtEpochMs());
+                common.put("brand", info.getBrandLabel());
+                common.put("modelYear", info.getModelYear());
+                common.put("calibrationIdCount", info.getCalIds().size());
+                common.put("cvnCount", info.getCvns().size());
+                JSONArray infoTypes = new JSONArray();
+                for (Integer infoType : info.getSupportedInfoTypes()) infoTypes.put(infoType);
+                common.put("mode09InfoTypes", infoTypes);
+                obj.put("commonVehicleData", common);
             }
         } catch (JSONException e) {
             e.printStackTrace();

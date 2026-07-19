@@ -124,7 +124,6 @@
     "HINO":   { "wmi": ["JH5"], "enhanced_modes": ["21,61"] },
     "FORD": {
       "wmi": ["1F", "MAF", "MLA", "WF0"],
-      "enhanced_modes": ["27,67"],
       "ecu_names": {
         "7E0": "PCM — Powertrain Control (Ford)",
         "7E1": "TCM — Transmission (Ford)",

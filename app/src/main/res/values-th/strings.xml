@@ -98,6 +98,13 @@
     <string name="read_dtc">อ่านโค้ด DTC</string>
     <string name="clear_dtc">ลบโค้ด DTC</string>
     <string name="read_vin">อ่านเลขตัวถัง VIN</string>
+    <string name="read_vehicle_info">ข้อมูลรถ</string>
+    <string name="reading_vehicle_info">กำลังอ่านข้อมูลรถ...</string>
+    <string name="vehicle_info_complete">อ่านข้อมูลรถแล้ว</string>
+    <string name="read_ford_module_live_data">ข้อมูลสดโมดูล</string>
+    <string name="reading_ford_module_live_data">กำลังอ่านข้อมูลโมดูล...</string>
+    <string name="ford_module_live_data_complete">อ่านข้อมูลโมดูลแล้ว</string>
+    <string name="ford_module_live_data_requires_ford">ฟังก์ชันนี้ต้องใช้ VIN ของรถที่รองรับและตรวจพบหรือกรอกด้วยตนเอง</string>
     <string name="read_readiness">เช็คความพร้อม</string>
     <string name="no_dtcs">ไม่พบรหัสปัญหา (DTC)</string>
     <string name="dtc_count">พบปัญหา: %1$d</string>

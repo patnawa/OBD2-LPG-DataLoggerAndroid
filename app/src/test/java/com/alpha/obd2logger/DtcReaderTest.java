@@ -2,6 +2,7 @@ package com.alpha.obd2logger;
 
 import org.junit.Test;
 import static org.junit.Assert.*;
+import java.util.ArrayList;
 import java.util.List;
 
 public class DtcReaderTest {
@@ -134,6 +135,94 @@ public class DtcReaderTest {
 
         // Reset for other tests
         DtcReader.setBrand(null);
+    }
+
+    @Test
+    public void fordFastScanUsesFordLabelsWithoutPhysicalAddressSweep() {
+        List<String> commands = new ArrayList<>();
+        BaseDriver mockDriver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                commands.add(command);
+                if ("0100".equals(command)) return "41 00 BE 3E B8 13";
+                if ("03".equals(command)) return "7E8 06 43 04 01 33 00 00 00 00";
+                return "";
+            }
+        };
+        mockDriver.connect();
+        DtcReader.setBrand(null);
+
+        DtcReader.DtcScanResult result = DtcReader.readAllDtcs(mockDriver, true);
+
+        assertTrue("Ford mode must apply Ford ECU labels",
+                result.modules.stream().anyMatch(m -> m.moduleName.contains("PCM Response")));
+        assertFalse("Fast scan must not turn on the deep physical-address sweep",
+                commands.stream().anyMatch(c -> c.startsWith("ATSH7E")));
+    }
+
+    @Test
+    public void msCanPreferenceDoesNotOverrideAKnownNonFordBrand() {
+        BaseDriver mockDriver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                if ("0100".equals(command)) return "41 00 BE 3E B8 13";
+                if ("03".equals(command)) return "7E8 02 43 00";
+                return "";
+            }
+        };
+        mockDriver.connect();
+        DtcReader.setBrand(VinBrandDetector.Brand.TOYOTA);
+        try {
+            DtcReader.DtcScanResult result = DtcReader.readAllDtcs(mockDriver, true);
+            assertTrue(result.modules.stream().anyMatch(m -> "ECM Response".equals(m.moduleName)));
+            assertFalse(result.modules.stream().anyMatch(m -> "PCM Response".equals(m.moduleName)));
+        } finally {
+            DtcReader.setBrand(null);
+        }
+    }
+
+    @Test
+    public void fordEnhancedScanNeverSendsSecurityAccess() {
+        List<String> commands = new ArrayList<>();
+        BaseDriver mockDriver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                commands.add(command);
+                return "";
+            }
+        };
+        mockDriver.connect();
+
+        assertTrue(DtcReader.scanEnhancedForBrand(mockDriver, VinBrandDetector.Brand.FORD).isEmpty());
+        assertFalse("SecurityAccess service must never be sent by the read-only scanner",
+                commands.contains("27"));
+    }
+
+    @Test
+    public void nonFordDeepScanDoesNotApplyFordLabels() {
+        BaseDriver mockDriver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                if ("0100".equals(command)) return "41 00 BE 3E B8 13";
+                if ("03".equals(command)) return "7E8 06 43 04 01 33 00 00 00 00";
+                return "";
+            }
+        };
+        mockDriver.connect();
+        DtcReader.setBrand(null);
+
+        DtcReader.DtcScanResult result = DtcReader.readAllDtcsDeep(mockDriver, false);
+
+        assertTrue("A non-Ford deep scan must retain generic labels",
+                result.modules.stream().anyMatch(m -> "ECU 0x7E8 (HS-CAN)".equals(m.moduleName)));
     }
 
     @Test

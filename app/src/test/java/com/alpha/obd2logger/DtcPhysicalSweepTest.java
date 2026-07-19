@@ -46,6 +46,8 @@ public class DtcPhysicalSweepTest {
                 DtcReader.supportsElevenBitPhysicalAddressing(bus("ATSP7")));
         assertFalse("KWP2000", DtcReader.supportsElevenBitPhysicalAddressing(bus("ATSP5")));
         assertFalse("ISO 9141-2", DtcReader.supportsElevenBitPhysicalAddressing(bus("ATSP3")));
+        assertFalse("J1850 PWM is not a CAN transport",
+                DtcReader.supportsElevenBitPhysicalAddressing(bus("ATSP1")));
         assertFalse("J1850 VPW", DtcReader.supportsElevenBitPhysicalAddressing(bus("ATSP2")));
         assertFalse(DtcReader.supportsElevenBitPhysicalAddressing(null));
     }

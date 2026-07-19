@@ -113,6 +113,13 @@
     <string name="read_dtc">Read DTCs</string>
     <string name="clear_dtc">Clear DTCs</string>
     <string name="read_vin">Read VIN</string>
+    <string name="read_vehicle_info">Vehicle Info</string>
+    <string name="reading_vehicle_info">Reading vehicle information...</string>
+    <string name="vehicle_info_complete">Vehicle information read.</string>
+    <string name="read_ford_module_live_data">Module Live Data</string>
+    <string name="reading_ford_module_live_data">Reading module data...</string>
+    <string name="ford_module_live_data_complete">Module data read.</string>
+    <string name="ford_module_live_data_requires_ford">Module live data needs a detected or manually entered supported VIN.</string>
     <string name="read_readiness">Check Readiness</string>
     <string name="no_dtcs">No DTCs stored.</string>
     <string name="dtc_count">DTC count: %1$d</string>

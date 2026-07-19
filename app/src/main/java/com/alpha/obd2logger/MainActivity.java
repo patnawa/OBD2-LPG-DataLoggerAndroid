@@ -134,7 +134,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private GraphView graph1, graph2, graph3, graph4, graph5;
 
     // --- UI: DTC tab ---
-    private Button btnReadDtc, btnDeepDtc, btnClearDtc, btnReadVin, btnReadiness;
+    private Button btnReadDtc, btnDeepDtc, btnClearDtc, btnReadVin, btnVehicleInfo,
+            btnFordModuleLiveData, btnReadiness;
     private TextView dtcStatusText, dtcHealthTitle, dtcHealthDetail;
     private TextView dtcStoredCount, dtcPendingCount, dtcPermanentCount;
     private LinearLayout dtcListContainer, readinessContainer;
@@ -1066,6 +1067,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         btnDeepDtc = findViewById(R.id.btnDeepDtc);
         btnClearDtc = findViewById(R.id.btnClearDtc);
         btnReadVin = findViewById(R.id.btnReadVin);
+        btnVehicleInfo = findViewById(R.id.btnVehicleInfo);
+        btnFordModuleLiveData = findViewById(R.id.btnFordModuleLiveData);
         btnReadiness = findViewById(R.id.btnReadiness);
         dtcStatusText = findViewById(R.id.dtcStatusText);
         dtcHealthTitle = findViewById(R.id.dtcHealthTitle);
@@ -2254,6 +2257,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             showScanHistoryDialog();
             return true;
         });
+        btnVehicleInfo.setOnClickListener(v -> readVehicleInformation());
+        btnFordModuleLiveData.setOnClickListener(v -> readFordModuleLiveData());
         btnReadiness.setOnClickListener(v -> checkReadiness());
 
         // Battery tester buttons
@@ -4176,9 +4181,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 boolean alreadySet = p.getBoolean("pref_auto_detect_done", false);
                 if (!alreadySet && isDieselVin(vin)) {
                     if (dpfMonitorCheckbox != null) dpfMonitorCheckbox.setChecked(true);
-                    if (fordMsCanCheckbox != null) fordMsCanCheckbox.setChecked(true);
+                    if (fordMsCanCheckbox != null
+                            && VinBrandDetector.detect(vin) == VinBrandDetector.Brand.FORD) {
+                        fordMsCanCheckbox.setChecked(true);
+                    }
                     p.edit().putBoolean("pref_auto_detect_done", true).apply();
-                    Toast.makeText(this, "Diesel detected — DPF + Deep Scan enabled", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Diesel detected — DPF monitoring enabled",
+                            Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -5757,6 +5766,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         lastDtcScanWasDeep = false;
         dtcListContainer.removeAllViews();
 
+        final boolean msCan = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
+        final String scanVin = resolveVehicleProfileVin();
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             boolean wasPaused = isPaused;
@@ -5765,7 +5776,6 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 try { Thread.sleep(300); } catch (InterruptedException ignored) {}
             }
             try {
-                boolean msCan = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
                 DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcs(activeDriver, msCan, dtcScanTracker);
                 List<DtcCode> stored = scanResult.storedDtcs;
                 List<DtcCode> pending = scanResult.pendingDtcs;
@@ -5792,8 +5802,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (dtcHistoryDb == null) {
                     dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
                 }
-                String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
-                if (vinStr.isEmpty()) vinStr = "UNKNOWN_VIN";
+                String vinStr = scanVin != null ? scanVin : "UNKNOWN_VIN";
                 List<DtcHistoryDb.DtcHistoryRecord> history = dtcHistoryDb.getHistory(vinStr);
                 DtcComparison comparison = DtcComparison.compareWithHistory(history, stored, pending, permanent);
                 
@@ -6335,7 +6344,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         dtcListContainer.removeAllViews();
         Toast.makeText(this, "Deep scanning all protocols — this may take 20-30s...", Toast.LENGTH_SHORT).show();
 
-        final boolean msCan = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
+        final String vehicleProfileVin = resolveVehicleProfileVin();
+        final boolean fordLabels = VinBrandDetector.detect(vehicleProfileVin)
+                == VinBrandDetector.Brand.FORD;
+        final VehicleModuleProfileStore.Snapshot previousVehicleProfile =
+                VehicleModuleProfileStore.get(this, vehicleProfileVin);
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             boolean wasPaused = isPaused;
@@ -6344,7 +6357,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 try { Thread.sleep(300); } catch (InterruptedException ignored) {}
             }
             try {
-                DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcsDeep(activeDriver, msCan, dtcScanTracker);
+                DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcsDeep(
+                        activeDriver, fordLabels, dtcScanTracker);
                 List<DtcCode> stored = scanResult.storedDtcs;
                 List<DtcCode> pending = scanResult.pendingDtcs;
                 List<DtcCode> permanent = scanResult.permanentDtcs;
@@ -6362,8 +6376,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
                 // Scan comparison
                 if (dtcHistoryDb == null) dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
-                String vinStr = headerVin.getText().toString().replace("VIN: ", "").trim();
-                if (vinStr.isEmpty()) vinStr = "UNKNOWN_VIN";
+                String vinStr = vehicleProfileVin != null ? vehicleProfileVin : "UNKNOWN_VIN";
                 DtcComparison comparison = DtcComparison.compareWithHistory(
                     dtcHistoryDb.getHistory(vinStr), stored, pending, permanent);
 
@@ -6376,11 +6389,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
                 String ffJson = ffData != null ? ffData.toJsonObject().toString() : null;
                 dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
+                VehicleModuleProfileStore.Snapshot savedVehicleProfile =
+                        VehicleModuleProfileStore.save(MainActivity.this, vehicleProfileVin, scanResult);
 
                 runOnUiThread(() -> {
                     if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
                     displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
                     displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
+                    displayVehicleModuleProfileComparison(previousVehicleProfile, savedVehicleProfile);
                     updateDtcBadge(stored.size(), pending.size(), permanent.size());
                     displayProFeatures();
                 });
@@ -6688,6 +6704,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (btnDeepDtc != null) btnDeepDtc.setEnabled(enabled);
         if (btnClearDtc != null) btnClearDtc.setEnabled(enabled);
         if (btnReadVin != null) btnReadVin.setEnabled(enabled);
+        if (btnVehicleInfo != null) btnVehicleInfo.setEnabled(enabled);
+        if (btnFordModuleLiveData != null) btnFordModuleLiveData.setEnabled(enabled);
         if (btnReadiness != null) btnReadiness.setEnabled(enabled);
     }
 
@@ -6850,6 +6868,292 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 runOnUiThread(() -> setDtcButtonsEnabled(true));
             }
         });
+    }
+
+    /** Read standard vehicle identity and calibration evidence without writing to an ECU. */
+    private void readVehicleInformation() {
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
+            dtcStatusText.setText("Not connected. Start logging first.");
+            return;
+        }
+
+        setDtcButtonsEnabled(false);
+        dtcListContainer.removeAllViews();
+        readinessContainer.removeAllViews();
+        if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
+        dtcStatusText.setText(R.string.reading_vehicle_info);
+        final String knownVin = resolveVehicleProfileVin();
+        dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
+        dtcExecutor.submit(() -> {
+            boolean wasPaused = isPaused;
+            if (!wasPaused) {
+                isPaused = true;
+                try { Thread.sleep(300); } catch (InterruptedException ignored) { }
+            }
+            try {
+                VehicleInformationReader.Snapshot liveInfo = VehicleInformationReader.read(activeDriver);
+                VehicleInformationReader.Snapshot savedInfo = CommonVehicleDataStore.save(
+                        MainActivity.this, knownVin, liveInfo);
+                VehicleInformationReader.Snapshot info = savedInfo != null ? savedInfo : liveInfo;
+                LoggerService loggerService = LoggerService.getInstance();
+                if (loggerService != null) loggerService.publishVehicleInformation(info);
+                runOnUiThread(() -> {
+                    if (info.getVin() != null) {
+                        headerVin.setText("VIN: " + info.getVin());
+                        updateHeaderVehicle(info.getVin());
+                    }
+                    displayVehicleInformation(info);
+                    dtcStatusText.setText(R.string.vehicle_info_complete);
+                    dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+                });
+            } catch (Exception e) {
+                Log.w("MainActivity", "Vehicle information read failed", e);
+                runOnUiThread(() -> {
+                    dtcStatusText.setText("Vehicle information read failed.");
+                    dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+                });
+            } finally {
+                if (!wasPaused) isPaused = false;
+                runOnUiThread(() -> {
+                    if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
+                    setDtcButtonsEnabled(true);
+                });
+            }
+        });
+    }
+
+    private void displayVehicleInformation(VehicleInformationReader.Snapshot info) {
+        TextView title = new TextView(this);
+        title.setText("Vehicle Information (read-only)");
+        title.setTextColor(getColorCompat(R.color.accent));
+        title.setTextSize(14);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setPadding(0, 12, 0, 6);
+        dtcListContainer.addView(title);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(12, 10, 12, 10);
+        card.setBackgroundResource(R.drawable.bg_dtc_card);
+        addVehicleInformationLine(card, "VIN: "
+                + (info.getVin() != null ? info.getVin() : "Not reported"));
+        addVehicleInformationLine(card, "Brand: " + info.getBrandLabel()
+                + (info.getModelYear() > 0 ? "  |  Model year: " + info.getModelYear() : ""));
+
+        if (info.hasCapabilityBitmap()) {
+            StringBuilder capabilityText = new StringBuilder("Supported Mode 09 info: ");
+            for (int i = 0; i < info.getSupportedInfoTypes().size(); i++) {
+                if (i > 0) capabilityText.append(", ");
+                capabilityText.append(VehicleInformationReader.infoTypeLabel(
+                        info.getSupportedInfoTypes().get(i)));
+            }
+            addVehicleInformationLine(card, capabilityText.toString());
+        } else {
+            addVehicleInformationLine(card, "Mode 09 capability bitmap was not reported.");
+        }
+
+        for (Mode09Reader.CalIdEntry calId : info.getCalIds()) {
+            addVehicleInformationLine(card, "Cal-ID " + (calId.getEcuIndex() + 1)
+                    + ": " + calId.getCalId());
+        }
+        for (Mode09Reader.CvnEntry cvn : info.getCvns()) {
+            addVehicleInformationLine(card, "CVN " + (cvn.getEcuIndex() + 1)
+                    + ": " + cvn.getCvn());
+        }
+        if (info.getCalIds().isEmpty() && info.getCvns().isEmpty()) {
+            addVehicleInformationLine(card, "Calibration data not advertised by this ECU.");
+        }
+        dtcListContainer.addView(card);
+    }
+
+    /** Reads only the standardized PCM values and direct DTC status from Ford PCM/TCM/ABS. */
+    private void readFordModuleLiveData() {
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver == null || !activeDriver.isConnected()) {
+            dtcStatusText.setText("Not connected. Start logging first.");
+            return;
+        }
+
+        String shownVin = headerVin != null ? headerVin.getText().toString()
+                .replace("VIN:", "").trim() : null;
+        String vin = ManualVinStore.normalize(shownVin);
+        if (vin == null) vin = ManualVinStore.get(this);
+        VinBrandDetector.Brand brand = VinBrandDetector.detect(vin);
+        final boolean hasDirectModuleProfile = FordModuleLiveDataReader.hasDirectModuleProfile(brand);
+        final String brandName = brand == VinBrandDetector.Brand.UNKNOWN
+                ? "OBD-II" : VinBrandDetector.getBrandName(brand);
+
+        setDtcButtonsEnabled(false);
+        dtcListContainer.removeAllViews();
+        readinessContainer.removeAllViews();
+        if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
+        dtcStatusText.setText(R.string.reading_ford_module_live_data);
+        dtcStatusText.setTextColor(getColorCompat(R.color.muted));
+        dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
+        dtcExecutor.submit(() -> {
+            boolean wasPaused = isPaused;
+            if (!wasPaused) {
+                isPaused = true;
+                try { Thread.sleep(300); } catch (InterruptedException ignored) { }
+            }
+            try {
+                FordModuleLiveDataReader.Snapshot snapshot = FordModuleLiveDataReader.read(activeDriver, brand);
+                runOnUiThread(() -> {
+                    displayFordModuleLiveData(snapshot, brandName, hasDirectModuleProfile);
+                    dtcStatusText.setText(R.string.ford_module_live_data_complete);
+                    dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+                });
+            } catch (Exception e) {
+                Log.w("MainActivity", "Ford module live-data read failed", e);
+                runOnUiThread(() -> {
+                    dtcStatusText.setText("Module data read failed.");
+                    dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+                });
+            } finally {
+                if (!wasPaused) isPaused = false;
+                runOnUiThread(() -> {
+                    if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
+                    setDtcButtonsEnabled(true);
+                });
+            }
+        });
+    }
+
+    private void displayFordModuleLiveData(FordModuleLiveDataReader.Snapshot snapshot,
+                                           String brandName, boolean hasDirectModuleProfile) {
+        TextView title = new TextView(this);
+        title.setText(brandName + " Module Live Data (read-only)");
+        title.setTextColor(getColorCompat(R.color.accent));
+        title.setTextSize(14);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setPadding(0, 12, 0, 6);
+        dtcListContainer.addView(title);
+
+        TextView scope = new TextView(this);
+        scope.setText(hasDirectModuleProfile
+                ? "Engine values use standard OBD Mode 01. Transmission/brake modules are checked by direct, read-only DTC request; unverified manufacturer-specific live-data identifiers are not queried."
+                : "Showing standard OBD-II powertrain data only. No verified physical module layout is available for this brand/model, so no manufacturer-specific identifiers are queried.");
+        scope.setTextColor(getColorCompat(R.color.muted));
+        scope.setTextSize(11);
+        scope.setPadding(4, 0, 4, 8);
+        dtcListContainer.addView(scope);
+
+        for (FordModuleLiveDataReader.ModuleStatus module : snapshot.getModules()) {
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(12, 10, 12, 10);
+            card.setBackgroundResource(R.drawable.bg_dtc_card);
+            LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            cardParams.bottomMargin = dpToPx(4);
+            card.setLayoutParams(cardParams);
+
+            TextView heading = new TextView(this);
+            heading.setText(module.getName() + "  (" + module.getRequestId() + " → "
+                    + module.getResponseId() + ")");
+            heading.setTextColor(getColorCompat(R.color.text));
+            heading.setTextSize(13);
+            heading.setTypeface(null, android.graphics.Typeface.BOLD);
+            card.addView(heading);
+
+            TextView status = new TextView(this);
+            status.setText(module.getStatusText());
+            status.setTextColor(module.responded()
+                    ? getColorCompat(R.color.muted) : getColorCompat(R.color.warning));
+            status.setTextSize(12);
+            status.setPadding(4, 3, 4, 3);
+            card.addView(status);
+
+            for (FordModuleLiveDataReader.Metric metric : module.getMetrics()) {
+                addVehicleInformationLine(card, metric.getLabel() + ": " + metric.getDisplayValue());
+            }
+            dtcListContainer.addView(card);
+        }
+    }
+
+    /** Prefer a live VIN, falling back to the manually stored VIN for profile identity. */
+    private String resolveVehicleProfileVin() {
+        String shownVin = headerVin != null ? headerVin.getText().toString()
+                .replace("VIN:", "").trim() : null;
+        String vin = ManualVinStore.normalize(shownVin);
+        return vin != null ? vin : ManualVinStore.get(this);
+    }
+
+    /** Shows how the current deep scan compares with the prior verified module inventory. */
+    private void displayVehicleModuleProfileComparison(
+            VehicleModuleProfileStore.Snapshot previous,
+            VehicleModuleProfileStore.Snapshot current) {
+        if (current == null) return;
+
+        TextView title = new TextView(this);
+        title.setText("Vehicle Module Profile (observed deep scan)");
+        title.setTextColor(getColorCompat(R.color.accent));
+        title.setTextSize(13);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setPadding(0, dpToPx(12), 0, dpToPx(4));
+        dtcListContainer.addView(title);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(12, 10, 12, 10);
+        card.setBackgroundResource(R.drawable.bg_dtc_card);
+        addVehicleInformationLine(card, current.getBrand() + " | " + current.getModules().size()
+                + " responding module(s) on " + current.getProtocols().size() + " scanned bus(es)");
+
+        java.util.Map<String, String> currentModules = vehicleProfileModuleLabels(current);
+        java.util.Set<String> currentIds = new java.util.LinkedHashSet<>(currentModules.keySet());
+        if (previous == null) {
+            addVehicleInformationLine(card, currentIds.isEmpty()
+                    ? "No responding modules; baseline was not saved."
+                    : "Baseline saved for this VIN. Future deep scans will compare against it.");
+        } else {
+            java.util.Map<String, String> previousModules = vehicleProfileModuleLabels(previous);
+            java.util.Set<String> previousIds = new java.util.LinkedHashSet<>(previousModules.keySet());
+            java.util.Set<String> newlySeen = new java.util.LinkedHashSet<>(currentIds);
+            newlySeen.removeAll(previousIds);
+            java.util.Set<String> notSeenNow = new java.util.LinkedHashSet<>(previousIds);
+            notSeenNow.removeAll(currentIds);
+            addVehicleInformationLine(card, "Previous baseline: " + previousIds.size() + " module(s)");
+            addVehicleInformationLine(card, newlySeen.isEmpty()
+                    ? "New modules: none"
+                    : "New modules: " + joinProfileModules(newlySeen, currentModules));
+            addVehicleInformationLine(card, notSeenNow.isEmpty()
+                    ? "Previously seen modules missing now: none"
+                    : "Previously seen modules missing now: "
+                    + joinProfileModules(notSeenNow, previousModules));
+        }
+        dtcListContainer.addView(card);
+    }
+
+    private java.util.Map<String, String> vehicleProfileModuleLabels(
+            VehicleModuleProfileStore.Snapshot profile) {
+        java.util.Map<String, String> modules = new java.util.LinkedHashMap<>();
+        if (profile == null) return modules;
+        for (VehicleModuleProfileStore.Module module : profile.getModules()) {
+            modules.put(module.getStableId(), module.getDisplayLabel());
+        }
+        return modules;
+    }
+
+    private String joinProfileModules(java.util.Set<String> moduleIds,
+                                      java.util.Map<String, String> labels) {
+        StringBuilder value = new StringBuilder();
+        for (String moduleId : moduleIds) {
+            if (value.length() > 0) value.append(", ");
+            String label = labels.get(moduleId);
+            value.append(label != null ? label : moduleId);
+        }
+        return value.toString();
+    }
+
+    private void addVehicleInformationLine(LinearLayout container, String text) {
+        TextView line = new TextView(this);
+        line.setText(text);
+        line.setTextColor(getColorCompat(R.color.text));
+        line.setTextSize(12);
+        line.setPadding(4, 3, 4, 3);
+        container.addView(line);
     }
 
     /**
@@ -7060,12 +7364,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             try {
                 Mode09Reader.InUsePerformance perf = Mode09Reader.readInUsePerformance(activeDriver);
                 runOnUiThread(() -> {
-                    if (perf.ignitionCycles >= 0 || perf.obdTripCount >= 0
-                            || perf.distanceSinceClearKm >= 0 || perf.timeSinceClearMin >= 0) {
+                    if (perf.warmUpCyclesSinceClear >= 0 || perf.distanceSinceClearKm >= 0
+                            || perf.timeSinceClearMin >= 0) {
                         TextView perfView = new TextView(this);
                         perfView.setText("📊 In-Use Performance Since Clear:\n"
-                            + "  Ignitions: " + (perf.ignitionCycles >= 0 ? perf.ignitionCycles : "N/A") + "\n"
-                            + "  OBD Trips: " + (perf.obdTripCount >= 0 ? perf.obdTripCount : "N/A") + "\n"
+                            + "  Warm-ups: " + (perf.warmUpCyclesSinceClear >= 0 ? perf.warmUpCyclesSinceClear : "N/A") + "\n"
                             + "  Distance: " + (perf.distanceSinceClearKm >= 0 ? perf.distanceSinceClearKm + " km" : "N/A") + "\n"
                             + "  Engine Time: " + (perf.timeSinceClearMin >= 0 ? perf.timeSinceClearMin + " min" : "N/A"));
                         perfView.setTextColor(getColorCompat(R.color.text));
