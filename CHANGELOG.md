@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Protocol detection
+
+- **The app now knows which bus it is actually on.** `ATDPN` is read once after every successful vehicle probe, so the concrete protocol is cached, logged, appended to the adapter identification, and shown on the home screen — previously an AUTO connection reported the literal string "AUTO" and the real bus was never surfaced anywhere.
+- **Per-adapter protocol memory** (`ProtocolMemory`) records the bus each adapter last locked on, keyed by Bluetooth MAC / Wi-Fi host:port / serial port. The next AUTO connect seeds the search with `ATSP A<h>` ("automatic, try this first"), which locks immediately on the same vehicle and saves the 5–12 s ELM bus search. A stale hint — adapter moved to another car — simply falls back to the full search, and adapters too old to accept the `A<h>` form fall back to plain `ATSP0`.
+- **Explicit protocol ladder as a rescue path.** When automatic search fails outright, the driver now walks `ATTP` across the nine OBD protocols (CAN 11/500 first, then 250k, 29-bit, KWP, ISO 9141, J1850) probing `0100` at each rung and locking with `ATSP` only on a confirmed ECU answer. K-line rungs are given a 9 s window against 4 s for CAN, since 5-baud init alone takes ~2.5 s. This recovers the common clone adapters whose `ATSP0` implementation is broken but which communicate normally once the bus is forced.
+- **Deep scans no longer re-run the AUTO search.** `restorePollingState()` re-selects the protocol this session actually locked; for a ladder-rescued clone the previous `ATSP0` restore could never reconnect at all.
+- Added `ObdProtocol.fromDpnResponse()` with tolerant parsing of the `A`-prefixed auto marker, echo remnants and prompt characters — including the case where `AA` means auto-selected J1939 rather than a bare auto marker — plus `isElevenBitCan()` / `isTwentyNineBitCan()` bus-width predicates.
+
+### VIN detection
+
+- **The physical-addressing VIN fallback now covers 29-bit CAN.** The chain that retries Mode 09 against the engine ECU directly, and then falls back to UDS `22 F1 90`, was gated on an 11-bit bus and skipped entirely otherwise; 29-bit vehicles (Isuzu trucks, several European makes) got no fallback at all. They are now addressed at `18DA10F1` / `18DA18F1` (ECM, then TCM) with the matching `18DAF1xx` response filters.
+- **29-bit headers work on genuine ELM327 chips.** An 8-digit `ATSH` is accepted by STN and most clone firmware but rejected by a real ELM327, whose documented form is `ATCP` for the priority byte plus a 6-digit `ATSH`. Both `applyTarget` and the functional restore now fall back to that split form on rejection, which also fixes 29-bit targeting in the existing DTC deep scan.
+- **VIN candidate windows are ranked rather than first-match.** A structurally valid 17-character window is scored as recognized-WMI (2) plus valid ISO check digit (1), and the best window wins. Stray ASCII around the real VIN could previously produce an earlier window that carried the same recognized WMI and was returned in preference to the true VIN. The check digit is deliberately worth less than a WMI hit because Thai-market and other non-North-American VINs do not populate position 9 — those still resolve on WMI alone.
+
+### DTC tab contrast and export
+
+- **Status text meets contrast requirements.** New `status_*` colour roles with light/dark variants, plus an `on_status` role for text on filled chips. The base `accent`/`danger`/`warning` swatches are tuned for fills and icons — `warning #D97706` on `surface2` is only ~3.4:1 — and were being used for 11–13 sp text throughout the DTC tab. The `on_status` role exists because the previous code used `@color/surface` for on-chip text, which inverts to near-black in `values-night`.
+- **The Export PDF button is visible and always present.** It was constructed with the default filled `MaterialButton` style while its stroke and text were set to primary, rendering the label invisible against its own background; it is now built with the outlined style. Export is also offered from every terminal DTC state — extracted as `addExportPdfButton()` and re-added on the all-clear card and after a code clear, both of which previously dropped it (a clean scan still carries readiness monitors, Mode 06 results and module lists worth exporting).
+
+### Internals
+
+- Retired the deprecated `AsyncTask` from the codebase: `DtcUpdater` and `TelemetryClient` now use named daemon single-thread executors with the same fire-and-forget, serialized semantics.
+- Added coverage for previously untested correctness-critical parsers — SAE J1979 UAS Mode 06 scaling (signed two's-complement decode and the unsigned-only −40 °C offset on UASID `0x16`), `FuelProperties` mode/code mapping with a `shortCode` round-trip guarantee that protects log replay, and the `FuelTrimResult` constructor contracts including the legacy status-string → verdict derivation. Full `testDebugUnitTest assembleDebug` green.
+
 ### AAD / MAD / BAD accuracy audit
 
 - **MAD and BAD are no longer fabricated when the vehicle exposes no MAP.** With neither PID `0x0B` nor the Engine Load synthesis available, manifold pressure was falling back to barometric pressure, so MAD silently became ambient density evaluated at IAT and BAD became a pure intake-heat artefact — a heat-soaked naturally aspirated intake reported a steady negative "boost" the engine never made. MAD, BAD, VE, TMF, DCAFR and the compressor/intercooler estimates now return absent rather than resolve themselves at ambient pressure.

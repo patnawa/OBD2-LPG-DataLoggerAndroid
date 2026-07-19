@@ -6,6 +6,17 @@
 
 ---
 
+## Unreleased — Protocol & VIN Detection Hardening
+
+- **Faster reconnects to a known car** — the app remembers which OBD protocol each adapter last locked on and seeds the next AUTO connect with it, skipping the 5–12 second bus search. A stale hint (adapter moved to another vehicle) falls back to the normal search automatically.
+- **Connects to adapters with a broken auto-search** — when automatic detection fails, the app now walks all nine protocols explicitly and locks the first bus that answers, rescuing common clone adapters that only work when the protocol is forced.
+- **Your real protocol on screen** — the home screen shows the bus the adapter actually locked on (e.g. `ISO_15765_4_CAN_11BIT_500`) instead of the word "AUTO".
+- **VIN detection on 29-bit vehicles** — the physical-addressing and UDS `22 F1 90` VIN fallbacks now cover 29-bit CAN (Isuzu trucks and several European makes), which previously got no fallback at all, and 29-bit addressing now also works on genuine ELM327 chips.
+- **More reliable VIN parsing** — candidate VINs are ranked by manufacturer code and ISO check digit, so noise around the real VIN can no longer win. Thai-market VINs, which omit the check digit, are unaffected.
+- **Readable DTC status text** — DTC status colours were retuned to meet contrast requirements in both light and dark themes, and the Export PDF Report button (previously invisible on its own background) now works and appears on every scan result, including a clean scan.
+
+---
+
 ## What's New in 3.30.0 — Transport Resilience & Toyota/vLinker Reliability
 
 - **Reconnects that survive real driving conditions** — foreground and background logging now use capped exponential backoff (1, 2, 4, 8, 16, then 30 seconds) until you press Stop, rather than giving up after a fixed retry count.
@@ -438,7 +449,7 @@ This calculates the net fuel trim difference between running on gas and the petr
 - **DTC Enrichment**: 157 codes with probable causes, repair suggestions, emissions flags, and drive cycles to clear
 - **Scan Comparison**: Shows NEW and CLEARED codes vs previous scan
 - **Clear DTCs**: Send Mode 04 to clear codes and reset MIL
-- **VIN reader**: Read 17-character VIN via Mode 09 PID 02 (multi-frame ISO-TP) — auto-detects diesel vehicles
+- **VIN reader**: Read 17-character VIN via Mode 09 PID 02 (multi-frame ISO-TP) — auto-detects diesel vehicles. Falls back through an extended-timeout retry, physical ECU addressing (11-bit `7E0`/`7E1` and 29-bit `18DA10F1`/`18DA18F1`), then UDS `22 F1 90`, for vehicles that do not answer the functional Mode 09 request; candidates are ranked by WMI and ISO check digit
 - **ECU Calibration**: Read Cal-ID and CVN via Mode 09 for emissions compliance
 - **Readiness monitors**: Check emission inspection readiness — 12 monitors including Particulate Filter
 
@@ -574,7 +585,8 @@ app/src/main/java/com/alpha/obd2logger/
 ├── BatteryTester.java       # Professional 12V battery + charging system tester
 ├── ApiServer.java           # NanoHTTPD REST API server
 ├── LoggerConfig.java        # Configuration data class
-├── ObdProtocol.java         # OBD protocol enum (ATSP values)
+├── ObdProtocol.java         # OBD protocol enum (ATSP values) + ATDPN resolution
+├── ProtocolMemory.java      # Remembers the locked protocol per adapter
 ├── TransportMode.java       # Transport enum (SIM/WIFI/SERIAL/BLE/USB/AUTO)
 ├── FuelMode.java            # Fuel enum (PETROL/LPG_CNG)
 └── LocaleHelper.java        # Thai/English locale switcher
