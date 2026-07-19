@@ -27,6 +27,51 @@ public enum ObdProtocol {
         return elmValue;
     }
 
+    public String getLabel() {
+        return label;
+    }
+
+    /**
+     * Resolve an ATDPN response to the protocol the adapter actually locked.
+     *
+     * <p>ATDPN ("Describe Protocol by Number") answers with the single protocol
+     * digit, prefixed with {@code A} when the adapter chose it via automatic
+     * search — {@code A6} means "auto-selected ISO 15765-4 CAN 11/500". The
+     * response may carry echo remnants, prompt characters or CR/LF depending on
+     * the adapter, so everything except the trailing code is ignored.
+     *
+     * @return the resolved protocol, or null when the response is empty,
+     *         unparseable, or reports 0 (no protocol selected yet). Never
+     *         returns {@link #AUTO} — the point of ATDPN is the concrete result.
+     */
+    public static ObdProtocol fromDpnResponse(String atDpnResponse) {
+        if (atDpnResponse == null) return null;
+        String cleaned = atDpnResponse.toUpperCase(java.util.Locale.US)
+                .replaceAll("[^0-9A-F]", "");
+        if (cleaned.isEmpty()) return null;
+        // The code is the LAST 1-2 chars: an echoed "ATDPN" prefix compacts to
+        // "ADN"-free hex ("AD") which must not be mistaken for the code itself,
+        // so scan from the end: optional 'A' auto marker + one protocol digit.
+        char code = cleaned.charAt(cleaned.length() - 1);
+        for (ObdProtocol protocol : values()) {
+            if (protocol != AUTO && protocol.elmValue.charAt(0) == code) {
+                return protocol;
+            }
+        }
+        return null;
+    }
+
+    /** True for the 29-bit ISO 15765-4 CAN variants (500k and 250k). */
+    public boolean isTwentyNineBitCan() {
+        return this == ISO_15765_4_CAN_29BIT_500 || this == ISO_15765_4_CAN_29BIT_250;
+    }
+
+    /** True for the 11-bit ISO 15765-4 CAN variants plus User1 CAN. */
+    public boolean isElevenBitCan() {
+        return this == ISO_15765_4_CAN_11BIT_500 || this == ISO_15765_4_CAN_11BIT_250
+                || this == USER1_CAN;
+    }
+
     @Override
     public String toString() {
         return label + " (AT SP " + elmValue + ")";

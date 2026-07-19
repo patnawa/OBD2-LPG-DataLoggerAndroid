@@ -28,6 +28,31 @@ public abstract class ElmDriver extends BaseDriver {
     protected boolean isStandard = true;
     protected String adapterDetails = "Generic ELM327";
 
+    /**
+     * The concrete protocol the adapter locked on (from ATDPN after the vehicle
+     * probe), or null before connection / when the adapter would not say.
+     * Unlike {@code config.obdProtocol}, this is never AUTO.
+     */
+    private volatile ObdProtocol detectedProtocol;
+
+    /**
+     * Explicit ATSP ladder walked when the adapter's automatic search fails.
+     * Many clones ship a broken ATSP0 implementation yet talk fine once the
+     * right bus is forced. Ordered by real-world likelihood: modern CAN first,
+     * then K-line, then the legacy J1850 pair.
+     */
+    private static final String[] PROTOCOL_LADDER = {
+            "6", // CAN 11-bit 500k — the vast majority of 2008+ vehicles
+            "8", // CAN 11-bit 250k
+            "7", // CAN 29-bit 500k
+            "9", // CAN 29-bit 250k
+            "5", // KWP2000 fast init — pre-CAN Toyota/Isuzu/European
+            "3", // ISO 9141-2 — older Asian imports
+            "4", // KWP2000 5-baud init
+            "1", // J1850 PWM — older Ford
+            "2", // J1850 VPW — older GM
+    };
+
     protected ElmDriver(LoggerConfig config) {
         super(config);
     }
@@ -104,7 +129,7 @@ public abstract class ElmDriver extends BaseDriver {
             // NO DATA. Device-specific optimization may shorten this later.
             sendCommand("ATAT1"); // Adaptive timing, conservative first lock
             sendCommand("ATST32"); // 200ms ECU response timeout
-            sendCommand("ATSP" + config.obdProtocol.getElmValue());
+            applyConfiguredProtocol();
 
             // Detect the vLinker device type. The firmware-specific timing
             // optimizations are applied AFTER the vehicle probe below, because
@@ -117,11 +142,20 @@ public abstract class ElmDriver extends BaseDriver {
             // vehicle connection; otherwise the UI can say "Connected" forever
             // while all gauges remain empty.
             if (!probeVehicle()) {
-                android.util.Log.e("OBD2Logger",
-                        "ELM327 adapter responded, but vehicle ECU did not answer PID 0100");
-                disconnect();
-                return false;
+                // Last resort for AUTO: many clones have a broken automatic
+                // search yet communicate fine once the right bus is forced.
+                if (config.obdProtocol != ObdProtocol.AUTO || !tryProtocolLadder()) {
+                    android.util.Log.e("OBD2Logger",
+                            "ELM327 adapter responded, but vehicle ECU did not answer PID 0100");
+                    disconnect();
+                    return false;
+                }
             }
+
+            // Ask the adapter which protocol it actually locked, remember it
+            // for this adapter so the next AUTO connect can try it first, and
+            // surface it alongside the adapter identification.
+            resolveDetectedProtocol();
 
             // Apply firmware-specific optimizations now that probeVehicle()
             // has finished restoring its conservative timing.
@@ -140,6 +174,94 @@ public abstract class ElmDriver extends BaseDriver {
      */
     public VLinkerOptimizer.DeviceType getVlinkerType() {
         return vlinkerType;
+    }
+
+    /**
+     * The concrete protocol the adapter locked on during connection, or null
+     * before connection / when the adapter would not report one. Never AUTO.
+     */
+    public ObdProtocol getDetectedProtocol() {
+        return detectedProtocol;
+    }
+
+    /**
+     * Select the configured protocol, seeding AUTO with this adapter's last
+     * locked bus when one is remembered.
+     *
+     * <p>{@code ATSP A6} means "automatic, but try protocol 6 first": a correct
+     * hint locks instantly, a stale one (adapter moved to a different car)
+     * falls back to the normal full search. Adapters too old for the
+     * {@code A<h>} form answer {@code ?}, in which case plain ATSP0 is issued.
+     */
+    private void applyConfiguredProtocol() {
+        if (config.obdProtocol == ObdProtocol.AUTO) {
+            String hint = ProtocolMemory.loadHint(config);
+            if (hint != null) {
+                String response = sendCommand("ATSPA" + hint);
+                if (response != null && !response.contains("?")) {
+                    return;
+                }
+            }
+        }
+        sendCommand("ATSP" + config.obdProtocol.getElmValue());
+    }
+
+    /**
+     * Read ATDPN once after a successful vehicle probe: cache the concrete
+     * protocol, persist it as this adapter's AUTO hint, and append it to the
+     * adapter details string shown in the UI.
+     */
+    private void resolveDetectedProtocol() {
+        ObdProtocol resolved = ObdProtocol.fromDpnResponse(sendCommand("ATDPN"));
+        detectedProtocol = resolved;
+        if (resolved == null) return;
+        ProtocolMemory.saveHint(config, resolved);
+        android.util.Log.i("OBD2Logger", "Protocol locked: " + resolved.getLabel());
+        if (adapterDetails != null && !adapterDetails.contains(resolved.getLabel())) {
+            adapterDetails = adapterDetails + " • " + resolved.getLabel();
+        }
+    }
+
+    /**
+     * Force each protocol in turn and probe PID 0100 — the rescue path when
+     * automatic search failed. {@code ATTP} (try protocol) is used so a
+     * non-responding bus does not overwrite the adapter's stored protocol;
+     * only a bus that actually answered is made current with ATSP.
+     *
+     * @return true when some bus answered 0100 and was selected with ATSP
+     */
+    private boolean tryProtocolLadder() {
+        int normalTimeoutMs = config.connectionTimeoutMs;
+        try {
+            sendCommand("ATAT0");
+            sendCommand("ATSTFF");
+            for (String code : PROTOCOL_LADDER) {
+                // K-line 5-baud init alone takes ~2.5 s before the first byte;
+                // CAN either answers quickly or not at all.
+                boolean kLine = "3".equals(code) || "4".equals(code) || "5".equals(code);
+                config.connectionTimeoutMs = Math.max(normalTimeoutMs, kLine ? 9_000 : 4_000);
+
+                String tryResponse = sendCommand("ATTP" + code);
+                if (tryResponse != null && tryResponse.contains("?")) {
+                    continue; // adapter does not implement this protocol
+                }
+                String response = sendCommand("0100");
+                if (PidAvailabilityChecker.hasPositiveResponse(response, "4100")) {
+                    sendCommand("ATSP" + code);
+                    android.util.Log.i("OBD2Logger",
+                            "Protocol ladder rescued connection on ATSP" + code);
+                    return true;
+                }
+            }
+            // Leave the adapter in automatic mode rather than on the last
+            // failed rung, so a later manual retry starts from a sane state.
+            sendCommand("ATSP0");
+            return false;
+        } finally {
+            config.connectionTimeoutMs = normalTimeoutMs;
+            sendCommand("ATAT1");
+            sendCommand("ATST32");
+        }
     }
 
     protected abstract String sendCommand(String command);
@@ -186,11 +308,15 @@ public abstract class ElmDriver extends BaseDriver {
      */
     String sendCommandRawToEcuWithExtendedTimeout(String command, String txHeader,
                                                    String rxFilter) {
-        if (txHeader == null || txHeader.length() != 3
-                || rxFilter == null || rxFilter.length() != 3) {
+        // 3 hex chars = 11-bit CAN ID, 8 hex chars = 29-bit (18DAxxF1 form).
+        if (!isPhysicalHeader(txHeader) || !isPhysicalHeader(rxFilter)) {
             return "";
         }
         return sendCommandRawWithExtendedTimeout(command, txHeader, rxFilter);
+    }
+
+    private static boolean isPhysicalHeader(String header) {
+        return header != null && (header.length() == 3 || header.length() == 8);
     }
 
     private String sendCommandRawWithExtendedTimeout(String command, String txHeader,
@@ -255,6 +381,23 @@ public abstract class ElmDriver extends BaseDriver {
         return false;
     }
 
+    /** True only when ATDPN reports an active 29-bit ISO 15765-4 CAN protocol. */
+    static boolean isTwentyNineBitCanProtocol(String atDpnResponse) {
+        if (atDpnResponse == null || atDpnResponse.isEmpty()) return false;
+        String[] lines = atDpnResponse.toUpperCase(java.util.Locale.US)
+                .replace('\r', '\n').split("\\n");
+        for (String line : lines) {
+            String code = line.replaceAll("[^0-9A-F]", "");
+            // 7/9 are the legislated 29-bit OBD CAN variants. J1939 ("A") is
+            // deliberately excluded — its addressing is not ISO-TP UDS.
+            if ("7".equals(code) || "9".equals(code)
+                    || "A7".equals(code) || "A9".equals(code)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Restore normal PID polling after a DTC/deep-bus scan. */
     void restorePollingState() {
         // ATD clears receive filters, custom headers, programmable-bus state,
@@ -268,7 +411,16 @@ public abstract class ElmDriver extends BaseDriver {
         sendCommand("ATCFC1");
         sendCommand("ATAT1");
         sendCommand("ATST32");
-        sendCommand("ATSP" + config.obdProtocol.getElmValue());
+        // Re-select the protocol that this session actually locked on rather
+        // than re-running a full AUTO search after every deep scan — and, for
+        // clones whose automatic search is broken, ATSP0 here would never
+        // reconnect at all.
+        ObdProtocol resolved = detectedProtocol;
+        if (config.obdProtocol == ObdProtocol.AUTO && resolved != null) {
+            sendCommand("ATSP" + resolved.getElmValue());
+        } else {
+            sendCommand("ATSP" + config.obdProtocol.getElmValue());
+        }
 
         probeVehicle();
         // Re-apply safe performance settings for known vLinker hardware —

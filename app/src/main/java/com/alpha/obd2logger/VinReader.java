@@ -46,26 +46,33 @@ public final class VinReader {
                 return vin;
             }
 
-            // Some Toyota ECUs answer Mode 01 through the standard functional
-            // address (7DF), yet only return their multi-frame VIN when the
-            // request is addressed to the engine ECU (7E0). Only attempt this
-            // on a confirmed 11-bit CAN bus: an ATSH7E0 command is not valid
-            // for a 29-bit or K-line vehicle.
+            // Some ECUs answer Mode 01 through the standard functional address,
+            // yet only return their multi-frame VIN when the request is
+            // addressed to the engine ECU directly. The physical address form
+            // depends on the active bus: 7E0/7E8 for 11-bit CAN, 18DAxxF1 for
+            // 29-bit. K-line vehicles get neither — physical CAN addressing is
+            // not valid there.
             String activeProtocol = elm.sendCommandRaw("ATDPN");
+            String[][] physicalEcus = null;
             if (ElmDriver.isElevenBitCanProtocol(activeProtocol)) {
+                physicalEcus = UDS_VIN_ECUS_11BIT;
+            } else if (ElmDriver.isTwentyNineBitCanProtocol(activeProtocol)) {
+                physicalEcus = UDS_VIN_ECUS_29BIT;
+            }
+            if (physicalEcus != null) {
                 response = elm.sendCommandRawToEcuWithExtendedTimeout(
-                        "0902", "7E0", "7E8");
+                        "0902", physicalEcus[0][0], physicalEcus[0][1]);
                 vin = parseVinResponse(response);
                 if (vin != null) {
                     return vin;
                 }
 
-                // Many Toyotas — Asian-market and pre-2016 models especially —
+                // Many vehicles — Asian-market and pre-2016 Toyotas especially —
                 // do not implement Mode 09 Info Type 02 on the OBD port at all.
                 // Their VIN is only readable through the UDS ReadDataByIdentifier
                 // service, DID F190. Ask the engine ECU, then the transmission
                 // ECU, which is where some models publish it instead.
-                for (String[] ecu : UDS_VIN_ECUS) {
+                for (String[] ecu : physicalEcus) {
                     response = elm.sendCommandRawToEcuWithExtendedTimeout(
                             "22F190", ecu[0], ecu[1]);
                     vin = parseUdsVinResponse(response);
@@ -78,10 +85,20 @@ public final class VinReader {
         return null;
     }
 
-    /** Engine and transmission ECU {tx header, rx filter} pairs for the UDS VIN read. */
-    private static final String[][] UDS_VIN_ECUS = {
+    /** Engine and transmission ECU {tx header, rx filter} pairs, 11-bit CAN. */
+    private static final String[][] UDS_VIN_ECUS_11BIT = {
             {"7E0", "7E8"},
             {"7E1", "7E9"},
+    };
+
+    /**
+     * Engine and transmission ECU pairs for 29-bit CAN (ISO 15765-4 extended
+     * addressing): request 18DA&lt;target&gt;F1, response 18DAF1&lt;target&gt;.
+     * 0x10 is the engine ECM, 0x18 the TCM.
+     */
+    private static final String[][] UDS_VIN_ECUS_29BIT = {
+            {"18DA10F1", "18DAF110"},
+            {"18DA18F1", "18DAF118"},
     };
 
     /**
@@ -126,7 +143,8 @@ public final class VinReader {
         Map<String, StringBuilder> perEcuPayloads =
                 Mode09Reader.compactIsoTpPayloads(response, servicePrefix);
 
-        String firstValid = null;
+        String best = null;
+        int bestScore = -1;
         for (StringBuilder payload : perEcuPayloads.values()) {
             String hex = payload.toString().toUpperCase(Locale.US);
             if (hex.length() < 10) {
@@ -142,22 +160,37 @@ public final class VinReader {
 
             String candidates = extractVinCharacters(payloadHex);
 
-            // Search every 17-character window, preferring a recognized WMI
-            // while still allowing valid makes absent from the local table.
+            // Search every 17-character window and keep the highest-ranked one.
+            // A strict '>' means ties resolve to the earliest window, matching
+            // the historical first-match behavior.
             for (int start = 0; start + 17 <= candidates.length(); start++) {
                 String candidate = candidates.substring(start, start + 17);
                 if (!VinBrandDetector.isStructurallyValid(candidate)) continue;
-                if (firstValid == null) firstValid = candidate;
-                if (VinBrandDetector.detect(candidate) != VinBrandDetector.Brand.UNKNOWN) {
-                    return candidate;
+                int score = rankCandidate(candidate);
+                if (score > bestScore) {
+                    best = candidate;
+                    bestScore = score;
                 }
             }
         }
-        if (firstValid != null) return firstValid;
-
         // Reject anything shorter/invalid — don't propagate garbage VINs
         // that would create wrong folder names or break PID caching.
-        return null;
+        return best;
+    }
+
+    /**
+     * Rank a structurally valid 17-character window. A recognized WMI is the
+     * strongest signal (2 points): stray ASCII around the true VIN cannot fake
+     * it. A valid ISO check digit adds 1 more — it separates the real VIN from
+     * a shifted window over the same bytes. The check digit alone is only worth
+     * 1 point because most non-North-American VINs (including the Thai market)
+     * do not populate position 9, so its absence must never outweigh a WMI hit.
+     */
+    private static int rankCandidate(String candidate) {
+        int score = 0;
+        if (VinBrandDetector.detect(candidate) != VinBrandDetector.Brand.UNKNOWN) score += 2;
+        if (VinBrandDetector.hasValidCheckDigit(candidate)) score += 1;
+        return score;
     }
 
     private static String extractVinCharacters(String payloadHex) {

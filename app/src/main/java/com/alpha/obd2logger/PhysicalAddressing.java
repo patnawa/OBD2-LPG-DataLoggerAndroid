@@ -60,7 +60,16 @@ final class PhysicalAddressing {
 
         String setHeader = driver.sendCommandRaw("ATSH" + txHeader);
         if (setHeader != null && setHeader.contains("?")) {
-            return false;
+            // STN and most clone firmware accept the whole 29-bit ID as one
+            // 8-digit ATSH, but a genuine ELM327 rejects it: the datasheet form
+            // is ATCP for the priority byte plus a 6-digit ATSH for the lower
+            // 24 bits. Retry that split before declaring the bus unusable.
+            if (txHeader.length() != 8) return false;
+            String setPriority = driver.sendCommandRaw("ATCP" + txHeader.substring(0, 2));
+            if (setPriority != null && setPriority.contains("?")) return false;
+            pause(settleMs);
+            setHeader = driver.sendCommandRaw("ATSH" + txHeader.substring(2));
+            if (setHeader != null && setHeader.contains("?")) return false;
         }
         pause(settleMs);
         driver.sendCommandRaw("ATCRA" + rxFilter);
@@ -76,7 +85,13 @@ final class PhysicalAddressing {
         if (driver == null) return;
         driver.sendCommandRaw("ATCRA");
         driver.sendCommandRaw("ATAR");
-        driver.sendCommandRaw("ATSH" + functionalHeaderFor(txHeader));
+        String functional = functionalHeaderFor(txHeader);
+        String set = driver.sendCommandRaw("ATSH" + functional);
+        if (set != null && set.contains("?") && functional.length() == 8) {
+            // Genuine ELM327: 29-bit functional header via ATCP + 6-digit ATSH.
+            driver.sendCommandRaw("ATCP" + functional.substring(0, 2));
+            driver.sendCommandRaw("ATSH" + functional.substring(2));
+        }
     }
 
     /**

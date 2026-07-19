@@ -4662,7 +4662,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (txtHomeProtocol != null) {
             if (state == 2) {
                 LoggerConfig cfg = activeInProcessConfig != null ? activeInProcessConfig : readConfigFromUi();
-                txtHomeProtocol.setText(cfg.obdProtocol.name());
+                // Prefer the protocol the adapter actually locked on — "AUTO"
+                // tells the user nothing about their car's bus.
+                BaseDriver drv = getActiveDriver();
+                ObdProtocol resolved = drv instanceof ElmDriver
+                        ? ((ElmDriver) drv).getDetectedProtocol() : null;
+                txtHomeProtocol.setText(resolved != null ? resolved.name() : cfg.obdProtocol.name());
             } else if (state == 0) {
                 txtHomeProtocol.setText("---");
                 if (txtHomeVin != null) txtHomeVin.setText("---");
