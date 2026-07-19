@@ -2057,7 +2057,7 @@
                                 android:layout_weight="1"
                                 android:gravity="center"
                                 android:text="@string/dtc_stored_zero"
-                                android:textColor="@color/danger"
+                                android:textColor="@color/status_danger"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
 
@@ -2068,7 +2068,7 @@
                                 android:layout_weight="1"
                                 android:gravity="center"
                                 android:text="@string/dtc_pending_zero"
-                                android:textColor="@color/warning"
+                                android:textColor="@color/status_warning"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
 
@@ -2134,8 +2134,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="14dp"
                     android:text="@string/clear_dtc"
-                    android:textColor="@color/danger"
-                    app:strokeColor="@color/danger"
+                    android:textColor="@color/status_danger"
+                    app:strokeColor="@color/status_danger"
                     app:cornerRadius="12dp" />
 
                 <!-- Vehicle info group: VIN + Readiness -->

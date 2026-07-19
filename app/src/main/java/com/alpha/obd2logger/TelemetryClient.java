@@ -2,7 +2,6 @@ package com.alpha.obd2logger;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
 import android.util.Log;
 
 import org.json.JSONObject;
@@ -42,6 +41,17 @@ import java.util.Set;
 public final class TelemetryClient {
     private static final String TAG = "TelemetryClient";
 
+    /**
+     * Serial background executor for issue reporting — replaces the deprecated
+     * AsyncTask.execute (same fire-and-forget, one-at-a-time semantics).
+     */
+    private static final java.util.concurrent.ExecutorService NETWORK_EXECUTOR =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "TelemetryClient-report");
+                t.setDaemon(true);
+                return t;
+            });
+
     private static final String GITHUB_API =
             "https://api.github.com/repos/patnawa/OBD2-LPG-DataLoggerAndroid/issues";
 
@@ -71,7 +81,7 @@ public final class TelemetryClient {
             return;
         }
 
-        AsyncTask.execute(() -> {
+        NETWORK_EXECUTOR.execute(() -> {
             try {
                 String title = "[DTC] " + code + " — " + brandName;
 

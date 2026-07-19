@@ -5754,7 +5754,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         BaseDriver activeDriver = getActiveDriver();
         if (activeDriver == null || !activeDriver.isConnected()) {
             dtcStatusText.setText("Not connected. Start logging first.");
-            dtcStatusText.setTextColor(getColorCompat(R.color.danger));
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_danger));
             return;
         }
         setDtcButtonsEnabled(false);
@@ -5837,7 +5837,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     if (dtcScanTracker != null) dtcScanTracker.hide();
                     dtcStatusText.setText("DTC scan failed: "
                             + (e.getMessage() != null ? e.getMessage() : "adapter did not respond"));
-                    dtcStatusText.setTextColor(getColorCompat(R.color.danger));
+                    dtcStatusText.setTextColor(getColorCompat(R.color.status_danger));
                     showDtcErrorState();
                 });
             } finally {
@@ -5861,7 +5861,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         if (stored.isEmpty() && pending.isEmpty() && permanent.isEmpty()) {
             dtcStatusText.setText(getString(R.string.no_dtcs));
-            dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_accent));
 
             // ── Green checkmark card for clean state ──
             float density = getResources().getDisplayMetrics().density;
@@ -5879,7 +5879,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             com.google.android.material.card.MaterialCardView.LayoutParams.MATCH_PARENT,
                             com.google.android.material.card.MaterialCardView.LayoutParams.WRAP_CONTENT);
             cleanCard.setLayoutParams(cleanLp);
-            cleanCard.setCardBackgroundColor(getColorCompat(R.color.accent));
+            cleanCard.setCardBackgroundColor(getColorCompat(R.color.status_accent));
             cleanCard.setCardElevation(0);
             cleanCard.setRadius((int)(12 * density));
             cleanCard.setStrokeWidth(0);
@@ -5892,15 +5892,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             TextView cleanTitle = new TextView(this);
             cleanTitle.setText("All Clear!");
-            cleanTitle.setTextColor(getColorCompat(R.color.surface));
+            cleanTitle.setTextColor(getColorCompat(R.color.on_status));
             cleanTitle.setTextSize(18);
             cleanTitle.setTypeface(null, android.graphics.Typeface.BOLD);
             cleanTitle.setGravity(android.view.Gravity.CENTER);
 
             TextView cleanDesc = new TextView(this);
             cleanDesc.setText("No diagnostic trouble codes found.\nVehicle is operating normally.");
-            cleanDesc.setTextColor(getColorCompat(R.color.surface));
-            cleanDesc.setAlpha(0.85f);
+            cleanDesc.setTextColor(getColorCompat(R.color.on_status));
+            cleanDesc.setAlpha(0.92f);
             cleanDesc.setTextSize(13);
             cleanDesc.setGravity(android.view.Gravity.CENTER);
             cleanDesc.setPadding(0, padSmall, 0, 0);
@@ -5909,18 +5909,19 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             cleanLayout.addView(cleanTitle);
             cleanLayout.addView(cleanDesc);
             dtcListContainer.addView(cleanCard);
+            addExportPdfButton();
             return;
         }
 
         dtcStatusText.setText(String.format(Locale.US, getString(R.string.dtc_count), total));
-        dtcStatusText.setTextColor(getColorCompat(R.color.danger));
+        dtcStatusText.setTextColor(getColorCompat(R.color.status_danger));
 
         // --- Scan Comparison (NEW / CLEARED) ---
         if (comparison != null && comparison.hasPreviousScan()) {
             if (comparison.hasChanges()) {
                 TextView compView = new TextView(this);
                 compView.setText("🔄 " + comparison.getSummary());
-                compView.setTextColor(getColorCompat(R.color.warning));
+                compView.setTextColor(getColorCompat(R.color.status_warning));
                 compView.setTextSize(14);
                 compView.setPadding(0, 8, 0, 8);
                 compView.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -5928,11 +5929,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
                 // Show NEW codes prominently
                 if (!comparison.getNewCodes().isEmpty()) {
-                    addDtcSection("🆕 NEW Since Last Scan", comparison.getNewCodes(), R.color.danger, "🆕");
+                    addDtcSection("🆕 NEW Since Last Scan", comparison.getNewCodes(), R.color.status_danger, "🆕");
                 }
                 // Show CLEARED codes
                 if (!comparison.getClearedCodes().isEmpty()) {
-                    addDtcSection("✅ CLEARED Since Last Scan", comparison.getClearedCodes(), R.color.accent, "✅");
+                    addDtcSection("✅ CLEARED Since Last Scan", comparison.getClearedCodes(), R.color.status_accent, "✅");
                 }
             } else if (comparison.getPersistingCodes().size() > 0) {
                 TextView compView = new TextView(this);
@@ -5945,13 +5946,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
 
         if (!stored.isEmpty()) {
-            addDtcSection("Stored DTCs (Active)", stored, R.color.danger, "🔍");
+            addDtcSection("Stored DTCs (Active)", stored, R.color.status_danger, "🔍");
         }
         if (!pending.isEmpty()) {
-            addDtcSection("Pending DTCs (Warm-up)", pending, R.color.warning, "⏳");
+            addDtcSection("Pending DTCs (Warm-up)", pending, R.color.status_warning, "⏳");
         }
         if (!permanent.isEmpty()) {
-            addDtcSection("Permanent DTCs (History)", permanent, R.color.primary, "🔒");
+            addDtcSection("Permanent DTCs (History)", permanent, R.color.status_primary, "🔒");
         }
 
         // --- Per-DTC Freeze Frames ---
@@ -6117,15 +6118,33 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             dtcListContainer.addView(m09Layout);
         }
 
-        // Add Export PDF Report button at the bottom of list if DTCs or freeze frame exist
+        addExportPdfButton();
+    }
+
+    /**
+     * Appends the "Export PDF Report" button to the end of the DTC list.
+     *
+     * Called from every terminal state of {@link #displayDtcs} — including the
+     * "All Clear!" path. A clean scan still carries readiness monitors, Mode 06
+     * results, module lists and drive-cycle guidance, all of which
+     * {@link DtcReportExporter} renders, so a zero-DTC result is still worth
+     * exporting. Note that any code calling dtcListContainer.removeAllViews()
+     * drops this button and is responsible for re-adding it.
+     */
+    private void addExportPdfButton() {
+        // Must be constructed with the outlined style. The default MaterialButton
+        // style is Widget.Material3.Button (filled, background = ?colorPrimary), and
+        // the stroke/text colors below are primary — which rendered the label
+        // invisible against its own background.
         com.google.android.material.button.MaterialButton exportBtn =
-                new com.google.android.material.button.MaterialButton(this);
+                new com.google.android.material.button.MaterialButton(this, null,
+                        com.google.android.material.R.attr.materialButtonOutlinedStyle);
         exportBtn.setText("📤 Export PDF Report");
         exportBtn.setTextSize(13);
         exportBtn.setCornerRadius(dpPx(12));
         exportBtn.setStrokeWidth((int)(1 * getResources().getDisplayMetrics().density));
-        exportBtn.setStrokeColor(getColorStateListCompat(R.color.primary));
-        exportBtn.setTextColor(getColorCompat(R.color.primary));
+        exportBtn.setStrokeColor(getColorStateListCompat(R.color.status_primary));
+        exportBtn.setTextColor(getColorCompat(R.color.status_primary));
         exportBtn.setOnClickListener(v -> exportDtcReport());
         LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -6217,7 +6236,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         TextView headerView = new TextView(this);
         headerView.setText("🔌 Protocols Scanned: " + protocolStatuses.size() + "  |  "
             + respondedCnt + " responded  |  Total DTCs: " + totalFound);
-        headerView.setTextColor(getColorCompat(R.color.accent));
+        headerView.setTextColor(getColorCompat(R.color.status_accent));
         headerView.setTextSize(13);
         headerView.setTypeface(null, android.graphics.Typeface.BOLD);
         sectionHeader.addView(headerView);
@@ -6227,12 +6246,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (lastDtcScanWasDeep) {
             TextView deepBadge = new TextView(this);
             deepBadge.setText("🔬 DEEP SCAN — All Protocols");
-            deepBadge.setTextColor(getColorCompat(R.color.surface));
+            deepBadge.setTextColor(getColorCompat(R.color.on_status));
             deepBadge.setTextSize(11);
             deepBadge.setTypeface(null, android.graphics.Typeface.BOLD);
             deepBadge.setBackgroundResource(R.drawable.bg_dtc_badge_pill);
             deepBadge.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
-                    getColorCompat(R.color.warning)));
+                    getColorCompat(R.color.status_warning)));
             deepBadge.setPadding(dpToPx(12), dpToPx(4), dpToPx(12), dpToPx(4));
             LinearLayout.LayoutParams deepLp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -6331,12 +6350,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         BaseDriver activeDriver = getActiveDriver();
         if (activeDriver == null || !activeDriver.isConnected()) {
             dtcStatusText.setText("Not connected. Start logging first.");
-            dtcStatusText.setTextColor(getColorCompat(R.color.danger));
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_danger));
             return;
         }
         setDtcButtonsEnabled(false);
         dtcStatusText.setText("🔬 Deep Scan: probing all protocols...");
-        dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+        dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
         showDtcScanningState();
         if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
         if (dtcScanTracker != null) dtcScanTracker.reset();
@@ -6407,7 +6426,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     if (dtcScanTracker != null) dtcScanTracker.hide();
                     dtcStatusText.setText("Deep scan failed: "
                             + (e.getMessage() != null ? e.getMessage() : "adapter did not respond"));
-                    dtcStatusText.setTextColor(getColorCompat(R.color.danger));
+                    dtcStatusText.setTextColor(getColorCompat(R.color.status_danger));
                     showDtcErrorState();
                 });
             } finally {
@@ -6496,7 +6515,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // Count badge
         TextView badgeView = new TextView(this);
         badgeView.setText(String.valueOf(codes.size()));
-        badgeView.setTextColor(getColorCompat(R.color.surface)); // white text on colored badge
+        badgeView.setTextColor(getColorCompat(R.color.on_status));
         badgeView.setTextSize(11);
         badgeView.setTypeface(null, android.graphics.Typeface.BOLD);
         badgeView.setPadding(dpToPx(8), dpToPx(2), dpToPx(8), dpToPx(2));
@@ -6531,13 +6550,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             int severityColor = getColorCompat(R.color.text);
             switch (dtc.getSeverity()) {
                 case CRITICAL:
-                    severityColor = getColorCompat(R.color.danger);
+                    severityColor = getColorCompat(R.color.status_danger);
                     break;
                 case WARNING:
-                    severityColor = getColorCompat(R.color.warning);
+                    severityColor = getColorCompat(R.color.status_warning);
                     break;
                 case INFO:
-                    severityColor = getColorCompat(R.color.accent);
+                    severityColor = getColorCompat(R.color.status_accent);
                     break;
             }
 
@@ -6594,7 +6613,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         if (fi < enrich.getFixes().size() - 1) fixesSb.append("\n");
                     }
                     fixesView.setText(fixesSb.toString());
-                    fixesView.setTextColor(getColorCompat(R.color.accent));
+                    fixesView.setTextColor(getColorCompat(R.color.status_accent));
                     fixesView.setTextSize(11);
                     fixesView.setPadding(0, dpToPx(2), 0, dpToPx(4));
                     detailsLayout.addView(fixesView);
@@ -6712,7 +6731,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void showDtcScanningState() {
         if (dtcHealthTitle != null) {
             dtcHealthTitle.setText(R.string.dtc_health_scanning);
-            dtcHealthTitle.setTextColor(getColorCompat(R.color.primary));
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.status_primary));
         }
         if (dtcHealthDetail != null) dtcHealthDetail.setText(R.string.dtc_health_scanning_desc);
     }
@@ -6720,7 +6739,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void showDtcErrorState() {
         if (dtcHealthTitle != null) {
             dtcHealthTitle.setText(R.string.dtc_health_failed);
-            dtcHealthTitle.setTextColor(getColorCompat(R.color.danger));
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.status_danger));
         }
         if (dtcHealthDetail != null) dtcHealthDetail.setText(R.string.dtc_health_failed_desc);
     }
@@ -6754,15 +6773,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (total == 0) {
             dtcHealthTitle.setText(R.string.dtc_health_clear);
             dtcHealthDetail.setText(R.string.dtc_health_clear_desc);
-            dtcHealthTitle.setTextColor(getColorCompat(R.color.accent));
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.status_accent));
         } else if (critical) {
             dtcHealthTitle.setText(R.string.dtc_health_critical);
             dtcHealthDetail.setText(R.string.dtc_health_critical_desc);
-            dtcHealthTitle.setTextColor(getColorCompat(R.color.danger));
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.status_danger));
         } else {
             dtcHealthTitle.setText(R.string.dtc_health_attention);
             dtcHealthDetail.setText(R.string.dtc_health_attention_desc);
-            dtcHealthTitle.setTextColor(getColorCompat(R.color.warning));
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.status_warning));
         }
     }
 
@@ -6807,20 +6826,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         dtcStatusText.setText(retained == 0
                                 ? "Stored DTCs cleared and verified. Readiness monitors were reset."
                                 : "Stored DTCs cleared. Permanent codes remain until the ECU verifies the repair.");
-                        dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+                        dtcStatusText.setTextColor(getColorCompat(R.color.status_accent));
                         dtcListContainer.removeAllViews();
                         if (!remainingPending.isEmpty()) {
-                            addDtcSection("Pending DTCs", remainingPending, R.color.warning, "PENDING");
+                            addDtcSection("Pending DTCs", remainingPending, R.color.status_warning, "PENDING");
                         }
                         if (!remainingPermanent.isEmpty()) {
-                            addDtcSection("Permanent DTCs", remainingPermanent, R.color.primary, "PERM");
+                            addDtcSection("Permanent DTCs", remainingPermanent, R.color.status_primary, "PERM");
                         }
+                        // removeAllViews() above dropped the export button — re-add it
+                        // (see addExportPdfButton javadoc: post-clear state is still
+                        // worth exporting as proof of the clear).
+                        addExportPdfButton();
                         updateDtcHealthSummary(java.util.Collections.emptyList(), remainingPending,
                                 remainingPermanent);
                         updateDtcBadge(0, remainingPending.size(), remainingPermanent.size());
                     } else {
                         dtcStatusText.setText("Failed to clear DTCs.");
-                        dtcStatusText.setTextColor(getColorCompat(R.color.danger));
+                        dtcStatusText.setTextColor(getColorCompat(R.color.status_danger));
                     }
                 });
             } finally {
@@ -6854,10 +6877,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         headerVin.setText("VIN: " + vin);
                         updateHeaderVehicle(vin);
                         dtcStatusText.setText("VIN: " + vin);
-                        dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+                        dtcStatusText.setTextColor(getColorCompat(R.color.status_accent));
                     } else {
                         dtcStatusText.setText("VIN not available. Some vehicles don't support Mode 09.");
-                        dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+                        dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
                         promptForManualVin();
                     }
                 });
@@ -6905,13 +6928,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     }
                     displayVehicleInformation(info);
                     dtcStatusText.setText(R.string.vehicle_info_complete);
-                    dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+                    dtcStatusText.setTextColor(getColorCompat(R.color.status_accent));
                 });
             } catch (Exception e) {
                 Log.w("MainActivity", "Vehicle information read failed", e);
                 runOnUiThread(() -> {
                     dtcStatusText.setText("Vehicle information read failed.");
-                    dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+                    dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
                 });
             } finally {
                 if (!wasPaused) isPaused = false;
@@ -7002,13 +7025,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 runOnUiThread(() -> {
                     displayFordModuleLiveData(snapshot, brandName, hasDirectModuleProfile);
                     dtcStatusText.setText(R.string.ford_module_live_data_complete);
-                    dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+                    dtcStatusText.setTextColor(getColorCompat(R.color.status_accent));
                 });
             } catch (Exception e) {
                 Log.w("MainActivity", "Ford module live-data read failed", e);
                 runOnUiThread(() -> {
                     dtcStatusText.setText("Module data read failed.");
-                    dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+                    dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
                 });
             } finally {
                 if (!wasPaused) isPaused = false;
@@ -7193,7 +7216,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     String entered = ManualVinStore.normalize(input.getText().toString());
                     if (entered == null) {
                         dtcStatusText.setText("That is not a valid 17-character VIN.");
-                        dtcStatusText.setTextColor(getColorCompat(R.color.warning));
+                        dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
                         return;
                     }
                     applyManualVin(entered);
@@ -7214,7 +7237,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
 
         dtcStatusText.setText("VIN set manually: " + vin);
-        dtcStatusText.setTextColor(getColorCompat(R.color.accent));
+        dtcStatusText.setTextColor(getColorCompat(R.color.status_accent));
 
         // Reuses the Mode 09 success path: header/home VIN, brand DTC database,
         // the DTC vehicle card and the diesel auto-detect heuristic.

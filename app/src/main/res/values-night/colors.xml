@@ -25,6 +25,15 @@
     <color name="gauge_needle_tip">#FFFFFF</color>
     <color name="gauge_shadow">#40000000</color>
 
+    <!-- Status colors — see values/colors.xml for the contract. On dark surfaces the
+         bright swatches already read well as text, so they stay bright here and
+         on_status flips to near-black to sit on top of them. -->
+    <color name="status_accent">#55E98A</color>
+    <color name="status_danger">#FF6B80</color>
+    <color name="status_warning">#FFBF3F</color>
+    <color name="status_primary">#16C7FF</color>
+    <color name="on_status">#08131F</color>
+
     <!-- Material 3 Color Roles (Dark) -->
     <color name="colorPrimaryContainer">#003543</color>
     <color name="colorOnPrimaryContainer">#E0F7FA</color>

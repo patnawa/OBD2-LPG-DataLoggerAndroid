@@ -2,7 +2,6 @@ package com.alpha.obd2logger;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -56,6 +55,17 @@ import java.util.Map;
 public final class DtcUpdater {
     private static final String TAG = "DtcUpdater";
 
+    /**
+     * Serial background executor for OTA checks — replaces the deprecated
+     * AsyncTask.execute (same fire-and-forget, one-at-a-time semantics).
+     */
+    private static final java.util.concurrent.ExecutorService NETWORK_EXECUTOR =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "DtcUpdater-ota");
+                t.setDaemon(true);
+                return t;
+            });
+
     /** Repo path for OTA updates. Edit this if the repo URL changes. */
     private static final String GITHUB_RAW_BASE =
             "https://raw.githubusercontent.com/patnawa/OBD2-LPG-DataLoggerAndroid/main/dtc_updates/";
@@ -86,7 +96,7 @@ public final class DtcUpdater {
             return;
         }
 
-        AsyncTask.execute(() -> {
+        NETWORK_EXECUTOR.execute(() -> {
             try {
                 String manifestJson = downloadText(GITHUB_RAW_BASE + MANIFEST_FILE);
                 if (manifestJson == null) {

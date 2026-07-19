@@ -24,6 +24,20 @@
     <color name="gauge_needle_tip">#FFFFFF</color>
     <color name="gauge_shadow">#40000000</color>
 
+    <!--
+      Status colors, readable in both roles: as text on surface/surface2, and as a
+      filled chip background under @color/on_status. The base accent/danger/warning
+      swatches above are tuned for fills and icons, not for 11-13sp text — e.g.
+      warning #D97706 on surface2 is only ~3.4:1. These darkened variants clear 4.5:1.
+    -->
+    <color name="status_accent">#047857</color>
+    <color name="status_danger">#B91C1C</color>
+    <color name="status_warning">#B45309</color>
+    <color name="status_primary">#1D4ED8</color>
+    <!-- Text/icon color on top of a status_* filled chip. Do NOT use @color/surface
+         here: it inverts to near-black in values-night. -->
+    <color name="on_status">#FFFFFF</color>
+
     <!-- Material 3 Color Roles (Light) -->
     <color name="colorPrimaryContainer">#EFF6FF</color>
     <color name="colorOnPrimaryContainer">#1E40AF</color>
