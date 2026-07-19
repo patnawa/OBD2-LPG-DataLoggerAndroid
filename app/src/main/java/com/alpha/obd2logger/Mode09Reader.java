@@ -1,283 +1,201 @@
 package com.alpha.obd2logger;
 
-import android.util.Log;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
- * Reads OBD2 Mode 09 (Vehicle Information) data:
- *   - PID 02: Calibration ID (Cal-ID) — ECU software identifier
- *   - PID 04: Calibration Verification Number (CVN) — ECU software checksum
- *   - PID 06: In-Use Performance Tracking (optional)
+ * Read-only SAE J1979 Mode 09 vehicle information reader.
  *
- * Cal-ID and CVN are critical for:
- *   - Emissions inspections (smog checks)
- *   - Detecting ECU reflashing/tuning
- *   - Verifying correct ECU software version for the vehicle
- *
- * Mode 09 response format:
- *   Request: 0902 (for Cal-ID)
- *   Response: 49 02 [count] [Cal-ID1...] [Cal-ID2...] ...
- *
- * Each Cal-ID is 16 ASCII characters (4 groups of 4).
- * CVN is 4 bytes hex per ECU.
+ * <p>Mode 09 Info Type 02 is the VIN and is handled by {@link VinReader}.
+ * This class handles the support bitmap (00), calibration ID (04), and
+ * calibration verification number (06). It never writes to an ECU.</p>
  */
 public final class Mode09Reader {
 
-    private static final String TAG = "Mode09Reader";
-
-    private Mode09Reader() {}
+    private Mode09Reader() {
+    }
 
     /**
-     * Read all calibration IDs from the vehicle.
-     * @return list of CalID entries (one per ECU)
+     * Read the Mode 09 support bitmap. Returned values are Mode 09 information
+     * types, not Mode 01 PIDs; for example 02 is VIN, 04 is Cal-ID and 06 is CVN.
      */
+    public static List<Integer> readSupportedInfoTypes(BaseDriver driver) {
+        if (driver == null || !driver.isConnected()) return new ArrayList<>();
+        return parseSupportedInfoTypes(driver.sendCommandRaw("0900"));
+    }
+
+    /** Parse an Info Type 00 support bitmap from an ELM-style response. */
+    static List<Integer> parseSupportedInfoTypes(String response) {
+        List<Integer> supported = new ArrayList<>();
+        boolean[] advertised = new boolean[33];
+        for (StringBuilder payloadValue : compactMode09Payloads(response).values()) {
+            String payload = payloadValue.toString();
+            int headerIndex = payload.indexOf("4900");
+            if (headerIndex < 0 || payload.length() < headerIndex + 12) continue;
+            String bitmap = payload.substring(headerIndex + 4, headerIndex + 12);
+            try {
+                for (int byteIndex = 0; byteIndex < 4; byteIndex++) {
+                    int value = Integer.parseInt(
+                            bitmap.substring(byteIndex * 2, byteIndex * 2 + 2), 16);
+                    for (int bit = 0; bit < 8; bit++) {
+                        if ((value & (1 << (7 - bit))) != 0) {
+                            advertised[byteIndex * 8 + bit + 1] = true;
+                        }
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+                // Ignore only the malformed ECU payload; another ECU may be valid.
+            }
+        }
+        for (int infoType = 1; infoType < advertised.length; infoType++) {
+            if (advertised[infoType]) supported.add(infoType);
+        }
+        return supported;
+    }
+
+    /** Read all calibration IDs advertised by the ECU(s), Mode 09 Info Type 04. */
     public static List<CalIdEntry> readCalIds(BaseDriver driver) {
-        List<CalIdEntry> entries = new ArrayList<>();
-        if (driver == null || !driver.isConnected()) {
-            return entries;
-        }
-
-        String response = driver.sendCommandRaw("0902");
-        return parseCalIds(response);
+        if (driver == null || !driver.isConnected()) return new ArrayList<>();
+        return parseCalIds(driver.sendCommandRaw("0904"));
     }
 
-    /**
-     * Read all Calibration Verification Numbers (CVNs).
-     */
+    /** Read all calibration verification numbers, Mode 09 Info Type 06. */
     public static List<CvnEntry> readCvns(BaseDriver driver) {
-        List<CvnEntry> entries = new ArrayList<>();
-        if (driver == null || !driver.isConnected()) {
-            return entries;
-        }
-
-        String response = driver.sendCommandRaw("0904");
-        return parseCvns(response);
+        if (driver == null || !driver.isConnected()) return new ArrayList<>();
+        return parseCvns(driver.sendCommandRaw("0906"));
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    //  In-Use Performance Tracking (Mode 09 PID 0D-0F)
-    // ═══════════════════════════════════════════════════════════════
-
     /**
-     * In-Use Performance Tracking data.
-     * These counters tell you how many times each readiness monitor
-     * has run and completed since DTCs were last cleared.
-     *
-     * This is the ONLY definitive way to confirm that drive cycles
-     * have actually completed the required monitors — the readiness
-     * status (PID 01) only shows current state, not history.
+     * Read-only evidence that helps explain readiness after DTCs were cleared.
+     * These standard values belong to Mode 01, rather than Mode 09.
      */
     public static final class InUsePerformance {
-        public final int ignitionCycles;       // PID 0D: total ignitions since clear
-        public final int obdTripCount;          // PID 0E: trips with complete driving cycle
-        public final int distanceSinceClearKm;  // PID 0F (part 1): distance in km
-        public final int timeSinceClearMin;     // PID 0F (part 2): engine run time in min
+        public final int warmUpCyclesSinceClear; // Mode 01 PID 30
+        public final int distanceSinceClearKm;   // Mode 01 PID 31
+        public final int timeSinceClearMin;      // Mode 01 PID 4E
 
-        public InUsePerformance(int ignitionCycles, int obdTripCount,
-                               int distanceSinceClearKm, int timeSinceClearMin) {
-            this.ignitionCycles = ignitionCycles;
-            this.obdTripCount = obdTripCount;
+        public InUsePerformance(int warmUpCyclesSinceClear,
+                                int distanceSinceClearKm, int timeSinceClearMin) {
+            this.warmUpCyclesSinceClear = warmUpCyclesSinceClear;
             this.distanceSinceClearKm = distanceSinceClearKm;
             this.timeSinceClearMin = timeSinceClearMin;
         }
 
         @Override
         public String toString() {
-            return String.format(java.util.Locale.US,
-                "Ignitions: %d, OBD Trips: %d, Distance: %d km, Engine Time: %d min",
-                ignitionCycles, obdTripCount, distanceSinceClearKm, timeSinceClearMin);
+            return String.format(Locale.US,
+                    "Warm-ups: %d, Distance: %d km, Engine Time: %d min",
+                    warmUpCyclesSinceClear, distanceSinceClearKm, timeSinceClearMin);
         }
     }
 
-    /**
-     * Read Mode 09 PID 0D — Ignition cycle counter since DTCs cleared.
-     * Counts total number of engine starts since the last Mode 04 clear.
-     */
-    public static int readIgnitionCycleCounter(BaseDriver driver) {
-        if (driver == null || !driver.isConnected()) return -1;
-        String response = driver.sendCommandRaw("090D");
-        return parseSingleValue(response, "490D");
+    /** Read Mode 01 PID 30: warm-up cycles since DTCs were cleared. */
+    public static int readWarmUpCyclesSinceClear(BaseDriver driver) {
+        return readMode01UnsignedValue(driver, "0130", "4130", 1);
     }
 
-    /**
-     * Read Mode 09 PID 0E — OBD trip count (completed drive cycles).
-     * A "trip" = engine start → drive → engine off with specific conditions met.
-     */
-    public static int readObdTripCount(BaseDriver driver) {
-        if (driver == null || !driver.isConnected()) return -1;
-        String response = driver.sendCommandRaw("090E");
-        return parseSingleValue(response, "490E");
+    /** Read Mode 01 PID 31: distance travelled since DTCs were cleared. */
+    public static int readDistanceSinceClear(BaseDriver driver) {
+        return readMode01UnsignedValue(driver, "0131", "4131", 2);
     }
 
-    /**
-     * Read Mode 09 PID 0F — Distance traveled and engine run time since DTC clear.
-     * Returns a 2-value array: [0] = distance in km, [1] = time in minutes.
-     * Some vehicles return only distance; others return both.
-     */
-    public static int[] readDistanceAndTimeSinceClear(BaseDriver driver) {
-        int[] result = new int[]{-1, -1};
-        if (driver == null || !driver.isConnected()) return result;
-        String response = driver.sendCommandRaw("090F");
-        if (response == null || response.isEmpty()) return result;
-
-        String hex = response.replace("\r", "\n").replace("\r\n", "\n");
-        StringBuilder hexBuf = new StringBuilder();
-        for (String line : hex.split("\n")) {
-            hexBuf.append(cleanMode09Line(line));
-        }
-        String allHex = hexBuf.toString();
-        int idx = allHex.indexOf("490F");
-        if (idx < 0) return result;
-
-        String data = allHex.substring(idx + 4);
-        try {
-            // First 2 bytes = distance in km (16-bit unsigned)
-            if (data.length() >= 4) {
-                result[0] = Integer.parseInt(data.substring(0, 4), 16);
-            }
-            // Next 2 bytes = time in minutes (16-bit unsigned)
-            if (data.length() >= 8) {
-                result[1] = Integer.parseInt(data.substring(4, 8), 16);
-            }
-        } catch (NumberFormatException ignored) {}
-        return result;
+    /** Read Mode 01 PID 4E: engine run time since DTCs were cleared. */
+    public static int readTimeSinceClear(BaseDriver driver) {
+        return readMode01UnsignedValue(driver, "014E", "414E", 2);
     }
 
-    /**
-     * Read all in-use performance tracking data at once.
-     */
+    /** Read all standard evidence-since-clear values at once. */
     public static InUsePerformance readInUsePerformance(BaseDriver driver) {
-        int ignitions = readIgnitionCycleCounter(driver);
-        int trips = readObdTripCount(driver);
-        int[] distTime = readDistanceAndTimeSinceClear(driver);
-        return new InUsePerformance(ignitions, trips, distTime[0], distTime[1]);
+        return new InUsePerformance(
+                readWarmUpCyclesSinceClear(driver),
+                readDistanceSinceClear(driver),
+                readTimeSinceClear(driver));
     }
 
-    /**
-     * Parse a single 2-byte value from Mode 09 response.
-     */
-    private static int parseSingleValue(String response, String header) {
-        if (response == null || response.isEmpty()) return -1;
-        String hex = response.replace("\r", "\n").replace("\r\n", "\n");
-        StringBuilder hexBuf = new StringBuilder();
-        for (String line : hex.split("\n")) {
-            hexBuf.append(cleanMode09Line(line));
-        }
-        String allHex = hexBuf.toString();
-        int idx = allHex.indexOf(header);
-        if (idx < 0) return -1;
-        String data = allHex.substring(idx + header.length());
-        if (data.length() < 4) return -1;
+    private static int readMode01UnsignedValue(BaseDriver driver, String command,
+                                                String expectedHeader, int byteCount) {
+        if (driver == null || !driver.isConnected()) return -1;
+        return parseMode01UnsignedValue(driver.sendCommandRaw(command), expectedHeader, byteCount);
+    }
+
+    static int parseMode01UnsignedValue(String response, String expectedHeader, int byteCount) {
+        if (response == null || response.isEmpty() || byteCount < 1 || byteCount > 2) return -1;
+        String allHex = response.toUpperCase(Locale.US).replaceAll("[^0-9A-F]", "");
+        int index = allHex.indexOf(expectedHeader);
+        int dataStart = index + expectedHeader.length();
+        int dataLength = byteCount * 2;
+        if (index < 0 || allHex.length() < dataStart + dataLength) return -1;
         try {
-            return Integer.parseInt(data.substring(0, 4), 16);
-        } catch (NumberFormatException e) {
+            return Integer.parseInt(allHex.substring(dataStart, dataStart + dataLength), 16);
+        } catch (NumberFormatException ignored) {
             return -1;
         }
     }
 
     /**
-     * Parse Mode 09 PID 02 (Cal-ID) response.
-     *
-     * Format: 49 02 [count] [16 ASCII chars per Cal-ID]
-     * Multiple Cal-IDs are returned if multiple ECUs respond.
-     * The count byte indicates number of Cal-IDs.
-     *
-     * ELM327 may return:
-     *   49 02 01 00 33 39 30 33 36 2D 53 31 42 2D 41 45 32
-     *   = header "4902", count=01, Cal-ID in ASCII: "39036-S1B-AE2" (padded with 00)
+     * Parse Mode 09 Info Type 04 data. Each Cal-ID is 16 ASCII bytes and the
+     * first byte after the response header states how many IDs are present.
      */
     public static List<CalIdEntry> parseCalIds(String response) {
         List<CalIdEntry> entries = new ArrayList<>();
-        if (response == null || response.isEmpty()) return entries;
-
-        // Normalize
-        String hex = response.replace("\r", "\n").replace("\r\n", "\n");
-        StringBuilder hexBuf = new StringBuilder();
-        for (String line : hex.split("\\n")) {
-            hexBuf.append(cleanMode09Line(line));
-        }
-
-        String allHex = hexBuf.toString();
-        int headerIdx = allHex.indexOf("4902");
-        if (headerIdx < 0) return entries;
-
-        String data = allHex.substring(headerIdx + 4);
-        if (data.length() < 2) return entries;
-
-        // Count byte
-        int count;
-        try {
-            count = Integer.parseInt(data.substring(0, 2), 16);
-        } catch (NumberFormatException e) {
-            return entries;
-        }
-
-        // Each Cal-ID is 16 ASCII characters = 32 hex chars
-        int pos = 2;
-        for (int i = 0; i < count && pos + 32 <= data.length(); i++) {
-            String calIdHex = data.substring(pos, pos + 32);
-            StringBuilder calId = new StringBuilder();
-            for (int j = 0; j < 32; j += 2) {
-                int ch = Integer.parseInt(calIdHex.substring(j, j + 2), 16);
-                if (ch >= 0x20 && ch <= 0x7E) { // printable ASCII
-                    calId.append((char) ch);
-                }
+        int ecuIndex = 0;
+        for (StringBuilder payloadValue : compactMode09Payloads(response).values()) {
+            String payload = payloadValue.toString();
+            int headerIndex = payload.indexOf("4904");
+            if (headerIndex < 0) continue;
+            String data = payload.substring(headerIndex + 4);
+            if (data.length() < 2) continue;
+            int count;
+            try {
+                count = Integer.parseInt(data.substring(0, 2), 16);
+            } catch (NumberFormatException ignored) {
+                continue;
             }
-            String id = calId.toString().trim();
-            if (!id.isEmpty()) {
-                entries.add(new CalIdEntry(i, id));
-            }
-            pos += 32;
-        }
 
+            int position = 2;
+            for (int i = 0; i < count && position + 32 <= data.length(); i++) {
+                String value = asciiFromHex(data.substring(position, position + 32));
+                if (!value.isEmpty()) entries.add(new CalIdEntry(ecuIndex, value));
+                position += 32;
+            }
+            ecuIndex++;
+        }
         return entries;
     }
 
     /**
-     * Parse Mode 09 PID 04 (CVN) response.
-     *
-     * Format: 49 04 [count] [4 bytes CVN per ECU]
-     * The CVN is a 4-byte hex value displayed as 8 hex characters.
+     * Parse Mode 09 Info Type 06 data. Each CVN is four bytes and the first
+     * byte after the response header states how many CVNs are present.
      */
     public static List<CvnEntry> parseCvns(String response) {
         List<CvnEntry> entries = new ArrayList<>();
-        if (response == null || response.isEmpty()) return entries;
+        int ecuIndex = 0;
+        for (StringBuilder payloadValue : compactMode09Payloads(response).values()) {
+            String payload = payloadValue.toString();
+            int headerIndex = payload.indexOf("4906");
+            if (headerIndex < 0) continue;
+            String data = payload.substring(headerIndex + 4);
+            if (data.length() < 2) continue;
+            int count;
+            try {
+                count = Integer.parseInt(data.substring(0, 2), 16);
+            } catch (NumberFormatException ignored) {
+                continue;
+            }
 
-        String hex = response.replace("\r", "\n").replace("\r\n", "\n");
-        StringBuilder hexBuf = new StringBuilder();
-        for (String line : hex.split("\\n")) {
-            hexBuf.append(cleanMode09Line(line));
+            int position = 2;
+            for (int i = 0; i < count && position + 8 <= data.length(); i++) {
+                entries.add(new CvnEntry(ecuIndex, data.substring(position, position + 8)));
+                position += 8;
+            }
+            ecuIndex++;
         }
-
-        String allHex = hexBuf.toString();
-        int headerIdx = allHex.indexOf("4904");
-        if (headerIdx < 0) return entries;
-
-        String data = allHex.substring(headerIdx + 4);
-        if (data.length() < 2) return entries;
-
-        int count;
-        try {
-            count = Integer.parseInt(data.substring(0, 2), 16);
-        } catch (NumberFormatException e) {
-            return entries;
-        }
-
-        // Each CVN is 4 bytes = 8 hex chars
-        int pos = 2;
-        for (int i = 0; i < count && pos + 8 <= data.length(); i++) {
-            String cvn = data.substring(pos, pos + 8);
-            entries.add(new CvnEntry(i, cvn));
-            pos += 8;
-        }
-
         return entries;
     }
 
-    /**
-     * Calibration ID entry.
-     */
     public static final class CalIdEntry {
         private final int ecuIndex;
         private final String calId;
@@ -296,9 +214,6 @@ public final class Mode09Reader {
         }
     }
 
-    /**
-     * Calibration Verification Number entry.
-     */
     public static final class CvnEntry {
         private final int ecuIndex;
         private final String cvn;
@@ -317,57 +232,117 @@ public final class Mode09Reader {
         }
     }
 
-    private static String cleanMode09Line(String line) {
-        String trimmed = line.trim().toUpperCase();
-        if (trimmed.isEmpty()) return "";
-
-        // 1. Remove status and diagnostics messages
-        if (trimmed.contains("SEARCHING") || trimmed.contains("BUS") || trimmed.contains("ERR") || trimmed.contains("STOPPED") || trimmed.contains("NODATA") || trimmed.contains("NO DATA")) {
-            return "";
-        }
-
-        // 2. Remove line headers like "0:", "1:", "0A:" from consecutive ELM327 lines
-        trimmed = trimmed.replaceAll("^[0-9A-F]+:\\s*", "");
-
-        // 3. Remove CAN IDs and PCI bytes with spaces
-        // Check for 11-bit CAN ID (e.g. "7E8 ")
-        if (trimmed.matches("^[0-9A-F]{3}\\s+.*")) {
-            trimmed = trimmed.substring(4); // strip "7E8 "
-            // Strip PCI frame headers:
-            if (trimmed.matches("^10\\s+[0-9A-F]{2}\\s+.*")) {
-                trimmed = trimmed.replaceAll("^10\\s+[0-9A-F]{2}\\s*", ""); // First frame "10 14 "
-            } else if (trimmed.matches("^(0[0-9A-F]|2[0-9A-F])\\s+.*")) {
-                trimmed = trimmed.replaceAll("^(0[0-9A-F]|2[0-9A-F])\\s*", ""); // Consecutive/Single frame "21 "
+    private static String asciiFromHex(String hex) {
+        StringBuilder value = new StringBuilder();
+        for (int i = 0; i + 2 <= hex.length(); i += 2) {
+            try {
+                int character = Integer.parseInt(hex.substring(i, i + 2), 16);
+                if (character >= 0x20 && character <= 0x7E) value.append((char) character);
+            } catch (NumberFormatException ignored) {
+                return "";
             }
         }
-        // Check for 29-bit CAN ID (e.g. "18DAF110 ")
-        else if (trimmed.matches("^[0-9A-F]{8}\\s+.*")) {
-            trimmed = trimmed.substring(9); // strip "18DAF110 "
-            // Strip PCI frame headers:
-            if (trimmed.matches("^10\\s+[0-9A-F]{2}\\s+.*")) {
-                trimmed = trimmed.replaceAll("^10\\s+[0-9A-F]{2}\\s*", "");
-            } else if (trimmed.matches("^(0[0-9A-F]|2[0-9A-F])\\s+.*")) {
-                trimmed = trimmed.replaceAll("^(0[0-9A-F]|2[0-9A-F])\\s*", "");
+        return value.toString().trim();
+    }
+
+    /** Reassemble Mode 09 ISO-TP payloads independently for every responding ECU. */
+    private static Map<String, StringBuilder> compactMode09Payloads(String response) {
+        return compactIsoTpPayloads(response, "49");
+    }
+
+    /**
+     * Reassemble ISO-TP payloads independently for every responding ECU.
+     *
+     * <p>A functional (7DF) request is answered by every ECU that implements the
+     * service, and the adapter emits their frames interleaved. Concatenating the
+     * lines in arrival order splices two vehicles' worth of bytes together, so
+     * frames are grouped by their source CAN header before reassembly.</p>
+     *
+     * @param responsePrefix the positive-response service byte in hex, e.g.
+     *                       {@code "49"} for Mode 09 or {@code "62"} for UDS
+     *                       ReadDataByIdentifier. Used to recognise a payload
+     *                       that begins without a PCI byte.
+     */
+    static Map<String, StringBuilder> compactIsoTpPayloads(String response, String responsePrefix) {
+        Map<String, StringBuilder> payloads = new LinkedHashMap<>();
+        if (response == null || response.isEmpty()) return payloads;
+        String normalized = response.replace("\r\n", "\n").replace('\r', '\n');
+        for (String sourceLine : normalized.split("\n")) {
+            String line = sourceLine.trim().toUpperCase(Locale.US);
+            if (line.isEmpty() || line.contains("SEARCHING") || line.contains("BUS")
+                    || line.contains("ERR") || line.contains("STOPPED")
+                    || line.contains("NODATA") || line.contains("NO DATA")) {
+                continue;
             }
+
+            // ELM headers-off multi-frame form: "0: 49 04 ...", "1: ...".
+            boolean hadFrameIndex = line.matches("^[0-9A-F]+:.*");
+            line = line.replaceFirst("^[0-9A-F]+:\\s*", "");
+            if (line.isEmpty()) continue;
+
+            String ecuKey = null;
+            String frameHex = null;
+            String[] tokens = line.split("\\s+");
+            if (tokens.length > 1 && isCanHeader(tokens[0])) {
+                ecuKey = tokens[0];
+                StringBuilder bytes = new StringBuilder();
+                for (int i = 1; i < tokens.length; i++) bytes.append(tokens[i]);
+                frameHex = bytes.toString().replaceAll("[^0-9A-F]", "");
+            } else {
+                String compact = line.replaceAll("[^0-9A-F]", "");
+                // A numbered continuation such as "2: 45 32 ..." can begin
+                // with three valid hex digits by coincidence. It is not a CAN
+                // header unless the header was a distinct token above.
+                String[] split = hadFrameIndex ? null : splitUnspacedCanFrame(compact, responsePrefix);
+                if (split != null) {
+                    ecuKey = split[0];
+                    frameHex = split[1];
+                } else {
+                    ecuKey = "HEADERS_OFF";
+                    frameHex = compact;
+                }
+            }
+
+            if (frameHex.length() <= 3 && !frameHex.startsWith(responsePrefix)) continue;
+            if (!"HEADERS_OFF".equals(ecuKey)) frameHex = stripIsoTpPci(frameHex, responsePrefix);
+            payloads.computeIfAbsent(ecuKey, key -> new StringBuilder()).append(frameHex);
         }
+        return payloads;
+    }
 
-        // 4. Remove CAN IDs and PCI bytes without spaces (Format B)
-        // Strip 11-bit CAN ID (7E8) + PCI byte (1014, 21, 03)
-        trimmed = trimmed.replaceAll("^7E[8-F]10[0-9A-F]{2}", "");
-        trimmed = trimmed.replaceAll("^7E[8-F][0-2][0-9A-F]", "");
-        // Strip 29-bit CAN ID (18DAF1xx) + PCI byte (1014, 21, 03)
-        trimmed = trimmed.replaceAll("^18DAF1[0-9A-F]{2}10[0-9A-F]{2}", "");
-        trimmed = trimmed.replaceAll("^18DAF1[0-9A-F]{2}[0-2][0-9A-F]", "");
-
-        // 5. Remove any non-hex characters
-        trimmed = trimmed.replaceAll("[^0-9A-Fa-f]", "");
-
-        // 6. Ignore multi-frame total-length lines (e.g. "014") — otherwise
-        //    their 3 hex chars are prepended and nibble-misalign the payload.
-        if (trimmed.length() <= 3 && !trimmed.startsWith("49")) {
-            return "";
+    private static boolean isCanHeader(String token) {
+        if (token == null || !token.matches("[0-9A-F]{3}|[0-9A-F]{8}")) return false;
+        try {
+            if (token.length() == 3) {
+                int id = Integer.parseInt(token, 16);
+                return id > 0 && id <= 0x7FF;
+            }
+            Long.parseLong(token, 16);
+            return true;
+        } catch (NumberFormatException ignored) {
+            return false;
         }
+    }
 
-        return trimmed;
+    private static String[] splitUnspacedCanFrame(String compact, String responsePrefix) {
+        if (compact == null || compact.length() < 7 || compact.startsWith(responsePrefix)) return null;
+        int headerLength = compact.startsWith("18") && compact.length() >= 12 ? 8 : 3;
+        if (compact.length() <= headerLength + 2) return null;
+        String header = compact.substring(0, headerLength);
+        if (!isCanHeader(header)) return null;
+        String frame = compact.substring(headerLength);
+        if (!(frame.startsWith(responsePrefix) || frame.matches("^[012][0-9A-F].*"))) return null;
+        return new String[] { header, frame };
+    }
+
+    private static String stripIsoTpPci(String frameHex, String responsePrefix) {
+        if (frameHex == null || frameHex.length() < 2 || frameHex.startsWith(responsePrefix)) {
+            return frameHex == null ? "" : frameHex;
+        }
+        char type = frameHex.charAt(0);
+        if (type == '0') return frameHex.substring(2);
+        if (type == '1' && frameHex.length() >= 4) return frameHex.substring(4);
+        if (type == '2') return frameHex.substring(2);
+        return frameHex;
     }
 }

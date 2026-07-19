@@ -1,5 +1,8 @@
 package com.alpha.obd2logger;
 
+import java.util.Locale;
+import java.util.Map;
+
 /**
  * Reads the Vehicle Identification Number (VIN) via OBD2 Mode 09 PID 02.
  *
@@ -52,11 +55,34 @@ public final class VinReader {
             if (ElmDriver.isElevenBitCanProtocol(activeProtocol)) {
                 response = elm.sendCommandRawToEcuWithExtendedTimeout(
                         "0902", "7E0", "7E8");
-                return parseVinResponse(response);
+                vin = parseVinResponse(response);
+                if (vin != null) {
+                    return vin;
+                }
+
+                // Many Toyotas — Asian-market and pre-2016 models especially —
+                // do not implement Mode 09 Info Type 02 on the OBD port at all.
+                // Their VIN is only readable through the UDS ReadDataByIdentifier
+                // service, DID F190. Ask the engine ECU, then the transmission
+                // ECU, which is where some models publish it instead.
+                for (String[] ecu : UDS_VIN_ECUS) {
+                    response = elm.sendCommandRawToEcuWithExtendedTimeout(
+                            "22F190", ecu[0], ecu[1]);
+                    vin = parseUdsVinResponse(response);
+                    if (vin != null) {
+                        return vin;
+                    }
+                }
             }
         }
         return null;
     }
+
+    /** Engine and transmission ECU {tx header, rx filter} pairs for the UDS VIN read. */
+    private static final String[][] UDS_VIN_ECUS = {
+            {"7E0", "7E8"},
+            {"7E1", "7E9"},
+    };
 
     /**
      * Parse the VIN from a Mode 09 PID 02 response.
@@ -65,69 +91,66 @@ public final class VinReader {
      * Each frame starts with {@code 49 02 0X} where {@code 0X} is the
      * frame sequence number (01 = first, 02 = second, etc.).
      *
-     * <p><b>Bug fixed here:</b> The old code found only the <i>first</i>
-     * {@code 4902} and read ASCII to the end of the concatenated hex.
-     * On a 2-frame VIN response (the common case), the second frame's
-     * {@code 49 02 02} header bytes polluted the ASCII extraction,
-     * producing garbage that was rejected downstream.
-     *
-     * <p>The fix strips the {@code 49 02 0X} header from <i>every</i> frame
-     * before concatenating the payload, then extracts printable ASCII.
+     * <p>Frames are grouped by their source CAN header before reassembly, then
+     * the {@code 49 02 0X} bytes are stripped and the remainder read as ASCII.
      */
     static String parseVinResponse(String response) {
+        return parseVinPayloads(response, "49", "4902[0-9A-F]{2}");
+    }
+
+    /**
+     * Parse the VIN from a UDS ReadDataByIdentifier (service 22) response for
+     * DID F190. The positive response is {@code 62 F1 90} followed by the 17
+     * VIN characters, carried over ISO-TP exactly like the Mode 09 reply.
+     */
+    static String parseUdsVinResponse(String response) {
+        return parseVinPayloads(response, "62", "62F190");
+    }
+
+    /**
+     * @param servicePrefix positive-response service byte, used to recognise a
+     *                      payload that starts without an ISO-TP PCI byte
+     * @param headerPattern regex for the service/identifier bytes to strip out
+     *                      before the payload is read as ASCII
+     */
+    private static String parseVinPayloads(String response, String servicePrefix,
+                                           String headerPattern) {
         if (response == null || response.isEmpty()) {
             return null;
         }
 
-        String[] lines = response.replace("\r\n", "\n").replace('\r', '\n').split("\n");
-        StringBuilder sb = new StringBuilder();
-        for (String line : lines) {
-            sb.append(cleanVinLine(line));
-        }
+        // A functional Mode 09 request is answered by every ECU that implements
+        // it, and the adapter interleaves their frames. Reassembling per source
+        // CAN header keeps one ECU's consecutive frames from being spliced into
+        // another's, which previously produced a garbage 17-character window.
+        Map<String, StringBuilder> perEcuPayloads =
+                Mode09Reader.compactIsoTpPayloads(response, servicePrefix);
 
-        String hex = sb.toString().toUpperCase();
-        if (hex.length() < 10) {
-            return null;
-        }
-
-        // Strip all "4902XX" frame headers (49=mode, 02=PID, XX=frame index).
-        // After cleanVinLine, the hex stream looks like:
-        //   "490201414243...490202444546...4902034748..."
-        // We want just the payload bytes: "414243...444546...4748..."
-        String payloadHex = hex;
-        // Remove all occurrences of "4902" followed by a 2-char frame index
-        payloadHex = payloadHex.replaceAll("4902[0-9A-F]{2}", "");
-
-        if (payloadHex.length() < 2) {
-            return null;
-        }
-
-        // Extract printable ASCII characters from the payload hex bytes
-        StringBuilder vin = new StringBuilder();
-        for (int i = 0; i + 2 <= payloadHex.length(); i += 2) {
-            String byteHex = payloadHex.substring(i, i + 2);
-            try {
-                int charVal = Integer.parseInt(byteHex, 16);
-                // ISO 3779 VIN alphabet: uppercase letters/digits, excluding I/O/Q.
-                if (isVinCharacter(charVal)) {
-                    vin.append((char) charVal);
-                }
-            } catch (NumberFormatException ignored) {
-            }
-        }
-
-        String candidates = vin.toString();
-
-        // More than one ECU may answer a functional request. Search every
-        // 17-character window, preferring a recognized WMI while still allowing
-        // valid makes that are not in the local brand table.
         String firstValid = null;
-        for (int start = 0; start + 17 <= candidates.length(); start++) {
-            String candidate = candidates.substring(start, start + 17);
-            if (!VinBrandDetector.isStructurallyValid(candidate)) continue;
-            if (firstValid == null) firstValid = candidate;
-            if (VinBrandDetector.detect(candidate) != VinBrandDetector.Brand.UNKNOWN) {
-                return candidate;
+        for (StringBuilder payload : perEcuPayloads.values()) {
+            String hex = payload.toString().toUpperCase(Locale.US);
+            if (hex.length() < 10) {
+                continue;
+            }
+            // Strip the service/identifier bytes, leaving only VIN characters.
+            // No byte of the pattern is itself a legal VIN character, so an
+            // unanchored replace cannot eat real payload.
+            String payloadHex = hex.replaceAll(headerPattern, "");
+            if (payloadHex.length() < 2) {
+                continue;
+            }
+
+            String candidates = extractVinCharacters(payloadHex);
+
+            // Search every 17-character window, preferring a recognized WMI
+            // while still allowing valid makes absent from the local table.
+            for (int start = 0; start + 17 <= candidates.length(); start++) {
+                String candidate = candidates.substring(start, start + 17);
+                if (!VinBrandDetector.isStructurallyValid(candidate)) continue;
+                if (firstValid == null) firstValid = candidate;
+                if (VinBrandDetector.detect(candidate) != VinBrandDetector.Brand.UNKNOWN) {
+                    return candidate;
+                }
             }
         }
         if (firstValid != null) return firstValid;
@@ -137,63 +160,24 @@ public final class VinReader {
         return null;
     }
 
+    private static String extractVinCharacters(String payloadHex) {
+        StringBuilder vin = new StringBuilder();
+        for (int i = 0; i + 2 <= payloadHex.length(); i += 2) {
+            try {
+                int charVal = Integer.parseInt(payloadHex.substring(i, i + 2), 16);
+                if (isVinCharacter(charVal)) {
+                    vin.append((char) charVal);
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return vin.toString();
+    }
+
     private static boolean isVinCharacter(int value) {
         return (value >= '0' && value <= '9')
                 || (value >= 'A' && value <= 'Z'
                 && value != 'I' && value != 'O' && value != 'Q');
     }
 
-    private static String cleanVinLine(String line) {
-        String trimmed = line.trim().toUpperCase();
-        if (trimmed.isEmpty()) return "";
-
-        // 1. Remove status and diagnostics messages
-        if (trimmed.contains("SEARCHING") || trimmed.contains("BUS") || trimmed.contains("ERR") || trimmed.contains("STOPPED") || trimmed.contains("NODATA") || trimmed.contains("NO DATA")) {
-            return "";
-        }
-
-        // 2. Remove line headers like "0:", "1:", "0A:" from consecutive ELM327 lines
-        trimmed = trimmed.replaceAll("^[0-9A-F]+:\\s*", "");
-
-        // 3. Remove CAN IDs and PCI bytes with spaces
-        // Check for 11-bit CAN ID (e.g. "7E8 ")
-        if (trimmed.matches("^[0-9A-F]{3}\\s+.*")) {
-            trimmed = trimmed.substring(4); // strip "7E8 "
-            // Strip PCI frame headers:
-            if (trimmed.matches("^10\\s+[0-9A-F]{2}\\s+.*")) {
-                trimmed = trimmed.replaceAll("^10\\s+[0-9A-F]{2}\\s*", ""); // First frame "10 14 "
-            } else if (trimmed.matches("^(0[0-9A-F]|2[0-9A-F])\\s+.*")) {
-                trimmed = trimmed.replaceAll("^(0[0-9A-F]|2[0-9A-F])\\s*", ""); // Consecutive/Single frame "21 "
-            }
-        }
-        // Check for 29-bit CAN ID (e.g. "18DAF110 ")
-        else if (trimmed.matches("^[0-9A-F]{8}\\s+.*")) {
-            trimmed = trimmed.substring(9); // strip "18DAF110 "
-            // Strip PCI frame headers:
-            if (trimmed.matches("^10\\s+[0-9A-F]{2}\\s+.*")) {
-                trimmed = trimmed.replaceAll("^10\\s+[0-9A-F]{2}\\s*", "");
-            } else if (trimmed.matches("^(0[0-9A-F]|2[0-9A-F])\\s+.*")) {
-                trimmed = trimmed.replaceAll("^(0[0-9A-F]|2[0-9A-F])\\s*", "");
-            }
-        }
-
-        // 4. Remove CAN IDs and PCI bytes without spaces (Format B)
-        // Strip 11-bit CAN ID (7E8) + PCI byte (1014, 21, 03)
-        trimmed = trimmed.replaceAll("^7E[8-F]10[0-9A-F]{2}", "");
-        trimmed = trimmed.replaceAll("^7E[8-F][0-2][0-9A-F]", "");
-        // Strip 29-bit CAN ID (18DAF1xx) + PCI byte (1014, 21, 03)
-        trimmed = trimmed.replaceAll("^18DAF1[0-9A-F]{2}10[0-9A-F]{2}", "");
-        trimmed = trimmed.replaceAll("^18DAF1[0-9A-F]{2}[0-2][0-9A-F]", "");
-
-        // 5. Remove any non-hex characters
-        trimmed = trimmed.replaceAll("[^0-9A-Fa-f]", "");
-
-        // 6. Ignore multi-frame total-length lines (e.g. "014") — otherwise
-        //    their 3 hex chars are prepended and nibble-misalign the payload.
-        if (trimmed.length() <= 3 && !trimmed.startsWith("49")) {
-            return "";
-        }
-
-        return trimmed;
-    }
 }

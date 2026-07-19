@@ -149,4 +149,114 @@ public class VinReaderTest {
             return "OK\r>";
         }
     }
+
+    @Test
+    public void parsesVinWhenSeveralEcusAnswerTheFunctionalRequest() {
+        // 7E8 (engine) and 7EA both answer a functional 0902. The adapter emits
+        // their frames interleaved; grouping by CAN header keeps them separate.
+        String response = "7E8 10 14 49 02 01 4D 52 30\r"
+                + "7EA 10 14 49 02 01 4D 52 30\r"
+                + "7E8 21 46 5A 32 39 47 39 30\r"
+                + "7EA 21 46 5A 32 39 47 39 30\r"
+                + "7E8 22 31 32 33 34 35 36 37\r"
+                + "7EA 22 31 32 33 34 35 36 37\r>";
+        assertEquals("MR0FZ29G901234567", VinReader.parseVinResponse(response));
+    }
+
+    @Test
+    public void parsesUdsReadDataByIdentifierVin() {
+        String response = "7E8 10 14 62 F1 90 4D 52 30\r"
+                + "7E8 21 46 5A 32 39 47 39 30\r"
+                + "7E8 22 31 32 33 34 35 36 37\r>";
+        assertEquals("MR0FZ29G901234567", VinReader.parseUdsVinResponse(response));
+    }
+
+    @Test
+    public void vinFallsBackToUdsWhenToyotaDoesNotImplementMode09() {
+        LoggerConfig config = new LoggerConfig();
+        UdsOnlyVinDriver driver = new UdsOnlyVinDriver(config);
+
+        assertEquals("MR0FZ29G901234567", VinReader.readVin(driver));
+        assertEquals(3, driver.mode09Attempts);
+        assertTrue(driver.sent.contains("22F190"));
+        assertTrue(driver.sent.contains("ATSH7E0"));
+        // Polling state is restored after the UDS request too.
+        assertTrue(driver.sent.contains("ATSH7DF"));
+    }
+
+    @Test
+    public void udsVinTriesTransmissionEcuWhenEngineEcuRejectsTheIdentifier() {
+        LoggerConfig config = new LoggerConfig();
+        TransmissionUdsVinDriver driver = new TransmissionUdsVinDriver(config);
+
+        assertEquals("MR0FZ29G901234567", VinReader.readVin(driver));
+        assertTrue(driver.sent.contains("ATSH7E0"));
+        assertTrue(driver.sent.contains("ATSH7E1"));
+        assertTrue(driver.sent.contains("ATCRA7E9"));
+    }
+
+    /** Answers Mode 01 but has no Mode 09 at all; VIN only via UDS 22 F1 90. */
+    private static final class UdsOnlyVinDriver extends ElmDriver {
+        final List<String> sent = new ArrayList<>();
+        int mode09Attempts;
+
+        UdsOnlyVinDriver(LoggerConfig config) {
+            super(config);
+            connected = true;
+        }
+
+        @Override public boolean connect() { return true; }
+        @Override public void disconnect() { connected = false; }
+        @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+
+        @Override
+        protected String sendCommand(String command) {
+            sent.add(command);
+            if ("ATDPN".equals(command)) return "A6\r>";
+            if ("0902".equals(command)) {
+                mode09Attempts++;
+                return "NO DATA\r>";
+            }
+            if ("22F190".equals(command)) {
+                return "7E8 10 14 62 F1 90 4D 52 30\r"
+                        + "7E8 21 46 5A 32 39 47 39 30\r"
+                        + "7E8 22 31 32 33 34 35 36 37\r>";
+            }
+            return "OK\r>";
+        }
+    }
+
+    /** Engine ECU returns a negative response; the TCM holds the VIN. */
+    private static final class TransmissionUdsVinDriver extends ElmDriver {
+        final List<String> sent = new ArrayList<>();
+        private String header = "7DF";
+
+        TransmissionUdsVinDriver(LoggerConfig config) {
+            super(config);
+            connected = true;
+        }
+
+        @Override public boolean connect() { return true; }
+        @Override public void disconnect() { connected = false; }
+        @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+
+        @Override
+        protected String sendCommand(String command) {
+            sent.add(command);
+            if (command.startsWith("ATSH")) {
+                header = command.substring(4);
+                return "OK\r>";
+            }
+            if ("ATDPN".equals(command)) return "A6\r>";
+            if ("0902".equals(command)) return "NO DATA\r>";
+            if ("22F190".equals(command)) {
+                // 7F 22 31 = requestOutOfRange from the engine ECU.
+                if (!"7E1".equals(header)) return "7E8 03 7F 22 31\r>";
+                return "7E9 10 14 62 F1 90 4D 52 30\r"
+                        + "7E9 21 46 5A 32 39 47 39 30\r"
+                        + "7E9 22 31 32 33 34 35 36 37\r>";
+            }
+            return "OK\r>";
+        }
+    }
 }
