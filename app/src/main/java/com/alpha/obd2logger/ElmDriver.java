@@ -209,12 +209,8 @@ public abstract class ElmDriver extends BaseDriver {
             // on adapter-specific automatic formatting (0:/1:/2: lines).
             sendCommand("ATH1");
             sendCommand("ATS1");
-            if (physicalAddressing) {
-                String headerResult = sendCommand("ATSH" + txHeader);
-                if (headerResult == null || headerResult.contains("?")) {
-                    return "";
-                }
-                sendCommand("ATCRA" + rxFilter);
+            if (physicalAddressing && !PhysicalAddressing.applyTarget(this, txHeader, rxFilter)) {
+                return "";
             }
             sendCommand("ATAT0");
             sendCommand("ATSTFF"); // 0xFF * 4 ms = about 1.02 s maximum ECU wait
@@ -225,11 +221,9 @@ public abstract class ElmDriver extends BaseDriver {
             config.connectionTimeoutMs = normalTimeoutMs;
             try {
                 if (physicalAddressing) {
-                    // Restore automatic reception and the standard 11-bit OBD
-                    // broadcast header before the next live PID request.
-                    sendCommand("ATCRA");
-                    sendCommand("ATAR");
-                    sendCommand("ATSH7DF");
+                    // Restore automatic reception and the broadcast header
+                    // before the next live PID request.
+                    PhysicalAddressing.restoreFunctional(this, txHeader);
                 }
                 // Live polling uses compact, header-free responses for speed.
                 sendCommand("ATH0");

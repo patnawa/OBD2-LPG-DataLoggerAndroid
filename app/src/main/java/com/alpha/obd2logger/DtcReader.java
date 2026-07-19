@@ -96,6 +96,12 @@ public final class DtcReader {
         ALL_BUSES.add(new ProtocolBus("ISO 9141-2", "ATSP3",
             "Older Honda (Civic EG/EK), Nissan (Sunny N16) — 5-baud init",
             false, null));
+        // SAE J1850 PWM — older North American Ford / Lincoln / Mercury.
+        // It is a legacy OBD-II transport, not CAN, so physical CAN address
+        // sweeping is deliberately excluded by supportsElevenBitPhysicalAddressing().
+        ALL_BUSES.add(new ProtocolBus("J1850 PWM", "ATSP1",
+            "Older North American Ford / Lincoln / Mercury — SAE J1850 PWM 41.6kbps",
+            false, null));
         // SAE J1850 VPW — some older GM/Isuzu (MU-7, D-Max 2004)
                 ALL_BUSES.add(new ProtocolBus("J1850 VPW", "ATSP2",
                     "Older Isuzu MU-7, D-Max 2004 — SAE J1850 VPW 10.4kbps",
@@ -535,7 +541,12 @@ public final class DtcReader {
             buses.add(ALL_BUSES.get(0)); // MS-CAN
         }
 
-        return scanBuses(driver, buses, fordMsCan, false,
+        // A fast scan stays functionally addressed. The checkbox adds MS-CAN,
+        // but vehicle identity — not a transport option — selects ECU labels.
+        // Keep the null-brand fallback for callers that have no VIN yet.
+        boolean useFordLabels = currentBrand == VinBrandDetector.Brand.FORD
+                || (currentBrand == null && fordMsCan);
+        return scanBuses(driver, buses, false, useFordLabels,
                 listener != null ? listener : NULL_LISTENER);
     }
 
@@ -567,7 +578,11 @@ public final class DtcReader {
         buses.addAll(ALL_BUSES);       // then all secondary buses
 
         // Deep scan additionally sweeps physical ECU addresses.
-        return scanBuses(driver, buses, fordMode, true,
+        // Deep scan deliberately sweeps physical addresses. A stale/automatic
+        // Ford MS-CAN preference must never override a known non-Ford VIN.
+        boolean useFordLabels = currentBrand == VinBrandDetector.Brand.FORD
+                || (currentBrand == null && fordMode);
+        return scanBuses(driver, buses, true, useFordLabels,
                 listener != null ? listener : NULL_LISTENER);
     }
 
@@ -834,9 +849,6 @@ public final class DtcReader {
     private static final int PHYSICAL_SWEEP_FIRST = 0x7E0;
     private static final int PHYSICAL_SWEEP_LAST = 0x7E7;
 
-    /** 11-bit UDS convention: an ECU answers 8 above its request address. */
-    private static final int RESPONSE_OFFSET = 0x08;
-
     /**
      * ELM protocols that carry 11-bit CAN and therefore accept an
      * {@code ATSH7Ex} request header. 29-bit (ATSP7) and the K-line / VPW
@@ -903,19 +915,17 @@ public final class DtcReader {
         int found = 0;
         try {
             for (Integer tx : candidates) {
-                int rx = tx + RESPONSE_OFFSET;
+                int rx = tx + PhysicalAddressing.RESPONSE_OFFSET;
                 // Already answered the broadcast — nothing to gain.
                 if (moduleBuilders.containsKey(rx)) continue;
 
-                String txHex = String.format(Locale.US, "%03X", tx);
-                String rxHex = String.format(Locale.US, "%03X", rx);
-                String setHeader = driver.sendCommandRaw("ATSH" + txHex);
-                if (setHeader != null && setHeader.contains("?")) {
-                    // Adapter rejected the header (e.g. ATSP0 resolved to 29-bit).
-                    // Sweeping the rest would fail identically, so stop here.
+                String txHex = PhysicalAddressing.toHeaderHex(tx);
+                String rxHex = PhysicalAddressing.toHeaderHex(rx);
+                // A rejected header (e.g. ATSP0 resolved to 29-bit) would be
+                // rejected identically for every remaining address on this bus.
+                if (!PhysicalAddressing.applyTarget(driver, txHex, rxHex)) {
                     break;
                 }
-                driver.sendCommandRaw("ATCRA" + rxHex);
 
                 // One probe decides whether this address exists at all.
                 String raw03 = sendWithRetry(driver, "03", 1, 100);
@@ -951,10 +961,10 @@ public final class DtcReader {
                 // Announcing here as well would double every swept module.
             }
         } finally {
-            // Bare ATCRA clears the filter; restore functional addressing so the
-            // next bus (and the polling loop) is not left talking to one ECU.
-            driver.sendCommandRaw("ATCRA");
-            driver.sendCommandRaw("ATSH7DF");
+            // Restore functional addressing so the next bus (and the polling
+            // loop) is not left talking to one ECU. The sweep is 11-bit only,
+            // so the 11-bit broadcast header is the right one to put back.
+            PhysicalAddressing.restoreFunctional(driver, "7E0");
         }
         listener.onModeScanComplete(bus.label, "Physical address sweep", found);
     }
@@ -962,12 +972,12 @@ public final class DtcReader {
     /**
      * A brand table lists both request and response IDs. Only request IDs are
      * worth sweeping, and the response entries are the ones whose name says so
-     * or that sit {@link #RESPONSE_OFFSET} above a listed request.
+     * or that sit {@link PhysicalAddressing#RESPONSE_OFFSET} above a listed request.
      */
     static boolean isLikelyResponseAddress(int id, Map<Integer, String> brandMap) {
         String name = brandMap.get(id);
         if (name != null && name.toLowerCase(Locale.US).contains("response")) return true;
-        return brandMap.containsKey(id - RESPONSE_OFFSET);
+        return brandMap.containsKey(id - PhysicalAddressing.RESPONSE_OFFSET);
     }
 
     /** Append only codes not already present, preserving existing dedup. */
@@ -1403,11 +1413,9 @@ public final class DtcReader {
         List<DtcCode> codes = new ArrayList<>();
         if (driver == null || !driver.isConnected()) return codes;
 
-        // Save current header/filter state
-        driver.sendCommandRaw("ATSH" + txHeader);
-        try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-        driver.sendCommandRaw("ATCRA" + rxFilter);
-        try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+        // A single user-triggered read can afford to let the adapter settle
+        // between the header and filter commands.
+        PhysicalAddressing.applyTarget(driver, txHeader, rxFilter, 50);
 
         try {
             // Mode 03
@@ -1426,18 +1434,7 @@ public final class DtcReader {
                 codes.addAll(parseDtcResponse(raw0A, "4A"));
             }
         } finally {
-            // Clear the receive filter. Bare "ATCRA" removes the filter;
-            // "ATCRA000" would instead SET the filter to CAN ID 0x000 and
-            // make every subsequent poll return NO DATA.
-            driver.sendCommandRaw("ATCRA");
-            driver.sendCommandRaw("ATAR");  // restore automatic receive addressing
-            // Restore the functional (broadcast) request header for normal
-            // polling — "ATSH000" would set a literal 000 header, not a default.
-            if (txHeader != null && txHeader.length() > 3) {
-                driver.sendCommandRaw("ATSH18DB33F1");  // 29-bit functional address
-            } else {
-                driver.sendCommandRaw("ATSH7DF");       // 11-bit functional address
-            }
+            PhysicalAddressing.restoreFunctional(driver, txHeader);
         }
         return codes;
     }
@@ -1517,7 +1514,7 @@ public final class DtcReader {
      *   Toyota/Lexus: Mode 21 (61) — enhanced DTCs
      *   Honda:        Mode 21 (61)
      *   Nissan:       Mode 1A (5A) — enhanced DTCs
-     *   Ford:         Mode 27 (67) — manufacturer-specific
+     *   Ford:         Standard read-only OBD DTC modes (03/07/0A) only
      *   Mitsubishi:   Mode 21 (61)
      *   Mazda:        Mode 21 (61)
      *   Suzuki:       Mode 21 (61)
@@ -1553,7 +1550,6 @@ public final class DtcReader {
             // Unknown VIN — try all unique enhanced mode pairs
             modeHeaderPairs.add("21,61");
             modeHeaderPairs.add("1A,5A");
-            modeHeaderPairs.add("27,67");
             modeHeaderPairs.add("2C,6C");
             modeHeaderPairs.add("22,62");
         } else {
@@ -1573,7 +1569,8 @@ public final class DtcReader {
                     modeHeaderPairs.add("1A,5A");
                     break;
                 case FORD:
-                    modeHeaderPairs.add("27,67");
+                    // UDS 0x27 is SecurityAccess, not an enhanced DTC read.
+                    // Ford support is provided by the read-only standard scan.
                     break;
                 case CHEVROLET:
                     modeHeaderPairs.add("2C,6C");
@@ -1599,7 +1596,6 @@ public final class DtcReader {
                     // Unknown — try all
                     modeHeaderPairs.add("21,61");
                     modeHeaderPairs.add("1A,5A");
-                    modeHeaderPairs.add("27,67");
                     modeHeaderPairs.add("2C,6C");
                     modeHeaderPairs.add("22,62");
                     break;
@@ -1608,6 +1604,12 @@ public final class DtcReader {
 
         for (String pair : modeHeaderPairs) {
             String[] parts = pair.split(",");
+            // Profiles may be updated independently from the app. Never issue
+            // SecurityAccess from this read-only diagnostic feature.
+            if (parts.length != 2 || "27".equalsIgnoreCase(parts[0])) {
+                android.util.Log.w("DtcReader", "Skipping non-read-only enhanced service: " + pair);
+                continue;
+            }
             all.addAll(scanEnhancedMode(driver, parts[0], parts[1]));
         }
 
