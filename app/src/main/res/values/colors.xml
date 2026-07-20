@@ -1,53 +1,56 @@
 <resources>
-    <!-- Base Color Palette -->
-    <color name="background">#F8FAFC</color>
-    <color name="surface">#FFFFFF</color>
-    <color name="surface2">#F1F5F9</color>
-    <color name="surface3">#E2E8F0</color>
-    <color name="primary">#2563EB</color>
-    <color name="primary_variant">#1D4ED8</color>
-    <color name="accent">#059669</color>
-    <color name="danger">#DC2626</color>
-    <color name="warning">#D97706</color>
-    <color name="text">#0F172A</color>
-    <color name="muted">#64748B</color>
-    <color name="border">#CBD5E1</color>
-    <color name="tab_active">#2563EB</color>
-    <color name="tab_inactive">#94A3B8</color>
-    <color name="gauge_bg">#F1F5F9</color>
-    <color name="gauge_bezel">#CBD5E1</color>
-    <color name="gauge_bezel_inner">#94A3B8</color>
-    <color name="gauge_tick">#475569</color>
-    <color name="gauge_tick_minor">#94A3B8</color>
-    <color name="gauge_text">#0F172A</color>
-    <color name="gauge_unit">#475569</color>
+    <!-- Industrial theme — light ("workshop steel"): concrete/steel greys with
+         hazard-amber as the working accent. -->
+    <color name="background">#ECEEF0</color>
+    <color name="surface">#F7F8F9</color>
+    <color name="surface2">#E5E8EA</color>
+    <color name="surface3">#D9DDE0</color>
+    <color name="primary">#9A5B00</color>
+    <color name="primary_variant">#7C4A03</color>
+    <!-- 12% primary for pill/badge backgrounds behind primary-colored text. -->
+    <color name="primary_faint">#1F9A5B00</color>
+    <color name="accent">#1C7C4A</color>
+    <color name="danger">#C22D2D</color>
+    <color name="warning">#B45309</color>
+    <color name="text">#1A1D20</color>
+    <color name="muted">#5B6368</color>
+    <color name="border">#BFC5CA</color>
+    <color name="tab_active">#9A5B00</color>
+    <color name="tab_inactive">#8A9096</color>
+    <color name="gauge_bg">#E0E3E6</color>
+    <color name="gauge_bezel">#A6ACB2</color>
+    <color name="gauge_bezel_inner">#7E858B</color>
+    <color name="gauge_tick">#3A4045</color>
+    <color name="gauge_tick_minor">#8A9096</color>
+    <color name="gauge_text">#1A1D20</color>
+    <color name="gauge_unit">#4A5156</color>
     <color name="gauge_needle_tip">#FFFFFF</color>
     <color name="gauge_shadow">#40000000</color>
 
     <!--
       Status colors, readable in both roles: as text on surface/surface2, and as a
       filled chip background under @color/on_status. The base accent/danger/warning
-      swatches above are tuned for fills and icons, not for 11-13sp text — e.g.
-      warning #D97706 on surface2 is only ~3.4:1. These darkened variants clear 4.5:1.
+      swatches above are tuned for fills and icons, not for 11-13sp text. These
+      darkened variants clear 4.5:1 on the steel-grey surfaces.
     -->
-    <color name="status_accent">#047857</color>
-    <color name="status_danger">#B91C1C</color>
-    <color name="status_warning">#B45309</color>
-    <color name="status_primary">#1D4ED8</color>
+    <color name="status_accent">#166534</color>
+    <color name="status_danger">#991B1B</color>
+    <color name="status_warning">#92400E</color>
+    <color name="status_primary">#8A4B00</color>
     <!-- Text/icon color on top of a status_* filled chip. Do NOT use @color/surface
          here: it inverts to near-black in values-night. -->
     <color name="on_status">#FFFFFF</color>
 
     <!-- Material 3 Color Roles (Light) -->
-    <color name="colorPrimaryContainer">#EFF6FF</color>
-    <color name="colorOnPrimaryContainer">#1E40AF</color>
-    <color name="colorSecondaryContainer">#DBEAFE</color>
-    <color name="colorOnSecondaryContainer">#1E3A8A</color>
-    <color name="colorTertiary">#059669</color>
-    <color name="colorTertiaryContainer">#D1FAE5</color>
-    <color name="colorOnTertiaryContainer">#065F46</color>
-    <color name="colorSurfaceVariant">#F1F5F9</color>
-    <color name="colorOnSurfaceVariant">#475569</color>
-    <color name="colorOutline">#CBD5E1</color>
-    <color name="colorOutlineVariant">#E2E8F0</color>
+    <color name="colorPrimaryContainer">#F8E9CF</color>
+    <color name="colorOnPrimaryContainer">#5C3A00</color>
+    <color name="colorSecondaryContainer">#DFE3E6</color>
+    <color name="colorOnSecondaryContainer">#33393E</color>
+    <color name="colorTertiary">#1C7C4A</color>
+    <color name="colorTertiaryContainer">#D7EDDF</color>
+    <color name="colorOnTertiaryContainer">#14532D</color>
+    <color name="colorSurfaceVariant">#E5E8EA</color>
+    <color name="colorOnSurfaceVariant">#4A5156</color>
+    <color name="colorOutline">#BFC5CA</color>
+    <color name="colorOutlineVariant">#D9DDE0</color>
 </resources>

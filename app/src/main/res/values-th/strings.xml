@@ -53,7 +53,7 @@
     <string name="live_fuel_map">แผนที่การชดเชยเชื้อเพลิงของ ECU แบบสด</string>
     <string name="map_axes" formatted="false">Y = MAP kPa (หรือ Load % เมื่อใช้แกนสำรอง), X = รอบเครื่อง RPM (500-6500)</string>
     <string name="how_to_read_map_title">วิธีอ่านค่าแผนที่</string>
-    <string name="how_to_read_map_desc" formatted="false">แสดงการชดเชยเชื้อเพลิงของ ECU ไม่ใช่คำตัดสินว่าส่วนผสมปัจจุบันหนาหรือบาง\n\nTrim = STFT + LTFT\n🟢 ±5% = ชดเชยน้อย\n🟡/🔴 ค่าลบ = ECU กำลังลดเชื้อเพลิง\n🌐/🔵 ค่าบวก = ECU กำลังเพิ่มเชื้อเพลิง\nค่าบวกไม่ได้แปลว่า AFR ปัจจุบันบาง เมื่อระบบ Closed Loop กำลังชดเชยอยู่ ค่า Lambda (λ) ที่วัดจริงจะแสดงใน cell ที่มีข้อมูลเสถียรอย่างน้อย 3 ครั้งเมื่อรถรองรับ PID 01 34\n\nPETROL เก็บค่าฐานน้ำมัน/E20 และ LPG/CNG เก็บค่าฐานแก๊ส\nDEVIATION = LPG Trim - Petrol Trim\nTUNE ASSIST: + ให้เพิ่มแก๊ส และ - ให้ลดแก๊ส\n\nCell ที่ยังไม่ครบ 3 ตัวอย่างเสถียรจะแสดงสีเทา และระบบจะไม่เปรียบเทียบแผนที่ที่ใช้แกนคนละแหล่ง</string>
+    <string name="how_to_read_map_desc" formatted="false">แต่ละช่องแสดงค่าเฉลี่ยการชดเชยเชื้อเพลิงของ ECU ณ รอบเครื่องและจุด MAP/โหลดที่ระบุ ไม่ใช่ค่า AFR ที่วัดตรงหรือคำตัดสินว่าหนาหรือบาง\n\nCell Trim = ค่าเฉลี่ย (STFT + LTFT) หากมี Trim เพียงค่าเดียว แอปจะใช้ค่าที่มี ค่าลบหมายถึง ECU ลดเชื้อเพลิง และค่าบวกหมายถึง ECU เพิ่มเชื้อเพลิง โดยเก็บแผนที่ PETROL และ LPG/CNG แยกกัน\n\nΔ Trim / Deviation = ค่า Trim เฉลี่ยแก๊ส − ค่า Trim เฉลี่ยน้ำมันในช่องเดียวกัน เนื่องจากค่าต้นทางเป็นเปอร์เซ็นต์ ค่า Δ จึงมีหน่วยเป็นจุดเปอร์เซ็นต์ (pp) Tune Assist นำตัวเลข Δ ที่ปัดเศษมาใช้เป็นเปอร์เซ็นต์ปรับตารางแก๊สโดยประมาณ (+ เพิ่มแก๊ส, − ลดแก๊ส) ไม่ใช่คำสั่งปรับที่แม่นยำ ต้องยืนยันด้วย Lambda/wideband ที่วัดจริง และเก็บข้อมูลใหม่หลังปรับทีละน้อย</string>
     <string name="petrol">น้ำมัน</string>
     <string name="petrol_logs_header">บันทึกน้ำมัน (Petrol)</string>
     <string name="lpg_logs_header">บันทึกแก๊ส (LPG/CNG)</string>
@@ -69,8 +69,11 @@
     <string name="open_log_csv_only">เปิดได้เฉพาะไฟล์ CSV เพื่อดูบนแผนที่ (ไฟล์ JSONL ใช้ replay ไม่ได้)</string>
     <string name="open_log_skipped_non_csv">ข้ามไฟล์ที่ไม่ใช่ CSV %1$d ไฟล์ — แสดงบนแผนที่ได้เฉพาะ CSV</string>
     <string name="lpg">LPG/CNG</string>
-    <string name="deviation">ความเบี่ยงเบน</string>
-    <string name="map_formula_hint">ค่า ECU correction ไม่ใช่คำตัดสินหนา/บางจริง ค่าเบี่ยงเบน = แก๊ส Trim - น้ำมัน Trim; + ให้เพิ่มแก๊ส และ - ให้ลดแก๊ส พร้อมยืนยันด้วย Lambda ที่วัดจริง</string>
+    <string name="deviation">Δ TRIM (pp)</string>
+    <string name="tune_assist">ช่วยจูน</string>
+    <string name="export_tune_assist_csv">ส่งออก CSV (ช่วยจูน)</string>
+    <string name="map_formula_delta_title">Δ Trim (pp) = ค่า Trim เฉลี่ยแก๊ส − ค่า Trim เฉลี่ยน้ำมัน</string>
+    <string name="map_formula_hint" formatted="false">ค่า Δ คือส่วนต่างการชดเชยของ ECU ในหน่วยจุดเปอร์เซ็นต์ ไม่ใช่ AFR ที่วัดตรง Tune Assist นำตัวเลข Δ ที่ปัดเศษมาเป็นเปอร์เซ็นต์ปรับตารางแก๊สโดยประมาณ: + เพิ่มแก๊ส, − ลดแก๊ส ค่านี้ไม่แม่นยำตายตัวและต้องยืนยันด้วย Lambda/wideband</string>
     
     <string name="analyzer_unknown">ไม่ทราบสถานะ</string>
         <string name="analyzer_no_data">ไม่มีข้อมูลเซ็นเซอร์ Trim (01_06/01_07) ตรวจสอบว่ารถรองรับ PID นี้</string>
@@ -101,6 +104,38 @@
     <string name="read_vehicle_info">ข้อมูลรถ</string>
     <string name="reading_vehicle_info">กำลังอ่านข้อมูลรถ...</string>
     <string name="vehicle_info_complete">อ่านข้อมูลรถแล้ว</string>
+    <string name="vin_not_available_after_fallback">รถไม่ส่ง VIN กลับมาทาง Mode 09 หรือ UDS F190 แบบอ่านอย่างเดียว กรุณากรอก VIN เอง หากรถคันนี้ยังอ่านไม่ได้ ให้เก็บข้อความตอบกลับจากอะแดปเตอร์เพื่อเพิ่มรูปแบบ ECU ให้ตรงรุ่นอย่างปลอดภัย</string>
+    <string name="read_ecu_identification">ข้อมูลระบุตัวตน ECU</string>
+    <string name="cancel_ecu_identification">ยกเลิกการอ่าน ECU</string>
+    <string name="reading_ecu_identification">กำลังอ่านข้อมูลมาตรฐานของ ECU...</string>
+    <string name="reading_ecu_identification_progress">กำลังอ่านข้อมูล ECU: %1$d/%2$d</string>
+    <string name="ecu_identification_complete">อ่านข้อมูลระบุตัวตน ECU แล้ว</string>
+    <string name="ecu_identification_complete_saved">อ่านและบันทึกข้อมูล ECU สำหรับ VIN นี้แล้ว</string>
+    <string name="ecu_identification_complete_not_saved">อ่านข้อมูล ECU แล้วแต่ยังไม่ได้บันทึก โปรดอ่านหรือป้อน VIN ของรถคันนี้ แล้วเรียกข้อมูลระบุตัวตน ECU อีกครั้งเพื่อบันทึก</string>
+    <string name="ecu_identification_requires_elm">ต้องเชื่อมต่ออะแดปเตอร์ ELM327 หรือ vLinker ที่รองรับ CAN เพื่ออ่านข้อมูล ECU</string>
+    <string name="ecu_identification_no_modules">ไม่สามารถอ่านข้อมูล ECU บนบัส ISO-TP CAN ที่ใช้งานอยู่ โปรดเชื่อมต่อด้วยโปรโตคอล CAN ที่รองรับหรือดูผลที่บันทึกไว้</string>
+    <string name="ecu_identification_select_module">เลือกกล่องควบคุม</string>
+    <string name="ecu_identification_saved_results">ผล ECU ที่บันทึกไว้</string>
+    <string name="ecu_identification_showing_saved">กำลังแสดงข้อมูล ECU ที่บันทึกเมื่อ %1$s</string>
+    <string name="ecu_identification_already_running">กำลังอ่านข้อมูล ECU อยู่แล้ว</string>
+    <string name="cancelling_ecu_identification">กำลังยกเลิกและคืนค่าการตั้งค่าอะแดปเตอร์...</string>
+    <string name="ecu_identification_cancelled">ส่งคำขอยกเลิกแล้ว ระบบจะคืนค่าอะแดปเตอร์ให้เสร็จก่อนคำสั่งถัดไป</string>
+    <string name="ecu_identification_session_changed">การเชื่อมต่ออะแดปเตอร์เปลี่ยนไป โปรดเริ่มอ่าน ECU ใหม่</string>
+    <string name="ecu_identification_failed">อ่านข้อมูล ECU ไม่สำเร็จ: %1$s</string>
+    <string name="adapter_did_not_respond">อะแดปเตอร์ไม่ตอบสนอง</string>
+    <string name="ecu_identification_no_standard_values">โมดูลตอบสนอง UDS แต่ไม่มีค่าระบุตัวตนมาตรฐานที่รองรับ</string>
+    <string name="ecu_identification_no_response">ECU ที่เลือกไม่ตอบคำขอข้อมูลระบุตัวตน UDS ที่รองรับ</string>
+    <string name="ecu_identification_title">ข้อมูล ECU (อ่านอย่างเดียว)</string>
+    <string name="ecu_identification_summary">พบ %1$d ค่า, การตอบกลับเชิงลบ %2$d รายการ, ไม่ตอบหรือข้อมูลผิดรูปแบบ %3$d รายการ</string>
+    <string name="ecu_identification_captured">บันทึกเมื่อ: %1$s</string>
+    <string name="ecu_identification_empty_answered">โมดูลตอบสนอง UDS แต่ไม่เปิดเผยค่าระบุตัวตนมาตรฐานที่รองรับ</string>
+    <string name="ecu_identification_empty_no_response">ไม่ได้รับการตอบสนอง UDS ที่ถูกต้องจากแอดเดรสนี้</string>
+    <string name="ecu_identification_raw_hex">ข้อมูลดิบฐานสิบหก: %1$s</string>
+    <string name="ecu_identification_did_label">DID %1$s · %2$s</string>
+    <string name="ecu_identification_show_technical">แสดงรายละเอียดทางเทคนิค (%1$d)</string>
+    <string name="ecu_identification_hide_technical">ซ่อนรายละเอียดทางเทคนิค</string>
+    <string name="ecu_identification_technical_line">DID %1$s — %2$s: %3$s</string>
+    <string name="ecu_identification_safety">ใช้บริการ ISO 14229 หมายเลข 0x22 แบบอ่านอย่างเดียว ไม่มีการเปลี่ยนเซสชันวินิจฉัย ปลดล็อกความปลอดภัย สั่งรูทีน รีเซ็ต เขียนโค้ด หรือส่งคำสั่งเขียน</string>
     <string name="read_ford_module_live_data">ข้อมูลสดโมดูล</string>
     <string name="reading_ford_module_live_data">กำลังอ่านข้อมูลโมดูล...</string>
     <string name="ford_module_live_data_complete">อ่านข้อมูลโมดูลแล้ว</string>
@@ -291,22 +326,32 @@
     <string name="scale_very_lean">เพิ่มมาก</string>
 
     <string name="map_info_color_legend_header">คำอธิบายสีตาราง</string>
-    <string name="map_info_legend_perfect">ECU ชดเชยน้อย (±5%) • ยืนยันส่วนผสมด้วย Lambda</string>
-    <string name="map_info_legend_slightly_rich" formatted="false">ECU ลดเชื้อเพลิง (-5% ถึง -10%) • ไม่ใช่คำตัดสินว่าหนาจริง</string>
-    <string name="map_info_legend_very_rich" formatted="false">ECU ลดเชื้อเพลิงมาก (น้อยกว่า -10%) • ควรตรวจค่าฐาน</string>
-    <string name="map_info_legend_slightly_lean" formatted="false">ECU เพิ่มเชื้อเพลิง (+5% ถึง +10%) • ไม่ใช่คำตัดสินว่าบางจริง</string>
-    <string name="map_info_legend_very_lean" formatted="false">ECU เพิ่มเชื้อเพลิงมาก (มากกว่า +10%) • ควรตรวจค่าฐาน</string>
+    <string name="map_info_color_context" formatted="false">ในโหมด PETROL/LPG สีแสดงค่า Cell Trim (%) ส่วนโหมด Δ แสดงส่วนต่างระหว่างน้ำมันกับแก๊ส (pp) และ Tune Assist นำตัวเลขที่ปัดเศษมาเป็นค่าปรับโดยประมาณ (%)</string>
+    <string name="map_info_legend_perfect" formatted="false">ค่าบวกหรือลบต่ำ (−5 ถึง +5) • ยืนยันส่วนผสมด้วย Lambda ที่วัดจริง</string>
+    <string name="map_info_legend_slightly_rich" formatted="false">ค่าลบปานกลาง (−10 ถึงต่ำกว่า −5) • ECU ลด / ค่า Δ ติดลบ</string>
+    <string name="map_info_legend_very_rich" formatted="false">ค่าลบมาก (ต่ำกว่า −10) • ตรวจค่าฐานก่อนปรับจูน</string>
+    <string name="map_info_legend_slightly_lean" formatted="false">ค่าบวก (มากกว่า +5 ถึง +10) • ECU เพิ่ม / ค่า Δ เป็นบวก</string>
+    <string name="map_info_legend_very_lean" formatted="false">ค่าบวกมาก (มากกว่า +10) • ตรวจค่าฐานก่อนปรับจูน</string>
     
     <string name="map_info_tuning_logic_header">หลักการคำนวณ</string>
     <string name="map_info_petrol_title">1. PETROL (น้ำมัน)</string>
-    <string name="map_info_petrol_desc">ใช้เป็นฐานอ้างอิงหลัก (Baseline) ของระบบจ่ายน้ำมันเดิมของเครื่องยนต์</string>
+    <string name="map_info_trim_formula">สูตร: Cell Trim = ค่าเฉลี่ย (STFT + LTFT)</string>
+    <string name="map_info_petrol_desc">แผนที่อ้างอิงขณะใช้น้ำมันเดิม ควรแก้ค่า Trim น้ำมันที่สูงผิดปกติหรือปัญหาทางกลก่อนใช้เป็นฐานจูนแก๊ส</string>
     <string name="map_info_lpg_title">2. LPG/CNG (แก๊ส)</string>
-    <string name="map_info_lpg_desc">แสดงผลพฤติกรรมการจ่ายเชื้อเพลิงขณะเครื่องยนต์สลับไปทำงานด้วยโหมดแก๊ส</string>
-    <string name="map_info_deviation_title">3. DEVIATION (ความเบี่ยงเบน)</string>
-    <string name="map_info_deviation_desc">เปอร์เซ็นต์ส่วนต่างว่าแก๊สจ่ายเบี่ยงเบนออกนอกค่ามาตรฐานน้ำมันเท่าใด (ค่าบวก = แก๊สบาง, ค่าลบ = แก๊สหนา)</string>
+    <string name="map_info_lpg_desc">แผนที่การชดเชยของ ECU ขณะใช้แก๊ส ซึ่งต้องเก็บในช่องรอบและโหลดเดียวกับแผนที่ฐานน้ำมัน</string>
+    <string name="map_info_deviation_title">3. Δ TRIM / DEVIATION (ส่วนต่าง)</string>
+    <string name="map_info_delta_formula">สูตร: Δ Trim = ค่า Trim เฉลี่ยแก๊ส − ค่า Trim เฉลี่ยน้ำมัน (pp)</string>
+    <string name="map_info_deviation_desc">ค่า Δ บวกหมายถึง ECU เพิ่มการชดเชยขณะใช้แก๊สมากกว่าน้ำมัน ส่วนค่า Δ ลบหมายถึง ECU ลดการชดเชยมากกว่า ภายใต้เงื่อนไขที่เทียบกันได้ ค่านี้ชี้แนวโน้มว่าแก๊สจ่ายน้อยหรือมากกว่าน้ำมัน แต่ไม่ใช่ผลวัดตรงว่าบางหรือหนา</string>
     <string name="map_info_tune_assist_title">4. TUNE ASSIST (ช่วยจูน)</string>
-    <string name="map_info_tune_assist_desc">เปอร์เซ็นต์ที่ต้องนำไปบวก (+) หรือลบ (-) ในตารางจูนแก๊ส (Multiplier Map) เพื่อดึงค่าเบี่ยงเบนกลับมาเป็น 0% (เทียบเท่าจูนน้ำมันเดิม)</string>
-    <string name="map_info_note">* หมายเหตุ: ต้องทำการวิ่งเก็บข้อมูลทั้งโหมดน้ำมัน (Petrol) และโหมดแก๊ส (LPG) ในช่วงรอบเครื่องยนต์ (RPM) และภาระโหลดเดียวกันให้ครบถ้วนก่อน ระบบจึงจะสามารถวิเคราะห์และเปรียบเทียบแสดงค่าส่วนต่างออกมาได้</string>
+    <string name="map_info_tune_formula" formatted="false">การแสดงผล: ค่าปรับโดยประมาณ (%) = ตัวเลข Δ Trim แบบมีเครื่องหมายและปัดเศษ</string>
+    <string name="map_info_tune_assist_desc">ค่าบวกชี้ให้เพิ่มแก๊ส และค่าลบชี้ให้ลดแก๊ส ค่าเปอร์เซ็นต์นี้เป็นค่าปรับเริ่มต้นโดยประมาณ ไม่ใช่การแปลงจากจุดเปอร์เซ็นต์ที่แม่นยำตายตัว ควรปรับทีละน้อย ยืนยันด้วย Lambda/wideband ที่วัดจริง แล้วเก็บ Log ใหม่</string>
+    <string name="map_info_examples_header">ตัวอย่างการอ่านค่า Δ</string>
+    <string name="map_info_examples_desc" formatted="false">น้ำมัน +2%, แก๊ส +8% → Δ +6 pp: ECU เพิ่มการชดเชยเมื่อใช้แก๊สมากกว่าน้ำมัน 6 จุด Tune Assist เริ่มใกล้ +6% ให้เพิ่มแก๊สทีละน้อย\n\nน้ำมัน −3%, แก๊ส −9% → Δ −6 pp: ECU ลดการชดเชยเมื่อใช้แก๊สมากกว่าน้ำมัน 6 จุด Tune Assist เริ่มใกล้ −6% ให้ลดแก๊สทีละน้อย\n\nน้ำมัน +15%, แก๊ส +15% → Δ 0 pp: ทั้งสองแผนที่เท่ากัน แต่ค่าฐานยังสูงและควรตรวจสอบ ค่า Δ เป็นศูนย์หมายถึง “ตรงกัน” ไม่ได้หมายถึง “สมบูรณ์”</string>
+    <string name="map_info_quality_header">เมื่อใดจึงเชื่อถือค่าในช่องได้</string>
+    <string name="map_info_quality_desc" formatted="false">แอปจะเรียนรู้เฉพาะตัวอย่างที่เครื่องอุ่น (ECT ≥ 80 °C), อยู่ใน Closed Loop, คงที่ และมีข้อมูลสถานะเชื้อเพลิงกับ Trim สีเทาหมายถึงข้อมูลชั่วคราว (เก็บได้น้อยกว่า 3 ครั้ง) ตั้งแต่ 5 ตัวอย่างเสถียรขึ้นไปจะมีความมั่นใจมากขึ้น และช่องจะล็อกเมื่อครบ 20 ครั้ง แผนที่น้ำมันกับแก๊สต้องซ้อนกันในช่องรอบ/โหลดเดียวกันและใช้แหล่งแกนเดียวกัน ช่องว่างหมายถึงข้อมูลหาย ถูกกรอง หรือเปรียบเทียบไม่ได้ ไม่ใช่ค่า 0</string>
+    <string name="map_info_diesel_header">หมายเหตุสำหรับเครื่องยนต์ดีเซล</string>
+    <string name="map_info_diesel_desc">ECU ดีเซลจำนวนมาก รวมถึง Ford ดีเซลบางรุ่น ไม่ส่งค่า STFT/LTFT แบบเครื่องยนต์เบนซินผ่าน Mode 01 ดังนั้นแผนที่ Trim/Δ อาจว่างและไม่ใช่ตารางจูนดีเซล ควรใช้ข้อมูลดีเซลที่รถรองรับ เช่น บูสต์ แรงดันราง MAF EGR และ DPF แทน แอปจะไม่สร้างค่า Trim ที่รถไม่ได้ส่งมา</string>
+    <string name="map_info_note">เก็บข้อมูลน้ำมันและแก๊สในช่องเดียวกัน ใช้แหล่งแกนเดียวกัน และขับในสภาพใกล้เคียงกัน โดยต้องมีแผนที่ฐานน้ำมันที่สมบูรณ์ก่อน</string>
     <string name="map_info_close">ปิด</string>
 
     <!-- Derived Sensors -->
@@ -357,8 +402,35 @@
     <string name="feature_turbo_boost">คำนวณบูสต์เทอร์โบ</string>
     <string name="feature_fuel_economy">คำนวณอัตราสิ้นเปลือง</string>
     <string name="feature_dpf_monitor">ตรวจสอบ DPF (ดีเซล)</string>
+    <string name="feature_dpf_monitor_desc">อ่านแรงดันต่างและอุณหภูมิทางเข้า DPF จาก PID มาตรฐานเมื่อรถรองรับ ส่วนค่าเขม่า เถ้า และ Regen ต้องใช้โปรไฟล์ผู้ผลิตที่ยืนยันแล้ว</string>
+    <string name="home_dpf_pressure_value">DPF ΔP: %1$.2f kPa</string>
+    <string name="home_dpf_pressure_unavailable">DPF ΔP: ---</string>
     <string name="feature_custom_pid">เปิดใช้ Custom PID</string>
     <string name="feature_air_density">ความหนาแน่นอากาศ (AAD/MAD/BAD)</string>
+    <string name="smart_secondary_bus_scan_title">สแกนหลายโปรโตคอลอัตโนมัติ</string>
+    <string name="smart_secondary_bus_scan_description">แนะนำให้เปิดไว้ แอปจะเพิ่มเฉพาะโปรโตคอล OBD-II มาตรฐานที่ Full Scan เคยยืนยันสำหรับ VIN จากการเชื่อมต่อนี้ ปิดเมื่อต้องการสแกนเฉพาะโปรโตคอลปัจจุบัน ส่วน Full Scan ต้องสั่งเองเสมอ</string>
+    <string name="dtc_full_scan_badge">🔬 สแกนครบ — OBD-II 1–9</string>
+    <string name="dtc_full_scan_starting">🔬 กำลังสแกนครบ: ตรวจโปรโตคอล OBD-II 1–9…</string>
+    <string name="dtc_full_scan_notice">การสแกนครบจะตรวจโปรโตคอล OBD-II 1–9 และอาจใช้เวลา 20–30 วินาที…</string>
+    <string name="dtc_full_scan_failed">สแกนครบไม่สำเร็จ: %1$s</string>
+    <string name="dtc_scan_connection_changed">ยกเลิกการสแกน เนื่องจากการเชื่อมต่ออะแดปเตอร์เปลี่ยนไป กรุณาสแกนอีกครั้ง</string>
+    <string name="home_dtc_status_unavailable">ยังไม่ทราบสถานะ DTC — กรุณาสแกนอีกครั้ง</string>
+    <string name="home_dtc_status_partial">สแกน DTC ไม่ครบ · พบรหัสที่ยืนยันแล้ว %1$d รหัส</string>
+    <string name="home_dtc_status_partial_meta">DTC บางโหมดไม่ตอบสนอง จึงไม่ถือค่าที่ไม่ทราบว่าเป็นศูนย์</string>
+    <string name="dtc_scan_retry_hint">แตะ อ่าน DTC เพื่อสแกนอีกครั้ง</string>
+    <string name="dtc_scan_partial">สแกนไม่ครบ — โหมด DTC ที่ไม่ตอบสนองจะแสดง “—” ไม่ใช่ศูนย์</string>
+    <string name="dtc_clear_partial">ลบรหัส Stored และยืนยันแล้ว แต่ยังไม่ทราบสถานะ Pending หรือ Permanent กรุณาสแกนอีกครั้งก่อนถือว่าโหมดเหล่านั้นไม่มีรหัส</string>
+    <string name="dtc_clear_secondary_retained">ลบรหัส Stored บนโปรโตคอลปัจจุบันแล้ว รหัสที่เคยพบบนโปรโตคอลอื่นยังคงแสดงอยู่จนกว่าจะสแกนโปรโตคอลเหล่านั้นอีกครั้ง</string>
+    <string name="dtc_health_partial">สแกน DTC ไม่ครบ</string>
+    <string name="dtc_health_partial_desc">DTC บางโหมดไม่ตอบสนอง จำนวนของโหมดนั้นยังไม่ทราบ ไม่ใช่ศูนย์</string>
+    <string name="dtc_stored_unavailable">—\nบันทึกแล้ว</string>
+    <string name="dtc_pending_unavailable">—\nรอยืนยัน</string>
+    <string name="dtc_permanent_unavailable">—\nถาวร</string>
+    <string name="dtc_protocol_summary">สแกน %1$d โปรโตคอล · ตอบสนอง %2$d · พบรหัสที่ยืนยันแล้ว %3$d รหัส</string>
+    <string name="dtc_protocol_row_no_response"> — ไม่ตอบสนอง</string>
+    <string name="dtc_protocol_row_no_dtc_service"> — บัสตอบสนอง แต่บริการ DTC ไม่ตอบ</string>
+    <string name="dtc_protocol_row_partial"> — %1$d โมดูล, พบรหัสที่ยืนยันแล้ว %2$d รหัส; บางโหมดยังไม่ทราบ</string>
+    <string name="dtc_protocol_row_complete"> — %1$d โมดูล, %2$d DTC</string>
 
     <!-- Gauge / Dashboard / Graph slot strings -->
     <string name="tap_to_add">แตะเพื่อเพิ่ม</string>
@@ -421,6 +493,27 @@
     <string name="home_ai_insight_trim">การปรับเชื้อเพลิงสูง</string>
     <string name="home_ai_insight_trim_detail">Fuel Trim รวม %1$+.1f%% ควรเก็บข้อมูลช่วงวิ่งคงที่เพิ่มก่อนปรับจูน</string>
     <string name="home_ai_insight_local">วิเคราะห์ในเครื่อง • แตะเพื่อดูรายละเอียด</string>
+    <string name="home_title_performance">จับเวลาสมรรถนะ</string>
+    <string name="home_label_perf_0100">0–100 กม./ชม.</string>
+    <string name="home_label_perf_80120">80–120 กม./ชม.</string>
+    <string name="home_label_perf_quarter">ควอเตอร์ไมล์</string>
+    <string name="home_perf_arm_hint">ออกตัวจากจุดหยุดนิ่งเพื่อเริ่มจับเวลา</string>
+    <string name="home_perf_running">กำลังจับเวลา…</string>
+    <string name="home_perf_best_line">ดีที่สุด: 0–100 %1$s • 80–120 %2$s • ¼ ไมล์ %3$s</string>
+    <string name="home_perf_quarter_trap">%1$.2f วิ @ %2$.0f กม./ชม.</string>
+    <string name="home_title_switchover">การสลับเชื้อเพลิง</string>
+    <string name="home_switch_status_gated">รอ closed-loop และเครื่องยนต์อุ่น</string>
+    <string name="home_switch_status_collecting">กำลังเก็บค่าฐานทริม…</string>
+    <string name="home_switch_status_stable">ยังไม่พบการสลับเชื้อเพลิง</string>
+    <string name="home_switch_status_switched">พบการสลับเชื้อเพลิง (×%1$d)</string>
+    <string name="home_switch_detail_hint">ตรวจจับจังหวะสลับน้ำมัน↔แก๊สจากรูปแบบ fuel trim ของกล่อง ECU และเปรียบเทียบเชื้อเพลิงทั้งสอง</string>
+    <string name="home_switch_detail_stable">ช่วงปัจจุบัน: STFT %1$+.1f%% • LTFT %2$+.1f%% จาก %3$d ตัวอย่าง</string>
+    <string name="home_switch_detail_compare">ก่อน: LTFT %1$+.1f%% → ตอนนี้: LTFT %2$+.1f%% (Δ รวม %3$+.1f%%)</string>
+    <string name="home_switch_divergent">แมพแก๊สเบี่ยงจากฐานน้ำมัน — ควรตรวจหม้อต้มและหัวฉีดแก๊ส</string>
+    <string name="review_route_title">เส้นทางที่ขับ (GPS)</string>
+    <string name="review_route_speed">ความเร็ว</string>
+    <string name="review_route_boost">บูสต์</string>
+    <string name="review_route_empty">ไฟล์บันทึกนี้ไม่มีข้อมูล GPS</string>
     <string name="drive_insight_tap_details">แตะเพื่อดูรายละเอียด</string>
     <string name="drive_insight_advisory">ใช้เพื่อช่วยวิเคราะห์เท่านั้น Drive Insight ประมวลผลข้อมูล OBD ปัจจุบันบนอุปกรณ์นี้และไม่มีการควบคุมรถ</string>
     <string name="drive_insight_open_dashboard">เปิดแดชบอร์ดสด</string>

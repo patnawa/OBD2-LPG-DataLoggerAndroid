@@ -72,6 +72,39 @@ public class DtcModuleHeaderParsingTest {
                 result.perModule.containsKey(0x7E8));
     }
 
+    @Test
+    public void colonIndexedAndDlcHeaderVariantsYieldTheSameCodes() {
+        DtcReader.ScanLineResult expected = DtcReader.parseWithModuleHeaders(
+                "7E8 06 43 04 01 33 00 00 00 00\r", "43", "HS-CAN");
+        String[] variants = {
+                "7E8: 06 43 04 01 33 00 00 00 00\r",
+                "7E8 0: 06 43 04 01 33 00 00 00 00\r",
+                "7E8 8 06 43 04 01 33 00 00 00 00\r",
+                "7E8: 8 06 43 04 01 33 00 00 00 00\r",
+                "0: 7E8 8 06 43 04 01 33 00 00 00 00\r"
+        };
+
+        for (String response : variants) {
+            DtcReader.ScanLineResult actual = DtcReader.parseWithModuleHeaders(
+                    response, "43", "HS-CAN");
+            assertEquals("DTC count for " + response,
+                    expected.codes.size(), actual.codes.size());
+            assertEquals("DTC values for " + response,
+                    expected.codes.toString(), actual.codes.toString());
+            assertTrue("module attribution for " + response,
+                    actual.perModule.containsKey(0x7E8));
+        }
+    }
+
+    @Test
+    public void colonSuffixedTwentyNineBitHeaderKeepsModuleAttribution() {
+        DtcReader.ScanLineResult result = DtcReader.parseWithModuleHeaders(
+                "18DAF110: 8 06 43 04 01 33 00 00 00 00\r", "43", "CAN 29-bit");
+
+        assertFalse(result.codes.isEmpty());
+        assertTrue(result.perModule.containsKey(0x18DAF110));
+    }
+
     /**
      * The bug: identical content without spaces used to produce nothing at all.
      */

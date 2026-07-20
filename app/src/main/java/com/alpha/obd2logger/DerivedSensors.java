@@ -166,9 +166,11 @@ public final class DerivedSensors {
     }
 
     /**
-     * DPF health assessment from soot load + ash load.
-     * @param sootPct soot load percentage (PID 0x7A)
-     * @param ashGrams ash accumulation in grams (PID 0x8B) — optional
+     * DPF health assessment from verified manufacturer-specific soot and ash
+     * measurements. Standard SAE Mode 01 PID 0x7A is differential pressure
+     * and must never be passed here as soot percentage.
+     * @param sootPct manufacturer-specific soot load percentage
+     * @param ashGrams manufacturer-specific ash accumulation in grams — optional
      * @return "Clean" / "Moderate" / "Warning" / "Critical"
      */
     public static String dpfHealthStatus(Double sootPct, Double ashGrams) {

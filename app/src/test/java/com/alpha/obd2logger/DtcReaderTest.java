@@ -265,6 +265,286 @@ public class DtcReaderTest {
     }
 
     @Test
+    public void quickPlanKeepsTheConnectedProtocolAndRejectsStatusText() {
+        List<String> commands = new ArrayList<>();
+        BaseDriver driver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                commands.add(command);
+                if ("0100".equals(command) || "03".equals(command)) return "STOPPED";
+                return "OK";
+            }
+        };
+        driver.connect();
+        SmartDtcScanPlanner.Plan plan = SmartDtcScanPlanner.createPlanFromEvidence(
+                SmartDtcScanPlanner.ScanMode.QUICK,
+                ObdProtocol.ISO_15765_4_CAN_11BIT_500,
+                null, null, true, true);
+
+        DtcReader.DtcScanResult result = DtcReader.readDtcs(driver, plan);
+
+        assertFalse("Quick must not restart AUTO protocol discovery",
+                commands.contains("ATSP0"));
+        assertEquals(0, result.protocolsResponded);
+        assertTrue(result.modules.isEmpty());
+        assertTrue(result.storedDtcs.isEmpty());
+    }
+
+    @Test
+    public void mode01OnlyResponseCannotBePublishedAsCleanDtcState() {
+        BaseDriver driver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                if ("0100".equals(command)) return "41 00 BE 3E B8 13";
+                if ("03".equals(command) || "07".equals(command)
+                        || "0A".equals(command)) return "NO DATA";
+                return "OK";
+            }
+        };
+        driver.connect();
+        SmartDtcScanPlanner.Plan plan = SmartDtcScanPlanner.createPlanFromEvidence(
+                SmartDtcScanPlanner.ScanMode.QUICK,
+                ObdProtocol.ISO_15765_4_CAN_11BIT_500,
+                null, null, false, false);
+
+        DtcReader.DtcScanResult result = DtcReader.readDtcs(driver, plan);
+
+        assertEquals("the bus itself did answer Mode 01", 1, result.protocolsResponded);
+        assertFalse("without positive Mode 03/07/0A, empty codes are not a clean result",
+                result.hasValidatedDtcResponse());
+    }
+
+    @Test
+    public void modeSpecificCompletenessDoesNotTurnTimeoutsIntoZeroCodes() {
+        BaseDriver driver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                if ("0100".equals(command)) return "41 00 BE 3E B8 13";
+                if ("03".equals(command)) return "43 00 00 00";
+                if ("07".equals(command) || "0A".equals(command)) return "NO DATA";
+                return "OK";
+            }
+        };
+        driver.connect();
+        SmartDtcScanPlanner.Plan plan = SmartDtcScanPlanner.createPlanFromEvidence(
+                SmartDtcScanPlanner.ScanMode.QUICK,
+                ObdProtocol.ISO_15765_4_CAN_11BIT_500,
+                null, null, false, false);
+
+        DtcReader.DtcScanResult result = DtcReader.readDtcs(driver, plan);
+
+        assertTrue(result.scanCompleted);
+        assertFalse(result.scanCancelled);
+        assertTrue("Mode 03 was positively verified",
+                result.hasCompleteStoredSnapshot(true));
+        assertFalse("Mode 07 timeout remains unknown, not zero",
+                result.hasCompletePendingSnapshot(true));
+        assertFalse("Mode 0A timeout remains unknown, not zero",
+                result.hasCompletePermanentSnapshot(true));
+    }
+
+    @Test
+    public void interruptedScanIsMarkedCancelledAndNeverComplete() {
+        BaseDriver driver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                if ("0100".equals(command)) {
+                    Thread.currentThread().interrupt();
+                    return "41 00 BE 3E B8 13";
+                }
+                return "NO DATA";
+            }
+        };
+        driver.connect();
+        SmartDtcScanPlanner.Plan plan = SmartDtcScanPlanner.createPlanFromEvidence(
+                SmartDtcScanPlanner.ScanMode.QUICK,
+                ObdProtocol.ISO_15765_4_CAN_11BIT_500,
+                null, null, false, false);
+
+        try {
+            DtcReader.DtcScanResult result = DtcReader.readDtcs(driver, plan);
+
+            assertTrue(result.scanCancelled);
+            assertFalse(result.scanCompleted);
+            assertFalse(result.hasCompleteStoredSnapshot(true));
+        } finally {
+            // Preserve the production assertion while keeping JUnit's worker clean.
+            Thread.interrupted();
+        }
+    }
+
+    @Test
+    public void rejectedProtocolSelectionIsNeverProbedOrMislabelled() {
+        List<String> commands = new ArrayList<>();
+        BaseDriver driver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                commands.add(command);
+                if (command.startsWith("ATSP")) return "?";
+                if ("0100".equals(command)) return "41 00 BE 3E B8 13";
+                if ("03".equals(command)) return "43 00";
+                return "OK";
+            }
+        };
+        driver.connect();
+        SmartDtcScanPlanner.Plan plan = SmartDtcScanPlanner.createPlanFromEvidence(
+                SmartDtcScanPlanner.ScanMode.FULL,
+                ObdProtocol.ISO_15765_4_CAN_11BIT_500,
+                null, null, true, true);
+
+        DtcReader.DtcScanResult result = DtcReader.readDtcs(driver, plan);
+
+        int firstRejected = commands.indexOf("ATSP1");
+        int nextSelection = commands.indexOf("ATSP2");
+        assertTrue(firstRejected >= 0 && nextSelection > firstRejected);
+        assertFalse("A rejected ATSP1 must not run an OBD probe on the old bus",
+                commands.subList(firstRejected + 1, nextSelection).contains("0100"));
+        assertEquals("Only CURRENT can respond; rejected protocols stay non-responding",
+                1, result.protocolsResponded);
+        assertFalse(commands.stream().anyMatch(c -> c.matches("ATSP[A-D]")));
+        assertTrue("Full scan must include the previously omitted KWP slow protocol",
+                commands.contains("ATSP4"));
+        assertTrue(commands.contains("ATSP9"));
+    }
+
+    @Test
+    public void unverifiedProtocolSelectionIsNeverUsedAsReusableEvidence() {
+        List<String> commands = new ArrayList<>();
+        BaseDriver driver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                commands.add(command);
+                if (command.startsWith("ATSP")) return "OK";
+                if ("ATDPN".equals(command)) return "OK"; // missing protocol number
+                if ("0100".equals(command)) return "41 00 BE 3E B8 13";
+                if ("03".equals(command)) return "43 00";
+                return "OK";
+            }
+        };
+        driver.connect();
+        SmartDtcScanPlanner.Plan plan = SmartDtcScanPlanner.createPlanFromEvidence(
+                SmartDtcScanPlanner.ScanMode.FULL,
+                ObdProtocol.ISO_15765_4_CAN_11BIT_500,
+                null, null, true, true);
+
+        DtcReader.DtcScanResult result = DtcReader.readDtcs(driver, plan);
+
+        assertEquals("Only CURRENT is proven when ATDPN is unparseable",
+                1, result.protocolsResponded);
+        int dpn = commands.indexOf("ATDPN");
+        int nextSelection = commands.indexOf("ATSP2");
+        assertTrue(dpn >= 0 && nextSelection > dpn);
+        assertFalse("No OBD request may follow an unverified ATSP selection",
+                commands.subList(dpn + 1, nextSelection).contains("0100"));
+    }
+
+    @Test
+    public void reconnectDuringScanCancelsBeforePublishingOldConnectionData() {
+        List<String> commands = new ArrayList<>();
+        BaseDriver driver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() {
+                connected = true;
+                markPhysicalConnectionEstablished();
+                return true;
+            }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                commands.add(command);
+                if ("0100".equals(command)) {
+                    // Same Java object, different physical connection.
+                    markPhysicalConnectionEstablished();
+                    return "41 00 BE 3E B8 13";
+                }
+                return "OK";
+            }
+        };
+        driver.connect();
+        SmartDtcScanPlanner.Plan plan = SmartDtcScanPlanner.createPlanFromEvidence(
+                SmartDtcScanPlanner.ScanMode.QUICK,
+                ObdProtocol.ISO_15765_4_CAN_11BIT_500,
+                null, null, false, false);
+
+        DtcReader.DtcScanResult result = DtcReader.readDtcs(driver, plan);
+
+        assertEquals(0, result.protocolsResponded);
+        assertFalse("old-connection scan must stop before Mode 03", commands.contains("03"));
+        assertFalse("old scan must not restore settings into the new connection",
+                commands.contains("ATSP0"));
+    }
+
+    @Test
+    public void interruptedScanStopsBeforeSendingCommandsAndPreservesInterrupt() {
+        List<String> commands = new ArrayList<>();
+        BaseDriver driver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                commands.add(command);
+                return "OK";
+            }
+        };
+        driver.connect();
+        SmartDtcScanPlanner.Plan plan = SmartDtcScanPlanner.createPlanFromEvidence(
+                SmartDtcScanPlanner.ScanMode.QUICK,
+                ObdProtocol.ISO_15765_4_CAN_11BIT_500,
+                null, null, false, false);
+
+        Thread.currentThread().interrupt();
+        try {
+            DtcReader.DtcScanResult result = DtcReader.readDtcs(driver, plan);
+            assertEquals(0, result.protocolsResponded);
+            assertTrue(commands.isEmpty());
+            assertTrue("cancellation must preserve the interrupt flag",
+                    Thread.currentThread().isInterrupted());
+        } finally {
+            // Do not leak the deliberate interrupt into the JUnit worker.
+            Thread.interrupted();
+        }
+    }
+
+    @Test
+    public void setupAcknowledgementAndPositiveMarkersAreStrict() {
+        assertTrue(DtcReader.isAcceptedAtCommandResponse("ATSP6\rOK\r>"));
+        assertFalse(DtcReader.isAcceptedAtCommandResponse("?"));
+        assertFalse(DtcReader.isAcceptedAtCommandResponse("CAN ERROR"));
+        assertFalse(DtcReader.isAcceptedAtCommandResponse(""));
+        assertTrue(DtcReader.hasPositiveResponse("7E8 06 41 00 BE 3E B8 13", "4100"));
+        assertTrue(DtcReader.hasPositiveResponse("7E8 02 43 00", "43"));
+        assertTrue("colon-suffixed CAN header",
+                DtcReader.hasPositiveResponse("7E8: 02 43 00", "43"));
+        assertTrue("row index after CAN header",
+                DtcReader.hasPositiveResponse("7E8 0: 02 43 00", "43"));
+        assertTrue("one-nibble DLC before ISO-TP data",
+                DtcReader.hasPositiveResponse("7E8 8 06 41 00 BE 3E B8 13", "4100"));
+        assertTrue("combined colon header, row index, and DLC",
+                DtcReader.hasPositiveResponse("7E8: 0: 8 02 43 00", "43"));
+        assertFalse(DtcReader.hasPositiveResponse("SEARCHING...", "4100"));
+        assertFalse(DtcReader.hasPositiveResponse("7E8 03 7F 03 11", "43"));
+        assertFalse("DLC metadata must not weaken negative-response rejection",
+                DtcReader.hasPositiveResponse("7E8: 8 03 7F 03 11", "43"));
+        assertFalse("43 in the CAN ID is not a positive Mode 03 payload",
+                DtcReader.hasPositiveResponse("743 03 7F 03 11", "43"));
+        assertFalse("43 later in a negative payload is not a positive response",
+                DtcReader.hasPositiveResponse("7E8 04 7F 03 43 00", "43"));
+        assertFalse("4100 may not be assembled across a CAN header boundary",
+                DtcReader.hasPositiveResponse("410 03 7F 01 11", "4100"));
+    }
+
+    @Test
     public void testClearDtcsRequiresAckAndVerifiesStoredCodesAreGone() {
         BaseDriver clearedDriver = new BaseDriver(new LoggerConfig()) {
             @Override public boolean connect() { connected = true; return true; }
@@ -291,5 +571,22 @@ public class DtcReaderTest {
         };
         unclearedDriver.connect();
         assertFalse(DtcReader.clearDtcs(unclearedDriver));
+    }
+
+    @Test
+    public void testClearDtcsRejectsAckWhenVerificationTimesOut() {
+        BaseDriver unverifiedDriver = new BaseDriver(new LoggerConfig()) {
+            @Override public boolean connect() { connected = true; return true; }
+            @Override public void disconnect() { connected = false; }
+            @Override public Double queryPid(PIDDefinition pidDef) { return null; }
+            @Override public String sendCommandRaw(String command) {
+                if ("04".equals(command)) return "44";
+                if ("03".equals(command)) return "NO DATA";
+                return "";
+            }
+        };
+        unverifiedDriver.connect();
+
+        assertFalse(DtcReader.clearDtcs(unverifiedDriver));
     }
 }

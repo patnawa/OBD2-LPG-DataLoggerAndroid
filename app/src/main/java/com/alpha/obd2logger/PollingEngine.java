@@ -56,8 +56,21 @@ final class PollingEngine {
         }
     }
 
+    /**
+     * Optional source of the latest GPS fix. Kept as an interface so the engine
+     * stays free of Android location APIs and JVM-testable.
+     */
+    interface LocationSupplier {
+        /** Latest fix as [latDeg, lonDeg, accuracyM, ageMs], or null when none. */
+        double[] latest();
+    }
+
+    /** Fixes older than this are dropped rather than logged as current. */
+    private static final long MAX_FIX_AGE_MS = 10_000;
+
     private final LoggerConfig config;
     private final List<PIDDefinition> pids;
+    private LocationSupplier locationSupplier;
     private final PidHealthTracker pidHealth = new PidHealthTracker();
     private final SimpleDateFormat iso =
             new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US);
@@ -77,6 +90,11 @@ final class PollingEngine {
      * sleeping for the sample interval directly, or the achieved period becomes
      * {@code pollDuration + interval} and the configured rate is never met.
      */
+    /** Attach a GPS fix source; null (the default) logs no location columns. */
+    void setLocationSupplier(LocationSupplier supplier) {
+        this.locationSupplier = supplier;
+    }
+
     void awaitNextCycle() throws InterruptedException {
         scheduler.sleepUntilNextCycle(SystemClock.elapsedRealtime());
     }
@@ -138,6 +156,7 @@ final class PollingEngine {
         appendDpf(samples, batch);
         appendAirDensity(samples, batch, airDensity, mafValue, mapSynthesized, fuelMode);
         appendTiming(samples, acquisitionSpanMs);
+        appendLocation(samples);
 
         DataRecord record = new DataRecord(
                 iso.format(new Date()),
@@ -302,5 +321,21 @@ final class PollingEngine {
 
         samples.add(new SensorSample("derived_poll_overrun_ms", "Poll Overrun",
                 (double) scheduler.lastOverrunMs(), "ms", "ok"));
+    }
+
+    /**
+     * Log the latest GPS fix alongside each record so a session can be replayed
+     * as a route. A fix older than {@link #MAX_FIX_AGE_MS} (tunnel, parking
+     * garage) is skipped entirely — repeating the last known point would draw a
+     * false stationary cluster on the route map.
+     */
+    private void appendLocation(List<SensorSample> samples) {
+        LocationSupplier supplier = locationSupplier;
+        if (supplier == null) return;
+        double[] fix = supplier.latest();
+        if (fix == null || fix.length < 4 || fix[3] > MAX_FIX_AGE_MS) return;
+        samples.add(new SensorSample("gps_lat", "GPS Latitude", fix[0], "deg", "ok"));
+        samples.add(new SensorSample("gps_lon", "GPS Longitude", fix[1], "deg", "ok"));
+        samples.add(new SensorSample("gps_accuracy_m", "GPS Accuracy", fix[2], "m", "ok"));
     }
 }

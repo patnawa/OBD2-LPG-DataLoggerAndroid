@@ -184,6 +184,7 @@ public class BrandProfileTest {
         assertEquals(VinBrandDetector.Brand.HONDA, BrandProfile.brandForWmi("MRH"));
         assertEquals(VinBrandDetector.Brand.ISUZU, BrandProfile.brandForWmi("MPA"));
         assertEquals(VinBrandDetector.Brand.ISUZU, BrandProfile.brandForWmi("MPB"));
+        assertEquals(VinBrandDetector.Brand.FORD, BrandProfile.brandForWmi("MNB"));
         assertEquals(VinBrandDetector.Brand.FORD, BrandProfile.brandForWmi("MAF"));
         assertEquals(VinBrandDetector.Brand.SUZUKI, BrandProfile.brandForWmi("MA3"));
         assertEquals(VinBrandDetector.Brand.TATA, BrandProfile.brandForWmi("MAT"));

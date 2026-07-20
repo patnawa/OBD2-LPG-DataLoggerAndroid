@@ -34,6 +34,17 @@ public class PIDParserTest {
     }
 
     @Test
+    public void standardDpfPid7aIsPressureNotSootPercentage() {
+        PIDDefinition dpfPressure = PIDDefinition.findByKey("01_7A");
+
+        assertNotNull(dpfPressure);
+        assertEquals("DPF Differential Pressure 1", dpfPressure.getName());
+        assertEquals("kPa", dpfPressure.getUnit());
+        assertEquals(Double.valueOf(1.0),
+                PIDParser.parse(dpfPressure, "00640000"));
+    }
+
+    @Test
     public void o2SensorParsesVoltage() {
         // PID 0x15 (O2 Sensor B1S2): 2 data bytes — A = voltage/200, B = STFT.
         // For A=0xB4 (180): 180/200 = 0.9V. B=0x00 (unused in this test).

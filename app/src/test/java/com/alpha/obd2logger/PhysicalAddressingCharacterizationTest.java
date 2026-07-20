@@ -27,6 +27,7 @@ public class PhysicalAddressingCharacterizationTest {
         /** CAN IDs (as ATSH argument) that will answer a Mode 03 request. */
         final List<String> respondingHeaders = new ArrayList<>();
         private String header = "7DF";
+        private String selectedProtocol = "6";
 
         RecordingDriver() {
             super(new LoggerConfig());
@@ -40,6 +41,13 @@ public class PhysicalAddressingCharacterizationTest {
         @Override
         public String sendCommandRaw(String command) {
             commands.add(command);
+            if (command.startsWith("ATSP") && command.length() == 5) {
+                selectedProtocol = command.substring(4);
+                // These characterization tests exercise the 11-bit/500 path;
+                // reject unrelated protocols so each fixture stays bounded.
+                return "6".equals(selectedProtocol) ? "OK" : "?";
+            }
+            if ("ATDPN".equals(command)) return selectedProtocol;
             if (command.startsWith("ATSH")) {
                 header = command.substring(4);
                 return "OK";

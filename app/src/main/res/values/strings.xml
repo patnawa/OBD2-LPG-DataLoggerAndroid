@@ -52,7 +52,7 @@
     <string name="live_fuel_map">Live ECU Fuel Correction Map</string>
     <string name="map_axes" formatted="false">Y = MAP kPa (or explicit Load % fallback), X = RPM (500-6500)</string>
     <string name="how_to_read_map_title">How to read the Map</string>
-    <string name="how_to_read_map_desc" formatted="false">Shows ECU fuel correction, not current rich/lean mixture.\n\nTrim = STFT + LTFT\n🟢 ±5% = Low learned correction\n🟡/🔴 Negative = ECU removing fuel\n🌐/🔵 Positive = ECU adding fuel\nA positive value does not mean the current AFR is lean while closed loop is correcting it. Measured Lambda (λ) appears inside mature cells when PID 01 34 is supported.\n\nPETROL stores the gasoline/E20 baseline. LPG/CNG stores the gas baseline.\nDEVIATION = LPG Trim - Petrol Trim.\nTUNE ASSIST uses that deviation as the gas multiplier direction: + add gas, - remove gas.\n\nCells with fewer than 3 stable hits remain neutral gray. Only compare maps collected with the same axis source.</string>
+    <string name="how_to_read_map_desc" formatted="false">Each cell shows the average ECU fuel correction learned at the labelled RPM and MAP/load point. It is not a direct rich/lean AFR reading.\n\nCell Trim = average(STFT + LTFT). If only one trim is available, the app uses that value. Negative means the ECU removed fuel; positive means the ECU added fuel. PETROL and LPG/CNG are stored separately.\n\nΔ Trim / Deviation = average LPG Trim − average Petrol Trim in the same cell. Because the inputs are percentages, Δ is a difference in percentage points (pp). Tune Assist reuses the rounded Δ number as an approximate gas-map adjustment percentage (+ add gas, − reduce gas), not an exact command. Confirm with measured Lambda/wideband and re-log after small changes.</string>
     <string name="petrol">PETROL</string>
     <string name="petrol_logs_header">Petrol Logs</string>
     <string name="lpg_logs_header">LPG/CNG Logs</string>
@@ -78,8 +78,11 @@
     <string name="open_log_csv_only">Only CSV log files can be opened on the map. (JSONL logs aren\'t supported for replay.)</string>
     <string name="open_log_skipped_non_csv">Skipped %1$d non-CSV file(s) — only CSV can be plotted.</string>
     <string name="lpg">LPG/CNG</string>
-    <string name="deviation">DEVIATION</string>
-    <string name="map_formula_hint">ECU correction is not measured rich/lean. Deviation = LPG Trim - Petrol Trim; + means add gas and - means remove gas. Confirm mixture with measured Lambda.</string>
+    <string name="deviation">Δ TRIM (pp)</string>
+    <string name="tune_assist">TUNE ASSIST</string>
+    <string name="export_tune_assist_csv">EXPORT CSV (TUNE ASSIST)</string>
+    <string name="map_formula_delta_title">Δ Trim (pp) = average LPG Trim − average Petrol Trim</string>
+    <string name="map_formula_hint" formatted="false">Δ is an ECU-correction difference in percentage points, not measured AFR. Tune Assist reuses the rounded Δ number as an approximate gas-map adjustment percentage: + add gas, − reduce gas. It is not exact; confirm with Lambda/wideband.</string>
     
     <!-- Tuning Analyzer Context Strings (professional OBD2 fuel-trim engine) -->
         <string name="analyzer_unknown">UNKNOWN</string>
@@ -116,6 +119,38 @@
     <string name="read_vehicle_info">Vehicle Info</string>
     <string name="reading_vehicle_info">Reading vehicle information...</string>
     <string name="vehicle_info_complete">Vehicle information read.</string>
+    <string name="vin_not_available_after_fallback">VIN was not returned by Mode 09 or read-only UDS F190. Enter it manually; if this vehicle still fails, capture the adapter response so its exact ECU format can be added safely.</string>
+    <string name="read_ecu_identification">ECU Identification</string>
+    <string name="cancel_ecu_identification">Cancel ECU read</string>
+    <string name="reading_ecu_identification">Reading standard ECU identification...</string>
+    <string name="reading_ecu_identification_progress">Reading ECU identification: %1$d/%2$d</string>
+    <string name="ecu_identification_complete">ECU identification read.</string>
+    <string name="ecu_identification_complete_saved">ECU identification read and saved for this VIN.</string>
+    <string name="ecu_identification_complete_not_saved">ECU identification read but not saved. Read or enter this vehicle\'s VIN, then run ECU Identification again to save it.</string>
+    <string name="ecu_identification_requires_elm">ECU identification requires a connected CAN-capable ELM327 or vLinker adapter.</string>
+    <string name="ecu_identification_no_modules">ECU identification is unavailable on the current live ISO-TP CAN bus. Reconnect on a supported CAN protocol or view a saved result.</string>
+    <string name="ecu_identification_select_module">Select control module</string>
+    <string name="ecu_identification_saved_results">Saved ECU results</string>
+    <string name="ecu_identification_showing_saved">Showing saved ECU information from %1$s.</string>
+    <string name="ecu_identification_already_running">An ECU identification read is already running.</string>
+    <string name="cancelling_ecu_identification">Cancelling ECU identification and restoring the adapter...</string>
+    <string name="ecu_identification_cancelled">Cancellation requested. Adapter restoration will finish before the next command.</string>
+    <string name="ecu_identification_session_changed">The active adapter connection changed. Start the ECU read again.</string>
+    <string name="ecu_identification_failed">ECU identification failed: %1$s</string>
+    <string name="adapter_did_not_respond">adapter did not respond</string>
+    <string name="ecu_identification_no_standard_values">The module answered UDS but returned no supported standard identification values.</string>
+    <string name="ecu_identification_no_response">The selected ECU did not answer the supported UDS identification requests.</string>
+    <string name="ecu_identification_title">ECU Information (read-only)</string>
+    <string name="ecu_identification_summary">%1$d value(s), %2$d negative response(s), %3$d unanswered or malformed</string>
+    <string name="ecu_identification_captured">Captured: %1$s</string>
+    <string name="ecu_identification_empty_answered">The module answered UDS but did not expose a supported standard identification value.</string>
+    <string name="ecu_identification_empty_no_response">No valid UDS response was received from this address.</string>
+    <string name="ecu_identification_raw_hex">Raw hex: %1$s</string>
+    <string name="ecu_identification_did_label">DID %1$s · %2$s</string>
+    <string name="ecu_identification_show_technical">Show technical details (%1$d)</string>
+    <string name="ecu_identification_hide_technical">Hide technical details</string>
+    <string name="ecu_identification_technical_line">DID %1$s — %2$s: %3$s</string>
+    <string name="ecu_identification_safety">Read-only ISO 14229 service 0x22. No diagnostic-session change, security access, routine control, reset, coding, or write command is sent.</string>
     <string name="read_ford_module_live_data">Module Live Data</string>
     <string name="reading_ford_module_live_data">Reading module data...</string>
     <string name="ford_module_live_data_complete">Module data read.</string>
@@ -326,22 +361,32 @@
 
     <!-- Map Info Dialog -->
     <string name="map_info_color_legend_header">COLOR LEGEND</string>
-    <string name="map_info_legend_perfect">Low ECU correction (±5%) • Verify mixture with Lambda</string>
-    <string name="map_info_legend_slightly_rich" formatted="false">ECU removes fuel (-5% to -10%) • Not a measured rich verdict</string>
-    <string name="map_info_legend_very_rich" formatted="false">ECU removes fuel heavily (Under -10%) • Inspect the baseline</string>
-    <string name="map_info_legend_slightly_lean" formatted="false">ECU adds fuel (+5% to +10%) • Not a measured lean verdict</string>
-    <string name="map_info_legend_very_lean" formatted="false">ECU adds fuel heavily (Over +10%) • Inspect the baseline</string>
+    <string name="map_info_color_context" formatted="false">In PETROL/LPG mode the color follows Cell Trim (%). In Δ mode it follows the petrol-to-gas difference (pp). Tune Assist reuses the rounded number as an approximate adjustment (%).</string>
+    <string name="map_info_legend_perfect" formatted="false">Low signed value (−5 to +5) • Confirm mixture with measured Lambda</string>
+    <string name="map_info_legend_slightly_rich" formatted="false">Moderately negative (−10 to below −5) • ECU removal / negative Δ</string>
+    <string name="map_info_legend_very_rich" formatted="false">Strongly negative (below −10) • Inspect the baseline before adjusting</string>
+    <string name="map_info_legend_slightly_lean" formatted="false">Positive value (above +5 to +10) • ECU addition / positive Δ</string>
+    <string name="map_info_legend_very_lean" formatted="false">Strongly positive (above +10) • Inspect the baseline before adjusting</string>
     
     <string name="map_info_tuning_logic_header">TUNING LOGIC</string>
     <string name="map_info_petrol_title">1. PETROL</string>
-    <string name="map_info_petrol_desc">Acts as the engine\'s factory baseline for original fuel delivery.</string>
+    <string name="map_info_trim_formula">Formula: Cell Trim = average(STFT + LTFT)</string>
+    <string name="map_info_petrol_desc">The reference map for original fuel operation. Resolve unusually high petrol correction or mechanical faults before using it as a gas-tuning baseline.</string>
     <string name="map_info_lpg_title">2. LPG/CNG</string>
-    <string name="map_info_lpg_desc">Shows the current fuel delivery behavior under gas operation.</string>
-    <string name="map_info_deviation_title">3. DEVIATION</string>
-    <string name="map_info_deviation_desc">Calculates how far the gas calibration drifts from petrol (+ is lean, - is rich).</string>
+    <string name="map_info_lpg_desc">A separate map of ECU correction while operating on gas, collected in the same RPM/load cells as the petrol baseline.</string>
+    <string name="map_info_deviation_title">3. Δ TRIM / DEVIATION</string>
+    <string name="map_info_delta_formula">Formula: Δ Trim = average LPG Trim − average Petrol Trim (pp)</string>
+    <string name="map_info_deviation_desc">Positive Δ means the ECU added more correction on gas than on petrol; negative Δ means it removed more. Under equivalent conditions this suggests relative gas under-delivery or over-delivery, but it is not a measured lean/rich verdict.</string>
     <string name="map_info_tune_assist_title">4. TUNE ASSIST</string>
-    <string name="map_info_tune_assist_desc">The exact percentage to add (+) or subtract (-) in your gas ECU multiplier map to bring deviation to 0%.</string>
-    <string name="map_info_note">Note: You must collect both Petrol and LPG data in the same cells first for comparison to work!</string>
+    <string name="map_info_tune_formula" formatted="false">Display: approximate adjustment (%) = rounded signed Δ Trim number</string>
+    <string name="map_info_tune_assist_desc">Positive suggests adding gas; negative suggests reducing gas. The percentage is an approximate starting adjustment, not an exact conversion from percentage points. Make small changes, verify with measured Lambda/wideband, and collect a new log.</string>
+    <string name="map_info_examples_header">WORKED Δ EXAMPLES</string>
+    <string name="map_info_examples_desc" formatted="false">Petrol +2%, LPG +8% → Δ +6 pp: the ECU adds 6 points more correction on gas. Tune Assist starts near +6%; add gas gradually.\n\nPetrol −3%, LPG −9% → Δ −6 pp: the ECU removes 6 points more correction on gas. Tune Assist starts near −6%; reduce gas gradually.\n\nPetrol +15%, LPG +15% → Δ 0 pp: the maps match, but both baselines still need investigation. Zero Δ means “matched,” not “healthy.”</string>
+    <string name="map_info_quality_header">WHEN A CELL IS TRUSTWORTHY</string>
+    <string name="map_info_quality_desc" formatted="false">The app learns only warm (ECT ≥ 80 °C), closed-loop, stable samples with fuel-status and trim data. Gray means provisional (fewer than 3 stored hits); 5 or more stable hits gives better confidence, and 20 hits locks the cell. Petrol and gas must overlap in the same RPM/load cell and use the same axis source. A blank cell means missing, filtered, or non-comparable data—not 0.</string>
+    <string name="map_info_diesel_header">DIESEL NOTE</string>
+    <string name="map_info_diesel_desc">Many diesel ECUs, including some Ford diesels, do not expose gasoline-style Mode 01 STFT/LTFT. The Trim/Δ map may therefore remain blank and is not a diesel calibration map. Use supported diesel-specific boost, rail-pressure, MAF, EGR, and DPF data instead; the app does not invent missing trim.</string>
+    <string name="map_info_note">Collect Petrol and LPG data in the same cells, with the same axis source and similar driving conditions. Establish a healthy petrol baseline first.</string>
     <string name="map_info_close">Close</string>
 
     <!-- Derived Sensors: Fuel Economy + Turbo Boost -->
@@ -394,8 +439,35 @@
     <string name="feature_turbo_boost">Turbo Boost Calculation</string>
     <string name="feature_fuel_economy">Fuel Economy Calculation</string>
     <string name="feature_dpf_monitor">DPF Monitor (Diesel)</string>
+    <string name="feature_dpf_monitor_desc">Standard differential-pressure and inlet-temperature PIDs when supported; soot, ash and regeneration require a verified manufacturer profile</string>
+    <string name="home_dpf_pressure_value">DPF ΔP: %1$.2f kPa</string>
+    <string name="home_dpf_pressure_unavailable">DPF ΔP: ---</string>
     <string name="feature_custom_pid">Enable Custom PIDs</string>
     <string name="feature_air_density">Air Density (AAD/MAD/BAD)</string>
+    <string name="smart_secondary_bus_scan_title">Smart multi-protocol scan (automatic)</string>
+    <string name="smart_secondary_bus_scan_description">Recommended: leave on. Automatically adds only standard OBD-II protocols verified by a previous Full Scan for the VIN on this connection. Turn off to force current-protocol-only scans; Full Scan remains manual.</string>
+    <string name="dtc_full_scan_badge">🔬 FULL SCAN — OBD-II 1–9</string>
+    <string name="dtc_full_scan_starting">🔬 Full Scan: checking OBD-II protocols 1–9…</string>
+    <string name="dtc_full_scan_notice">Full Scan checks OBD-II protocols 1–9 and may take 20–30 seconds…</string>
+    <string name="dtc_full_scan_failed">Full Scan failed: %1$s</string>
+    <string name="dtc_scan_connection_changed">Scan cancelled because the adapter connection changed. Please scan again.</string>
+    <string name="home_dtc_status_unavailable">DTC status unavailable — scan again</string>
+    <string name="home_dtc_status_partial">DTC scan incomplete · %1$d known active code(s)</string>
+    <string name="home_dtc_status_partial_meta">One or more DTC modes did not respond; unavailable modes are not counted as zero.</string>
+    <string name="dtc_scan_retry_hint">Tap Read DTCs to retry</string>
+    <string name="dtc_scan_partial">Scan incomplete — unavailable DTC modes are shown as “—”, not as zero.</string>
+    <string name="dtc_clear_partial">Stored DTCs were cleared and verified, but pending or permanent status is unavailable. Scan again before treating those modes as clear.</string>
+    <string name="dtc_clear_secondary_retained">Stored DTCs were cleared on the current protocol. Codes previously found on other protocols remain listed until those protocols are rescanned.</string>
+    <string name="dtc_health_partial">DTC scan incomplete</string>
+    <string name="dtc_health_partial_desc">Some DTC modes did not respond. Their counts are unavailable, not zero.</string>
+    <string name="dtc_stored_unavailable">—\nSTORED</string>
+    <string name="dtc_pending_unavailable">—\nPENDING</string>
+    <string name="dtc_permanent_unavailable">—\nPERMANENT</string>
+    <string name="dtc_protocol_summary">Protocols scanned: %1$d · %2$d responded · %3$d known DTCs</string>
+    <string name="dtc_protocol_row_no_response"> — no response</string>
+    <string name="dtc_protocol_row_no_dtc_service"> — bus responded; DTC services unavailable</string>
+    <string name="dtc_protocol_row_partial"> — %1$d modules, %2$d known DTCs; some modes unavailable</string>
+    <string name="dtc_protocol_row_complete"> — %1$d modules, %2$d DTCs</string>
 
     <!-- Gauge / Dashboard / Graph slot strings -->
     <string name="tap_to_add">Tap to Add</string>
@@ -458,6 +530,27 @@
     <string name="home_ai_insight_trim">Fuel correction is elevated</string>
     <string name="home_ai_insight_trim_detail">Total fuel trim is %1$+.1f%%. Capture more stable cruise data before tuning.</string>
     <string name="home_ai_insight_local">LOCAL ANALYSIS • TAP FOR DETAILS</string>
+    <string name="home_title_performance">PERFORMANCE TIMERS</string>
+    <string name="home_label_perf_0100">0–100 KM/H</string>
+    <string name="home_label_perf_80120">80–120 KM/H</string>
+    <string name="home_label_perf_quarter">¼ MILE</string>
+    <string name="home_perf_arm_hint">Launch from a standstill to time a run</string>
+    <string name="home_perf_running">Timing run in progress…</string>
+    <string name="home_perf_best_line">Best: 0–100 %1$s • 80–120 %2$s • ¼ mi %3$s</string>
+    <string name="home_perf_quarter_trap">%1$.2f s @ %2$.0f km/h</string>
+    <string name="home_title_switchover">FUEL SWITCHOVER</string>
+    <string name="home_switch_status_gated">Waiting for closed-loop, warm engine</string>
+    <string name="home_switch_status_collecting">Building trim baseline…</string>
+    <string name="home_switch_status_stable">No switchover detected</string>
+    <string name="home_switch_status_switched">Switchover detected (×%1$d)</string>
+    <string name="home_switch_detail_hint">Detects the petrol↔LPG changeover from the ECU\'s fuel-trim signature and compares both fuels.</string>
+    <string name="home_switch_detail_stable">Current regime: STFT %1$+.1f%% • LTFT %2$+.1f%% over %3$d samples</string>
+    <string name="home_switch_detail_compare">Before: LTFT %1$+.1f%% → Now: LTFT %2$+.1f%% (Δ total %3$+.1f%%)</string>
+    <string name="home_switch_divergent">LPG map diverges from petrol baseline — check reducer and gas injectors</string>
+    <string name="review_route_title">DRIVEN ROUTE (GPS)</string>
+    <string name="review_route_speed">Speed</string>
+    <string name="review_route_boost">Boost</string>
+    <string name="review_route_empty">No GPS data in this log</string>
     <string name="drive_insight_tap_details">Tap for details</string>
     <string name="drive_insight_advisory">Advisory only. Drive Insight analyzes current OBD data on this device and never controls the vehicle.</string>
     <string name="drive_insight_snapshot">Current snapshot

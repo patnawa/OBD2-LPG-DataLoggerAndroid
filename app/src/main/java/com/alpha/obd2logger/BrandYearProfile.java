@@ -155,7 +155,8 @@ public final class BrandYearProfile {
         if (wmi.startsWith("ZFA")) return Brand.FIAT;
         if (wmi.startsWith("ZAR")) return Brand.ALFA_ROMEO;
         
-        // Indian manufacturers (M)
+        // Thailand / Indian manufacturers (M)
+        if (wmi.equals("MNB") || wmi.equals("MAF") || wmi.equals("MLA")) return Brand.FORD;
         if (wmi.startsWith("MAT")) return Brand.TATA;
         if (wmi.startsWith("MA1") || wmi.startsWith("MA3")) return Brand.MAHINDRA;
 

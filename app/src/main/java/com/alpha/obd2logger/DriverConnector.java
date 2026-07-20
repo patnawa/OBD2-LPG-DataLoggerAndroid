@@ -62,6 +62,7 @@ public final class DriverConnector {
                 return null;
             }
             if (driver.isConnected()) {
+                driver.markPhysicalConnectionEstablished();
                 return driver;
             }
             // Serialize connect() per driver: a timed-out attempt may still be
@@ -71,7 +72,8 @@ public final class DriverConnector {
                 return driver;
             }
             try {
-                if (driver.connect()) {
+                if (driver.connect() && driver.isConnected()) {
+                    driver.markPhysicalConnectionEstablished();
                     return driver;
                 }
             } finally {
@@ -133,7 +135,9 @@ public final class DriverConnector {
                 return false;
             }
             try {
-                return driver.connect();
+                boolean connected = driver.connect() && driver.isConnected();
+                if (connected) driver.markPhysicalConnectionEstablished();
+                return connected;
             } finally {
                 driver.releaseConnectGate();
             }

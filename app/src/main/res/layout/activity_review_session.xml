@@ -142,7 +142,7 @@
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="48dp"
-                    android:text="TUNE ASSIST"
+                    android:text="@string/tune_assist"
                     android:textSize="11sp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
@@ -174,6 +174,66 @@
 
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- GPS route replay: hidden unless the log carries gps_* columns -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/reviewRouteCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:visibility="gone"
+                app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                app:cardCornerRadius="12dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutlineVariant">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/review_route_title"
+                        android:textColor="@color/muted"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp"/>
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/reviewRouteToggle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        app:singleSelection="true"
+                        app:selectionRequired="true"
+                        app:checkedButton="@id/btnRouteSpeed">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnRouteSpeed"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/review_route_speed"
+                            android:textSize="11sp"
+                            style="?attr/materialButtonOutlinedStyle" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnRouteBoost"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/review_route_boost"
+                            android:textSize="11sp"
+                            style="?attr/materialButtonOutlinedStyle" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                    <com.alpha.obd2logger.RouteMapView
+                        android:id="@+id/reviewRouteMapView"
+                        android:layout_width="match_parent"
+                        android:layout_height="280dp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Professional Formula & Description Card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
@@ -202,7 +262,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Deviation = LPG Trim - Petrol Trim"
+                        android:text="@string/map_formula_delta_title"
                         android:textColor="@color/primary"
                         android:textSize="15sp"
                         android:textStyle="bold"
@@ -363,7 +423,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginTop="16dp"
-                android:text="EXPORT CSV (TUNE ASSIST)"
+                android:text="@string/export_tune_assist_csv"
                 app:icon="@android:drawable/ic_menu_share"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:visibility="gone" />

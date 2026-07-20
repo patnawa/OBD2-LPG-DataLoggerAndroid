@@ -109,19 +109,24 @@
             </div>
 
             <div class="card">
-                <h2>4. Live Fuel Map (3D Scatter)</h2>
-                <p>The <strong>Fuel Map</strong> tab is the core tuning tool. It automatically plots your Fuel Trims (STFT + LTFT) into an RPM vs. MAP (Intake Pressure) grid.</p>
+                <h2>4. Live ECU Fuel Correction Map</h2>
+                <p>The <strong>Fuel Map</strong> tab plots average ECU fuel correction into an RPM vs. MAP/load grid. Each cell uses <strong>Cell Trim = average(STFT + LTFT)</strong> (or the one available trim). This is ECU correction, not a direct measured rich/lean AFR result.</p>
                 <ul>
-                    <li><strong>Petrol Map:</strong> Drive on Petrol first to establish a baseline. The app memorizes the factory ECU's target trims.</li>
-                    <li><strong>LPG/CNG Map:</strong> Switch to LPG/CNG and drive. The app records the trims in the same cells.</li>
-                    <li><strong>Cell Lock &amp; Hit Counter:</strong> Cells start transparent and become more opaque as stable data is collected (Dwell Time logic). At <strong>20 hits</strong>, the cell is "Locked" and receives a thick gold border.</li>
-                    <li><strong>Deviation Mode (Diff):</strong> This mode compares the Petrol and LPG/CNG maps. Cells colored <span style="color:#FF2A55">Red</span> mean the gas mixture is too rich, while <span style="color:#00E5FF">Blue</span> means too lean. Your goal is to adjust your gas ECU so the deviation map is close to 0% (Green).</li>
+                    <li><strong>Petrol Map:</strong> Collect a healthy petrol baseline first. Repair unusually high petrol correction or mechanical faults before using it as the reference.</li>
+                    <li><strong>LPG/CNG Map:</strong> Switch to gas and collect stable data in the same RPM/load cells and under similar conditions.</li>
+                    <li><strong>Data Quality:</strong> The app learns only warm (ECT &ge; 80 &deg;C), closed-loop, stable samples with fuel-status and trim data. Gray cells have fewer than 3 stored hits; 5 or more gives better confidence, and 20 hits locks the cell. Blank means missing, filtered, or non-comparable data&mdash;not zero.</li>
+                    <li><strong>&Delta; Trim / Deviation:</strong> <code>average LPG Trim &minus; average Petrol Trim</code> in the same cell. Since the inputs are percentages, &Delta; is measured in <strong>percentage points (pp)</strong>. Positive means the ECU added more correction on gas; negative means it removed more. It suggests relative gas under-delivery or over-delivery only when conditions are comparable; it is not a measured lean/rich verdict.</li>
+                    <li><strong>Worked examples:</strong> Petrol +2%, LPG +8% gives &Delta; +6 pp (Tune Assist starts near +6%; add gas gradually). Petrol &minus;3%, LPG &minus;9% gives &Delta; &minus;6 pp (Tune Assist starts near &minus;6%; reduce gas gradually). Petrol +15%, LPG +15% gives &Delta; 0 pp, but both baselines still need investigation&mdash;zero means matched, not healthy.</li>
+                    <li><strong>Tune Assist:</strong> Reuses the rounded &Delta; number as an approximate gas-map adjustment percentage. &Delta; itself remains a percentage-point difference, so this is not an exact conversion or guaranteed multiplier correction. Make small changes, verify with measured Lambda/wideband, and collect a new log.</li>
+                    <li><strong>Diesel:</strong> Many diesel ECUs, including some Ford diesels, do not expose gasoline-style Mode 01 STFT/LTFT. A blank Trim/&Delta; map can be expected; use supported diesel boost, rail-pressure, MAF, EGR, and DPF data instead.</li>
                 </ul>
             </div>
 
             <div class="card">
                 <h2>5. Diagnostic Trouble Codes (DTC)</h2>
-                <p>The <strong>DTC Tab</strong> allows you to scan the ECU for stored fault codes. Tap <strong>Read DTCs</strong> to scan. If codes are found, you can tap <strong>Clear DTCs</strong> to erase them and turn off the Check Engine Light. <em>Note: The engine must usually be OFF (but ignition ON) to clear codes.</em></p>
+                <p>The <strong>DTC Tab</strong> reads stored (Mode 03), pending (Mode 07), and permanent (Mode 0A) codes. <strong>Read DTCs</strong> starts a Quick/Smart scan on the protocol that already connected. We recommend leaving <strong>Smart multi-protocol scan (automatic)</strong> enabled: the app may add only standard OBD-II protocols confirmed by a previous strict Full Scan for a VIN read from this connection or explicitly entered for this live session. Turn it off to force current-protocol-only scans. A remembered VIN alone cannot authorize extra protocols or background startup expansion.</p>
+                <p><strong>Full Scan</strong> is always manual. It checks the nine legislated OBD-II protocols (1–9), can take longer, and restores the live polling protocol when finished. It does not pretend that generic ELM USER protocols route to Ford MS-CAN or another adapter-specific physical bus. Use Full Scan once to establish a trustworthy vehicle module profile, then use Smart for routine reads.</p>
+                <p>If codes are found, repair the cause before tapping <strong>Clear DTCs</strong>. Clearing also resets emissions readiness. <em>The engine must usually be OFF with ignition ON, and permanent codes remain until the ECU confirms the repair.</em></p>
             </div>
 
             <div class="card">
@@ -183,18 +188,23 @@
 
             <div class="card">
                 <h2>4. ตารางเชื้อเพลิง (Live Fuel Map)</h2>
-                <p>หน้า <strong>Fuel Map</strong> คือเครื่องมือหลักสำหรับช่างจูน โดยแอปจะสร้างตาราง 3 มิติ (RPM เทียบกับ MAP) และเก็บค่า Fuel Trim (STFT+LTFT) ลงในช่องต่างๆ ตามการขับจริง</p>
+                <p>หน้า <strong>Fuel Map</strong> แสดงค่าเฉลี่ยการชดเชยเชื้อเพลิงของ ECU ในตารางรอบเครื่องเทียบกับ MAP/โหลด โดยใช้ <strong>Cell Trim = ค่าเฉลี่ย (STFT + LTFT)</strong> หรือใช้ค่า Trim ที่มีเพียงค่าเดียว ค่านี้ไม่ใช่ค่า AFR ที่วัดตรงหรือคำตัดสินว่าหนาหรือบาง</p>
                 <ul>
-                    <li><strong>แผนที่น้ำมัน (Petrol):</strong> ควรขับด้วยน้ำมันก่อนเพื่อให้แอปจำค่าพื้นฐาน (Baseline) ของรถคุณ</li>
-                    <li><strong>แผนที่แก๊ส (LPG/CNG):</strong> สลับเป็นแก๊สแล้วขับ แอปจะเก็บค่า Trim ของแก๊สลงตารางเดิม</li>
-                    <li><strong>ฟีเจอร์ล็อกโซนจูน (Cell Lock):</strong> ช่องตารางจะเริ่มต้นแบบโปร่งใส และจะทึบแสงขึ้นเมื่อเก็บข้อมูลได้นิ่งพอ (Dwell Time) เมื่อเก็บครบ <strong>20 ครั้ง (Hits)</strong> ช่องนั้นจะถูก "ล็อก" และแสดงกรอบสีเหลืองทองที่ชัดเจน</li>
-                    <li><strong>โหมดเบี่ยงเบน (Deviation/Diff):</strong> โหมดนี้จะนำค่าแก๊สมาลบกับค่าน้ำมัน หากช่องไหนเป็น <span style="color:#FF2A55">สีแดง</span> แปลว่าแก๊สหนาไป หากเป็น <span style="color:#00E5FF">สีฟ้า</span> แปลว่าบางไป เป้าหมายของคุณคือการปรับจูนกล่องแก๊สให้หน้า Deviation นี้เข้าใกล้ค่า 0% (<span style="color:#00FFA3">สีเขียว</span>) ให้มากที่สุด</li>
+                    <li><strong>แผนที่น้ำมัน (Petrol):</strong> เก็บค่าฐานน้ำมันที่สมบูรณ์ก่อน หากค่า Trim น้ำมันสูงผิดปกติควรแก้ปัญหาทางกลก่อนนำมาเป็นฐานจูนแก๊ส</li>
+                    <li><strong>แผนที่แก๊ส (LPG/CNG):</strong> สลับเป็นแก๊สแล้วเก็บข้อมูลที่นิ่งในช่องรอบ/โหลดเดียวกับน้ำมันและสภาพการขับใกล้เคียงกัน</li>
+                    <li><strong>คุณภาพข้อมูล:</strong> แอปเรียนรู้เฉพาะตอนเครื่องอุ่น (ECT &ge; 80 &deg;C), อยู่ใน Closed Loop, ค่าคงที่ และมีข้อมูลสถานะเชื้อเพลิงกับ Trim ช่องสีเทามีข้อมูลน้อยกว่า 3 ครั้ง, ตั้งแต่ 5 ครั้งขึ้นไปมีความมั่นใจมากขึ้น และล็อกเมื่อครบ 20 ครั้ง ช่องว่างหมายถึงข้อมูลหาย ถูกกรอง หรือเปรียบเทียบไม่ได้ ไม่ใช่ค่า 0</li>
+                    <li><strong>&Delta; Trim / Deviation:</strong> คำนวณจาก <code>ค่า Trim เฉลี่ยแก๊ส &minus; ค่า Trim เฉลี่ยน้ำมัน</code> ในช่องเดียวกัน เนื่องจากค่าต้นทางเป็นเปอร์เซ็นต์ หน่วยของ &Delta; จึงเป็น <strong>จุดเปอร์เซ็นต์ (pp)</strong> ค่าบวกหมายถึง ECU เพิ่มการชดเชยเมื่อใช้แก๊สมากกว่า ค่าลบหมายถึงลดการชดเชยมากกว่า เป็นเพียงแนวโน้มการจ่ายแก๊สเมื่อเงื่อนไขเทียบกันได้ ไม่ใช่ผลวัดตรงว่าบางหรือหนา</li>
+                    <li><strong>ตัวอย่าง:</strong> น้ำมัน +2%, แก๊ส +8% ได้ &Delta; +6 pp (Tune Assist เริ่มใกล้ +6%; เพิ่มแก๊สทีละน้อย) น้ำมัน &minus;3%, แก๊ส &minus;9% ได้ &Delta; &minus;6 pp (Tune Assist เริ่มใกล้ &minus;6%; ลดแก๊สทีละน้อย) น้ำมัน +15%, แก๊ส +15% ได้ &Delta; 0 pp แต่ค่าฐานทั้งคู่ยังสูง&mdash;ศูนย์หมายถึงตรงกัน ไม่ได้หมายถึงสมบูรณ์</li>
+                    <li><strong>Tune Assist:</strong> นำตัวเลข &Delta; ที่ปัดเศษมาใช้เป็นเปอร์เซ็นต์ปรับตารางแก๊สโดยประมาณ ส่วน &Delta; ยังคงมีหน่วยเป็นจุดเปอร์เซ็นต์ จึงไม่ใช่การแปลงที่แม่นยำหรือค่าปรับ Multiplier ที่รับประกันว่าถูกต้อง ควรปรับทีละน้อย ยืนยันด้วย Lambda/wideband ที่วัดจริง และเก็บ Log ใหม่</li>
+                    <li><strong>เครื่องยนต์ดีเซล:</strong> ECU ดีเซลจำนวนมาก รวมถึง Ford ดีเซลบางรุ่น ไม่ส่ง STFT/LTFT แบบเบนซินผ่าน Mode 01 ตาราง Trim/&Delta; จึงอาจว่าง ควรใช้ข้อมูลบูสต์ แรงดันราง MAF EGR และ DPF ที่รถรองรับแทน</li>
                 </ul>
             </div>
 
             <div class="card">
                 <h2>5. การสแกนโค้ด (DTC)</h2>
-                <p>หน้า <strong>DTC</strong> ใช้สำหรับอ่านและลบโค้ดไฟรูปเครื่องยนต์ (Check Engine) กดปุ่ม <strong>Read DTCs</strong> เพื่ออ่านโค้ด หากพบปัญหาและแก้ไขแล้ว สามารถกด <strong>Clear DTCs</strong> เพื่อลบไฟโชว์ได้ <em>(หมายเหตุ: การลบโค้ดมักจะต้องดับเครื่องยนต์ แต่บิดกุญแจไว้ที่ ON)</em></p>
+                <p>หน้า <strong>DTC</strong> อ่านโค้ดที่บันทึกไว้ (Mode 03), โค้ดรอดำเนินการ (Mode 07) และโค้ดถาวร (Mode 0A) ปุ่ม <strong>Read DTCs</strong> จะสแกนแบบ Quick/Smart บนโปรโตคอลที่เชื่อมต่อสำเร็จอยู่แล้ว แนะนำให้เปิด <strong>สแกนหลายโปรโตคอลอัตโนมัติ</strong> ไว้ แอปจะเพิ่มเฉพาะโปรโตคอล OBD-II มาตรฐานที่ Full Scan แบบเข้มงวดเคยยืนยันสำหรับ VIN ที่อ่านจากรถผ่านการเชื่อมต่อนี้ หรือ VIN ที่ผู้ใช้กรอกยืนยันสำหรับการเชื่อมต่อสดครั้งนี้ ปิดตัวเลือกนี้เมื่อต้องการบังคับให้สแกนเฉพาะโปรโตคอลปัจจุบัน VIN ที่แอปจำไว้เฉย ๆ จะไม่อนุญาตให้เพิ่มโปรโตคอลหรือขยายการสแกนอัตโนมัติตอนเริ่มระบบ</p>
+                <p><strong>Full Scan (สแกนครบ)</strong> ต้องสั่งด้วยตนเองเสมอ โดยตรวจโปรโตคอล OBD-II มาตรฐาน 1–9 แล้วคืนค่าโปรโตคอลสำหรับดูข้อมูลสดเมื่อเสร็จ ระบบจะไม่อ้างว่า USER CAN ของ ELM ทั่วไปสามารถสลับขาไป Ford MS-CAN หรือบัสเฉพาะของอะแดปเตอร์ได้ แนะนำให้สแกนครบหนึ่งครั้งเพื่อสร้างโปรไฟล์โมดูลที่เชื่อถือได้ แล้วใช้ Smart ในการอ่านตามปกติ</p>
+                <p>หากพบโค้ด ให้ซ่อมสาเหตุก่อนกด <strong>Clear DTCs</strong> เพราะการลบโค้ดจะรีเซ็ต readiness ด้วย <em>โดยทั่วไปต้องดับเครื่องยนต์แต่เปิดกุญแจ ON และโค้ดถาวรจะหายเมื่อ ECU ยืนยันว่าซ่อมแล้วเท่านั้น</em></p>
             </div>
 
             <div class="card">

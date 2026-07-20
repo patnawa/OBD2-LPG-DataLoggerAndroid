@@ -1,49 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base Color Palette (Dark) -->
-    <color name="background">#050B14</color>
-    <color name="surface">#0B1422</color>
-    <color name="surface2">#101D30</color>
-    <color name="surface3">#152842</color>
-    <color name="primary">#16C7FF</color>
-    <color name="primary_variant">#0099D6</color>
-    <color name="accent">#55E98A</color>
-    <color name="danger">#FF4D67</color>
-    <color name="warning">#FFBF3F</color>
-    <color name="text">#F8FAFC</color>
-    <color name="muted">#94A3B8</color>
-    <color name="border">#203A5A</color>
-    <color name="tab_active">#16C7FF</color>
-    <color name="tab_inactive">#475569</color>
-    <color name="gauge_bg">#131C2D</color>
-    <color name="gauge_bezel">#293A5C</color>
-    <color name="gauge_bezel_inner">#1E2A44</color>
-    <color name="gauge_tick">#CBD5E1</color>
-    <color name="gauge_tick_minor">#64748B</color>
-    <color name="gauge_text">#F8FAFC</color>
-    <color name="gauge_unit">#94A3B8</color>
+    <!-- Industrial theme — dark ("night-shift HMI"): gunmetal panels with
+         machine-amber readouts, green = running, red = fault. -->
+    <color name="background">#0B0D0E</color>
+    <color name="surface">#131619</color>
+    <color name="surface2">#1A1E22</color>
+    <color name="surface3">#252A2F</color>
+    <color name="primary">#FFB020</color>
+    <color name="primary_variant">#E09000</color>
+    <!-- 16% primary for pill/badge backgrounds behind primary-colored text. -->
+    <color name="primary_faint">#29FFB020</color>
+    <color name="accent">#45D483</color>
+    <color name="danger">#FF5D5D</color>
+    <color name="warning">#FFC53D</color>
+    <color name="text">#EDEEEF</color>
+    <color name="muted">#99A0A6</color>
+    <color name="border">#333A40</color>
+    <color name="tab_active">#FFB020</color>
+    <color name="tab_inactive">#565E64</color>
+    <color name="gauge_bg">#15181B</color>
+    <color name="gauge_bezel">#3D444B</color>
+    <color name="gauge_bezel_inner">#262C31</color>
+    <color name="gauge_tick">#D5D8DB</color>
+    <color name="gauge_tick_minor">#6E767D</color>
+    <color name="gauge_text">#EDEEEF</color>
+    <color name="gauge_unit">#99A0A6</color>
     <color name="gauge_needle_tip">#FFFFFF</color>
     <color name="gauge_shadow">#40000000</color>
 
-    <!-- Status colors — see values/colors.xml for the contract. On dark surfaces the
-         bright swatches already read well as text, so they stay bright here and
+    <!-- Status colors — see values/colors.xml for the contract. On gunmetal surfaces
+         the bright swatches already read well as text, so they stay bright here and
          on_status flips to near-black to sit on top of them. -->
-    <color name="status_accent">#55E98A</color>
-    <color name="status_danger">#FF6B80</color>
-    <color name="status_warning">#FFBF3F</color>
-    <color name="status_primary">#16C7FF</color>
-    <color name="on_status">#08131F</color>
+    <color name="status_accent">#45D483</color>
+    <color name="status_danger">#FF7A7A</color>
+    <color name="status_warning">#FFC53D</color>
+    <color name="status_primary">#FFB020</color>
+    <color name="on_status">#141008</color>
 
     <!-- Material 3 Color Roles (Dark) -->
-    <color name="colorPrimaryContainer">#003543</color>
-    <color name="colorOnPrimaryContainer">#E0F7FA</color>
-    <color name="colorSecondaryContainer">#1E2A44</color>
-    <color name="colorOnSecondaryContainer">#00E5FF</color>
-    <color name="colorTertiary">#00FFA3</color>
-    <color name="colorTertiaryContainer">#003822</color>
-    <color name="colorOnTertiaryContainer">#A7FFD5</color>
-    <color name="colorSurfaceVariant">#131C2D</color>
-    <color name="colorOnSurfaceVariant">#94A3B8</color>
-    <color name="colorOutline">#2A3A54</color>
-    <color name="colorOutlineVariant">#1E2A44</color>
+    <color name="colorPrimaryContainer">#4A3300</color>
+    <color name="colorOnPrimaryContainer">#FFE0A3</color>
+    <color name="colorSecondaryContainer">#23282D</color>
+    <color name="colorOnSecondaryContainer">#FFC953</color>
+    <color name="colorTertiary">#45D483</color>
+    <color name="colorTertiaryContainer">#0F3524</color>
+    <color name="colorOnTertiaryContainer">#A9EFC8</color>
+    <color name="colorSurfaceVariant">#1A1E22</color>
+    <color name="colorOnSurfaceVariant">#99A0A6</color>
+    <color name="colorOutline">#3A4147</color>
+    <color name="colorOutlineVariant">#262C31</color>
 </resources>

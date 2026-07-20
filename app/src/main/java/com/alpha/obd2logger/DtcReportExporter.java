@@ -64,18 +64,54 @@ public final class DtcReportExporter {
     private DtcReportExporter() {
     }
 
+    // Mirrors FreezeFrameReader's CORE_PIDS + the extended PIDs worth printing.
+    private static final String[] FF_DISPLAY_PIDS =
+        {"0C", "0D", "05", "04", "06", "07", "0B", "0F",
+         "0E", "11", "21", "2F", "31"};
+    private static final String[] FF_DISPLAY_NAMES =
+        {"Engine RPM", "Vehicle Speed", "Coolant Temp", "Calculated Load",
+         "STFT Bank 1", "LTFT Bank 1", "Intake MAP", "Intake Air Temp",
+         "Timing Advance", "Throttle Position", "Distance with MIL on",
+         "Fuel Tank Level", "Distance since codes cleared"};
+
+    private static void renderFreezeFrameValues(Pager pager, Paint paint,
+            FreezeFrameData data, String indent) {
+        Map<String, Double> values = data.getValues();
+        for (int i = 0; i < FF_DISPLAY_PIDS.length; i++) {
+            String pidHex = FF_DISPLAY_PIDS[i];
+            if (values.containsKey(pidHex)) {
+                pager.line(indent + "• " + FF_DISPLAY_NAMES[i] + ": "
+                    + data.getFormattedValue(pidHex), paint, 16);
+            }
+        }
+    }
+
     /**
      * Export diagnostic results including DTC lists and freeze frame data to a PDF file.
      * @return the generated File reference, or null on error
      */
     public static File exportReportToPdf(Context context, String vin, List<DtcCode> stored, List<DtcCode> pending, List<DtcCode> permanent, FreezeFrameData freezeFrame) {
         return exportReportToPdf(context, vin, stored, pending, permanent, freezeFrame,
-            null, null, null, null, null);
+            null, null, null, null, null, null);
+    }
+
+    /** Pre-3.31 signature kept for existing callers; no per-DTC frames. */
+    public static File exportReportToPdf(Context context, String vin,
+            List<DtcCode> stored, List<DtcCode> pending, List<DtcCode> permanent,
+            FreezeFrameData freezeFrame,
+            ReadinessMonitor readiness,
+            List<Mode06Result> mode06Results,
+            List<DtcReader.ModuleInfo> modules,
+            List<DtcReader.ProtocolScanStatus> protocolStatuses,
+            String driveCycleGuide) {
+        return exportReportToPdf(context, vin, stored, pending, permanent, freezeFrame,
+            null, readiness, mode06Results, modules, protocolStatuses, driveCycleGuide);
     }
 
     /**
      * Full diagnostic report with all available data sections.
      *
+     * @param perDtcFrames    Per-DTC freeze frames (Mode 02 PID 02 mapping), Full Scan only
      * @param readiness       Readiness monitor status (Mode 01 PID 01)
      * @param mode06Results   Mode 06 test results
      * @param modules         ECU module list from scan
@@ -85,6 +121,7 @@ public final class DtcReportExporter {
     public static File exportReportToPdf(Context context, String vin,
             List<DtcCode> stored, List<DtcCode> pending, List<DtcCode> permanent,
             FreezeFrameData freezeFrame,
+            List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames,
             ReadinessMonitor readiness,
             List<Mode06Result> mode06Results,
             List<DtcReader.ModuleInfo> modules,
@@ -161,20 +198,24 @@ public final class DtcReportExporter {
         }
         pager.space(15);
 
-        // Freeze Frame Snapshot
-        if (freezeFrame != null && !freezeFrame.getValues().isEmpty()) {
-            pager.line("Engine Snapshot at Time of Fault (Freeze Frame)", sectionHeaderPaint, 20);
-
-            Map<String, Double> ffVals = freezeFrame.getValues();
-            String[] displayPids = {"0C", "0D", "05", "04", "06", "07", "0B", "0F"};
-            String[] displayNames = {"Engine RPM", "Vehicle Speed", "Coolant Temp", "Calculated Load", "STFT Bank 1", "LTFT Bank 1", "Intake MAP", "Intake Air Temp"};
-
-            for (int i = 0; i < displayPids.length; i++) {
-                String pidHex = displayPids[i];
-                if (ffVals.containsKey(pidHex)) {
-                    pager.line("  • " + displayNames[i] + ": " + freezeFrame.getFormattedValue(pidHex), paint, 18);
-                }
+        // Freeze Frames: per-DTC frames when the Full Scan captured them,
+        // otherwise the single generic frame.
+        if (perDtcFrames != null && !perDtcFrames.isEmpty()) {
+            pager.line("Engine Snapshots at Time of Fault (Freeze Frames)", sectionHeaderPaint, 20);
+            for (FreezeFrameReader.FreezeFrameEntry entry : perDtcFrames) {
+                FreezeFrameData data = entry.getData();
+                if (data == null || data.getValues().isEmpty()) continue;
+                String label = entry.getDtcCode() != null && !entry.getDtcCode().isEmpty()
+                    ? entry.getDtcCode() : "(no DTC recorded)";
+                pager.line("  Frame " + entry.getFrameNumber() + " — " + label, paint, 18);
+                renderFreezeFrameValues(pager, paint, data, "    ");
+                pager.space(4);
             }
+            pager.space(6);
+        } else if (freezeFrame != null && !freezeFrame.getValues().isEmpty()) {
+            pager.line("Engine Snapshot at Time of Fault (Freeze Frame)", sectionHeaderPaint, 20);
+            renderFreezeFrameValues(pager, paint, freezeFrame, "  ");
+            pager.space(10);
         }
 
         // ── Readiness Monitor Status ──

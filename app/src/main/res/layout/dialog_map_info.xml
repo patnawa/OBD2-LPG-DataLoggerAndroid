@@ -29,6 +29,25 @@
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />
 
+        <!-- What the values actually represent -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardCornerRadius="12dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="14dp"
+                android:text="@string/how_to_read_map_desc"
+                android:textColor="@color/text"
+                android:textSize="12sp" />
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Color Legend Section -->
         <TextView
             android:layout_width="match_parent"
@@ -39,6 +58,14 @@
             android:textStyle="bold"
             android:letterSpacing="0.08"
             android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:text="@string/map_info_color_context"
+            android:textColor="@color/muted"
+            android:textSize="11sp" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -71,7 +98,7 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- Slightly Rich -->
+            <!-- Negative -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -94,7 +121,7 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- Very Rich -->
+            <!-- Strongly negative -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -117,7 +144,7 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- Slightly Lean -->
+            <!-- Positive -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -140,7 +167,7 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- Very Lean -->
+            <!-- Strongly positive -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -198,7 +225,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Formula: Trim = STFT + LTFT"
+                    android:text="@string/map_info_trim_formula"
                     android:textColor="@color/primary"
                     android:textSize="12sp"
                     android:textStyle="italic"
@@ -237,7 +264,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Formula: Trim = STFT + LTFT"
+                    android:text="@string/map_info_trim_formula"
                     android:textColor="@color/primary"
                     android:textSize="12sp"
                     android:textStyle="italic"
@@ -276,7 +303,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Formula: Deviation = LPG Trim - Petrol Trim"
+                    android:text="@string/map_info_delta_formula"
                     android:textColor="@color/primary"
                     android:textSize="12sp"
                     android:textStyle="italic"
@@ -315,7 +342,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Formula: Correction = LPG Trim - Petrol Trim"
+                    android:text="@string/map_info_tune_formula"
                     android:textColor="@color/primary"
                     android:textSize="12sp"
                     android:textStyle="italic"
@@ -328,6 +355,93 @@
                     android:textSize="11sp"
                     android:layout_marginTop="4dp" />
             </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Worked examples -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="@string/map_info_examples_header"
+            android:textColor="@color/muted"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardCornerRadius="12dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="14dp"
+                android:text="@string/map_info_examples_desc"
+                android:textColor="@color/text"
+                android:textSize="12sp" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Data quality -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="@string/map_info_quality_header"
+            android:textColor="@color/muted"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardCornerRadius="12dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="14dp"
+                android:text="@string/map_info_quality_desc"
+                android:textColor="@color/text"
+                android:textSize="12sp" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Diesel applicability -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="@string/map_info_diesel_header"
+            android:textColor="@color/muted"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardCornerRadius="12dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="14dp"
+                android:text="@string/map_info_diesel_desc"
+                android:textColor="@color/text"
+                android:textSize="12sp" />
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Note Text -->

@@ -49,6 +49,83 @@ public final class LogReplayParser {
             }
         }
 
+    /** One GPS route sample with the telemetry used to color the segment. */
+    public static final class RoutePoint {
+        public final double lat;
+        public final double lon;
+        public final double elapsedS;
+        public final Double speedKmh;
+        public final Double boostPsi;
+
+        public RoutePoint(double lat, double lon, double elapsedS,
+                          Double speedKmh, Double boostPsi) {
+            this.lat = lat;
+            this.lon = lon;
+            this.elapsedS = elapsedS;
+            this.speedKmh = speedKmh;
+            this.boostPsi = boostPsi;
+        }
+    }
+
+    /** Resolved column indices for route replay (gps_* columns are ≥3.31). */
+    public static final class RouteColumns {
+        public int latIdx = -1, lonIdx = -1, elapsedIdx = -1;
+        public int speedIdx = -1, boostPsiIdx = -1;
+
+        public boolean hasRoute() {
+            return latIdx != -1 && lonIdx != -1;
+        }
+    }
+
+    /** Resolve route-related column indices from a (possibly quoted) header line. */
+    public static RouteColumns parseRouteHeader(String headerLine) {
+        RouteColumns c = new RouteColumns();
+        String[] headers = splitCsv(headerLine);
+        for (int i = 0; i < headers.length; i++) {
+            String h = headers[i].toLowerCase().replace("\"", "").trim();
+            if (h.equals("elapsed_s")) c.elapsedIdx = i;
+            else if (h.contains("gps latitude")) c.latIdx = i;
+            else if (h.contains("gps longitude")) c.lonIdx = i;
+            else if (h.contains("vehicle speed")) c.speedIdx = i;
+            else if (h.contains("turbo boost (psi)")) c.boostPsiIdx = i;
+        }
+        return c;
+    }
+
+    /**
+     * Parse a data line into a RoutePoint, or null when the row has no fix
+     * (blank gps cells mean "no fix", never (0,0)) or unparseable numbers.
+     */
+    public static RoutePoint parseRouteLine(String line, RouteColumns c) {
+        if (!c.hasRoute()) return null;
+        String[] parts = splitCsv(line);
+        String latStr = cell(parts, c.latIdx);
+        String lonStr = cell(parts, c.lonIdx);
+        if (latStr.isEmpty() || lonStr.isEmpty()) return null;
+        try {
+            double lat = Double.parseDouble(latStr);
+            double lon = Double.parseDouble(lonStr);
+            if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+            double elapsed = 0;
+            String elapsedStr = cell(parts, c.elapsedIdx);
+            if (!elapsedStr.isEmpty()) elapsed = Double.parseDouble(elapsedStr);
+            Double speed = parseOptional(cell(parts, c.speedIdx));
+            Double boost = parseOptional(cell(parts, c.boostPsiIdx));
+            return new RoutePoint(lat, lon, elapsed, speed, boost);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private static Double parseOptional(String s) {
+        if (s == null || s.isEmpty()) return null;
+        try {
+            return Double.parseDouble(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private LogReplayParser() {}
 
     /**

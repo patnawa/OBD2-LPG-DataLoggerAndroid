@@ -2,7 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [3.31.0] - 2026-07-20 — Industrial Theme, Driving Analytics, GPS Routes & Protocol Hardening
+
+### Industrial theme
+
+- Reworked both palettes around an industrial look: gunmetal panels with machine-amber (#FFB020) accents in dark mode ("night-shift HMI"), concrete/steel greys with hazard amber in light mode ("workshop steel"). All status/text swatches keep the documented 4.5:1 contrast contract; card corner radius tightened 16dp → 6dp so surfaces read as machined panels.
+
+### Fuel-switchover analytics
+
+- New `FuelSwitchoverEngine` detects the petrol↔LPG changeover of an aftermarket conversion from the OEM ECU's fuel-trim signature (an abrupt sustained step in STFT+LTFT, gated on closed-loop + warm engine, tolerant of the open-loop blip many LPG ECUs cause during the switch). PID 0x51 is deliberately not used: aftermarket gas ECUs never update it.
+- Per-regime trim statistics are kept and compared across the last switchover; an LTFT gap ≥ 8% flags the LPG map as divergent from the petrol baseline (reducer aging / gas injector drift) on a new home-screen card, in English and Thai.
+
+### Performance timers
+
+- New `PerformanceTimerEngine` computes 0–100 km/h, 80–120 km/h and standing quarter-mile (with trap speed) from the polled speed PID. Crossing times are linearly interpolated between straddling samples, the quarter-mile distance is integrated trapezoidally, and runs are invalidated on sample dropouts (> 3 s gap), abandoned attempts (10 km/h fall from run peak) and returns to standstill. Last and session-best times appear on a new cockpit card.
+
+### GPS route capture & review map
+
+- Logging sessions now record GPS (1 Hz, best-effort) via the new `RouteRecorder`; each record carries `gps_lat` / `gps_lon` / `gps_accuracy_m` columns in CSV/JSONL. Fixes older than 10 s (tunnels, garages) are skipped rather than repeated, and a session without location permission simply logs without GPS — logging is never blocked.
+- The background service declares the `location` foreground-service type (added only when fine-location is granted) so capture survives backgrounding on Android 10+.
+- The session review screen gains a dependency-free route map (`RouteMapView`, custom Canvas — no map SDK, no network): the driven route drawn with segments colored green→amber→red by speed or boost, with start/end markers and a min/max legend. The card appears only when the log actually contains GPS columns.
+
+### Freeze frames completed
+
+- Fixed the PDF export's freeze-frame section rendering from a never-assigned field: the Full Scan now persists both the generic frame and the per-DTC frames, and the report prints one engine snapshot per DTC (plus extended PIDs: timing advance, throttle, distance with MIL, fuel level, distance since clear).
+- New read-only `GET /api/freezeframe` endpoint exposes the last Full Scan's per-DTC Mode 02 frames and generic snapshot as JSON, via the existing `DtcProvider` plumbing and bearer-token auth.
+
+### ECU Information
+
+- Added a production consumer for the previously test-only read-only UDS transport: users can select a module with a known scan-derived physical address on the current live ISO-TP CAN bus and read a curated set of 19 standardized ISO 14229 ECU-identification DIDs.
+- The DID sweep is performed in one serialized, cancellable physical-addressing session, preserving Response Pending handling and restoring receive filters, functional headers, timing, formatting and vLinker optimizations in `finally` before any next adapter command.
+- Results distinguish positive, negative and malformed/unanswered identifiers, show positive values with selectable raw hex, and keep the rest in expandable technical details.
+- Useful results are saved per valid VIN for multiple modules and can be viewed while disconnected. Zero-positive reads never create a record or overwrite a prior successful snapshot.
+- Scan inventories are bound to the active driver and filtered to the active ISO-TP address width; explicit scan buses must also match the active CAN bit rate. Non-standard 11-bit modules are offered only when the scan inventory contains a known request/response pair; arbitrary response-minus-eight guessing is not used.
+- The request surface remains intentionally restricted to UDS ReadDataByIdentifier (`0x22`). There is still no diagnostic-session control, SecurityAccess, RoutineControl, ECU reset, coding, programming or write API.
 
 ### Protocol detection
 
@@ -12,11 +45,30 @@ All notable changes to this project will be documented in this file.
 - **Deep scans no longer re-run the AUTO search.** `restorePollingState()` re-selects the protocol this session actually locked; for a ladder-rescued clone the previous `ATSP0` restore could never reconnect at all.
 - Added `ObdProtocol.fromDpnResponse()` with tolerant parsing of the `A`-prefixed auto marker, echo remnants and prompt characters — including the case where `AA` means auto-selected J1939 rather than a bare auto marker — plus `isElevenBitCan()` / `isTwentyNineBitCan()` bus-width predicates.
 
+### Safe Quick / Smart / Full DTC scanning
+
+- Replaced the misleading “Deep Multi-Protocol Scan” setting with a localized “Smart multi-protocol scan (automatic)” policy. Fresh installs default on and the UI recommends leaving it enabled; existing `pref_ford_ms_can` true/false values migrate conservatively, the new key becomes authoritative, and disabling it is a global expansion kill switch.
+- Quick Scan now retains the protocol already proven during connection and never issues `ATSP0`. Smart Scan adds only allow-listed OBD-II 1–9 protocols backed by positive module-level Mode 03/07/0A evidence for a VIN read from the same connection or explicitly entered for that live interactive session. A remembered/manual VIN never unlocks background startup expansion. Full Scan is manual only and checks protocols 1–9, deduplicating the active one.
+- Foreground and background logging now both run one Smart startup scan. Their 30-second changed-DTC monitor always uses current-protocol Quick Scan, so an automatic path can never launch the Full Scan.
+- Corrected the portable ELM model: A is J1939, B/C are programmable USER CAN protocols (default 11-bit 125/50 kbit/s), and standard ELM327 has no D. Removed the unsafe A/B/C/D aliases for SW-CAN, Ford MS-CAN, Chrysler CAN, and LS-CAN; a Ford VIN affects labels but cannot prove alternate OBD pin routing.
+- Explicit protocol selection must return `OK` and an exact, parseable `ATDPN` match; a missing, malformed, or mismatched protocol report aborts that probe. `?`, adapter status text, negative `7F` replies, and rejected setup can no longer be counted or attributed to the requested bus. Polling state restoration is guaranteed in `finally`.
+- Reusable Smart hints now live in a refreshable schema-v2 evidence record created only by a strict Full scan. Legacy module-comparison profiles remain read-only baselines and cannot unlock automatic protocol switching.
+- DTC command sequences are serialized against polling and cancelled on interruption, disconnect, reconnect, session change, or verified-VIN change. Startup/periodic/manual results replace the displayed DTC state only after a validated response from the same connection, so an adapter timeout cannot be shown as a clean vehicle or erase known codes.
+- Header parsing now handles colon CAN IDs, vLinker row indexes, and separate one-nibble DLC fields consistently for response validation, module attribution, and DTC decoding.
+
 ### VIN detection
 
+- **Toyota/Ford physical VIN sweep.** After the functional Mode 09 attempts, the read-only fallback now probes each legislated 11-bit physical OBD pair from `7E0/7E8` through `7E7/7EF`, trying both `09 02` and UDS `22 F1 90` at each address and stopping at the first structurally valid VIN. A `7F xx 78` Response Pending reply gets a bounded retry; disconnects, lifecycle interruption, and a 30-second monotonic budget stop further setup/data commands. Mandatory functional-profile cleanup then completes outside that request budget so the adapter cannot be left physically addressed.
+- **More ELM/vLinker VIN formats without false positives.** VIN parsing now accepts a compatibility response that omits the Mode 09 record byte, colon-suffixed CAN headers, a separate DLC token, and vLinker row indexes after the CAN ID without merging interleaved ECUs. Candidate extraction is anchored after the exact positive marker (`49 02` or `62 F1 90`), so negative/wrong-service responses containing VIN-like ASCII cannot be saved as a VIN.
+- **Thai Ford profile coverage.** WMI `MNB` now resolves to Ford in both the shipped longest-prefix profile and Java fallback, so Thai-market Ranger/Everest VINs select Ford module labels and diesel behavior. The compatibility migration preserves prior scan-setting choices, but a VIN never claims MS-CAN routing capability. The app does not infer Bi-Turbo from WMI/year alone because single-turbo and Bi-Turbo variants overlap.
 - **The physical-addressing VIN fallback now covers 29-bit CAN.** The chain that retries Mode 09 against the engine ECU directly, and then falls back to UDS `22 F1 90`, was gated on an 11-bit bus and skipped entirely otherwise; 29-bit vehicles (Isuzu trucks, several European makes) got no fallback at all. They are now addressed at `18DA10F1` / `18DA18F1` (ECM, then TCM) with the matching `18DAF1xx` response filters.
 - **29-bit headers work on genuine ELM327 chips.** An 8-digit `ATSH` is accepted by STN and most clone firmware but rejected by a real ELM327, whose documented form is `ATCP` for the priority byte plus a 6-digit `ATSH`. Both `applyTarget` and the functional restore now fall back to that split form on rejection, which also fixes 29-bit targeting in the existing DTC deep scan.
 - **VIN candidate windows are ranked rather than first-match.** A structurally valid 17-character window is scored as recognized-WMI (2) plus valid ISO check digit (1), and the best window wins. Stray ASCII around the real VIN could previously produce an earlier window that carried the same recognized WMI and was returned in preference to the true VIN. The check digit is deliberately worth less than a WMI hit because Thai-market and other non-North-American VINs do not populate position 9 — those still resolve on WMI alone.
+- **DPF PID 0x7A is no longer displayed as soot %.** SAE J1979 defines it as DPF differential pressure, so the dashboard now displays kPa and no longer fabricates a soot-health verdict. The DPF Monitor setting now consistently gates standard 0x7A/0x7B in both full and LPG-only poll profiles; manufacturer-specific soot, ash and regeneration values remain opt-in profile data.
+
+### Live Map help
+
+- Rewrote “How to read the Map” in English and Thai around the actual calculation: `Δ Trim = average LPG Trim - average Petrol Trim` in percentage points. Worked `+6 pp`, `-6 pp` and misleading-zero examples, confidence/hit rules, axis compatibility, and diesel STFT/LTFT limitations replace the previous direct rich/lean and exact-multiplier claims.
 
 ### DTC tab contrast and export
 

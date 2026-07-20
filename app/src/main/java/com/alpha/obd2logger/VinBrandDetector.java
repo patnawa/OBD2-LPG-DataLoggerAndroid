@@ -49,6 +49,9 @@ public final class VinBrandDetector {
         // prefixes (JM, MM, KN and LG) from stealing another make's WMI.
         if (isOneOf(wmi, "JTH", "JTJ", "2T2")) return Brand.LEXUS;
         if (isOneOf(wmi, "MNT", "MNF", "SNJ")) return Brand.NISSAN;
+        // MNB is Ford Thailand (Ranger/Everest). It must precede the legacy
+        // broad Toyota "MN" family below when the JSON profile is unavailable.
+        if (isOneOf(wmi, "MNB")) return Brand.FORD;
         if (isOneOf(wmi, "JM1", "JM3", "JM7", "JMZ", "MM6", "MM7", "MM8")) return Brand.MAZDA;
         if (wmi.startsWith("KN") || isOneOf(wmi, "5XX", "5XY")) return Brand.KIA;
         if (isOneOf(wmi, "LGW", "LGB", "LGA")) return Brand.GWM;
@@ -104,8 +107,9 @@ public final class VinBrandDetector {
         if (wmi.startsWith("JS") || wmi.equals("MA3")) return Brand.SUZUKI;
 
         // ── Ford ──
-        // Thailand: MAF, MLA | USA: 1FA | Germany: WF0
-        if (wmi.equals("MAF") || wmi.equals("MLA") || wmi.startsWith("1F") || wmi.equals("WF0")) return Brand.FORD;
+        // Thailand: MNB (Ranger/Everest), MAF, MLA | USA: 1F* | Germany: WF0
+        if (wmi.equals("MAF") || wmi.equals("MLA")
+                || wmi.startsWith("1F") || wmi.equals("WF0")) return Brand.FORD;
 
         // ── Chevrolet ──
         // Thailand: MMX, 1G1 | Korea: KL1

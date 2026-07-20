@@ -27,7 +27,12 @@ public final class LoggerConfig {
     public boolean enableApiServer;
     /** Required bearer/query credential for every telemetry API endpoint except /api/ping. */
     public String apiAccessToken;
-    public boolean fordMsCanEnabled;
+    /**
+     * Compatibility field for the former Ford-only preference. It now gates
+     * safe Smart DTC plan expansion and never asserts Ford MS-CAN pin routing.
+     * Read by logger workers and updated from the UI.
+     */
+    public volatile boolean fordMsCanEnabled;
 
     // ── Feature toggles ──────────────────────────────────────
     /** Compute + display turbo boost pressure (MAP - Baro) */

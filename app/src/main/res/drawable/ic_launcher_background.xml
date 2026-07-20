@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Industrial launcher background: gunmetal panel, lit from the top. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <gradient
-        android:angle="135"
-        android:startColor="#0F172A"
-        android:centerColor="#1D4ED8"
-        android:endColor="#0891B2"
+        android:angle="270"
+        android:startColor="#262B30"
+        android:endColor="#0B0D0E"
         android:type="linear" />
 </shape>

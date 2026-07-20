@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.LongSupplier;
 
 public abstract class ElmDriver extends BaseDriver {
     // These markers indicate a genuine adapter/protocol failure that
@@ -298,7 +299,8 @@ public abstract class ElmDriver extends BaseDriver {
      * formatting and timing are restored before returning.</p>
      */
     String sendCommandRawWithExtendedTimeout(String command) {
-        return sendCommandRawWithExtendedTimeout(command, null, null);
+        return sendCommandRawWithExtendedTimeout(
+                command, null, null, System::nanoTime, 0L, Long.MAX_VALUE);
     }
 
     /**
@@ -308,59 +310,172 @@ public abstract class ElmDriver extends BaseDriver {
      */
     String sendCommandRawToEcuWithExtendedTimeout(String command, String txHeader,
                                                    String rxFilter) {
+        return sendCommandRawToEcuWithExtendedTimeout(
+                command, txHeader, rxFilter, System::nanoTime, 0L, Long.MAX_VALUE);
+    }
+
+    /**
+     * VIN-sweep variant that clamps every setup/data command to the remaining
+     * monotonic budget. Mandatory polling-profile restore is deliberately
+     * outside that budget so cancellation cannot strand a receive filter or
+     * physical header on the adapter.
+     */
+    String sendCommandRawToEcuWithExtendedTimeout(
+            String command, String txHeader, String rxFilter,
+            LongSupplier monotonicClock, long startedNanos, long budgetNanos) {
         // 3 hex chars = 11-bit CAN ID, 8 hex chars = 29-bit (18DAxxF1 form).
         if (!isPhysicalHeader(txHeader) || !isPhysicalHeader(rxFilter)) {
             return "";
         }
-        return sendCommandRawWithExtendedTimeout(command, txHeader, rxFilter);
+        return sendCommandRawWithExtendedTimeout(
+                command, txHeader, rxFilter, monotonicClock,
+                startedNanos, budgetNanos);
     }
 
     private static boolean isPhysicalHeader(String header) {
         return header != null && (header.length() == 3 || header.length() == 8);
     }
 
-    private String sendCommandRawWithExtendedTimeout(String command, String txHeader,
-                                                       String rxFilter) {
-        commandLock.lock();
-        int normalTimeoutMs = config.connectionTimeoutMs;
-        boolean physicalAddressing = txHeader != null && rxFilter != null;
+    private String sendCommandRawWithExtendedTimeout(
+            String command, String txHeader, String rxFilter,
+            LongSupplier monotonicClock, long startedNanos, long budgetNanos) {
         try {
-            // A response-pending ECU may legitimately need several seconds.
-            config.connectionTimeoutMs = Math.max(normalTimeoutMs, 7_000);
+            commandLock.lockInterruptibly();
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return "";
+        }
+        int normalTimeoutMs = config.connectionTimeoutMs;
+        int extendedTimeoutMs = Math.max(normalTimeoutMs, 7_000);
+        boolean physicalAddressing = txHeader != null && rxFilter != null;
+        boolean adapterProfileTouched = false;
+        try {
+            if (!prepareExtendedRequestStep(
+                    monotonicClock, startedNanos, budgetNanos,
+                    extendedTimeoutMs)) return "";
+            adapterProfileTouched = true;
             sendCommand("ATAL");
+            if (!prepareExtendedRequestStep(
+                    monotonicClock, startedNanos, budgetNanos,
+                    extendedTimeoutMs)) return "";
             sendCommand("ATCAF1");
+            if (!prepareExtendedRequestStep(
+                    monotonicClock, startedNanos, budgetNanos,
+                    extendedTimeoutMs)) return "";
             sendCommand("ATCFC1");
+            if (!prepareExtendedRequestStep(
+                    monotonicClock, startedNanos, budgetNanos,
+                    extendedTimeoutMs)) return "";
             // VIN is an ISO-TP multi-frame response.  Preserve the CAN ID and
             // PCI byte during this one request so parser behavior does not rely
             // on adapter-specific automatic formatting (0:/1:/2: lines).
             sendCommand("ATH1");
+            if (!prepareExtendedRequestStep(
+                    monotonicClock, startedNanos, budgetNanos,
+                    extendedTimeoutMs)) return "";
             sendCommand("ATS1");
-            if (physicalAddressing && !PhysicalAddressing.applyTarget(this, txHeader, rxFilter)) {
+            if (!prepareExtendedRequestStep(
+                    monotonicClock, startedNanos, budgetNanos,
+                    extendedTimeoutMs)) return "";
+            if (physicalAddressing && !applyPhysicalTargetWithinBudget(
+                    txHeader, rxFilter, monotonicClock, startedNanos,
+                    budgetNanos, extendedTimeoutMs)) {
                 return "";
             }
+            if (!prepareExtendedRequestStep(
+                    monotonicClock, startedNanos, budgetNanos,
+                    extendedTimeoutMs)) return "";
             sendCommand("ATAT0");
+            if (!prepareExtendedRequestStep(
+                    monotonicClock, startedNanos, budgetNanos,
+                    extendedTimeoutMs)) return "";
             sendCommand("ATSTFF"); // 0xFF * 4 ms = about 1.02 s maximum ECU wait
+            if (!prepareExtendedRequestStep(
+                    monotonicClock, startedNanos, budgetNanos,
+                    extendedTimeoutMs)) return "";
             return sendCommand(command);
         } finally {
             // Restore the Android-side timeout first so a failed AT command does
             // not block cleanup for seven seconds.
             config.connectionTimeoutMs = normalTimeoutMs;
+            boolean restoreInterrupt = Thread.interrupted();
             try {
-                if (physicalAddressing) {
+                if (adapterProfileTouched && physicalAddressing) {
                     // Restore automatic reception and the broadcast header
                     // before the next live PID request.
-                    PhysicalAddressing.restoreFunctional(this, txHeader);
+                    restoreInterrupt |= ElmUdsTransport.runRestoreStepUninterruptibly(
+                            () -> PhysicalAddressing.restoreFunctional(this, txHeader));
                 }
-                // Live polling uses compact, header-free responses for speed.
-                sendCommand("ATH0");
-                sendCommand("ATS0");
-                sendCommand("ATAT1");
-                sendCommand("ATST32");
-                VLinkerOptimizer.applyOptimizations(this, vlinkerType, config);
+                if (adapterProfileTouched) {
+                    // Serial and BLE transports preserve lifecycle interrupts.
+                    // Finish every idempotent restore step with the flag
+                    // temporarily cleared, then put it back for the caller.
+                    restoreInterrupt |= ElmUdsTransport.runRestoreStepUninterruptibly(
+                            () -> sendCommand("ATH0"));
+                    restoreInterrupt |= ElmUdsTransport.runRestoreStepUninterruptibly(
+                            () -> sendCommand("ATS0"));
+                    restoreInterrupt |= ElmUdsTransport.runRestoreStepUninterruptibly(
+                            () -> sendCommand("ATAT1"));
+                    restoreInterrupt |= ElmUdsTransport.runRestoreStepUninterruptibly(
+                            () -> sendCommand("ATST32"));
+                    restoreInterrupt |= ElmUdsTransport.runRestoreStepUninterruptibly(
+                            () -> VLinkerOptimizer.applyOptimizations(
+                                    this, vlinkerType, config));
+                }
             } finally {
+                restoreInterrupt |= Thread.interrupted();
                 commandLock.unlock();
+                if (restoreInterrupt) Thread.currentThread().interrupt();
             }
         }
+    }
+
+    private boolean isExtendedRequestActive() {
+        return isConnected() && !Thread.currentThread().isInterrupted();
+    }
+
+    /** Prepare one bounded setup/data command and clamp its transport timeout. */
+    private boolean prepareExtendedRequestStep(
+            LongSupplier clock, long startedNanos, long budgetNanos,
+            int extendedTimeoutMs) {
+        if (!isExtendedRequestActive()) return false;
+        if (budgetNanos == Long.MAX_VALUE) {
+            config.connectionTimeoutMs = extendedTimeoutMs;
+            return true;
+        }
+        LongSupplier safeClock = clock == null ? System::nanoTime : clock;
+        long elapsedNanos = safeClock.getAsLong() - startedNanos;
+        if (elapsedNanos < 0L || elapsedNanos >= budgetNanos) return false;
+        long remainingNanos = budgetNanos - elapsedNanos;
+        long remainingMillis = remainingNanos / 1_000_000L;
+        if (remainingNanos % 1_000_000L != 0L) remainingMillis++;
+        config.connectionTimeoutMs = (int) Math.max(1L,
+                Math.min((long) extendedTimeoutMs, remainingMillis));
+        return true;
+    }
+
+    /** Physical targeting with a deadline check before every ELM command. */
+    private boolean applyPhysicalTargetWithinBudget(
+            String txHeader, String rxFilter, LongSupplier clock,
+            long startedNanos, long budgetNanos, int extendedTimeoutMs) {
+        if (!prepareExtendedRequestStep(
+                clock, startedNanos, budgetNanos, extendedTimeoutMs)) return false;
+        String setHeader = sendCommand("ATSH" + txHeader);
+        if (setHeader != null && setHeader.contains("?")) {
+            if (txHeader.length() != 8) return false;
+            if (!prepareExtendedRequestStep(
+                    clock, startedNanos, budgetNanos, extendedTimeoutMs)) return false;
+            String setPriority = sendCommand("ATCP" + txHeader.substring(0, 2));
+            if (setPriority != null && setPriority.contains("?")) return false;
+            if (!prepareExtendedRequestStep(
+                    clock, startedNanos, budgetNanos, extendedTimeoutMs)) return false;
+            setHeader = sendCommand("ATSH" + txHeader.substring(2));
+            if (setHeader != null && setHeader.contains("?")) return false;
+        }
+        if (!prepareExtendedRequestStep(
+                clock, startedNanos, budgetNanos, extendedTimeoutMs)) return false;
+        sendCommand("ATCRA" + rxFilter);
+        return true;
     }
 
     /** True only when ATDPN reports an active 11-bit CAN protocol. */

@@ -25,10 +25,16 @@ public class ReviewSessionActivity extends AppCompatActivity {
     private static final String TAG = "ReviewSessionActivity";
     
     private FuelMapView fuelMapView;
+    private RouteMapView routeMapView;
+    private View routeCard;
     private TextView tvFileName;
     private TextView tvStatus;
     private ProgressBar progressBar;
-    
+
+    /** Route points accumulated across all parsed files (executor thread only). */
+    private final java.util.List<LogReplayParser.RoutePoint> routePoints =
+            new java.util.ArrayList<>();
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     @Override
@@ -54,9 +60,24 @@ public class ReviewSessionActivity extends AppCompatActivity {
         }
 
         fuelMapView = findViewById(R.id.reviewFuelMapView);
+        routeMapView = findViewById(R.id.reviewRouteMapView);
+        routeCard = findViewById(R.id.reviewRouteCard);
         tvFileName = findViewById(R.id.reviewFileName);
         tvStatus = findViewById(R.id.reviewStatus);
         progressBar = findViewById(R.id.reviewProgress);
+
+        if (routeMapView != null) {
+            routeMapView.setEmptyText(getString(R.string.review_route_empty));
+            MaterialButtonToggleGroup routeToggle = findViewById(R.id.reviewRouteToggle);
+            if (routeToggle != null) {
+                routeToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+                    if (!isChecked) return;
+                    routeMapView.setColorMode(checkedId == R.id.btnRouteBoost
+                            ? RouteMapView.ColorMode.BOOST
+                            : RouteMapView.ColorMode.SPEED);
+                });
+            }
+        }
 
         ImageButton btnBack = findViewById(R.id.btnBack);
         btnBack.setOnClickListener(v -> finish());
@@ -145,8 +166,14 @@ public class ReviewSessionActivity extends AppCompatActivity {
             final int fTotalFiles = fileList.size();
             final String errMsg = errors.toString();
 
+            final java.util.List<LogReplayParser.RoutePoint> fRoute =
+                    new java.util.ArrayList<>(routePoints);
             runOnUiThread(() -> {
                 progressBar.setVisibility(View.GONE);
+                if (routeMapView != null && routeCard != null && fRoute.size() >= 2) {
+                    routeMapView.setRoute(fRoute);
+                    routeCard.setVisibility(View.VISIBLE);
+                }
                 if (fPlotted == 0) {
                     tvStatus.setText(errMsg.isEmpty()
                             ? "No valid tuning points found (check closed-loop / columns)."
@@ -186,6 +213,8 @@ public class ReviewSessionActivity extends AppCompatActivity {
             }
 
             LogReplayParser.Columns cols = LogReplayParser.parseHeader(headerLine);
+            LogReplayParser.RouteColumns routeCols =
+                    LogReplayParser.parseRouteHeader(headerLine);
 
             // MAP is optional: parser falls back to Engine Load for the X-axis
             // (MAF-based vehicles, or adapters that drop MAP) — mirrors updateFuelMap().
@@ -200,6 +229,11 @@ public class ReviewSessionActivity extends AppCompatActivity {
                     return null;
                 }
                 lineCount++;
+                if (routeCols.hasRoute()) {
+                    LogReplayParser.RoutePoint rp =
+                            LogReplayParser.parseRouteLine(line, routeCols);
+                    if (rp != null) routePoints.add(rp);
+                }
                 LogReplayParser.Point p = LogReplayParser.parseLine(line, cols);
                 if (p == null) continue; // too short, open loop, or unparseable
 

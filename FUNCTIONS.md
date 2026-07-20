@@ -1,4 +1,4 @@
-# TunerMap Pro v3.23.0 — Full Function List
+# TunerMap Pro v3.30.0 + Unreleased — Full Function List
 
 ### LIVE DATA / REAL-TIME MONITORING
 | Dashboard     | 2x4 telemetry grid: RPM \| Speed \| Coolant \| Voltage \| km/L \| Boost \| DPF \| DTC |
@@ -13,15 +13,15 @@
 | Fuel Economy  | km/L + L/100km from MAF+Speed. Auto AFR/density per fuel mode. Null-safe at idle. |
 |---------------|----------|
 | Turbo Boost   | kPa + psi from MAP-Baro. Baro 0x33 auto-polled, sea-level fallback 101.3 kPa. |
-| DPF Status    | 5 PIDs: Soot (0x7A), Temp (0x7B), Delta (0x85), Regen (0x8C), Ash (0x8B). Health: Clean/Moderate/Warning/Critical. Auto-detect diesel from VIN. |
+| DPF Status    | Standard Mode 01 PID 0x7A differential pressure (kPa) and 0x7B inlet temperature when advertised. Manufacturer soot/ash/regen values are shown only through a verified custom profile; 0x7A is never mislabeled as soot %. Auto-detect diesel from VIN. |
 | AeroDensity   | AAD/MAD/BAD/Density%/DensityAlt/SAE J1349 CF/Grains — Open-Meteo API status + last fetch time shown in dialog |
 
 ### LPG/CNG TUNING
 | Fuel Map      | 2D grid (RPM x MAP kPa) — STFT+LTFT color-coded |
 |---------------|----------|
 | Dual Fuel     | Petrol + LPG layers, side-by-side comparison |
-| Deviation     | LPG Trim - Petrol Trim per cell (+ lean / - rich) |
-| Tune Assist   | Auto-calculated % correction for LPG ECU multiplier |
+| Δ Trim        | Average LPG Trim - average Petrol Trim in the same cell, measured in percentage points; not a direct AFR verdict |
+| Tune Assist   | Rounded Δ number reused as an approximate gas-map adjustment %; not an exact pp-to-% conversion—verify Lambda/wideband and re-log |
 | CSV Export    | Correction grid as CSV (MAP kPa header) for tuning laptop |
 | Closed-Loop   | PID 03 closed loop + ECT >= 80 degC gate |
 | LTFT Fallback | LTFT-only when STFT unavailable (Toyota/Honda) |
@@ -35,8 +35,11 @@
 ### DIAGNOSTICS
 | DTC Scan      | Mode 03 (stored) + 07 (pending) + 0A (permanent) |
 |---------------|----------|
-| Deep Scan     | 7 protocol buses: HS-CAN, MS-CAN, CAN 29-bit, CAN 250k, KWP2000, ISO 9141, J1850 VPW |
+| Quick Scan    | Uses the protocol already proven during connection; never restarts `ATSP0` |
+| Smart Scan    | Current protocol plus only strict-Full-confirmed OBD-II 1–9 protocols for a VIN read from this connection or explicitly entered for the current live session; remembered VIN alone cannot expand automatic startup, and the global setting can disable all expansion |
+| Full Scan     | Manual only: OBD-II protocols 1–9, active protocol deduplicated; physical ECU sweep only on proven 11-bit CAN 6/8 |
 | ECU Database  | 40+ CAN IDs: Toyota, Honda, Mazda, Isuzu, Nissan, Mitsubishi, Ford |
+| ECU Information | 19 curated ISO 14229 identification DIDs from F180–F19D on the current live ISO-TP CAN bus: part/software/hardware numbers and versions, serial, VIN, supplier, system/engine name and dates. Cancellable batched read-only UDS `0x22`; useful results persist per valid VIN and can be viewed offline. |
 | DTC Enrich    | 157 codes with causes, fixes, emissions flags, drive cycles |
 | DTC OTA Update| Free GitHub-based OTA — downloads updated DTC JSON files from raw.githubusercontent.com with versioned manifest. Throttled to 1 check per 6h. Atomic write with JSON validation. No backend required. |
 | DTC Telemetry | Crowdsourced unknown-DTC reporting — auto-creates GitHub Issues for codes not in local database. Rate-limited to 1 report per unique code per 7 days. No VIN or personal data sent. |
@@ -45,7 +48,7 @@
 | Freeze Frame  | Per-DTC snapshot, 10 PIDs |
 | Mode 06       | Catalyst, O2, EGR, EVAP, Misfire monitor tests |
 | Readiness     | 12 monitors incl. Particulate Filter |
-| VIN Reader    | Mode 09 PID 02 via multi-frame ISO-TP. Auto-detect diesel. |
+| VIN Reader    | Mode 09 PID 02 via multi-frame ISO-TP, extended/Response-Pending retry, 30-second setup/data budget for the 11-bit physical sweep (`7E0–7E7`) and read-only UDS `22 F1 90`; exact positive-marker validation, multiple ELM/vLinker line formats, mandatory disconnect/cancellation cleanup. Auto-detect diesel. |
 | Cal-ID/CVN    | Mode 09 calibration verification |
 | DTC History   | SQLite per-VIN scan history |
 | Report Export | PDF diagnostic report |
@@ -91,6 +94,7 @@
 | GET  /api/map/export     | Download correction CSV (MAP kPa header) |
 | DELETE /api/map          | Reset map data |
 | GET  /api/agent          | AI Agent aggregate: status + sensors + map summary + zones + hotspots + DTCs (500ms cache) |
+| GET  /api/freezeframe    | Mode 02 freeze frames from the last Full Scan: per-DTC frames + generic snapshot (read-only) |
 | GET  /api/stream         | SSE: sensor data + map_update + map_summary push events |
 | CORS                     | Enabled — web AI agents + MCP |
 
@@ -134,9 +138,9 @@
 |----------------|----------|
 | PID Swap       | Long-press any widget to change PID |
 | Custom Folder  | SAF log destination picker |
-| Feature Flags  | 4 toggles: Turbo, Fuel, DPF, Custom PID — instant-save |
-| Deep Scan      | Auto-enabled for diesel; 7 buses with scan status table |
-| Auto-Detect    | Diesel from VIN WMI (MPA/MNB/MMB/MR0) — DPF+DeepScan auto-on |
+| Feature Flags  | Turbo, Fuel, DPF, Custom PID, and automatic Smart multi-protocol scan — instant-save |
+| Smart Scan     | Safe automatic profile targeting; never runs the manual Full Scan automatically |
+| Auto-Detect    | Diesel from VIN WMI (MPA/MNB/MMB/MR0) — DPF monitoring auto-on once; Ford VIN changes labels, not adapter routing capability |
 
 ### DTC OTA UPDATE SYSTEM (v3.23.0)
 | Component      | Description |
@@ -157,7 +161,7 @@
 | Chinese EV     | BYD, GWM (Haval/Ora), NETA (Hozon), AION (GAC), Deepal (Changan), MG (SAIC) |
 | Indian         | Tata, Mahindra |
 
-### OBD2 PROTOCOL SUPPORT (13 protocols)
+### OBD2 PROTOCOL SUPPORT
 | Protocol                  | ELM ATSP |
 |---------------------------|----------|
 | Auto                      | ATSP0 |
@@ -171,5 +175,11 @@
 | ISO 15765-4 CAN 11-bit 250| ATSP8 |
 | ISO 15765-4 CAN 29-bit 250| ATSP9 |
 | SAE J1939 CAN             | ATSPA |
-| User1 CAN                 | ATSPB |
-| User2 CAN                 | ATSPC |
+| User1 CAN (default 11-bit/125k) | ATSPB |
+| User2 CAN (default 11-bit/50k)  | ATSPC |
+
+Automatic Smart Scan and manual Full Scan use only legislated OBD-II protocols
+1–9. Protocol A is J1939; B/C are programmable USER buses on the adapter's
+normal CAN interface, not proof of alternate OBD pin routing. Standard ELM327
+defines no protocol D. Ford MS-CAN, GM SW-CAN, or other physical secondary-bus
+support therefore requires a documented adapter-specific routing capability.

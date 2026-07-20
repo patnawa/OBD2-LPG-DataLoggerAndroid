@@ -336,6 +336,100 @@
     </com.google.android.material.card.MaterialCardView>
 
     <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cockpitPerfCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardCornerRadius="16dp"
+        app:strokeColor="?attr/colorOutlineVariant"
+        app:strokeWidth="1dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="14dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.06"
+                android:text="@string/home_title_performance"
+                android:textColor="@color/primary"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <TextView android:id="@+id/cockpitPerf0100" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/text" android:textSize="19sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_perf_0100" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <TextView android:id="@+id/cockpitPerf80120" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/text" android:textSize="19sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_perf_80120" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <TextView android:id="@+id/cockpitPerfQuarter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="---" android:textColor="@color/text" android:textSize="19sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_perf_quarter" android:textColor="@color/muted" android:textSize="8sp" android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+            <TextView
+                android:id="@+id/cockpitPerfMeta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/home_perf_arm_hint"
+                android:textColor="@color/muted"
+                android:textSize="9sp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cockpitSwitchCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardCornerRadius="16dp"
+        app:strokeColor="?attr/colorOutlineVariant"
+        app:strokeWidth="1dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="14dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.06"
+                android:text="@string/home_title_switchover"
+                android:textColor="@color/primary"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/cockpitSwitchStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="@string/home_switch_status_gated"
+                android:textColor="@color/text"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/cockpitSwitchDetail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxLines="3"
+                android:text="@string/home_switch_detail_hint"
+                android:textColor="@color/muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/cockpitDiagnostics"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

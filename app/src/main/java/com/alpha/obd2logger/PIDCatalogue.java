@@ -89,10 +89,34 @@ public final class PIDCatalogue {
      * also enables the lean LPG poll profile.
      */
     public static List<PIDDefinition> getConfiguredPollSet(Context context, boolean lpgOnly,
-                                                            boolean includeAirDensity,
-                                                            boolean includeCustom) {
+                                                             boolean includeAirDensity,
+                                                             boolean includeCustom) {
+        return getConfiguredPollSet(context, lpgOnly, includeAirDensity, includeCustom, false);
+    }
+
+    /**
+     * Build the configured poll set, including the standard DPF measurements
+     * only when the user enabled DPF monitoring.
+     *
+     * <p>The DPF gate is applied to both the full and LPG-critical profiles.
+     * Previously the full profile always included PIDs 0x7A/0x7B while the LPG
+     * profile never included them, so the DPF checkbox could have the opposite
+     * of its advertised effect.</p>
+     */
+    public static List<PIDDefinition> getConfiguredPollSet(Context context, boolean lpgOnly,
+                                                             boolean includeAirDensity,
+                                                             boolean includeCustom,
+                                                             boolean includeDpf) {
         List<PIDDefinition> result = new ArrayList<>(
                 lpgOnly ? getLpgPollSet(includeAirDensity) : ALL);
+
+        if (includeDpf) {
+            addByKey(result, "01_7A");
+            addByKey(result, "01_7B");
+        } else {
+            removeStandardDpfPids(result);
+        }
+
         if (includeCustom && context != null) {
             for (PIDDefinition custom : CustomPidManager.load(context)) {
                 boolean exists = false;
@@ -105,7 +129,29 @@ public final class PIDCatalogue {
                 if (!exists) result.add(custom);
             }
         }
+
+        // A custom definition using the same standard service/PID must not
+        // bypass an explicitly disabled DPF monitor. Manufacturer-specific
+        // DPF values use their own Mode 22 identifiers and remain unaffected.
+        if (!includeDpf) removeStandardDpfPids(result);
         return Collections.unmodifiableList(result);
+    }
+
+    private static void addByKey(List<PIDDefinition> list, String key) {
+        for (PIDDefinition current : list) {
+            if (current.key().equalsIgnoreCase(key)) return;
+        }
+        for (PIDDefinition pid : ALL) {
+            if (pid.key().equalsIgnoreCase(key)) {
+                list.add(pid);
+                return;
+            }
+        }
+    }
+
+    private static void removeStandardDpfPids(List<PIDDefinition> list) {
+        list.removeIf(pid -> "01_7A".equalsIgnoreCase(pid.key())
+                || "01_7B".equalsIgnoreCase(pid.key()));
     }
 
     private static void addByName(List<PIDDefinition> list, String name) {

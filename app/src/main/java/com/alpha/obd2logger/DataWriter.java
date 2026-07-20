@@ -255,6 +255,11 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("map_gated", "Map Gate Eligible (1/0)");
         registerDerived("map_accepted", "Map Sample Accepted (1/0)");
         registerDerived("map_reject_code", "Map Reject Code");
+        // GPS route columns (RouteRecorder). Empty when the session had no
+        // permission/fix — consumers must treat blank as "no fix", not (0,0).
+        registerDerived("gps_lat", "GPS Latitude (deg)");
+        registerDerived("gps_lon", "GPS Longitude (deg)");
+        registerDerived("gps_accuracy_m", "GPS Accuracy (m)");
     }
 
     private void registerDerived(String key, String label) {

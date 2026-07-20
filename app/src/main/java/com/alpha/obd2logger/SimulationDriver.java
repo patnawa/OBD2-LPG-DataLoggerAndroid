@@ -170,7 +170,7 @@ public final class SimulationDriver extends BaseDriver {
         if ("44".equals(pid)) return 0.98 + random.nextDouble() * 0.04;
 
         // --- DPF simulation (diesel) ---
-        if ("7A".equals(pid)) return 15.0 + random.nextDouble() * 5.0;   // Soot Load ~15%
+        if ("7A".equals(pid)) return 15.0 + random.nextDouble() * 5.0;   // DPF ΔP ~15-20 kPa
         if ("7B".equals(pid)) return 250.0 + random.nextDouble() * 50.0; // Temperature ~250°C
         if ("85".equals(pid)) return 0.5 + random.nextDouble() * 0.5;    // Delta P ~0.5kPa
         if ("8C".equals(pid)) return 0.0;                                 // Regen idle

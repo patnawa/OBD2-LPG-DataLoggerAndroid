@@ -21,7 +21,7 @@ public class VehicleModuleProfileStoreTest {
         DtcReader.ProtocolBus bus = new DtcReader.ProtocolBus("HS-CAN (auto)", "ATSP0",
                 "test", false, null);
         DtcReader.ProtocolScanStatus status = new DtcReader.ProtocolScanStatus(bus, true, 2, 1);
-        DtcReader.ModuleInfo pcm = new DtcReader.ModuleInfo("7E8", 0x7E8,
+        DtcReader.ModuleInfo pcm = new DtcReader.ModuleInfo("7E8", "7E0", 0x7E8,
                 "PCM Response", "HS-CAN (auto)", true,
                 true, true, false, 1, 0, 0);
         DtcReader.ModuleInfo notScanned = new DtcReader.ModuleInfo("7EA", 0x7EA,
@@ -41,6 +41,7 @@ public class VehicleModuleProfileStoreTest {
         assertEquals(1, restored.getProtocols().size());
         assertEquals(1, restored.getModules().size());
         assertEquals("7E8", restored.getModules().get(0).getCanId());
+        assertEquals("7E0", restored.getModules().get(0).getRequestCanId());
         assertTrue(restored.getModules().get(0).isStoredResponded());
         assertTrue(restored.getModules().get(0).isPendingResponded());
         assertFalse(restored.getModules().get(0).isPermanentResponded());

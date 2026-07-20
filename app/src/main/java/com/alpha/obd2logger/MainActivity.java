@@ -83,6 +83,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private View cardHomeDiagnostics;
     private com.google.android.material.card.MaterialCardView cockpitInsightCard;
     private TextView cockpitInsightTitle, cockpitInsightMessage, cockpitInsightMeta;
+    private TextView cockpitPerf0100, cockpitPerf80120, cockpitPerfQuarter, cockpitPerfMeta;
+    private TextView cockpitSwitchStatus, cockpitSwitchDetail;
+    private final PerformanceTimerEngine perfTimerEngine = new PerformanceTimerEngine();
+    private final FuelSwitchoverEngine switchoverEngine = new FuelSwitchoverEngine();
     private DriveInsightEngine.Result currentDriveInsight =
             DriveInsightEngine.evaluate(null, null, null, null, 0);
     private android.widget.ImageView imgHomeDiagnostics;
@@ -98,7 +102,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private Spinner languageSpinner, themeSpinner, fontSizeSpinner, transportSpinner, fuelSpinner, obdProtocolSpinner, bluetoothDeviceSpinner;
     private EditText wifiIpInput, wifiPortInput, baudInput, intervalInput;
     private TextView bluetoothHintText;
-    private CheckBox lpgOnlyCheckbox, backgroundLoggingCheckbox, keepScreenOnCheckbox, apiServerCheckbox, fordMsCanCheckbox;
+    private CheckBox lpgOnlyCheckbox, backgroundLoggingCheckbox, keepScreenOnCheckbox,
+            apiServerCheckbox, smartDtcScanCheckbox;
+    private boolean suppressSmartDtcScanPreferenceTracking;
     private TextView backgroundLoggingStatusText;
     private CheckBox turboBoostCheckbox, fuelEconomyCheckbox, dpfMonitorCheckbox, customPidCheckbox;
     private CheckBox airDensityCheckbox;
@@ -135,7 +141,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     // --- UI: DTC tab ---
     private Button btnReadDtc, btnDeepDtc, btnClearDtc, btnReadVin, btnVehicleInfo,
-            btnFordModuleLiveData, btnReadiness;
+            btnEcuIdentification, btnFordModuleLiveData, btnReadiness;
     private TextView dtcStatusText, dtcHealthTitle, dtcHealthDetail;
     private TextView dtcStoredCount, dtcPendingCount, dtcPermanentCount;
     private LinearLayout dtcListContainer, readinessContainer;
@@ -256,18 +262,35 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     // --- State ---
     private static MainActivity activeInstance;
+    private static final Object inProcessRunLock = new Object();
+    private static final java.util.concurrent.atomic.AtomicLong inProcessRunGeneration =
+            new java.util.concurrent.atomic.AtomicLong(0L);
     private static volatile ExecutorService executor;
     // Separate executor for DTC/VIN/readiness operations so that stopping the
     // logging executor (shutdownNow) doesn't kill pending diagnostic reads.
     private volatile ExecutorService dtcExecutor;
+    private volatile java.util.concurrent.Future<?> ecuIdentificationFuture;
+    private final java.util.concurrent.atomic.AtomicBoolean ecuIdentificationRunning =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final java.util.concurrent.atomic.AtomicLong ecuIdentificationGeneration =
+            new java.util.concurrent.atomic.AtomicLong(0L);
+    private volatile boolean activityDestroyed;
+    private static final long NO_DRIVER_SESSION = 0L;
+    private static final Object vehicleVinBindingLock = new Object();
+    private static String vehicleVinBinding;
+    private static BaseDriver vehicleVinBindingDriver;
+    private static long vehicleVinBindingSession = NO_DRIVER_SESSION;
+    private static long vehicleVinBindingConnectionEpoch;
     private final List<DtcCode> lastStoredDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final List<DtcCode> lastPendingDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final List<DtcCode> lastPermanentDtcs = new java.util.concurrent.CopyOnWriteArrayList<>();
     private volatile FreezeFrameData lastFreezeFrame = null;
+    private final List<FreezeFrameReader.FreezeFrameEntry> lastPerDtcFrames = new ArrayList<>();
     private DtcHistoryDb dtcHistoryDb;
     private static volatile boolean running;
     private static DataWriter currentWriter;
     private static volatile BaseDriver currentDriver;
+    private static volatile long currentInProcessDriverGeneration;
     private static volatile LoggerConfig activeInProcessConfig;
     private File currentDownloadFolder;
     private static Uri currentCsvUri, currentJsonlUri;
@@ -283,7 +306,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private BaseDriver getActiveDriver() {
         BaseDriver cd = currentDriver;
-        if (cd != null && cd.isConnected()) {
+        if (cd != null && cd.isConnected() && running
+                && currentInProcessDriverGeneration == inProcessRunGeneration.get()) {
             return cd;
         }
         LoggerService s = LoggerService.getInstance();
@@ -294,6 +318,141 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
         return null;
+    }
+
+    /** True only while this exact foreground worker owns the shared run state. */
+    private static boolean isCurrentInProcessRun(
+            long generation, ExecutorService ownedExecutor) {
+        synchronized (inProcessRunLock) {
+            return running
+                    && inProcessRunGeneration.get() == generation
+                    && executor == ownedExecutor;
+        }
+    }
+
+    /** Ownership remains true while the worker publishes its terminal state. */
+    private static boolean ownsInProcessRun(
+            long generation, ExecutorService ownedExecutor) {
+        synchronized (inProcessRunLock) {
+            return inProcessRunGeneration.get() == generation
+                    && executor == ownedExecutor;
+        }
+    }
+
+    /** Suppress callbacks from a stopped worker once another generation exists. */
+    private static boolean isCurrentInProcessGeneration(long generation) {
+        return inProcessRunGeneration.get() == generation;
+    }
+
+    /** Atomically invalidate DTC state only for the worker that still owns the run. */
+    private static long resetDtcSnapshotForInProcessRun(
+            long generation, ExecutorService ownedExecutor) {
+        synchronized (inProcessRunLock) {
+            if (!running || inProcessRunGeneration.get() != generation
+                    || executor != ownedExecutor) return -1L;
+            return LoggerService.resetDtcSnapshotForConnection();
+        }
+    }
+
+    /** Service tokens are positive; foreground generations use unique negatives. */
+    private static long inProcessSessionForGeneration(long generation) {
+        if (generation == Long.MIN_VALUE) return Long.MIN_VALUE;
+        long magnitude = Math.abs(generation);
+        return magnitude == 0L ? -1L : -magnitude;
+    }
+
+    /** Identify the exact logger session that currently owns this driver. */
+    private long currentDriverSession(BaseDriver driver) {
+        long serviceToken = LoggerService.sessionTokenForDriver(driver);
+        if (serviceToken != NO_DRIVER_SESSION) return serviceToken;
+        return driver != null && driver == currentDriver && driver.isConnected()
+                && running
+                && currentInProcessDriverGeneration == inProcessRunGeneration.get()
+                ? inProcessSessionForGeneration(currentInProcessDriverGeneration)
+                : NO_DRIVER_SESSION;
+    }
+
+    private boolean isCurrentDriverConnection(
+            BaseDriver driver, long session, long connectionEpoch) {
+        if (driver == null || session == NO_DRIVER_SESSION || connectionEpoch <= 0L
+                || driver.getConnectionEpoch() != connectionEpoch
+                || getActiveDriver() != driver) {
+            return false;
+        }
+        return session < 0L
+                ? session == inProcessSessionForGeneration(
+                            currentInProcessDriverGeneration)
+                        && currentDriver == driver && driver.isConnected()
+                : LoggerService.isCurrentConnection(driver, session, connectionEpoch);
+    }
+
+    /** Exact driver/session/physical-connection identity for delayed DTC work. */
+    private boolean isCurrentDtcScanIdentity(
+            BaseDriver driver, long session, long connectionEpoch, String expectedVin) {
+        if (!isCurrentDriverConnection(driver, session, connectionEpoch)) return false;
+        return expectedVin == null || expectedVin.equals(verifiedVehicleVinFor(driver));
+    }
+
+    private void showDtcScanConnectionChanged() {
+        runOnUiThread(() -> {
+            if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
+            if (dtcScanTracker != null) dtcScanTracker.hide();
+            if (dtcStatusText != null) {
+                dtcStatusText.setText(R.string.dtc_scan_connection_changed);
+                dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+            }
+        });
+    }
+
+    /** Bind VIN evidence to the adapter/session that actually produced it. */
+    private void bindVehicleVin(String vin, BaseDriver driver, long session,
+                                long connectionEpoch) {
+        String normalized = ManualVinStore.normalize(vin);
+        if (normalized == null
+                || !isCurrentDriverConnection(driver, session, connectionEpoch)) return;
+        synchronized (vehicleVinBindingLock) {
+            vehicleVinBinding = normalized;
+            vehicleVinBindingDriver = driver;
+            vehicleVinBindingSession = session;
+            vehicleVinBindingConnectionEpoch = connectionEpoch;
+        }
+    }
+
+    /**
+     * A displayed or remembered VIN is useful for offline lookup, but may not
+     * name the vehicle on the newly connected adapter. ECU evidence is saved
+     * only when the VIN was established by this same live driver/session.
+     */
+    private String verifiedVehicleVinFor(BaseDriver driver) {
+        long session = currentDriverSession(driver);
+        long connectionEpoch = driver != null ? driver.getConnectionEpoch() : 0L;
+        if (!isCurrentDriverConnection(driver, session, connectionEpoch)) return null;
+        String vin;
+        BaseDriver boundDriver;
+        long boundSession;
+        long boundConnectionEpoch;
+        synchronized (vehicleVinBindingLock) {
+            vin = vehicleVinBinding;
+            boundDriver = vehicleVinBindingDriver;
+            boundSession = vehicleVinBindingSession;
+            boundConnectionEpoch = vehicleVinBindingConnectionEpoch;
+        }
+        return selectBoundVinForConnection(
+                vin, boundDriver, boundSession, boundConnectionEpoch,
+                driver, session, connectionEpoch);
+    }
+
+    static String selectBoundVinForConnection(
+            String vin, BaseDriver vinDriver, long vinSession, long vinConnectionEpoch,
+            BaseDriver requestedDriver, long requestedSession,
+            long requestedConnectionEpoch) {
+        if (vinDriver == null || vinDriver != requestedDriver
+                || vinSession == NO_DRIVER_SESSION || vinSession != requestedSession
+                || vinConnectionEpoch <= 0L
+                || vinConnectionEpoch != requestedConnectionEpoch) {
+            return null;
+        }
+        return ManualVinStore.normalize(vin);
     }
     private int currentTabIndex = 0;
 
@@ -480,6 +639,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (active != null) {
             active.runOnUiThread(action);
         }
+    }
+
+    static void invalidateDtcUiForNewConnection() {
+        runOnActiveActivity(() -> {
+            MainActivity active = activeInstance;
+            if (active == null) return;
+            active.lastStoredDtcs.clear();
+            active.lastPendingDtcs.clear();
+            active.lastPermanentDtcs.clear();
+            active.updateDtcBadge(0, 0, 0);
+            if (active.txtHomeDtc != null) {
+                active.txtHomeDtc.setText("--");
+                active.txtHomeDtc.setTextColor(active.getColorCompat(R.color.muted));
+            }
+            if (active.txtHomeDiagnosticSummary != null) {
+                active.txtHomeDiagnosticSummary.setText(
+                        R.string.home_dtc_status_unavailable);
+                active.txtHomeDiagnosticSummary.setTextColor(
+                        active.getColorCompat(R.color.muted));
+            }
+        });
     }
 
     private void syncLoggerState() {
@@ -714,6 +894,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         cockpitInsightTitle = findViewById(R.id.cockpitInsightTitle);
         cockpitInsightMessage = findViewById(R.id.cockpitInsightMessage);
         cockpitInsightMeta = findViewById(R.id.cockpitInsightMeta);
+        cockpitPerf0100 = findViewById(R.id.cockpitPerf0100);
+        cockpitPerf80120 = findViewById(R.id.cockpitPerf80120);
+        cockpitPerfQuarter = findViewById(R.id.cockpitPerfQuarter);
+        cockpitPerfMeta = findViewById(R.id.cockpitPerfMeta);
+        cockpitSwitchStatus = findViewById(R.id.cockpitSwitchStatus);
+        cockpitSwitchDetail = findViewById(R.id.cockpitSwitchDetail);
 
         txtHomeDtc = null;
         stripBoost = findViewById(R.id.stripBoost);
@@ -816,7 +1002,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         keepScreenOnCheckbox = findViewById(R.id.keepScreenOnCheckbox);
         apiServerCheckbox = findViewById(R.id.apiServerCheckbox);
         apiServerIpText = findViewById(R.id.apiServerIpText);
-        fordMsCanCheckbox = findViewById(R.id.fordMsCanCheckbox);
+        smartDtcScanCheckbox = findViewById(R.id.smartDtcScanCheckbox);
         customLogFolderText = findViewById(R.id.customLogFolderText);
 
         // Feature toggle checkboxes
@@ -872,9 +1058,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 updateAirDensityPanel(latestDataRecord);
             });
         }
-        if (fordMsCanCheckbox != null) {
-            fordMsCanCheckbox.setOnCheckedChangeListener((btn, checked) ->
-                prefs.edit().putBoolean("pref_ford_ms_can", checked).apply());
+        if (smartDtcScanCheckbox != null) {
+            smartDtcScanCheckbox.setOnCheckedChangeListener((btn, checked) -> {
+                android.content.SharedPreferences.Editor editor = prefs.edit();
+                SmartSecondaryBusScanPreferences.putEnabled(editor, checked);
+                syncFordMsCanEnabledToActiveConfigs(checked);
+                // Controlled restore/auto-enable calls also trigger this
+                // listener and are suppressed at their call sites. Every
+                // remaining UI/accessibility change is an explicit choice that
+                // future per-VIN migrations must preserve.
+                if (!suppressSmartDtcScanPreferenceTracking) {
+                    BaseDriver activeDriver = getActiveDriver();
+                    String choiceVin = activeDriver != null
+                            ? verifiedVehicleVinFor(activeDriver)
+                            : resolveVehicleProfileVin();
+                    String overrideKey =
+                            FordMsCanAutoMigration.userOverrideKey(choiceVin);
+                    editor.putBoolean(overrideKey != null ? overrideKey
+                            : FordMsCanAutoMigration.GLOBAL_USER_OVERRIDE_KEY, true);
+                }
+                editor.apply();
+            });
         }
         boolean isApiServerEnabled = prefs.getBoolean("pref_api_server",
                 prefs.getBoolean("apiServerEnabled", false));
@@ -1068,6 +1272,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         btnClearDtc = findViewById(R.id.btnClearDtc);
         btnReadVin = findViewById(R.id.btnReadVin);
         btnVehicleInfo = findViewById(R.id.btnVehicleInfo);
+        btnEcuIdentification = findViewById(R.id.btnEcuIdentification);
         btnFordModuleLiveData = findViewById(R.id.btnFordModuleLiveData);
         btnReadiness = findViewById(R.id.btnReadiness);
         dtcStatusText = findViewById(R.id.dtcStatusText);
@@ -2258,6 +2463,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return true;
         });
         btnVehicleInfo.setOnClickListener(v -> readVehicleInformation());
+        btnEcuIdentification.setOnClickListener(v -> {
+            if (ecuIdentificationRunning.get()) {
+                cancelEcuIdentificationRead();
+            } else {
+                showEcuIdentificationModulePicker();
+            }
+        });
+        dtcStatusText.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         btnFordModuleLiveData.setOnClickListener(v -> readFordModuleLiveData());
         btnReadiness.setOnClickListener(v -> checkReadiness());
 
@@ -3211,6 +3424,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // Reset analyzer history so STFT std-dev window does not bleed across sessions/fuels.
         LPGAnalyzer.resetHistory();
+        perfTimerEngine.reset();
+        switchoverEngine.reset();
 
         // Sync FuelMapView mode with selected fuel mode so data shows immediately.
         // IMPORTANT: only clear the fuel we're about to (re)log — NOT the whole map.
@@ -3263,10 +3478,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private void startInProcessLogging(LoggerConfig config) {
         mapOwnedByBackgroundService = false;
-        running = true;
-        activeInProcessConfig = config;
-        executor = Executors.newSingleThreadExecutor();
-        executor.submit(() -> runLogger(config));
+        ExecutorService ownedExecutor = Executors.newSingleThreadExecutor();
+        final long generation;
+        synchronized (inProcessRunLock) {
+            generation = inProcessRunGeneration.incrementAndGet();
+            running = true;
+            activeInProcessConfig = config;
+            executor = ownedExecutor;
+        }
+        ownedExecutor.submit(() -> runLogger(config, generation, ownedExecutor));
     }
 
     private boolean actuallyStartBackgroundLogging(LoggerConfig config) {
@@ -3405,7 +3625,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         boolean shouldStopBackgroundService = LoggerService.isLoggingActive()
                 || (mapOwnedByBackgroundService && running);
         isConnecting = false;
-        running = false;
+        ExecutorService service;
+        synchronized (inProcessRunLock) {
+            // Invalidate this worker before another Start can set running=true.
+            // Otherwise the old loop/finally can resume in, or clear, the new run.
+            inProcessRunGeneration.incrementAndGet();
+            running = false;
+            service = executor;
+            executor = null;
+        }
         isPaused = false; // Clear any stuck pause from diagnostic features
         watchdogHandler.removeCallbacks(connectionWatchdog);
         pendingBackgroundConfig = null; // cancel any deferred (permission-gated) start
@@ -3424,10 +3652,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             LoggerService.setCallback(null);
         }
 
-        ExecutorService service = executor;
         if (service != null) {
             service.shutdownNow();
-            executor = null;
         }
         // Note: dtcExecutor is intentionally NOT shut down here — stopping logging
         // must not kill in-flight DTC/VIN/readiness reads. It is shut down in onDestroy().
@@ -3439,17 +3665,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     /** Foreground-only logger uses the same bounded exponential policy as LoggerService. */
-    private DriverConnector.Result connectInProcessWithBackoff(LoggerConfig config) {
+    private DriverConnector.Result connectInProcessWithBackoff(
+            LoggerConfig config, long generation, ExecutorService ownedExecutor) {
         DriverConnector.Result last = null;
-        for (int attempt = 1; running; attempt++) {
+        for (int attempt = 1;
+                isCurrentInProcessRun(generation, ownedExecutor); attempt++) {
             last = DriverConnector.connect(config, 30_000L);
-            if (last.isConnected()) return last;
-            if (!running) break;
+            if (last.isConnected()
+                    && isCurrentInProcessRun(generation, ownedExecutor)) return last;
+            if (!isCurrentInProcessRun(generation, ownedExecutor)) break;
             long delayMs = ReconnectBackoff.delayForAttempt(attempt);
             final int displayAttempt = attempt;
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
-                if (active != null) {
+                if (active != null
+                        && isCurrentInProcessRun(generation, ownedExecutor)) {
                     active.setStatus("Connection attempt " + displayAttempt
                             + " failed. Retrying in " + (delayMs / 1000) + "s...", R.color.warning);
                     active.updateStatusStripConnection(1, "Reconnecting...");
@@ -3465,24 +3695,53 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         return last;
     }
 
-    private void runLogger(LoggerConfig config) {
+    private void runLogger(
+            LoggerConfig config, long generation, ExecutorService ownedExecutor) {
+        final long inProcessSession = inProcessSessionForGeneration(generation);
         String fuelPrefix = config.fuelMode != null ? config.fuelMode.name() + "_" : "";
         String simPrefix = (config.transportMode == TransportMode.SIM) ? "Sim_" : "";
-        String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        String sessionId = simPrefix + fuelPrefix + timeStr;
-        DriverConnector.Result connection = connectInProcessWithBackoff(config);
+        String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US)
+                .format(new Date());
+        String sessionId = simPrefix + fuelPrefix + timeStr + "_" + generation;
+        DriverConnector.Result connection =
+                connectInProcessWithBackoff(config, generation, ownedExecutor);
         BaseDriver driver = connection != null ? connection.getDriver() : null;
-        currentDriver = driver;
+
+        if (!isCurrentInProcessRun(generation, ownedExecutor)) {
+            if (driver != null) driver.disconnect();
+            ownedExecutor.shutdown();
+            return;
+        }
+        synchronized (inProcessRunLock) {
+            if (!isCurrentInProcessRun(generation, ownedExecutor)) {
+                if (driver != null) driver.disconnect();
+                return;
+            }
+            currentDriver = driver;
+            currentInProcessDriverGeneration = generation;
+        }
 
         if (connection == null || !connection.isConnected()) {
             String connectionError = connection != null ? connection.getError() : "Connection cancelled";
-            DriverFactory.markConnectionFailure(connectionError);
-            running = false;
+            boolean publishFailure;
+            synchronized (inProcessRunLock) {
+                publishFailure = inProcessRunGeneration.get() == generation
+                        && executor == ownedExecutor;
+                if (publishFailure) {
+                    DriverFactory.markConnectionFailure(connectionError);
+                    running = false;
+                    currentDriver = null;
+                    currentInProcessDriverGeneration = 0L;
+                    executor = null;
+                }
+            }
+            if (driver != null) driver.disconnect();
+            ownedExecutor.shutdown();
+            if (!publishFailure) return;
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
-                if (active != null) {
+                if (active != null && isCurrentInProcessGeneration(generation)) {
                     active.isConnecting = false;
-                    active.running = false;
                     String message = connection != null && connection.isTimedOut()
                             ? "Connection timed out. Check adapter power and transport settings."
                             : "Connection failed: " + connectionError;
@@ -3502,10 +3761,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return;
         }
 
+        // The adapter now represents a newly accepted physical connection.
+        // Clear the previous vehicle's diagnostics before VIN/UI/weather work
+        // can expose them, and retain the generation for atomic publication of
+        // this connection's startup scan.
+        final long initialDtcSnapshotGeneration =
+                resetDtcSnapshotForInProcessRun(generation, ownedExecutor);
+        if (initialDtcSnapshotGeneration < 0L) {
+            driver.disconnect();
+            return;
+        }
+
         final String resolvedTransport = DriverFactory.getLastResolvedTransport();
         runOnActiveActivity(() -> {
             MainActivity active = activeInstance;
-            if (active != null) {
+            if (active != null && isCurrentInProcessRun(generation, ownedExecutor)) {
                 active.isConnecting = false;
                 active.setStatus("Connected via " + resolvedTransport + ". Logging started.", R.color.accent);
                 active.watchdogHandler.removeCallbacks(active.connectionWatchdog);
@@ -3513,14 +3783,23 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         });
         runOnActiveActivity(() -> {
             MainActivity active = activeInstance;
-            if (active != null) active.headerStatus.setText(R.string.status_connected);
-            if (active != null) active.updateStatusStripConnection(2, resolvedTransport);
+            if (active != null && isCurrentInProcessRun(generation, ownedExecutor)) {
+                active.headerStatus.setText(R.string.status_connected);
+                active.updateStatusStripConnection(2, resolvedTransport);
+            }
         });
 
         // Try to read VIN unless a valid one was already supplied to this session.
+        if (!isCurrentInProcessRun(generation, ownedExecutor)) {
+            driver.disconnect();
+            return;
+        }
         String vin = config.vin;
+        final long vinConnectionEpoch = driver.getConnectionEpoch();
+        boolean vinReadFromThisDriver = false;
         if (vin == null || vin.isEmpty() || "UNKNOWN".equalsIgnoreCase(vin)) {
             vin = VinReader.readVin(driver);
+            vinReadFromThisDriver = ManualVinStore.normalize(vin) != null;
         }
         if (vin != null && !vin.isEmpty() && !"UNKNOWN".equalsIgnoreCase(vin)) {
             config.vin = vin;
@@ -3532,10 +3811,29 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             DtcReader.setBrand(brand);
             String detectedBrand = DtcDatabase.initForVin(this, vin);
             config.applyDetectedVehicleBrand(detectedBrand);
+            // Apply session defaults synchronously before the first PID poll
+            // set is built. The UI runnable below persists and renders them,
+            // but its scheduling must not decide first-session behavior.
+            VinSessionAutomation.applyFromPreferences(
+                    config, vin,
+                    getSharedPreferences("OBD2Prefs", MODE_PRIVATE),
+                    vinReadFromThisDriver);
             final String sessionVin = vin;
+            final boolean bindSessionVin = vinReadFromThisDriver;
+            if (bindSessionVin) {
+                // Session identity is worker-owned state, not a UI scheduling
+                // side effect. This also survives Activity recreation.
+                bindVehicleVin(sessionVin, driver, inProcessSession,
+                        vinConnectionEpoch);
+            }
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
-                if (active != null) {
+                if (active != null
+                        && isCurrentInProcessRun(generation, ownedExecutor)) {
+                    if (FordMsCanAutoMigration.matchesVerifiedVin(
+                            sessionVin, active.verifiedVehicleVinFor(driver))) {
+                        active.applyVerifiedVinAutomations(sessionVin);
+                    }
                     active.headerVin.setText("VIN: " + sessionVin);
                     active.updateHeaderVehicle(sessionVin);
                     if (active.txtHomeVin != null) active.txtHomeVin.setText(sessionVin);
@@ -3557,11 +3855,68 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             });
         }
 
+        // Match the background-service path: perform one Smart startup scan.
+        // Only a VIN read by this exact driver may unlock saved profile hints.
+        final String verifiedDtcVin = vinReadFromThisDriver
+                ? ManualVinStore.normalize(config.vin) : null;
+        if (!isCurrentInProcessRun(generation, ownedExecutor)) {
+            driver.disconnect();
+            return;
+        }
+        try {
+            final long dtcEpoch = driver.getConnectionEpoch();
+            VehicleModuleProfileStore.SmartProtocolEvidence evidence =
+                    verifiedDtcVin != null
+                    ? VehicleModuleProfileStore.getSmartProtocolEvidence(
+                            this, verifiedDtcVin) : null;
+            SmartDtcScanPlanner.Plan startupPlan =
+                    SmartDtcScanPlanner.createPlanFromEvidence(
+                    SmartDtcScanPlanner.ScanMode.SMART,
+                    DtcReader.activeProtocolFor(driver), evidence, verifiedDtcVin,
+                    config.fordMsCanEnabled,
+                    DtcReader.supportsStandardProtocolSelection(driver));
+            DtcReader.DtcScanResult scanResult = DtcReader.readDtcs(driver, startupPlan);
+            LoggerService.DtcSnapshotValidity published = isCurrentDtcScanIdentity(
+                        driver, inProcessSession, dtcEpoch, verifiedDtcVin)
+                    ? LoggerService.replaceDtcSnapshotFromScan(
+                            scanResult, true, initialDtcSnapshotGeneration)
+                    : null;
+            if (published == null) {
+                Log.w("OBD2Logger", "Ignoring startup DTC scan without current validated response");
+            } else {
+            LoggerService.DtcSnapshot snapshot = LoggerService.getDtcSnapshot();
+            runOnActiveActivity(() -> {
+                MainActivity active = activeInstance;
+                if (active == null || !active.isCurrentDtcScanIdentity(
+                        driver, inProcessSession, dtcEpoch, verifiedDtcVin)
+                        || !isCurrentInProcessRun(generation, ownedExecutor)) return;
+                active.lastStoredDtcs.clear();
+                active.lastStoredDtcs.addAll(snapshot.stored);
+                active.lastPendingDtcs.clear();
+                active.lastPendingDtcs.addAll(snapshot.pending);
+                active.lastPermanentDtcs.clear();
+                active.lastPermanentDtcs.addAll(snapshot.permanent);
+                active.lastAutoScanModules = new ArrayList<>(scanResult.modules);
+                active.lastAutoScanProtocolStatuses =
+                        new ArrayList<>(scanResult.protocolStatuses);
+                active.lastAutoScanDriver = driver;
+                active.lastAutoScanSession = inProcessSession;
+                active.lastAutoScanConnectionEpoch = dtcEpoch;
+                active.onDtcAutoScan(snapshot.stored.size(),
+                        snapshot.pending.size(), snapshot.permanent.size(),
+                        snapshot.validity);
+            });
+            }
+        } catch (Exception dtcFailure) {
+            Log.e("OBD2Logger", "Smart startup DTC scan failed", dtcFailure);
+        }
+
         DataWriter writer = null;
         int completed = 0;
         long started = SystemClock.elapsedRealtime();
         List<PIDDefinition> allPids = PIDCatalogue.getConfiguredPollSet(this,
-                config.lpgOnlyMode, config.showAirDensity, config.customPidsEnabled);
+                config.lpgOnlyMode, config.showAirDensity, config.customPidsEnabled,
+                config.dpfMonitorEnabled);
         List<PIDDefinition> pids = new ArrayList<>(allPids);
         boolean detectedFromLive = false;
 
@@ -3626,18 +3981,30 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // This path used to carry its own copy and had silently lost the NGV
         // km/kg branch and the mapSynthesized flag; do not inline it again.
         final PollingEngine engine = new PollingEngine(config, finalPids, started);
+        // GPS route capture is best-effort: without permission or a provider
+        // the session simply logs no gps_* columns.
+        final RouteRecorder routeRecorder = new RouteRecorder(this);
+        if (routeRecorder.start()) {
+            engine.setLocationSupplier(routeRecorder);
+        }
+        AirDensityMonitor loggerAirDensityMonitor = null;
 
         try {
+            if (!isCurrentInProcessRun(generation, ownedExecutor)) return;
             writer = new DataWriter(this, sessionId, finalPids, config.vin,
                     config, DataWriter.describeAdapter(driver));
-            currentWriter = writer;
             final DataWriter dataWriter = writer;
-            currentDownloadFolder = dataWriter.getDownloadFolderFile();
-            currentCsvUri = dataWriter.getCsvUri();
-            currentJsonlUri = dataWriter.getJsonlUri();
+            synchronized (inProcessRunLock) {
+                if (!isCurrentInProcessRun(generation, ownedExecutor)) return;
+                currentWriter = writer;
+                currentDownloadFolder = dataWriter.getDownloadFolderFile();
+                currentCsvUri = dataWriter.getCsvUri();
+                currentJsonlUri = dataWriter.getJsonlUri();
+            }
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
-                if (active != null) {
+                if (active != null
+                        && isCurrentInProcessRun(generation, ownedExecutor)) {
                     active.updateSessionStatus(true);
                 }
             });
@@ -3645,9 +4012,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             // Initialize Air Density Monitor for in-process logging
             if (config.showAirDensity) {
                 try {
-                    airDensityMonitor = new AirDensityMonitor(this);
-                    airDensityMonitor.startPhoneSensors();
-                    airDensityMonitor.refreshWeatherSync();
+                    loggerAirDensityMonitor = new AirDensityMonitor(this);
+                    loggerAirDensityMonitor.startPhoneSensors();
+                    loggerAirDensityMonitor.refreshWeatherSync();
+                    if (isCurrentInProcessRun(generation, ownedExecutor)) {
+                        airDensityMonitor = loggerAirDensityMonitor;
+                    }
                     Log.i("OBD2Logger", "AirDensityMonitor initialized (in-process)");
                 } catch (Exception e) {
                     Log.w("OBD2Logger", "AirDensityMonitor init failed — using defaults", e);
@@ -3655,15 +4025,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
 
             int retryCount = 0;
+            long lastDtcCheckMs = SystemClock.elapsedRealtime();
 
-            while (running) {
+            while (isCurrentInProcessRun(generation, ownedExecutor)) {
                 try {
                     if (!driver.isConnected()) {
                         if (retryCount > 0) {
                             final int finalRetry = retryCount;
                             runOnActiveActivity(() -> {
                                 MainActivity active = activeInstance;
-                                if (active != null) {
+                                if (active != null
+                                        && isCurrentInProcessRun(
+                                                generation, ownedExecutor)) {
                                     active.setStatus("Connection lost. Reconnecting (attempt " + finalRetry + ")...", R.color.warning);
                                     active.updateStatusStripConnection(1, "Reconnecting...");
                                 }
@@ -3674,10 +4047,27 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         if (!reconnect.isConnected()) {
                             throw new java.io.IOException(reconnect.getError());
                         }
+                        if (!isCurrentInProcessRun(generation, ownedExecutor)) {
+                            driver.disconnect();
+                            break;
+                        }
+                        // A reconnect creates a new physical connection epoch.
+                        // Invalidate vehicle-scoped codes immediately, then force
+                        // a current-protocol refresh before normal PID polling.
+                        long reconnectSnapshotGeneration =
+                                resetDtcSnapshotForInProcessRun(
+                                        generation, ownedExecutor);
+                        if (reconnectSnapshotGeneration < 0L) {
+                            driver.disconnect();
+                            break;
+                        }
+                        runInProcessDtcMonitor(driver);
+                        lastDtcCheckMs = SystemClock.elapsedRealtime();
                         retryCount = 0;
                         runOnActiveActivity(() -> {
                             MainActivity active = activeInstance;
-                            if (active != null) {
+                            if (active != null
+                                    && isCurrentInProcessRun(generation, ownedExecutor)) {
                                 String actualTransport = DriverFactory.getLastResolvedTransport();
                                 active.setStatus("Connected. Logging resumed.", R.color.accent);
                                 active.headerStatus.setText(R.string.status_connected);
@@ -3686,13 +4076,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         });
                     }
 
-                    while (running) {
+                    while (isCurrentInProcessRun(generation, ownedExecutor)) {
                         if (isPaused) {
-                            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+                            try {
+                                Thread.sleep(100);
+                            } catch (InterruptedException interrupted) {
+                                Thread.currentThread().interrupt();
+                                break;
+                            }
                             continue;
                         }
+                        long nowMs = SystemClock.elapsedRealtime();
+                        if (nowMs - lastDtcCheckMs >= 30_000L) {
+                            lastDtcCheckMs = nowMs;
+                            runInProcessDtcMonitor(driver);
+                        }
+                        if (isPaused) continue;
                         PollingEngine.PollOutcome outcome = engine.poll(
-                                driver, airDensityMonitor, ensureInProcessMapStore());
+                                driver, loggerAirDensityMonitor, ensureInProcessMapStore());
                         DataRecord record = outcome.record;
 
                         writer.writeRecord(record);
@@ -3701,10 +4102,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         // transient errors don't accumulate across a long session.
                         retryCount = 0;
                         final int finalCompleted = completed;
-                        sessionRecordCount = finalCompleted;
+                        if (isCurrentInProcessRun(generation, ownedExecutor)) {
+                            sessionRecordCount = finalCompleted;
+                        }
                         runOnActiveActivity(() -> {
                             MainActivity active = activeInstance;
-                            if (active != null) {
+                            if (active != null
+                                    && isCurrentInProcessRun(generation, ownedExecutor)) {
                                 active.latestDataRecord = record;
                                 active.countText.setText(active.getString(R.string.records_count, finalCompleted));
                                 active.updateDashboard(record);
@@ -3730,13 +4134,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             engine.awaitNextCycle();
                         } catch (InterruptedException ie) {
                             // shutdownNow() interrupted our sleep — exit the loop gracefully
-                            running = false;
+                            synchronized (inProcessRunLock) {
+                                if (ownsInProcessRun(generation, ownedExecutor)) {
+                                    running = false;
+                                }
+                            }
                             Thread.currentThread().interrupt();
                             break;
                         }
                     }
                 } catch (Exception e) {
-                    if (!running || e instanceof InterruptedException) {
+                    if (!isCurrentInProcessRun(generation, ownedExecutor)
+                            || e instanceof InterruptedException) {
                         break;
                     }
                     // Only connection/IO errors should count toward the retry cap.
@@ -3762,7 +4171,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             final int displayRetry = retryCount;
                             runOnActiveActivity(() -> {
                                 MainActivity active = activeInstance;
-                                if (active != null) {
+                                if (active != null
+                                        && isCurrentInProcessRun(
+                                                generation, ownedExecutor)) {
                                     active.setStatus("Connection lost. Retrying in "
                                             + (displayDelayMs / 1000) + "s (attempt "
                                             + displayRetry + ")...", R.color.warning);
@@ -3781,41 +4192,61 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             final int finalCompleted2 = completed;
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
-                if (active != null) active.setStatus("Stopped at " + finalCompleted2 + " records.", R.color.primary);
+                if (active != null && isCurrentInProcessGeneration(generation)) {
+                    active.setStatus("Stopped at " + finalCompleted2 + " records.",
+                            R.color.primary);
+                }
             });
         } catch (Exception e) {
             if (!(e instanceof InterruptedException)) {
                 runOnActiveActivity(() -> {
                     MainActivity active = activeInstance;
-                    if (active != null) active.setStatus("Logger error: " + e.getMessage(), R.color.danger);
+                    if (active != null && isCurrentInProcessGeneration(generation)) {
+                        active.setStatus("Logger error: " + e.getMessage(), R.color.danger);
+                    }
                 });
             }
         } finally {
+            routeRecorder.stop();
             try {
                 if (writer != null) writer.close();
-                            } catch (Exception ignored) {
-                            }
-                            try {
-                                if (airDensityMonitor != null) airDensityMonitor.stopPhoneSensors();
-                            } catch (Exception ignored) {
-                            }
-                            driver.disconnect();
-                            currentWriter = null;
-                            currentDriver = null;
-            // Only shut down the executor if it's still the one we started with.
-            // stopLogging() on the main thread may have already shut it down and
-            // set executor=null (or started a new session) — clobbering that here
-            // would either NPE or kill a newly-started logger thread.
-            ExecutorService ex = executor;
-            if (ex != null && !ex.isShutdown()) {
-                ex.shutdown();
+            } catch (Exception ignored) {
             }
-            executor = null;
+            try {
+                if (loggerAirDensityMonitor != null) {
+                    loggerAirDensityMonitor.stopPhoneSensors();
+                }
+            } catch (Exception ignored) {
+            }
+            // Clear shared fields only when they still belong to this worker.
+            boolean disconnectOwnedDriver;
+            boolean publishTerminal;
+            synchronized (inProcessRunLock) {
+                publishTerminal = inProcessRunGeneration.get() == generation
+                        && executor == ownedExecutor;
+                disconnectOwnedDriver = currentDriver != driver
+                        || currentInProcessDriverGeneration == generation;
+                if (currentWriter == writer) currentWriter = null;
+                if (currentDriver == driver
+                        && currentInProcessDriverGeneration == generation) {
+                    currentDriver = null;
+                    currentInProcessDriverGeneration = 0L;
+                }
+                if (airDensityMonitor == loggerAirDensityMonitor) {
+                    airDensityMonitor = null;
+                }
+                if (publishTerminal) {
+                    running = false;
+                    executor = null;
+                }
+            }
+            if (disconnectOwnedDriver) driver.disconnect();
+            ownedExecutor.shutdown();
             runOnActiveActivity(() -> {
                 MainActivity active = activeInstance;
-                if (active != null) {
+                if (active != null && publishTerminal
+                        && isCurrentInProcessGeneration(generation)) {
                     active.isConnecting = false;
-                    active.running = false;
                     if (active.fabLog != null) {
                         active.setFabState(false);
                     }
@@ -3825,6 +4256,79 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     active.markDashboardStale();
                 }
             });
+        }
+    }
+
+    /** Current-protocol-only periodic DTC refresh for foreground logging. */
+    private void runInProcessDtcMonitor(BaseDriver driver) {
+        final long monitorSession = currentDriverSession(driver);
+        final long monitorEpoch = driver != null ? driver.getConnectionEpoch() : 0L;
+        boolean diagnosticLockHeld = false;
+        try {
+            if (isPaused || !isCurrentDtcScanIdentity(
+                    driver, monitorSession, monitorEpoch, null)) return;
+            final long monitorSnapshotGeneration =
+                    LoggerService.currentDtcSnapshotGeneration();
+            driver.commandLock.lockInterruptibly();
+            diagnosticLockHeld = true;
+            // A manual scan may have set the pause flag while this monitor was
+            // waiting for exclusive adapter access.
+            if (isPaused || !isCurrentDtcScanIdentity(
+                    driver, monitorSession, monitorEpoch, null)) return;
+
+            // PID 01 exposes only a count/MIL bit. Code A can disappear while
+            // code B appears with the same count, so it is not a safe cache key.
+            // Refresh the current protocol every interval to avoid stale codes.
+            String currentVerifiedVin = verifiedVehicleVinFor(driver);
+            SmartDtcScanPlanner.Plan quickPlan =
+                    SmartDtcScanPlanner.createPlanFromEvidence(
+                    SmartDtcScanPlanner.ScanMode.QUICK,
+                    DtcReader.activeProtocolFor(driver), null, currentVerifiedVin,
+                    false, false);
+            DtcReader.DtcScanResult result = DtcReader.readDtcs(driver, quickPlan);
+            if (!result.hasCompleteStoredSnapshot(true)
+                    || !isCurrentDtcScanIdentity(
+                            driver, monitorSession, monitorEpoch, null)) {
+                return;
+            }
+            LoggerService.DtcSnapshot beforeSnapshot = LoggerService.getDtcSnapshot();
+            List<DtcCode> newCodes = new ArrayList<>();
+            for (DtcCode code : result.storedDtcs) {
+                if (!beforeSnapshot.stored.contains(code)) newCodes.add(code);
+            }
+            if (result.hasCompletePendingSnapshot(true)) {
+                for (DtcCode code : result.currentPendingDtcs) {
+                    if (!beforeSnapshot.pending.contains(code)) newCodes.add(code);
+                }
+            }
+
+            LoggerService.DtcSnapshotValidity published =
+                    LoggerService.replaceCurrentDtcSnapshotFromQuick(
+                            result, monitorSnapshotGeneration);
+            if (published == null) return;
+            LoggerService.DtcSnapshot snapshot = LoggerService.getDtcSnapshot();
+            runOnActiveActivity(() -> {
+                MainActivity active = activeInstance;
+                if (active == null || !active.isCurrentDtcScanIdentity(
+                        driver, monitorSession, monitorEpoch, null)) return;
+                active.lastStoredDtcs.clear();
+                active.lastStoredDtcs.addAll(snapshot.stored);
+                active.lastPendingDtcs.clear();
+                active.lastPendingDtcs.addAll(snapshot.pending);
+                active.lastPermanentDtcs.clear();
+                active.lastPermanentDtcs.addAll(snapshot.permanent);
+                active.updateDtcBadge(snapshot.stored.size(),
+                        snapshot.pending.size(), snapshot.permanent.size(),
+                        snapshot.validity);
+                if (!newCodes.isEmpty()) active.onNewDtcDetected(newCodes);
+            });
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        } catch (Exception monitorFailure) {
+            Log.e("OBD2Logger", "Periodic foreground DTC monitor failed non-fatally",
+                    monitorFailure);
+        } finally {
+            if (diagnosticLockHeld) driver.commandLock.unlock();
         }
     }
 
@@ -4146,13 +4650,26 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     @Override
-    public void onVinRead(String vin) {
+    public void onVinRead(String vin, BaseDriver sourceDriver, long sourceSessionToken,
+                          long sourceConnectionEpoch) {
+        if (activityDestroyed || activeInstance != this
+                || !LoggerService.isCurrentConnection(
+                        sourceDriver, sourceSessionToken, sourceConnectionEpoch)
+                || getActiveDriver() != sourceDriver) {
+            return;
+        }
+        bindVehicleVin(
+                vin, sourceDriver, sourceSessionToken, sourceConnectionEpoch);
+        renderVehicleVin(vin);
+    }
+
+    private void renderVehicleVin(String vin) {
         runOnUiThread(() -> {
             headerVin.setText("VIN: " + vin);
             updateHeaderVehicle(vin);
             if (txtHomeVin != null) txtHomeVin.setText(vin);
 
-            // ── Auto-detect diesel: enable DPF + Deep Scan on first run ──
+            // Apply verified vehicle defaults without triggering manual Full Scan.
             if (vin != null && !vin.isEmpty() && !vin.equals("UNKNOWN")) {
                 // Load brand-specific DTC database based on VIN
                 String brandName = DtcDatabase.initForVin(this, vin);
@@ -4177,36 +4694,87 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     dtcVehicleVin.setText("VIN: " + vin);
                 }
 
-                android.content.SharedPreferences p = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
-                boolean alreadySet = p.getBoolean("pref_auto_detect_done", false);
-                if (!alreadySet && isDieselVin(vin)) {
-                    if (dpfMonitorCheckbox != null) dpfMonitorCheckbox.setChecked(true);
-                    if (fordMsCanCheckbox != null
-                            && VinBrandDetector.detect(vin) == VinBrandDetector.Brand.FORD) {
-                        fordMsCanCheckbox.setChecked(true);
-                    }
-                    p.edit().putBoolean("pref_auto_detect_done", true).apply();
-                    Toast.makeText(this, "Diesel detected — DPF monitoring enabled",
-                            Toast.LENGTH_LONG).show();
-                }
+                applyVerifiedVinAutomations(vin);
             }
         });
     }
 
+    /** Apply idempotent vehicle automation after VIN provenance is established. */
+    private void applyVerifiedVinAutomations(String vin) {
+        if (ManualVinStore.normalize(vin) == null) return;
+        android.content.SharedPreferences prefs =
+                getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
+        applyFordMsCanAutoMigration(
+                prefs, vin, VinBrandDetector.detect(vin));
+        boolean alreadySet = prefs.getBoolean("pref_auto_detect_done", false);
+        if (!alreadySet && isDieselVin(vin)) {
+            if (dpfMonitorCheckbox != null) dpfMonitorCheckbox.setChecked(true);
+            prefs.edit().putBoolean("pref_auto_detect_done", true).apply();
+            Toast.makeText(this, "Diesel detected — DPF monitoring enabled",
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * Upgrade-safe Ford automation, independent of the legacy global diesel
+     * latch. MNB was classified after that latch shipped, so existing Ranger /
+     * Everest installs need one per-VIN v2 decision without repeatedly
+     * overriding the checkbox afterward.
+     */
+    private void applyFordMsCanAutoMigration(
+            android.content.SharedPreferences prefs, String vin,
+            VinBrandDetector.Brand brand) {
+        if (prefs == null) return;
+        String handledKey = FordMsCanAutoMigration.handledKey(vin);
+        if (handledKey == null) return;
+        String userOverrideKey = FordMsCanAutoMigration.userOverrideKey(vin);
+        boolean smartScanEnabled = SmartSecondaryBusScanPreferences.getEnabled(prefs);
+        boolean explicitUserChoice = !smartScanEnabled || prefs.getBoolean(
+                FordMsCanAutoMigration.GLOBAL_USER_OVERRIDE_KEY, false)
+                || (userOverrideKey != null
+                && prefs.getBoolean(userOverrideKey, false));
+        boolean enabled = smartDtcScanCheckbox != null
+                ? smartDtcScanCheckbox.isChecked()
+                : smartScanEnabled;
+        FordMsCanAutoMigration.Decision decision =
+                FordMsCanAutoMigration.evaluate(
+                        brand, vin, true,
+                        prefs.getBoolean(handledKey, false),
+                        explicitUserChoice, enabled);
+        if (!decision.markHandled) return;
+
+        android.content.SharedPreferences.Editor editor = prefs.edit()
+                .putBoolean(handledKey, true);
+        if (decision.enableMsCan) {
+            // Persist explicitly as well as updating the widget; this remains
+            // correct even if listener wiring changes in a future UI revision.
+            SmartSecondaryBusScanPreferences.putEnabled(editor, true);
+            if (smartDtcScanCheckbox != null) {
+                suppressSmartDtcScanPreferenceTracking = true;
+                try {
+                    smartDtcScanCheckbox.setChecked(true);
+                } finally {
+                    suppressSmartDtcScanPreferenceTracking = false;
+                }
+            }
+            // setChecked does not notify when the widget was already checked;
+            // explicitly synchronize both live session owners in either case.
+            syncFordMsCanEnabledToActiveConfigs(true);
+        }
+        editor.apply();
+    }
+
+    /** Update the existing live config instances without replacing session identity. */
+    private void syncFordMsCanEnabledToActiveConfigs(boolean enabled) {
+        LoggerService service = LoggerService.getInstance();
+        LoggerConfig serviceConfig = service != null ? service.getConfig() : null;
+        FordMsCanAutoMigration.synchronizeActiveConfigs(
+                enabled, activeInProcessConfig, serviceConfig);
+    }
+
     /** Heuristic: returns true if VIN suggests a diesel vehicle. */
     private static boolean isDieselVin(String vin) {
-        if (vin == null || vin.length() < 3) return false;
-        String wmi = vin.substring(0, 3).toUpperCase(Locale.ROOT);
-        // Common Thai-market diesel WMI prefixes
-        switch (wmi) {
-            case "MPA": // Isuzu (Thailand) — almost all diesel
-            case "MNB": // Ford (Thailand) — Ranger mostly diesel
-            case "MMB": // Mitsubishi (Thailand) — Triton/Pajero diesel
-            case "MR0": // Toyota (Thailand) — Hilux/Fortuner mostly diesel
-                return true;
-            default:
-                return false;
-        }
+        return VinSessionAutomation.isDieselVin(vin);
     }
 
     @Override
@@ -4266,25 +4834,41 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     @Override
-    public void onDtcAutoScan(int storedCount, int pendingCount, int permanentCount) {
+    public void onDtcAutoScan(int storedCount, int pendingCount, int permanentCount,
+                              LoggerService.DtcSnapshotValidity validity) {
         runOnUiThread(() -> {
-            int total = storedCount + pendingCount;
+            int total = (validity != null && validity.stored ? storedCount : 0)
+                    + (validity != null && validity.pending ? pendingCount : 0);
             if (total > 0) {
                 Toast.makeText(this, "⚠️ Auto-scan: Found " + total + " active DTC codes!", Toast.LENGTH_LONG).show();
             }
-            updateDtcBadge(storedCount, pendingCount, permanentCount);
+            updateDtcBadge(storedCount, pendingCount, permanentCount, validity);
         });
     }
 
     @Override
-    public void onDtcAutoScanDetails(DtcReader.DtcScanResult result) {
-        lastAutoScanModules = result.modules;
-        lastAutoScanProtocolStatuses = result.protocolStatuses;
+    public void onDtcAutoScanDetails(DtcReader.DtcScanResult result,
+                                     BaseDriver sourceDriver, long sourceSessionToken,
+                                     long sourceConnectionEpoch) {
+        if (result == null || activityDestroyed || activeInstance != this
+                || !LoggerService.isCurrentConnection(
+                        sourceDriver, sourceSessionToken, sourceConnectionEpoch)
+                || getActiveDriver() != sourceDriver) {
+            return;
+        }
+        lastAutoScanModules = new ArrayList<>(result.modules);
+        lastAutoScanProtocolStatuses = new ArrayList<>(result.protocolStatuses);
+        lastAutoScanDriver = sourceDriver;
+        lastAutoScanSession = sourceSessionToken;
+        lastAutoScanConnectionEpoch = sourceConnectionEpoch;
     }
 
     // Module info from last auto-scan
     private volatile List<DtcReader.ModuleInfo> lastAutoScanModules = null;
     private volatile List<DtcReader.ProtocolScanStatus> lastAutoScanProtocolStatuses = null;
+    private volatile BaseDriver lastAutoScanDriver = null;
+    private volatile long lastAutoScanSession = NO_DRIVER_SESSION;
+    private volatile long lastAutoScanConnectionEpoch;
     private volatile List<Mode06Result> lastMode06Results = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     @Override
@@ -4378,7 +4962,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         Double stft = valueByKey(record, "01_06");
         Double ltft = valueByKey(record, "01_07");
         Double totalTrim = stft != null && ltft != null ? stft + ltft : (ltft != null ? ltft : stft);
-        Double dpfSoot = valueByKey(record, "01_7A");
+        // SAE J1979 PID 0x7A is DPF differential pressure, not soot load.
+        // Manufacturer-specific soot percentage must never be inferred from it.
+        Double dpfDifferentialPressure = valueByKey(record, "01_7A");
 
         if (txtHomeFuelEconomy != null) {
             txtHomeFuelEconomy.setText(fuelKmL != null ? String.format(Locale.US, "%.1f km/L", fuelKmL) : "---");
@@ -4393,11 +4979,11 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             txtHomeFuelTrim.setText(totalTrim != null ? String.format(Locale.US, "%+.1f", totalTrim) : "---");
         }
         if (txtHomeDpf != null) {
-            if (dpfSoot != null) {
-                String health = DerivedSensors.dpfHealthStatus(dpfSoot, null);
-                txtHomeDpf.setText(String.format(Locale.US, "DPF: %.0f%% %s", dpfSoot, health));
+            if (dpfDifferentialPressure != null) {
+                txtHomeDpf.setText(getString(
+                        R.string.home_dpf_pressure_value, dpfDifferentialPressure));
             } else {
-                txtHomeDpf.setText("DPF: ---");
+                txtHomeDpf.setText(R.string.home_dpf_pressure_unavailable);
             }
         }
 
@@ -4411,24 +4997,148 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // DTC count badge
         if (txtHomeDtc != null || txtHomeDiagnosticSummary != null) {
-            int dtcCount = LoggerService.lastStoredDtcs.size() + LoggerService.lastPendingDtcs.size();
-            if (txtHomeDtc != null) {
-                txtHomeDtc.setText(dtcCount > 0 ? String.valueOf(dtcCount) : "0");
-                txtHomeDtc.setTextColor(getColorCompat(dtcCount > 0 ? R.color.danger : R.color.accent));
+            LoggerService.DtcSnapshot snapshot = LoggerService.getDtcSnapshot();
+            LoggerService.DtcSnapshotValidity validity = snapshot.validity;
+            int dtcCount = (validity.stored ? snapshot.stored.size() : 0)
+                    + (validity.pending ? snapshot.pending.size() : 0);
+            if (!validity.stored) {
+                if (txtHomeDtc != null) {
+                    txtHomeDtc.setText("--");
+                    txtHomeDtc.setTextColor(getColorCompat(R.color.muted));
+                }
+                if (txtHomeDiagnosticSummary != null) {
+                    txtHomeDiagnosticSummary.setText(R.string.home_dtc_status_unavailable);
+                    txtHomeDiagnosticSummary.setTextColor(getColorCompat(R.color.muted));
+                }
+                if (txtHomeDiagnosticMeta != null) {
+                    txtHomeDiagnosticMeta.setText(R.string.dtc_scan_retry_hint);
+                }
+            } else if (!validity.allModesValid()) {
+                if (txtHomeDtc != null) {
+                    txtHomeDtc.setText(validity.pending
+                            ? String.valueOf(dtcCount)
+                            : dtcCount > 0 ? dtcCount + "+" : "--");
+                    txtHomeDtc.setTextColor(getColorCompat(
+                            dtcCount > 0 ? R.color.danger : R.color.warning));
+                }
+                if (txtHomeDiagnosticSummary != null) {
+                    txtHomeDiagnosticSummary.setText(getString(
+                            R.string.home_dtc_status_partial, dtcCount));
+                    txtHomeDiagnosticSummary.setTextColor(getColorCompat(
+                            dtcCount > 0 ? R.color.danger : R.color.warning));
+                }
+                if (txtHomeDiagnosticMeta != null) {
+                    txtHomeDiagnosticMeta.setText(
+                            R.string.home_dtc_status_partial_meta);
+                }
+                applyDiagnosticSeverity(dtcCount, true);
+            } else {
+                if (txtHomeDtc != null) {
+                    txtHomeDtc.setText(dtcCount > 0 ? String.valueOf(dtcCount) : "0");
+                    txtHomeDtc.setTextColor(getColorCompat(
+                            dtcCount > 0 ? R.color.danger : R.color.accent));
+                }
+                if (txtHomeDiagnosticSummary != null) {
+                    txtHomeDiagnosticSummary.setText(dtcCount > 0
+                            ? String.format(Locale.US, "%d active fault code%s",
+                                    dtcCount, dtcCount == 1 ? "" : "s")
+                            : "No active fault codes");
+                    txtHomeDiagnosticSummary.setTextColor(getColorCompat(
+                            dtcCount > 0 ? R.color.danger : R.color.accent));
+                }
+                if (txtHomeDiagnosticMeta != null) {
+                    txtHomeDiagnosticMeta.setText(dtcCount > 0
+                            ? "Tap to inspect and clear" : "Ready for a full scan");
+                }
+                // Severity-tint the whole card so fault state is obvious at a glance.
+                applyDiagnosticSeverity(dtcCount, false);
             }
-            if (txtHomeDiagnosticSummary != null) {
-                txtHomeDiagnosticSummary.setText(dtcCount > 0
-                        ? String.format(Locale.US, "%d active fault code%s", dtcCount, dtcCount == 1 ? "" : "s")
-                        : "No active fault codes");
-                txtHomeDiagnosticSummary.setTextColor(getColorCompat(dtcCount > 0 ? R.color.danger : R.color.accent));
-            }
-            if (txtHomeDiagnosticMeta != null) {
-                txtHomeDiagnosticMeta.setText(dtcCount > 0 ? "Tap to inspect and clear" : "Ready for a full scan");
-            }
-            // Severity-tint the whole card so fault state is obvious at a glance.
-            applyDiagnosticSeverity(dtcCount);
         }
         updateCockpitInsight(rpm, coolant, voltage, totalTrim);
+
+        // Performance timers + fuel-switchover analytics run on the same record
+        // stream; both engines are pure and reset on session start.
+        perfTimerEngine.push(record.getElapsedS(), speed);
+        updateCockpitPerf();
+        FuelSwitchoverEngine.Result switchResult = switchoverEngine.push(
+                record.getElapsedS(), stft, ltft, valueByKey(record, "01_03"), coolant);
+        updateCockpitSwitchover(switchResult);
+    }
+
+    private static String formatRunTime(PerformanceTimerEngine.RunResult r) {
+        return r == null ? "---" : String.format(Locale.US, "%.2f s", r.timeS);
+    }
+
+    private void updateCockpitPerf() {
+        if (cockpitPerf0100 == null) return;
+        PerformanceTimerEngine.RunResult r0100 =
+                perfTimerEngine.getLast(PerformanceTimerEngine.RunType.ZERO_TO_100);
+        PerformanceTimerEngine.RunResult r80120 =
+                perfTimerEngine.getLast(PerformanceTimerEngine.RunType.EIGHTY_TO_120);
+        PerformanceTimerEngine.RunResult rQuarter =
+                perfTimerEngine.getLast(PerformanceTimerEngine.RunType.QUARTER_MILE);
+        cockpitPerf0100.setText(formatRunTime(r0100));
+        if (cockpitPerf80120 != null) cockpitPerf80120.setText(formatRunTime(r80120));
+        if (cockpitPerfQuarter != null) {
+            cockpitPerfQuarter.setText(rQuarter == null ? "---"
+                    : getString(R.string.home_perf_quarter_trap, rQuarter.timeS, rQuarter.endSpeedKmh));
+        }
+        if (cockpitPerfMeta != null) {
+            if (perfTimerEngine.isRunInProgress()) {
+                cockpitPerfMeta.setText(R.string.home_perf_running);
+            } else if (r0100 == null && r80120 == null && rQuarter == null) {
+                cockpitPerfMeta.setText(R.string.home_perf_arm_hint);
+            } else {
+                cockpitPerfMeta.setText(getString(R.string.home_perf_best_line,
+                        formatRunTime(perfTimerEngine.getBest(PerformanceTimerEngine.RunType.ZERO_TO_100)),
+                        formatRunTime(perfTimerEngine.getBest(PerformanceTimerEngine.RunType.EIGHTY_TO_120)),
+                        formatRunTime(perfTimerEngine.getBest(PerformanceTimerEngine.RunType.QUARTER_MILE))));
+            }
+        }
+    }
+
+    private void updateCockpitSwitchover(FuelSwitchoverEngine.Result result) {
+        if (cockpitSwitchStatus == null || result == null) return;
+        switch (result.state) {
+            case GATED:
+                cockpitSwitchStatus.setText(R.string.home_switch_status_gated);
+                cockpitSwitchStatus.setTextColor(getColorCompat(R.color.muted));
+                if (cockpitSwitchDetail != null) {
+                    cockpitSwitchDetail.setText(R.string.home_switch_detail_hint);
+                }
+                break;
+            case COLLECTING:
+                cockpitSwitchStatus.setText(R.string.home_switch_status_collecting);
+                cockpitSwitchStatus.setTextColor(getColorCompat(R.color.muted));
+                if (cockpitSwitchDetail != null) {
+                    cockpitSwitchDetail.setText(R.string.home_switch_detail_hint);
+                }
+                break;
+            case STABLE:
+                cockpitSwitchStatus.setText(R.string.home_switch_status_stable);
+                cockpitSwitchStatus.setTextColor(getColorCompat(R.color.text));
+                if (cockpitSwitchDetail != null && result.current != null) {
+                    cockpitSwitchDetail.setText(getString(R.string.home_switch_detail_stable,
+                            result.current.meanStft, result.current.meanLtft,
+                            result.current.samples));
+                }
+                break;
+            case SWITCHED:
+            default:
+                cockpitSwitchStatus.setText(getString(
+                        R.string.home_switch_status_switched, result.switchCount));
+                cockpitSwitchStatus.setTextColor(getColorCompat(
+                        result.divergent ? R.color.status_warning : R.color.status_accent));
+                if (cockpitSwitchDetail != null && result.current != null && result.previous != null) {
+                    String compare = getString(R.string.home_switch_detail_compare,
+                            result.previous.meanLtft, result.current.meanLtft, result.deltaTotal);
+                    if (result.divergent) {
+                        compare = compare + "\n" + getString(R.string.home_switch_divergent);
+                    }
+                    cockpitSwitchDetail.setText(compare);
+                }
+                break;
+        }
     }
 
     /**
@@ -4439,7 +5149,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     private void updateCockpitInsight(Double rpm, Double coolant, Double voltage, Double totalTrim) {
         if (cockpitInsightTitle == null || cockpitInsightMessage == null) return;
 
-        int dtcCount = LoggerService.lastStoredDtcs.size() + LoggerService.lastPendingDtcs.size();
+        LoggerService.DtcSnapshot snapshot = LoggerService.getDtcSnapshot();
+        LoggerService.DtcSnapshotValidity validity = snapshot.validity;
+        int dtcCount = (validity.stored ? snapshot.stored.size() : 0)
+                + (validity.pending ? snapshot.pending.size() : 0);
         DriveInsightEngine.Result insight = DriveInsightEngine.evaluate(
                 rpm, coolant, voltage, totalTrim, dtcCount);
         currentDriveInsight = insight;
@@ -4802,13 +5515,30 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void updateDtcBadge(int storedCount, int pendingCount, int permanentCount) {
-        int total = storedCount + pendingCount;
+        updateDtcBadge(storedCount, pendingCount, permanentCount,
+                LoggerService.getDtcSnapshotValidity());
+    }
+
+    private void updateDtcBadge(int storedCount, int pendingCount, int permanentCount,
+                                LoggerService.DtcSnapshotValidity validity) {
+        boolean storedValid = validity != null && validity.stored;
+        boolean pendingValid = validity != null && validity.pending;
+        int total = (storedValid ? storedCount : 0)
+                + (pendingValid ? pendingCount : 0);
         if (stripDtcBadge != null) {
-            if (total > 0) {
+            if (!storedValid) {
+                stripDtcBadge.setVisibility(View.GONE);
+            } else if (!pendingValid) {
+                stripDtcBadge.setVisibility(View.VISIBLE);
+                stripDtcBadge.setText(total > 0 ? total + "+" : "?");
+                stripDtcBadge.setBackgroundResource(R.drawable.bg_dtc_badge);
+                stripDtcBadge.getBackground().setTint(getColorCompat(
+                        storedCount > 0 ? R.color.danger : R.color.warning));
+            } else if (total > 0) {
                 stripDtcBadge.setVisibility(View.VISIBLE);
                 stripDtcBadge.setText(String.valueOf(total));
+                stripDtcBadge.setBackgroundResource(R.drawable.bg_dtc_badge);
                 if (storedCount > 0) {
-                    stripDtcBadge.setBackgroundResource(R.drawable.bg_dtc_badge);
                     stripDtcBadge.getBackground().setTint(getColorCompat(R.color.danger));
                 } else {
                     stripDtcBadge.getBackground().setTint(getColorCompat(R.color.warning));
@@ -4829,9 +5559,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
 
     private void applyDiagnosticSeverity(int dtcCount) {
+        applyDiagnosticSeverity(dtcCount, false);
+    }
+
+    private void applyDiagnosticSeverity(int dtcCount, boolean scanIncomplete) {
         if (cardHomeDiagnostics == null) return;
         int strokeColor;
-        if (dtcCount <= 0) {
+        if (scanIncomplete && dtcCount <= 0) {
+            strokeColor = getColorCompat(R.color.warning);
+        } else if (dtcCount <= 0) {
             strokeColor = getColorCompat(R.color.accent);
         } else if (dtcCount <= 2) {
             strokeColor = getColorCompat(R.color.danger);
@@ -5771,20 +6507,76 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         lastDtcScanWasDeep = false;
         dtcListContainer.removeAllViews();
 
-        final boolean msCan = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
-        final String scanVin = resolveVehicleProfileVin();
+        final boolean smartScanEnabled = smartDtcScanCheckbox != null
+                ? smartDtcScanCheckbox.isChecked()
+                : SmartSecondaryBusScanPreferences.getEnabled(
+                        getSharedPreferences("OBD2Prefs", MODE_PRIVATE));
+        final long scanSession = currentDriverSession(activeDriver);
+        final long scanConnectionEpoch = activeDriver.getConnectionEpoch();
+        final String scanVin = verifiedVehicleVinFor(activeDriver);
+        final long scanSnapshotGeneration =
+                LoggerService.currentDtcSnapshotGeneration();
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             boolean wasPaused = isPaused;
-            if (!wasPaused) {
-                isPaused = true;
-                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
-            }
+            boolean diagnosticLockHeld = false;
             try {
-                DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcs(activeDriver, msCan, dtcScanTracker);
-                List<DtcCode> stored = scanResult.storedDtcs;
-                List<DtcCode> pending = scanResult.pendingDtcs;
-                List<DtcCode> permanent = scanResult.permanentDtcs;
+                if (!isCurrentDtcScanIdentity(
+                        activeDriver, scanSession, scanConnectionEpoch, scanVin)) {
+                    showDtcScanConnectionChanged();
+                    return;
+                }
+                if (!wasPaused) {
+                    isPaused = true;
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        showDtcScanConnectionChanged();
+                        return;
+                    }
+                }
+                activeDriver.commandLock.lockInterruptibly();
+                diagnosticLockHeld = true;
+                if (!isCurrentDtcScanIdentity(
+                        activeDriver, scanSession, scanConnectionEpoch, scanVin)) {
+                    showDtcScanConnectionChanged();
+                    return;
+                }
+                VehicleModuleProfileStore.SmartProtocolEvidence scanEvidence = scanVin != null
+                        ? VehicleModuleProfileStore.getSmartProtocolEvidence(
+                                this, scanVin) : null;
+                SmartDtcScanPlanner.Plan scanPlan =
+                        SmartDtcScanPlanner.createPlanFromEvidence(
+                                SmartDtcScanPlanner.ScanMode.SMART,
+                                DtcReader.activeProtocolFor(activeDriver), scanEvidence, scanVin,
+                                smartScanEnabled,
+                                DtcReader.supportsStandardProtocolSelection(activeDriver));
+                DtcReader.DtcScanResult scanResult = DtcReader.readDtcs(
+                        activeDriver, scanPlan, dtcScanTracker);
+                if (Thread.currentThread().isInterrupted()
+                        || !isCurrentDtcScanIdentity(
+                                activeDriver, scanSession, scanConnectionEpoch, scanVin)) {
+                    showDtcScanConnectionChanged();
+                    return;
+                }
+                LoggerService.DtcSnapshotValidity published =
+                        LoggerService.replaceDtcSnapshotFromScan(
+                                scanResult, true, scanSnapshotGeneration);
+                if (published == null) {
+                    throw new IllegalStateException("adapter returned no validated DTC response");
+                }
+                lastAutoScanModules = new ArrayList<>(scanResult.modules);
+                lastAutoScanProtocolStatuses = new ArrayList<>(scanResult.protocolStatuses);
+                lastAutoScanDriver = activeDriver;
+                lastAutoScanSession = scanSession;
+                lastAutoScanConnectionEpoch = scanConnectionEpoch;
+                LoggerService.DtcSnapshot snapshot = LoggerService.getDtcSnapshot();
+                List<DtcCode> stored = new ArrayList<>(snapshot.stored);
+                List<DtcCode> pending = new ArrayList<>(snapshot.pending);
+                List<DtcCode> permanent = new ArrayList<>(snapshot.permanent);
+                final LoggerService.DtcSnapshotValidity snapshotValidity =
+                        snapshot.validity;
                 
                 // Read Mode 06 — on-board monitor test results
                 // Quick Scan limits traffic to Modes 03/07/0A. Evidence such as
@@ -5795,6 +6587,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 
                 // Read per-DTC freeze frames
                 List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames = new ArrayList<>();
+                synchronized (lastPerDtcFrames) {
+                    lastPerDtcFrames.clear();
+                }
                 
                 // Read Mode 09 — Cal-ID and CVN
                 List<Mode09Reader.CalIdEntry> calIds = new ArrayList<>();
@@ -5804,37 +6599,48 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 lastFreezeFrame = ffData;
                 
                 // Scan comparison — compare with previous scan
-                if (dtcHistoryDb == null) {
-                    dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
-                }
                 String vinStr = scanVin != null ? scanVin : "UNKNOWN_VIN";
-                List<DtcHistoryDb.DtcHistoryRecord> history = dtcHistoryDb.getHistory(vinStr);
-                DtcComparison comparison = DtcComparison.compareWithHistory(history, stored, pending, permanent);
+                DtcComparison comparison = null;
+                if (snapshotValidity.allModesValid()) {
+                    if (dtcHistoryDb == null) {
+                        dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
+                    }
+                    List<DtcHistoryDb.DtcHistoryRecord> history =
+                            dtcHistoryDb.getHistory(vinStr);
+                    comparison = DtcComparison.compareWithHistory(
+                            history, stored, pending, permanent);
+                }
                 
                 lastStoredDtcs.clear();
                 lastStoredDtcs.addAll(stored);
                 lastPendingDtcs.clear();
                 lastPendingDtcs.addAll(pending);
-                
-                LoggerService.lastStoredDtcs.clear();
-                LoggerService.lastStoredDtcs.addAll(stored);
-                LoggerService.lastPendingDtcs.clear();
-                LoggerService.lastPendingDtcs.addAll(pending);
-                LoggerService.lastPermanentDtcs.clear();
-                LoggerService.lastPermanentDtcs.addAll(permanent);
+                lastPermanentDtcs.clear();
+                lastPermanentDtcs.addAll(permanent);
                 
                 String ffJson = ffData != null ? ffData.toJsonObject().toString() : null;
-                dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
+                if (snapshotValidity.allModesValid()) {
+                    dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
+                }
+                final DtcComparison displayedComparison = comparison;
                 
                 runOnUiThread(() -> {
+                    if (!isCurrentDtcScanIdentity(
+                            activeDriver, scanSession, scanConnectionEpoch, scanVin)) return;
                     if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
                     // ScanTrackerView stays visible after scan completes so the user
                     // can review the per-protocol/module progress. It will be reset
                     // on the next scan.
-                    displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
+                    displayDtcs(stored, pending, permanent, snapshotValidity,
+                            mode06Results, perDtcFrames, calIds, cvns,
+                            displayedComparison);
                     displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
-                    updateDtcBadge(stored.size(), pending.size(), permanent.size());
+                    updateDtcBadge(stored.size(), pending.size(), permanent.size(),
+                            snapshotValidity);
                 });
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                showDtcScanConnectionChanged();
             } catch (Exception e) {
                 Log.e("OBD2Logger", "DTC scan failed", e);
                 runOnUiThread(() -> {
@@ -5846,6 +6652,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     showDtcErrorState();
                 });
             } finally {
+                if (diagnosticLockHeld) activeDriver.commandLock.unlock();
                 if (!wasPaused) {
                     isPaused = false;
                 }
@@ -5854,7 +6661,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         });
     }
 
-    private void displayDtcs(List<DtcCode> stored, List<DtcCode> pending, List<DtcCode> permanent,
+    private void displayDtcs(List<DtcCode> stored, List<DtcCode> pending,
+                              List<DtcCode> permanent,
+                              LoggerService.DtcSnapshotValidity validity,
                               List<Mode06Result> mode06Results,
                               List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames,
                               List<Mode09Reader.CalIdEntry> calIds,
@@ -5862,9 +6671,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                               DtcComparison comparison) {
         dtcListContainer.removeAllViews();
         int total = stored.size() + pending.size() + permanent.size();
-        updateDtcHealthSummary(stored, pending, permanent);
+        boolean complete = validity != null && validity.allModesValid();
+        updateDtcHealthSummary(stored, pending, permanent, validity);
 
-        if (stored.isEmpty() && pending.isEmpty() && permanent.isEmpty()) {
+        if (total == 0 && !complete) {
+            dtcStatusText.setText(R.string.dtc_scan_partial);
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+            addIncompleteDtcNotice(validity);
+            addExportPdfButton();
+            return;
+        }
+
+        if (total == 0) {
             dtcStatusText.setText(getString(R.string.no_dtcs));
             dtcStatusText.setTextColor(getColorCompat(R.color.status_accent));
 
@@ -5918,8 +6736,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return;
         }
 
-        dtcStatusText.setText(String.format(Locale.US, getString(R.string.dtc_count), total));
-        dtcStatusText.setTextColor(getColorCompat(R.color.status_danger));
+        if (complete) {
+            dtcStatusText.setText(String.format(
+                    Locale.US, getString(R.string.dtc_count), total));
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_danger));
+        } else {
+            dtcStatusText.setText(R.string.dtc_scan_partial);
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+            addIncompleteDtcNotice(validity);
+        }
 
         // --- Scan Comparison (NEW / CLEARED) ---
         if (comparison != null && comparison.hasPreviousScan()) {
@@ -6174,9 +6999,13 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         List<DtcReader.ProtocolScanStatus> protocols = lastAutoScanProtocolStatuses;
         String driveCycleGuide = readiness != null ? DriveCycleGuide.getSummary(readiness) : null;
 
+        List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames;
+        synchronized (lastPerDtcFrames) {
+            perDtcFrames = new ArrayList<>(lastPerDtcFrames);
+        }
         File pdfFile = DtcReportExporter.exportReportToPdf(this, vin,
             lastStoredDtcs, lastPendingDtcs, lastPermanentDtcs, lastFreezeFrame,
-            readiness, mode06, modules, protocols, driveCycleGuide);
+            perDtcFrames, readiness, mode06, modules, protocols, driveCycleGuide);
         if (pdfFile == null) {
             Toast.makeText(this, "Failed to generate PDF report.", Toast.LENGTH_SHORT).show();
             return;
@@ -6239,18 +7068,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         sectionHeader.addView(accentBar);
 
         TextView headerView = new TextView(this);
-        headerView.setText("🔌 Protocols Scanned: " + protocolStatuses.size() + "  |  "
-            + respondedCnt + " responded  |  Total DTCs: " + totalFound);
+        headerView.setText(getString(R.string.dtc_protocol_summary,
+                protocolStatuses.size(), respondedCnt, totalFound));
         headerView.setTextColor(getColorCompat(R.color.status_accent));
         headerView.setTextSize(13);
         headerView.setTypeface(null, android.graphics.Typeface.BOLD);
         sectionHeader.addView(headerView);
         dtcListContainer.addView(sectionHeader);
 
-        // Deep scan badge — visually distinguishes deep scan from fast scan
+        // Full-scan badge — visually distinguishes manual scope from Smart/Quick.
         if (lastDtcScanWasDeep) {
             TextView deepBadge = new TextView(this);
-            deepBadge.setText("🔬 DEEP SCAN — All Protocols");
+            deepBadge.setText(R.string.dtc_full_scan_badge);
             deepBadge.setTextColor(getColorCompat(R.color.on_status));
             deepBadge.setTextSize(11);
             deepBadge.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -6279,16 +7108,30 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
             // Status icon
             TextView iconView = new TextView(this);
-            iconView.setText(s.responded ? (s.totalDtcCount > 0 ? "🔴" : "🟢") : "⚫");
+            boolean allDtcModesResponded = s.storedServiceResponded
+                    && s.pendingServiceResponded
+                    && s.permanentServiceResponded;
+            iconView.setText(!s.responded ? "⚫"
+                    : s.totalDtcCount > 0 ? "🔴"
+                    : allDtcModesResponded ? "🟢" : "🟡");
             iconView.setTextSize(12);
             iconView.setPadding(0, 0, dpToPx(8), 0);
             row.addView(iconView);
 
             // Protocol name
             TextView labelView = new TextView(this);
-            String extra = s.responded
-                ? (" — " + s.modulesFound + " modules, " + s.totalDtcCount + " DTCs")
-                : " — no response";
+            String extra;
+            if (!s.responded) {
+                extra = getString(R.string.dtc_protocol_row_no_response);
+            } else if (!s.dtcServiceResponded) {
+                extra = getString(R.string.dtc_protocol_row_no_dtc_service);
+            } else if (!allDtcModesResponded) {
+                extra = getString(R.string.dtc_protocol_row_partial,
+                        s.modulesFound, s.totalDtcCount);
+            } else {
+                extra = getString(R.string.dtc_protocol_row_complete,
+                        s.modulesFound, s.totalDtcCount);
+            }
             labelView.setText(s.bus.label + extra);
             labelView.setTextColor(s.responded ? getColorCompat(R.color.text) : getColorCompat(R.color.muted));
             labelView.setTextSize(11);
@@ -6347,10 +7190,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
     }
 
-    /**
-     * Deep DTC scan — try ALL protocol buses for exhaustive coverage.
-     * Triggered by long-press on the Read DTCs button.
-     */
+    /** Manual Full DTC scan across the nine legislated OBD-II protocols. */
     private void readDtcsDeep() {
         BaseDriver activeDriver = getActiveDriver();
         if (activeDriver == null || !activeDriver.isConnected()) {
@@ -6359,33 +7199,82 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             return;
         }
         setDtcButtonsEnabled(false);
-        dtcStatusText.setText("🔬 Deep Scan: probing all protocols...");
+        dtcStatusText.setText(R.string.dtc_full_scan_starting);
         dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
         showDtcScanningState();
         if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
         if (dtcScanTracker != null) dtcScanTracker.reset();
         lastDtcScanWasDeep = true;
         dtcListContainer.removeAllViews();
-        Toast.makeText(this, "Deep scanning all protocols — this may take 20-30s...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, R.string.dtc_full_scan_notice, Toast.LENGTH_SHORT).show();
 
-        final String vehicleProfileVin = resolveVehicleProfileVin();
-        final boolean fordLabels = VinBrandDetector.detect(vehicleProfileVin)
-                == VinBrandDetector.Brand.FORD;
-        final VehicleModuleProfileStore.Snapshot previousVehicleProfile =
-                VehicleModuleProfileStore.get(this, vehicleProfileVin);
+        final long scanSession = currentDriverSession(activeDriver);
+        final long scanConnectionEpoch = activeDriver.getConnectionEpoch();
+        final String vehicleProfileVin = verifiedVehicleVinFor(activeDriver);
+        final long scanSnapshotGeneration =
+                LoggerService.currentDtcSnapshotGeneration();
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             boolean wasPaused = isPaused;
-            if (!wasPaused) {
-                isPaused = true;
-                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
-            }
+            boolean diagnosticLockHeld = false;
             try {
-                DtcReader.DtcScanResult scanResult = DtcReader.readAllDtcsDeep(
-                        activeDriver, fordLabels, dtcScanTracker);
-                List<DtcCode> stored = scanResult.storedDtcs;
-                List<DtcCode> pending = scanResult.pendingDtcs;
-                List<DtcCode> permanent = scanResult.permanentDtcs;
+                if (!isCurrentDtcScanIdentity(activeDriver, scanSession,
+                        scanConnectionEpoch, vehicleProfileVin)) {
+                    showDtcScanConnectionChanged();
+                    return;
+                }
+                if (!wasPaused) {
+                    isPaused = true;
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        showDtcScanConnectionChanged();
+                        return;
+                    }
+                }
+                activeDriver.commandLock.lockInterruptibly();
+                diagnosticLockHeld = true;
+                if (!isCurrentDtcScanIdentity(activeDriver, scanSession,
+                        scanConnectionEpoch, vehicleProfileVin)) {
+                    showDtcScanConnectionChanged();
+                    return;
+                }
+                SmartDtcScanPlanner.Plan fullPlan =
+                        SmartDtcScanPlanner.createPlanFromEvidence(
+                                SmartDtcScanPlanner.ScanMode.FULL,
+                                DtcReader.activeProtocolFor(activeDriver), null,
+                                vehicleProfileVin, true,
+                                DtcReader.supportsStandardProtocolSelection(activeDriver));
+                VehicleModuleProfileStore.Snapshot previousVehicleProfile =
+                        vehicleProfileVin != null
+                                ? VehicleModuleProfileStore.get(
+                                        this, vehicleProfileVin) : null;
+                DtcReader.DtcScanResult scanResult = DtcReader.readDtcs(
+                        activeDriver, fullPlan, dtcScanTracker);
+                if (Thread.currentThread().isInterrupted()
+                        || !isCurrentDtcScanIdentity(activeDriver, scanSession,
+                                scanConnectionEpoch, vehicleProfileVin)) {
+                    showDtcScanConnectionChanged();
+                    return;
+                }
+                LoggerService.DtcSnapshotValidity published =
+                        LoggerService.replaceDtcSnapshotFromScan(
+                                scanResult, false, scanSnapshotGeneration);
+                if (published == null) {
+                    throw new IllegalStateException("adapter returned no validated DTC response");
+                }
+                lastAutoScanModules = new ArrayList<>(scanResult.modules);
+                lastAutoScanProtocolStatuses = new ArrayList<>(scanResult.protocolStatuses);
+                lastAutoScanDriver = activeDriver;
+                lastAutoScanSession = scanSession;
+                lastAutoScanConnectionEpoch = scanConnectionEpoch;
+                LoggerService.DtcSnapshot snapshot = LoggerService.getDtcSnapshot();
+                List<DtcCode> stored = new ArrayList<>(snapshot.stored);
+                List<DtcCode> pending = new ArrayList<>(snapshot.pending);
+                List<DtcCode> permanent = new ArrayList<>(snapshot.permanent);
+                final LoggerService.DtcSnapshotValidity snapshotValidity =
+                        snapshot.validity;
 
                 // Read Mode 06
                 List<Mode06Result> mode06Results = Mode06Reader.readDiagnostic(activeDriver);
@@ -6397,44 +7286,80 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (!stored.isEmpty() || !pending.isEmpty()) {
                     ffData = FreezeFrameReader.readFreezeFrame(activeDriver);
                 }
+                // Persist for the PDF export and the HTTP API: without this the
+                // report's freeze-frame section rendered from a never-set field.
+                lastFreezeFrame = ffData;
+                synchronized (lastPerDtcFrames) {
+                    lastPerDtcFrames.clear();
+                    lastPerDtcFrames.addAll(perDtcFrames);
+                }
+                LoggerService.setFreezeFrameSnapshot(perDtcFrames, ffData);
 
                 // Scan comparison
-                if (dtcHistoryDb == null) dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
-                String vinStr = vehicleProfileVin != null ? vehicleProfileVin : "UNKNOWN_VIN";
-                DtcComparison comparison = DtcComparison.compareWithHistory(
-                    dtcHistoryDb.getHistory(vinStr), stored, pending, permanent);
+                if (snapshotValidity.allModesValid() && dtcHistoryDb == null) {
+                    dtcHistoryDb = new DtcHistoryDb(MainActivity.this);
+                }
+                if (Thread.currentThread().isInterrupted()
+                        || !isCurrentDtcScanIdentity(activeDriver, scanSession,
+                                scanConnectionEpoch, vehicleProfileVin)) {
+                    showDtcScanConnectionChanged();
+                    return;
+                }
+                String vinStr = vehicleProfileVin != null
+                        ? vehicleProfileVin : "UNKNOWN_VIN";
+                DtcComparison comparison = snapshotValidity.allModesValid()
+                        ? DtcComparison.compareWithHistory(
+                                dtcHistoryDb.getHistory(vinStr),
+                                stored, pending, permanent)
+                        : null;
 
                 lastStoredDtcs.clear(); lastStoredDtcs.addAll(stored);
                 lastPendingDtcs.clear(); lastPendingDtcs.addAll(pending);
                 lastPermanentDtcs.clear(); lastPermanentDtcs.addAll(permanent);
-                LoggerService.lastStoredDtcs.clear(); LoggerService.lastStoredDtcs.addAll(stored);
-                LoggerService.lastPendingDtcs.clear(); LoggerService.lastPendingDtcs.addAll(pending);
-                LoggerService.lastPermanentDtcs.clear(); LoggerService.lastPermanentDtcs.addAll(permanent);
-
                 String ffJson = ffData != null ? ffData.toJsonObject().toString() : null;
-                dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
-                VehicleModuleProfileStore.Snapshot savedVehicleProfile =
-                        VehicleModuleProfileStore.save(MainActivity.this, vehicleProfileVin, scanResult);
+                if (snapshotValidity.allModesValid()) {
+                    dtcHistoryDb.saveScan(vinStr, stored, pending, permanent, ffJson);
+                }
+                VehicleModuleProfileStore.Snapshot savedVehicleProfile = vehicleProfileVin != null
+                        ? VehicleModuleProfileStore.save(
+                                MainActivity.this, vehicleProfileVin, scanResult)
+                        : null;
+                if (vehicleProfileVin != null) {
+                    VehicleModuleProfileStore.saveSmartProtocolEvidenceFromScan(
+                            MainActivity.this, vehicleProfileVin, scanResult);
+                }
 
                 runOnUiThread(() -> {
+                    if (!isCurrentDtcScanIdentity(activeDriver, scanSession,
+                            scanConnectionEpoch, vehicleProfileVin)) return;
                     if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
-                    displayDtcs(stored, pending, permanent, mode06Results, perDtcFrames, calIds, cvns, comparison);
+                    displayDtcs(stored, pending, permanent, snapshotValidity,
+                            mode06Results, perDtcFrames, calIds, cvns, comparison);
                     displayProtocolScanStatus(scanResult.protocolStatuses, scanResult.modules);
-                    displayVehicleModuleProfileComparison(previousVehicleProfile, savedVehicleProfile);
-                    updateDtcBadge(stored.size(), pending.size(), permanent.size());
+                    if (savedVehicleProfile != null) {
+                        displayVehicleModuleProfileComparison(
+                                previousVehicleProfile, savedVehicleProfile);
+                    }
+                    updateDtcBadge(stored.size(), pending.size(), permanent.size(),
+                            snapshotValidity);
                     displayProFeatures();
                 });
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                showDtcScanConnectionChanged();
             } catch (Exception e) {
                 Log.e("OBD2Logger", "Deep DTC scan failed", e);
                 runOnUiThread(() -> {
                     if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
                     if (dtcScanTracker != null) dtcScanTracker.hide();
-                    dtcStatusText.setText("Deep scan failed: "
-                            + (e.getMessage() != null ? e.getMessage() : "adapter did not respond"));
+                    dtcStatusText.setText(getString(R.string.dtc_full_scan_failed,
+                            e.getMessage() != null
+                                    ? e.getMessage() : "adapter did not respond"));
                     dtcStatusText.setTextColor(getColorCompat(R.color.status_danger));
                     showDtcErrorState();
                 });
             } finally {
+                if (diagnosticLockHeld) activeDriver.commandLock.unlock();
                 if (!wasPaused) {
                     isPaused = false;
                 }
@@ -6472,6 +7397,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private int dpToPx(int dp) {
         return (int) (dp * getResources().getDisplayMetrics().density);
+    }
+
+    private void addIncompleteDtcNotice(
+            LoggerService.DtcSnapshotValidity validity) {
+        TextView notice = new TextView(this);
+        notice.setText(R.string.dtc_scan_partial);
+        notice.setTextColor(getColorCompat(R.color.status_warning));
+        notice.setTextSize(13);
+        notice.setPadding(12, 12, 12, 12);
+        notice.setBackgroundResource(R.drawable.bg_dtc_card);
+        dtcListContainer.addView(notice);
     }
 
     private void addDtcSection(String title, List<DtcCode> codes, int colorRes, String iconPrefix) {
@@ -6724,13 +7660,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void setDtcButtonsEnabled(boolean enabled) {
-        if (btnReadDtc != null) btnReadDtc.setEnabled(enabled);
-        if (btnDeepDtc != null) btnDeepDtc.setEnabled(enabled);
-        if (btnClearDtc != null) btnClearDtc.setEnabled(enabled);
-        if (btnReadVin != null) btnReadVin.setEnabled(enabled);
-        if (btnVehicleInfo != null) btnVehicleInfo.setEnabled(enabled);
-        if (btnFordModuleLiveData != null) btnFordModuleLiveData.setEnabled(enabled);
-        if (btnReadiness != null) btnReadiness.setEnabled(enabled);
+        boolean ecuReadActive = ecuIdentificationRunning.get();
+        boolean ordinaryActionEnabled = enabled && !ecuReadActive;
+        if (btnReadDtc != null) btnReadDtc.setEnabled(ordinaryActionEnabled);
+        if (btnDeepDtc != null) btnDeepDtc.setEnabled(ordinaryActionEnabled);
+        if (btnClearDtc != null) btnClearDtc.setEnabled(ordinaryActionEnabled);
+        if (btnReadVin != null) btnReadVin.setEnabled(ordinaryActionEnabled);
+        if (btnVehicleInfo != null) btnVehicleInfo.setEnabled(ordinaryActionEnabled);
+        if (btnEcuIdentification != null) {
+            boolean canCancel = ecuReadActive && ecuIdentificationFuture != null
+                    && !ecuIdentificationFuture.isCancelled();
+            btnEcuIdentification.setEnabled(ecuReadActive ? canCancel : enabled);
+        }
+        if (btnFordModuleLiveData != null) {
+            btnFordModuleLiveData.setEnabled(ordinaryActionEnabled);
+        }
+        if (btnReadiness != null) btnReadiness.setEnabled(ordinaryActionEnabled);
     }
 
     private void showDtcScanningState() {
@@ -6750,18 +7695,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
     }
 
     private void updateDtcHealthSummary(List<DtcCode> stored, List<DtcCode> pending,
-                                        List<DtcCode> permanent) {
+                                        List<DtcCode> permanent,
+                                        LoggerService.DtcSnapshotValidity validity) {
         int storedSize = stored == null ? 0 : stored.size();
         int pendingSize = pending == null ? 0 : pending.size();
         int permanentSize = permanent == null ? 0 : permanent.size();
         if (dtcStoredCount != null) {
-            dtcStoredCount.setText(getString(R.string.dtc_stored_count, storedSize));
+            dtcStoredCount.setText(validity != null && validity.stored
+                    ? getString(R.string.dtc_stored_count, storedSize)
+                    : getString(R.string.dtc_stored_unavailable));
         }
         if (dtcPendingCount != null) {
-            dtcPendingCount.setText(getString(R.string.dtc_pending_count, pendingSize));
+            dtcPendingCount.setText(validity != null && validity.pending
+                    ? getString(R.string.dtc_pending_count, pendingSize)
+                    : getString(R.string.dtc_pending_unavailable));
         }
         if (dtcPermanentCount != null) {
-            dtcPermanentCount.setText(getString(R.string.dtc_permanent_count, permanentSize));
+            dtcPermanentCount.setText(validity != null && validity.permanent
+                    ? getString(R.string.dtc_permanent_count, permanentSize)
+                    : getString(R.string.dtc_permanent_unavailable));
         }
 
         boolean critical = false;
@@ -6775,14 +7727,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         int total = storedSize + pendingSize + permanentSize;
         if (dtcHealthTitle == null || dtcHealthDetail == null) return;
-        if (total == 0) {
-            dtcHealthTitle.setText(R.string.dtc_health_clear);
-            dtcHealthDetail.setText(R.string.dtc_health_clear_desc);
-            dtcHealthTitle.setTextColor(getColorCompat(R.color.status_accent));
-        } else if (critical) {
+        if (critical) {
             dtcHealthTitle.setText(R.string.dtc_health_critical);
             dtcHealthDetail.setText(R.string.dtc_health_critical_desc);
             dtcHealthTitle.setTextColor(getColorCompat(R.color.status_danger));
+        } else if (validity == null || !validity.allModesValid()) {
+            dtcHealthTitle.setText(R.string.dtc_health_partial);
+            dtcHealthDetail.setText(R.string.dtc_health_partial_desc);
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.status_warning));
+        } else if (total == 0) {
+            dtcHealthTitle.setText(R.string.dtc_health_clear);
+            dtcHealthDetail.setText(R.string.dtc_health_clear_desc);
+            dtcHealthTitle.setTextColor(getColorCompat(R.color.status_accent));
         } else {
             dtcHealthTitle.setText(R.string.dtc_health_attention);
             dtcHealthDetail.setText(R.string.dtc_health_attention_desc);
@@ -6796,43 +7752,108 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             dtcStatusText.setText("Not connected. Start logging first.");
             return;
         }
+        final long clearSession = currentDriverSession(activeDriver);
+        final long clearEpoch = activeDriver.getConnectionEpoch();
+        final String clearVin = verifiedVehicleVinFor(activeDriver);
+        final long clearSnapshotGeneration =
+                LoggerService.currentDtcSnapshotGeneration();
         setDtcButtonsEnabled(false);
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             boolean wasPaused = isPaused;
+            boolean diagnosticLockHeld = false;
             if (!wasPaused) {
                 isPaused = true;
-                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+                try {
+                    Thread.sleep(300);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                }
             }
             try {
-                boolean success = DtcReader.clearDtcs(activeDriver);
-                List<DtcCode> remainingPending = new ArrayList<>();
-                List<DtcCode> remainingPermanent = new ArrayList<>();
+                if (Thread.currentThread().isInterrupted()
+                        || !isCurrentDtcScanIdentity(activeDriver, clearSession,
+                                clearEpoch, clearVin)) {
+                    showDtcScanConnectionChanged();
+                    return;
+                }
+                activeDriver.commandLock.lockInterruptibly();
+                diagnosticLockHeld = true;
+                if (!isCurrentDtcScanIdentity(activeDriver, clearSession,
+                        clearEpoch, clearVin)) {
+                    showDtcScanConnectionChanged();
+                    return;
+                }
+
+                boolean clearAccepted = DtcReader.clearDtcs(activeDriver);
+                DtcReader.DtcScanResult verification = null;
+                LoggerService.DtcSnapshotValidity published = null;
+                if (clearAccepted) {
+                    SmartDtcScanPlanner.Plan quickPlan =
+                            SmartDtcScanPlanner.createPlanFromEvidence(
+                                    SmartDtcScanPlanner.ScanMode.QUICK,
+                                    DtcReader.activeProtocolFor(activeDriver),
+                                    null, clearVin, false, false);
+                    verification = DtcReader.readDtcs(activeDriver, quickPlan);
+                    if (isCurrentDtcScanIdentity(activeDriver, clearSession,
+                            clearEpoch, clearVin)) {
+                        published = LoggerService.applyVerifiedClearSnapshot(
+                                verification, clearSnapshotGeneration);
+                    }
+                }
+
+                final boolean success = published != null;
+                final LoggerService.DtcSnapshot clearSnapshot = success
+                        ? LoggerService.getDtcSnapshot() : null;
+                final LoggerService.DtcSnapshotValidity clearValidity = success
+                        ? clearSnapshot.validity : null;
+                List<DtcCode> remainingStored = success
+                        ? new ArrayList<>(clearSnapshot.stored)
+                        : new ArrayList<>();
+                List<DtcCode> remainingPending = success
+                        ? new ArrayList<>(clearSnapshot.pending)
+                        : new ArrayList<>();
+                List<DtcCode> remainingPermanent = success
+                        ? new ArrayList<>(clearSnapshot.permanent)
+                        : new ArrayList<>();
                 if (success) {
-                    // Mode 04 does not erase permanent DTCs. Re-read the ECU so
-                    // the UI never reports a false all-clear after a code clear.
-                    remainingPending.addAll(DtcReader.readPendingDtcs(activeDriver));
-                    remainingPermanent.addAll(DtcReader.readPermanentDtcs(activeDriver));
                     lastStoredDtcs.clear();
+                    lastStoredDtcs.addAll(remainingStored);
                     lastPendingDtcs.clear();
                     lastPendingDtcs.addAll(remainingPending);
                     lastPermanentDtcs.clear();
                     lastPermanentDtcs.addAll(remainingPermanent);
                     lastFreezeFrame = null;
-                    LoggerService.lastStoredDtcs.clear();
-                    LoggerService.lastPendingDtcs.clear();
-                    LoggerService.lastPendingDtcs.addAll(remainingPending);
-                    LoggerService.lastPermanentDtcs.clear();
-                    LoggerService.lastPermanentDtcs.addAll(remainingPermanent);
+                    synchronized (lastPerDtcFrames) {
+                        lastPerDtcFrames.clear();
+                    }
+                    LoggerService.setFreezeFrameSnapshot(null, null);
                 }
                 runOnUiThread(() -> {
+                    if (!isCurrentDtcScanIdentity(activeDriver, clearSession,
+                            clearEpoch, clearVin)) return;
                     if (success) {
-                        int retained = remainingPending.size() + remainingPermanent.size();
-                        dtcStatusText.setText(retained == 0
+                        int retained = remainingStored.size()
+                                + remainingPending.size() + remainingPermanent.size();
+                        dtcStatusText.setText(!clearValidity.allModesValid()
+                                ? getString(R.string.dtc_clear_partial)
+                                : !remainingStored.isEmpty()
+                                ? getString(R.string.dtc_clear_secondary_retained)
+                                : retained == 0
                                 ? "Stored DTCs cleared and verified. Readiness monitors were reset."
                                 : "Stored DTCs cleared. Permanent codes remain until the ECU verifies the repair.");
-                        dtcStatusText.setTextColor(getColorCompat(R.color.status_accent));
+                        dtcStatusText.setTextColor(getColorCompat(
+                                clearValidity.allModesValid()
+                                        ? R.color.status_accent
+                                        : R.color.status_warning));
                         dtcListContainer.removeAllViews();
+                        if (!clearValidity.allModesValid()) {
+                            addIncompleteDtcNotice(clearValidity);
+                        }
+                        if (!remainingStored.isEmpty()) {
+                            addDtcSection("Stored DTCs on other scanned protocols",
+                                    remainingStored, R.color.status_danger, "STORED");
+                        }
                         if (!remainingPending.isEmpty()) {
                             addDtcSection("Pending DTCs", remainingPending, R.color.status_warning, "PENDING");
                         }
@@ -6843,15 +7864,20 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         // (see addExportPdfButton javadoc: post-clear state is still
                         // worth exporting as proof of the clear).
                         addExportPdfButton();
-                        updateDtcHealthSummary(java.util.Collections.emptyList(), remainingPending,
-                                remainingPermanent);
-                        updateDtcBadge(0, remainingPending.size(), remainingPermanent.size());
+                        updateDtcHealthSummary(remainingStored, remainingPending,
+                                remainingPermanent, clearValidity);
+                        updateDtcBadge(remainingStored.size(), remainingPending.size(),
+                                remainingPermanent.size(), clearValidity);
                     } else {
                         dtcStatusText.setText("Failed to clear DTCs.");
                         dtcStatusText.setTextColor(getColorCompat(R.color.status_danger));
                     }
                 });
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                showDtcScanConnectionChanged();
             } finally {
+                if (diagnosticLockHeld) activeDriver.commandLock.unlock();
                 if (!wasPaused) {
                     isPaused = false;
                 }
@@ -6868,6 +7894,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         }
         setDtcButtonsEnabled(false);
         dtcStatusText.setText("Reading VIN...");
+        final long sourceSession = currentDriverSession(activeDriver);
+        final long sourceConnectionEpoch = activeDriver.getConnectionEpoch();
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             boolean wasPaused = isPaused;
@@ -6877,14 +7905,29 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             try {
                 String vin = VinReader.readVin(activeDriver);
+                if (vin != null && isCurrentDriverConnection(
+                        activeDriver, sourceSession, sourceConnectionEpoch)) {
+                    bindVehicleVin(
+                            vin, activeDriver, sourceSession, sourceConnectionEpoch);
+                }
                 runOnUiThread(() -> {
+                    if (!isCurrentDriverConnection(
+                            activeDriver, sourceSession, sourceConnectionEpoch)) {
+                        dtcStatusText.setText(R.string.ecu_identification_session_changed);
+                        dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+                        return;
+                    }
                     if (vin != null) {
+                        if (FordMsCanAutoMigration.matchesVerifiedVin(
+                                vin, verifiedVehicleVinFor(activeDriver))) {
+                            applyVerifiedVinAutomations(vin);
+                        }
                         headerVin.setText("VIN: " + vin);
                         updateHeaderVehicle(vin);
                         dtcStatusText.setText("VIN: " + vin);
                         dtcStatusText.setTextColor(getColorCompat(R.color.status_accent));
                     } else {
-                        dtcStatusText.setText("VIN not available. Some vehicles don't support Mode 09.");
+                        dtcStatusText.setText(R.string.vin_not_available_after_fallback);
                         dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
                         promptForManualVin();
                     }
@@ -6912,6 +7955,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
         dtcStatusText.setText(R.string.reading_vehicle_info);
         final String knownVin = resolveVehicleProfileVin();
+        final long sourceSession = currentDriverSession(activeDriver);
+        final long sourceConnectionEpoch = activeDriver.getConnectionEpoch();
         dtcExecutor = dtcExecutor != null ? dtcExecutor : Executors.newSingleThreadExecutor();
         dtcExecutor.submit(() -> {
             boolean wasPaused = isPaused;
@@ -6921,6 +7966,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             try {
                 VehicleInformationReader.Snapshot liveInfo = VehicleInformationReader.read(activeDriver);
+                if (liveInfo.getVin() != null
+                        && isCurrentDriverConnection(
+                                activeDriver, sourceSession, sourceConnectionEpoch)) {
+                    bindVehicleVin(liveInfo.getVin(), activeDriver, sourceSession,
+                            sourceConnectionEpoch);
+                }
                 VehicleInformationReader.Snapshot savedInfo = CommonVehicleDataStore.save(
                         MainActivity.this, knownVin, liveInfo);
                 VehicleInformationReader.Snapshot info = savedInfo != null ? savedInfo : liveInfo;
@@ -6928,6 +7979,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (loggerService != null) loggerService.publishVehicleInformation(info);
                 runOnUiThread(() -> {
                     if (info.getVin() != null) {
+                        if (FordMsCanAutoMigration.matchesVerifiedVin(
+                                info.getVin(), verifiedVehicleVinFor(activeDriver))) {
+                            applyVerifiedVinAutomations(info.getVin());
+                        }
                         headerVin.setText("VIN: " + info.getVin());
                         updateHeaderVehicle(info.getVin());
                     }
@@ -6993,6 +8048,553 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             addVehicleInformationLine(card, "Calibration data not advertised by this ECU.");
         }
         dtcListContainer.addView(card);
+    }
+
+    /**
+     * Offer the modules that can be addressed on the currently selected CAN bus.
+     * The list comes from the latest scan (or the saved VIN profile); the two
+     * legislated powertrain addresses are only a fallback when no scan exists.
+     */
+    private void showEcuIdentificationModulePicker() {
+        BaseDriver baseDriver = getActiveDriver();
+        boolean connected = baseDriver != null && baseDriver.isConnected();
+        if (!(baseDriver instanceof ElmDriver) || !baseDriver.isConnected()) {
+            // A remembered/header VIN is acceptable for disconnected browsing.
+            // A connected non-ELM transport still needs same-connection VIN
+            // evidence before it may expose persisted vehicle data.
+            String offlineVin = connected
+                    ? verifiedVehicleVinFor(baseDriver) : resolveVehicleProfileVin();
+            List<EcuIdentificationReader.Snapshot> savedSnapshots = offlineVin != null
+                    ? EcuIdentificationStore.get(this, offlineVin)
+                    : java.util.Collections.emptyList();
+            if (!savedSnapshots.isEmpty()) {
+                showSavedEcuIdentificationPicker(savedSnapshots);
+                return;
+            }
+            dtcStatusText.setText(R.string.ecu_identification_requires_elm);
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+            return;
+        }
+
+        ElmDriver elmDriver = (ElmDriver) baseDriver;
+        // Freeze connection identity before reading any VIN, protocol, module,
+        // or stored-profile input. A reconnect reuses the ElmDriver object.
+        final long pickerSession = currentDriverSession(elmDriver);
+        final long pickerConnectionEpoch = elmDriver.getConnectionEpoch();
+        if (!requireCurrentEcuPickerConnection(
+                elmDriver, pickerSession, pickerConnectionEpoch)) return;
+
+        String vin = verifiedVehicleVinFor(elmDriver);
+        List<EcuIdentificationReader.Snapshot> savedSnapshots = vin != null
+                ? EcuIdentificationStore.get(this, vin)
+                : java.util.Collections.emptyList();
+        ObdProtocol detectedProtocol = elmDriver.getDetectedProtocol();
+        List<EcuIdentificationReader.Target> targets = new ArrayList<>();
+
+        List<DtcReader.ModuleInfo> liveModules = lastAutoScanModules;
+        if (lastAutoScanDriver == elmDriver
+                && LoggerService.sameConnectionIdentity(
+                        lastAutoScanDriver, lastAutoScanSession,
+                        lastAutoScanConnectionEpoch, elmDriver,
+                        pickerSession, pickerConnectionEpoch)
+                && isCurrentDriverConnection(
+                        elmDriver, pickerSession, pickerConnectionEpoch)
+                && liveModules != null && !liveModules.isEmpty()) {
+            targets.addAll(EcuIdentificationReader.targetsFromModules(liveModules));
+        }
+        targets = normalizeEcuIdentificationTargets(
+                EcuIdentificationBusScope.filterForActiveProtocol(
+                        targets, detectedProtocol), detectedProtocol);
+
+        if (targets.isEmpty()) {
+            VehicleModuleProfileStore.Snapshot profile = vin != null
+                    && isCurrentDriverConnection(
+                            elmDriver, pickerSession, pickerConnectionEpoch)
+                    ? VehicleModuleProfileStore.get(this, vin) : null;
+            targets = normalizeEcuIdentificationTargets(
+                    EcuIdentificationBusScope.filterForActiveProtocol(
+                            EcuIdentificationReader.targetsFromProfile(profile),
+                            detectedProtocol), detectedProtocol);
+        }
+        if (targets.isEmpty() && isSupportedEcuIdentificationProtocol(detectedProtocol)) {
+            targets.addAll(EcuIdentificationReader.defaultTargets(
+                    detectedProtocol));
+        }
+        if (targets.isEmpty()) {
+            if (!savedSnapshots.isEmpty()) {
+                if (!requireCurrentEcuPickerConnection(
+                        elmDriver, pickerSession, pickerConnectionEpoch)) return;
+                showSavedEcuIdentificationPicker(savedSnapshots, elmDriver,
+                        pickerSession, pickerConnectionEpoch);
+                return;
+            }
+            if (!requireCurrentEcuPickerConnection(
+                    elmDriver, pickerSession, pickerConnectionEpoch)) return;
+            dtcStatusText.setText(R.string.ecu_identification_no_modules);
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+            return;
+        }
+
+        final List<EcuIdentificationReader.Target> selectableTargets =
+                java.util.Collections.unmodifiableList(new ArrayList<>(targets));
+        String[] labels = new String[selectableTargets.size()];
+        for (int i = 0; i < selectableTargets.size(); i++) {
+            labels[i] = selectableTargets.get(i).getDisplayLabel();
+        }
+        androidx.appcompat.app.AlertDialog.Builder dialog =
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.ecu_identification_select_module)
+                .setItems(labels, (ignoredDialog, which) -> {
+                    if (requireCurrentEcuPickerConnection(
+                            elmDriver, pickerSession, pickerConnectionEpoch)) {
+                        readEcuIdentification(elmDriver, selectableTargets.get(which),
+                                pickerSession, pickerConnectionEpoch);
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null);
+        if (!savedSnapshots.isEmpty()) {
+            dialog.setNeutralButton(R.string.ecu_identification_saved_results,
+                    (ignored, which) -> {
+                        if (requireCurrentEcuPickerConnection(
+                                elmDriver, pickerSession, pickerConnectionEpoch)) {
+                            showSavedEcuIdentificationPicker(savedSnapshots, elmDriver,
+                                    pickerSession, pickerConnectionEpoch);
+                        }
+                    });
+        }
+        // Close the build-time TOCTOU window. Listener guards above cover a
+        // reconnect after the dialog becomes visible.
+        if (!requireCurrentEcuPickerConnection(
+                elmDriver, pickerSession, pickerConnectionEpoch)) return;
+        dialog.show();
+    }
+
+    private boolean requireCurrentEcuPickerConnection(
+            ElmDriver driver, long session, long connectionEpoch) {
+        if (isCurrentDriverConnection(driver, session, connectionEpoch)) return true;
+        dtcStatusText.setText(R.string.ecu_identification_session_changed);
+        dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+        return false;
+    }
+
+    private boolean isSupportedEcuIdentificationProtocol(ObdProtocol protocol) {
+        return protocol == ObdProtocol.ISO_15765_4_CAN_11BIT_500
+                || protocol == ObdProtocol.ISO_15765_4_CAN_29BIT_500
+                || protocol == ObdProtocol.ISO_15765_4_CAN_11BIT_250
+                || protocol == ObdProtocol.ISO_15765_4_CAN_29BIT_250;
+    }
+
+    /** Use the concrete live protocol as the persisted identity, not a scan label. */
+    private List<EcuIdentificationReader.Target> normalizeEcuIdentificationTargets(
+            List<EcuIdentificationReader.Target> targets, ObdProtocol protocol) {
+        if (targets == null || targets.isEmpty() || protocol == null) {
+            return new ArrayList<>();
+        }
+        java.util.LinkedHashMap<String, EcuIdentificationReader.Target> normalized =
+                new java.util.LinkedHashMap<>();
+        for (EcuIdentificationReader.Target target : targets) {
+            if (target == null) continue;
+            EcuIdentificationReader.Target liveTarget = new EcuIdentificationReader.Target(
+                    target.getName(), target.getRequestId(), target.getResponseId(),
+                    protocol.getLabel());
+            normalized.putIfAbsent(liveTarget.getStableId(), liveTarget);
+        }
+        return new ArrayList<>(normalized.values());
+    }
+
+    /** Allow a prior per-VIN result to be inspected without reconnecting. */
+    private void showSavedEcuIdentificationPicker(
+            List<EcuIdentificationReader.Snapshot> savedSnapshots) {
+        showSavedEcuIdentificationPicker(
+                savedSnapshots, null, NO_DRIVER_SESSION, 0L);
+    }
+
+    private void showSavedEcuIdentificationPicker(
+            List<EcuIdentificationReader.Snapshot> savedSnapshots,
+            ElmDriver expectedDriver, long expectedSession,
+            long expectedConnectionEpoch) {
+        if (savedSnapshots == null || savedSnapshots.isEmpty()) return;
+        if (expectedDriver != null
+                && !requireCurrentEcuPickerConnection(
+                        expectedDriver, expectedSession,
+                        expectedConnectionEpoch)) {
+            return;
+        }
+        final List<EcuIdentificationReader.Snapshot> selectable =
+                java.util.Collections.unmodifiableList(new ArrayList<>(savedSnapshots));
+        String[] labels = new String[selectable.size()];
+        java.text.DateFormat dateFormat = java.text.DateFormat.getDateTimeInstance(
+                java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT);
+        for (int i = 0; i < selectable.size(); i++) {
+            EcuIdentificationReader.Snapshot snapshot = selectable.get(i);
+            labels[i] = snapshot.getTarget().getDisplayLabel() + "\n"
+                    + dateFormat.format(new java.util.Date(snapshot.getCapturedAtEpochMs()));
+        }
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.ecu_identification_saved_results)
+                .setItems(labels, (dialog, which) -> {
+                    if (expectedDriver != null
+                            && !requireCurrentEcuPickerConnection(
+                                    expectedDriver, expectedSession,
+                                    expectedConnectionEpoch)) {
+                        return;
+                    }
+                    EcuIdentificationReader.Snapshot snapshot = selectable.get(which);
+                    dtcListContainer.removeAllViews();
+                    readinessContainer.removeAllViews();
+                    displayEcuIdentification(snapshot);
+                    String captured = dateFormat.format(
+                            new java.util.Date(snapshot.getCapturedAtEpochMs()));
+                    dtcStatusText.setText(getString(
+                            R.string.ecu_identification_showing_saved, captured));
+                    dtcStatusText.setTextColor(getColorCompat(R.color.muted));
+                    dtcStatusText.announceForAccessibility(dtcStatusText.getText());
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /** Read the ISO 14229 standard identification block from one selected ECU. */
+    private void readEcuIdentification(ElmDriver driver,
+                                       EcuIdentificationReader.Target target,
+                                       long sourceSession, long sourceConnectionEpoch) {
+        if (!ecuIdentificationRunning.compareAndSet(false, true)) {
+            dtcStatusText.setText(R.string.ecu_identification_already_running);
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+            return;
+        }
+        if (driver == null || target == null
+                || !isCurrentDriverConnection(
+                        driver, sourceSession, sourceConnectionEpoch)) {
+            ecuIdentificationRunning.set(false);
+            dtcStatusText.setText(R.string.ecu_identification_session_changed);
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+            return;
+        }
+
+        final long generation = ecuIdentificationGeneration.incrementAndGet();
+        setDtcButtonsEnabled(false);
+        btnEcuIdentification.setEnabled(true);
+        btnEcuIdentification.setText(R.string.cancel_ecu_identification);
+        dtcListContainer.removeAllViews();
+        readinessContainer.removeAllViews();
+        if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.VISIBLE);
+        dtcStatusText.setText(R.string.reading_ecu_identification);
+        dtcStatusText.setTextColor(getColorCompat(R.color.muted));
+        dtcStatusText.announceForAccessibility(dtcStatusText.getText());
+
+        if (dtcExecutor == null || dtcExecutor.isShutdown()) {
+            dtcExecutor = Executors.newSingleThreadExecutor();
+        }
+        try {
+            ecuIdentificationFuture = dtcExecutor.submit(() -> {
+            try {
+                ensureCurrentEcuIdentificationRequest(
+                        generation, driver, sourceSession, sourceConnectionEpoch);
+                EcuIdentificationReader.Snapshot snapshot =
+                        EcuIdentificationReader.read(driver, target,
+                                (completed, total) -> postEcuIdentificationUi(
+                                        generation, driver, sourceSession,
+                                        sourceConnectionEpoch,
+                                        () -> dtcStatusText.setText(
+                                                getString(
+                                                        R.string.reading_ecu_identification_progress,
+                                                        completed, total))));
+                ensureCurrentEcuIdentificationRequest(
+                        generation, driver, sourceSession, sourceConnectionEpoch);
+
+                // The header/manual fallback may still show the previous car
+                // immediately after reconnect. Never write fresh ECU evidence
+                // under it unless this exact driver/session established the VIN.
+                String verifiedVin = verifiedVehicleVinFor(driver);
+                List<EcuIdentificationReader.Snapshot> stored = verifiedVin != null
+                        ? EcuIdentificationStore.save(
+                                getApplicationContext(), verifiedVin, snapshot)
+                        : java.util.Collections.emptyList();
+                boolean persisted = containsStoredEcuIdentification(stored, snapshot);
+                postEcuIdentificationUi(generation, driver, sourceSession,
+                        sourceConnectionEpoch, () -> {
+                    displayEcuIdentification(snapshot);
+                    if (snapshot.getPositiveCount() > 0) {
+                        dtcStatusText.setText(persisted
+                                ? R.string.ecu_identification_complete_saved
+                                : R.string.ecu_identification_complete_not_saved);
+                        dtcStatusText.setTextColor(getColorCompat(R.color.status_accent));
+                    } else if (snapshot.isResponded()) {
+                        dtcStatusText.setText(R.string.ecu_identification_no_standard_values);
+                        dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+                    } else {
+                        dtcStatusText.setText(R.string.ecu_identification_no_response);
+                        dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+                    }
+                    dtcStatusText.announceForAccessibility(dtcStatusText.getText());
+                });
+            } catch (java.util.concurrent.CancellationException e) {
+                postEcuIdentificationUi(generation, driver, sourceSession,
+                        sourceConnectionEpoch, () -> {
+                    dtcStatusText.setText(R.string.ecu_identification_cancelled);
+                    dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+                    dtcStatusText.announceForAccessibility(dtcStatusText.getText());
+                });
+            } catch (IllegalStateException e) {
+                postEcuIdentificationUi(generation, driver, sourceSession,
+                        sourceConnectionEpoch, () -> {
+                    dtcStatusText.setText(R.string.ecu_identification_session_changed);
+                    dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+                    dtcStatusText.announceForAccessibility(dtcStatusText.getText());
+                });
+            } catch (Exception e) {
+                Log.w("MainActivity", "ECU identification read failed", e);
+                postEcuIdentificationUi(generation, driver, sourceSession,
+                        sourceConnectionEpoch, () -> {
+                    String reason = e.getMessage() != null
+                            ? e.getMessage() : getString(R.string.adapter_did_not_respond);
+                    dtcStatusText.setText(getString(
+                            R.string.ecu_identification_failed, reason));
+                    dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+                    dtcStatusText.announceForAccessibility(dtcStatusText.getText());
+                });
+            } finally {
+                if (generation == ecuIdentificationGeneration.get()) {
+                    ecuIdentificationRunning.set(false);
+                }
+                postEcuIdentificationLifecycleUi(generation, () -> {
+                    if (!isCurrentDriverConnection(
+                            driver, sourceSession, sourceConnectionEpoch)) {
+                        dtcStatusText.setText(
+                                R.string.ecu_identification_session_changed);
+                        dtcStatusText.setTextColor(
+                                getColorCompat(R.color.status_warning));
+                    }
+                    if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
+                    setDtcButtonsEnabled(true);
+                    btnEcuIdentification.setText(R.string.read_ecu_identification);
+                });
+            }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            ecuIdentificationRunning.set(false);
+            if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
+            setDtcButtonsEnabled(true);
+            btnEcuIdentification.setText(R.string.read_ecu_identification);
+            dtcStatusText.setText(R.string.ecu_identification_session_changed);
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+        }
+    }
+
+    private void cancelEcuIdentificationRead() {
+        java.util.concurrent.Future<?> future = ecuIdentificationFuture;
+        if (future != null && !future.isDone()) {
+            dtcStatusText.setText(R.string.cancelling_ecu_identification);
+            dtcStatusText.setTextColor(getColorCompat(R.color.status_warning));
+            btnEcuIdentification.setEnabled(false);
+            if (future.cancel(true)) {
+                // Future.cancel marks even an actively unwinding task as done.
+                // Invalidate its callbacks now; the transport lock still keeps
+                // a new request behind the old task's mandatory adapter restore.
+                ecuIdentificationGeneration.incrementAndGet();
+                ecuIdentificationRunning.set(false);
+                if (dtcScanProgress != null) dtcScanProgress.setVisibility(View.GONE);
+                setDtcButtonsEnabled(true);
+                btnEcuIdentification.setText(R.string.read_ecu_identification);
+                dtcStatusText.setText(R.string.ecu_identification_cancelled);
+                dtcStatusText.announceForAccessibility(dtcStatusText.getText());
+            }
+        }
+    }
+
+    private void ensureCurrentEcuIdentificationRequest(
+            long generation, ElmDriver driver, long sourceSession,
+            long sourceConnectionEpoch) {
+        if (Thread.currentThread().isInterrupted() || activityDestroyed
+                || generation != ecuIdentificationGeneration.get()) {
+            throw new java.util.concurrent.CancellationException(
+                    "ECU identification session ended");
+        }
+        if (!isCurrentDriverConnection(
+                driver, sourceSession, sourceConnectionEpoch)) {
+            throw new IllegalStateException("The active adapter connection changed");
+        }
+    }
+
+    private void postEcuIdentificationUi(
+            long generation, ElmDriver driver, long sourceSession,
+            long sourceConnectionEpoch, Runnable action) {
+        runOnUiThread(() -> {
+            if (!activityDestroyed && activeInstance == this && !isFinishing()
+                    && !isDestroyed()
+                    && generation == ecuIdentificationGeneration.get()
+                    && isCurrentDriverConnection(
+                            driver, sourceSession, sourceConnectionEpoch)) {
+                action.run();
+            }
+        });
+    }
+
+    /** UI teardown is lifecycle-bound but must still run after a reconnect. */
+    private void postEcuIdentificationLifecycleUi(long generation, Runnable action) {
+        runOnUiThread(() -> {
+            if (!activityDestroyed && activeInstance == this && !isFinishing()
+                    && !isDestroyed()
+                    && generation == ecuIdentificationGeneration.get()) {
+                action.run();
+            }
+        });
+    }
+
+    private boolean containsStoredEcuIdentification(
+            List<EcuIdentificationReader.Snapshot> stored,
+            EcuIdentificationReader.Snapshot wanted) {
+        if (stored == null || wanted == null || wanted.getTarget() == null) return false;
+        for (EcuIdentificationReader.Snapshot snapshot : stored) {
+            if (snapshot != null && snapshot.getTarget() != null
+                    && wanted.getTarget().getStableId().equals(
+                    snapshot.getTarget().getStableId())
+                    && wanted.getCapturedAtEpochMs()
+                    == snapshot.getCapturedAtEpochMs()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void displayEcuIdentification(EcuIdentificationReader.Snapshot snapshot) {
+        if (snapshot == null || snapshot.getTarget() == null) return;
+        TextView title = new TextView(this);
+        title.setText(R.string.ecu_identification_title);
+        title.setTextColor(getColorCompat(R.color.accent));
+        title.setTextSize(14);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setPadding(0, dpToPx(12), 0, dpToPx(6));
+        dtcListContainer.addView(title);
+
+        LinearLayout summary = new LinearLayout(this);
+        summary.setOrientation(LinearLayout.VERTICAL);
+        summary.setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10));
+        summary.setBackgroundResource(R.drawable.bg_dtc_card);
+        EcuIdentificationReader.Target target = snapshot.getTarget();
+        addVehicleInformationLine(summary, target.getName());
+        addVehicleInformationLine(summary, target.getRequestId() + " \u2192 "
+                + target.getResponseId() + (target.getProtocol().isEmpty()
+                ? "" : "  |  " + target.getProtocol()));
+        addVehicleInformationLine(summary, getString(R.string.ecu_identification_summary,
+                snapshot.getPositiveCount(), snapshot.getNegativeCount(),
+                snapshot.getMalformedCount()));
+        java.text.DateFormat dateFormat = java.text.DateFormat.getDateTimeInstance(
+                java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT);
+        addVehicleInformationLine(summary, getString(
+                R.string.ecu_identification_captured,
+                dateFormat.format(new java.util.Date(snapshot.getCapturedAtEpochMs()))));
+        dtcListContainer.addView(summary);
+
+        List<EcuIdentificationReader.Item> positiveItems = new ArrayList<>();
+        List<EcuIdentificationReader.Item> technicalItems = new ArrayList<>();
+        for (EcuIdentificationReader.Item item : snapshot.getItems()) {
+            if (item == null) continue;
+            if (item.isPositive()) positiveItems.add(item);
+            else technicalItems.add(item);
+        }
+
+        if (positiveItems.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText(snapshot.isResponded()
+                    ? R.string.ecu_identification_empty_answered
+                    : R.string.ecu_identification_empty_no_response);
+            empty.setTextColor(getColorCompat(R.color.muted));
+            empty.setTextSize(12);
+            empty.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12));
+            dtcListContainer.addView(empty);
+        } else {
+            for (EcuIdentificationReader.Item item : positiveItems) {
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.VERTICAL);
+                row.setPadding(dpToPx(12), dpToPx(9), dpToPx(12), dpToPx(9));
+                row.setBackgroundResource(R.drawable.bg_dtc_card);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                params.topMargin = dpToPx(4);
+                row.setLayoutParams(params);
+
+                TextView label = new TextView(this);
+                label.setText(getString(R.string.ecu_identification_did_label,
+                        item.getDidHex(), item.getLabel()));
+                label.setTextColor(getColorCompat(R.color.muted));
+                label.setTextSize(11);
+                row.addView(label);
+
+                TextView value = new TextView(this);
+                value.setText(item.getDisplayValue());
+                value.setTextColor(getColorCompat(R.color.text));
+                value.setTextSize(13);
+                value.setTypeface(null, android.graphics.Typeface.BOLD);
+                value.setPadding(0, dpToPx(3), 0, 0);
+                value.setTextIsSelectable(true);
+                row.addView(value);
+
+                if (!item.getRawHex().isEmpty()) {
+                    TextView raw = new TextView(this);
+                    raw.setText(getString(R.string.ecu_identification_raw_hex,
+                            item.getRawHex()));
+                    raw.setTextColor(getColorCompat(R.color.muted));
+                    raw.setTextSize(10);
+                    raw.setPadding(0, dpToPx(3), 0, 0);
+                    raw.setTextIsSelectable(true);
+                    row.addView(raw);
+                }
+                dtcListContainer.addView(row);
+            }
+        }
+
+        if (!technicalItems.isEmpty()) {
+            LinearLayout technical = new LinearLayout(this);
+            technical.setOrientation(LinearLayout.VERTICAL);
+            technical.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+            technical.setBackgroundResource(R.drawable.bg_dtc_card);
+            technical.setVisibility(View.GONE);
+            LinearLayout.LayoutParams technicalParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            technicalParams.topMargin = dpToPx(4);
+            technical.setLayoutParams(technicalParams);
+            for (EcuIdentificationReader.Item item : technicalItems) {
+                String status = item.getStatus().name().replace('_', ' ');
+                String detail = item.getDetail().isEmpty()
+                        ? item.getDisplayValue() : item.getDisplayValue() + " \u00b7 " + item.getDetail();
+                addVehicleInformationLine(technical, getString(
+                        R.string.ecu_identification_technical_line,
+                        item.getDidHex(), status, detail));
+            }
+
+            TextView toggle = new TextView(this);
+            toggle.setText(getString(R.string.ecu_identification_show_technical,
+                    technicalItems.size()));
+            toggle.setTextColor(getColorCompat(R.color.primary));
+            toggle.setTextSize(11);
+            toggle.setPadding(dpToPx(4), dpToPx(12), dpToPx(4), dpToPx(4));
+            toggle.setFocusable(true);
+            toggle.setClickable(true);
+            toggle.setOnClickListener(v -> {
+                boolean show = technical.getVisibility() != View.VISIBLE;
+                technical.setVisibility(show ? View.VISIBLE : View.GONE);
+                if (show) {
+                    toggle.setText(R.string.ecu_identification_hide_technical);
+                } else {
+                    toggle.setText(getString(
+                            R.string.ecu_identification_show_technical,
+                            technicalItems.size()));
+                }
+            });
+            dtcListContainer.addView(toggle);
+            dtcListContainer.addView(technical);
+        }
+
+        TextView safety = new TextView(this);
+        safety.setText(R.string.ecu_identification_safety);
+        safety.setTextColor(getColorCompat(R.color.muted));
+        safety.setTextSize(10);
+        safety.setPadding(dpToPx(4), dpToPx(12), dpToPx(4), dpToPx(6));
+        dtcListContainer.addView(safety);
     }
 
     /** Reads only the standardized PCM values and direct DTC status from Ford PCM/TCM/ABS. */
@@ -7246,7 +8848,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
         // Reuses the Mode 09 success path: header/home VIN, brand DTC database,
         // the DTC vehicle card and the diesel auto-detect heuristic.
-        onVinRead(vin);
+        BaseDriver activeDriver = getActiveDriver();
+        if (activeDriver != null) {
+            bindVehicleVin(vin, activeDriver, currentDriverSession(activeDriver),
+                    activeDriver.getConnectionEpoch());
+        }
+        renderVehicleVin(vin);
     }
 
     private void checkReadiness() {
@@ -7673,6 +9280,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private LoggerConfig readConfigFromUi() {
         LoggerConfig config = new LoggerConfig();
+        android.content.SharedPreferences configPrefs =
+                getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
         config.context = getApplicationContext();
         config.transportMode = transportModeFromSpinner(transportSpinner.getSelectedItemPosition());
         config.fuelMode = fuelPositionToMode(fuelSpinner.getSelectedItemPosition());
@@ -7686,17 +9295,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         config.lpgOnlyMode = lpgOnlyCheckbox.isChecked();
         config.enableApiServer = apiServerCheckbox.isChecked();
         config.apiAccessToken = ApiSecurity.getOrCreateToken(this);
-        config.fordMsCanEnabled = fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked();
+        config.fordMsCanEnabled = smartDtcScanCheckbox != null
+                ? smartDtcScanCheckbox.isChecked()
+                : SmartSecondaryBusScanPreferences.getEnabled(configPrefs);
         config.showTurboBoost = turboBoostCheckbox == null || turboBoostCheckbox.isChecked();
         config.showFuelConsumption = fuelEconomyCheckbox == null || fuelEconomyCheckbox.isChecked();
         config.dpfMonitorEnabled = dpfMonitorCheckbox != null && dpfMonitorCheckbox.isChecked();
         config.customPidsEnabled = customPidCheckbox != null && customPidCheckbox.isChecked();
         config.showAirDensity = airDensityCheckbox == null || airDensityCheckbox.isChecked();
         // Engine displacement / rated RPM for AeroDensity VE/TMF/PDI
-        android.content.SharedPreferences densPrefs = getSharedPreferences("OBD2Prefs", MODE_PRIVATE);
-        config.engineDisplacementCC = densPrefs.getInt("pref_engine_displacement_cc", 1998);
-        config.engineDisplacementUserSet = densPrefs.getBoolean("pref_engine_displacement_user_set", false);
-        config.ratedRPM = densPrefs.getInt("pref_rated_rpm", 6000);
+        config.engineDisplacementCC = configPrefs.getInt("pref_engine_displacement_cc", 1998);
+        config.engineDisplacementUserSet = configPrefs.getBoolean("pref_engine_displacement_user_set", false);
+        config.ratedRPM = configPrefs.getInt("pref_rated_rpm", 6000);
         // Seed a previously entered VIN for vehicles that don't answer Mode 09.
         // runLogger only probes when config.vin is unset, so this both skips a
         // pointless 0902 round-trip and restores brand detection, the brand DTC
@@ -7719,7 +9329,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (backgroundLoggingCheckbox != null) backgroundLoggingCheckbox.setEnabled(enabled);
         if (lpgOnlyCheckbox != null) lpgOnlyCheckbox.setEnabled(enabled);
         if (apiServerCheckbox != null) apiServerCheckbox.setEnabled(enabled);
-        if (fordMsCanCheckbox != null) fordMsCanCheckbox.setEnabled(enabled);
+        if (smartDtcScanCheckbox != null) smartDtcScanCheckbox.setEnabled(enabled);
         if (turboBoostCheckbox != null) turboBoostCheckbox.setEnabled(enabled);
         if (fuelEconomyCheckbox != null) fuelEconomyCheckbox.setEnabled(enabled);
         if (dpfMonitorCheckbox != null) dpfMonitorCheckbox.setEnabled(enabled);
@@ -7745,10 +9355,24 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         }
 
-        if (btnReadDtc != null) btnReadDtc.setEnabled(true);
-        if (btnClearDtc != null) btnClearDtc.setEnabled(true);
-        if (btnReadVin != null) btnReadVin.setEnabled(true);
-        if (btnReadiness != null) btnReadiness.setEnabled(true);
+        boolean ecuReading = ecuIdentificationRunning.get();
+        if (btnReadDtc != null) btnReadDtc.setEnabled(!ecuReading);
+        if (btnDeepDtc != null) btnDeepDtc.setEnabled(!ecuReading);
+        if (btnClearDtc != null) btnClearDtc.setEnabled(!ecuReading);
+        if (btnReadVin != null) btnReadVin.setEnabled(!ecuReading);
+        if (btnVehicleInfo != null) btnVehicleInfo.setEnabled(!ecuReading);
+        if (btnEcuIdentification != null) {
+            btnEcuIdentification.setEnabled(!ecuReading
+                    || (ecuIdentificationFuture != null
+                    && !ecuIdentificationFuture.isCancelled()));
+            btnEcuIdentification.setText(ecuReading
+                    ? R.string.cancel_ecu_identification
+                    : R.string.read_ecu_identification);
+        }
+        if (btnFordModuleLiveData != null) {
+            btnFordModuleLiveData.setEnabled(!ecuReading);
+        }
+        if (btnReadiness != null) btnReadiness.setEnabled(!ecuReading);
 
         if (btnBatteryResting != null) btnBatteryResting.setEnabled(true);
         if (btnBatteryAlternator != null) btnBatteryAlternator.setEnabled(true);
@@ -9171,7 +10795,10 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         ed.putBoolean("pref_lpg_only", lpgOnlyCheckbox != null && lpgOnlyCheckbox.isChecked());
         ed.putBoolean("pref_background_logging", backgroundLoggingCheckbox != null && backgroundLoggingCheckbox.isChecked());
         ed.putBoolean("pref_api_server", apiServerCheckbox != null && apiServerCheckbox.isChecked());
-        ed.putBoolean("pref_ford_ms_can", fordMsCanCheckbox != null && fordMsCanCheckbox.isChecked());
+        boolean smartSecondaryBusScan = smartDtcScanCheckbox != null
+                ? smartDtcScanCheckbox.isChecked()
+                : SmartSecondaryBusScanPreferences.getEnabled(prefs);
+        SmartSecondaryBusScanPreferences.putEnabled(ed, smartSecondaryBusScan);
         ed.putBoolean("pref_turbo_boost", turboBoostCheckbox != null && turboBoostCheckbox.isChecked());
         ed.putBoolean("pref_fuel_economy", fuelEconomyCheckbox != null && fuelEconomyCheckbox.isChecked());
         ed.putBoolean("pref_dpf_monitor", dpfMonitorCheckbox != null && dpfMonitorCheckbox.isChecked());
@@ -9236,8 +10863,14 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         if (apiServerCheckbox != null) {
             apiServerCheckbox.setChecked(prefs.getBoolean("pref_api_server", false));
         }
-        if (fordMsCanCheckbox != null) {
-            fordMsCanCheckbox.setChecked(prefs.getBoolean("pref_ford_ms_can", false));
+        if (smartDtcScanCheckbox != null) {
+            suppressSmartDtcScanPreferenceTracking = true;
+            try {
+                smartDtcScanCheckbox.setChecked(
+                        SmartSecondaryBusScanPreferences.getEnabled(prefs));
+            } finally {
+                suppressSmartDtcScanPreferenceTracking = false;
+            }
         }
         if (turboBoostCheckbox != null) {
             turboBoostCheckbox.setChecked(prefs.getBoolean("pref_turbo_boost", true));
@@ -9312,12 +10945,25 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     @Override
     protected void onDestroy() {
+        activityDestroyed = true;
+        ecuIdentificationGeneration.incrementAndGet();
+        java.util.concurrent.Future<?> ecuRead = ecuIdentificationFuture;
         isPaused = false; // Clear any stuck pause from diagnostic features
         watchdogHandler.removeCallbacks(connectionWatchdog);
         ExecutorService dtc = dtcExecutor;
         if (dtc != null) {
-            dtc.shutdownNow();
+            // shutdownNow already interrupts the one running diagnostic task.
+            // Calling Future.cancel(true) first delivered a second interrupt
+            // while its mandatory adapter restore was in progress.
+            List<Runnable> neverStarted = dtc.shutdownNow();
+            for (Runnable queued : neverStarted) {
+                if (queued instanceof java.util.concurrent.Future<?>) {
+                    ((java.util.concurrent.Future<?>) queued).cancel(false);
+                }
+            }
             dtcExecutor = null;
+        } else if (ecuRead != null && !ecuRead.isDone()) {
+            ecuRead.cancel(true);
         }
         // An explicitly enabled foreground-service session must survive the
         // Activity closing; only the in-process logger is Activity-owned.

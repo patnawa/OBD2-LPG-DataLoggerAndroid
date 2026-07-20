@@ -180,6 +180,19 @@ public class PidAvailabilityCheckerTest {
     }
 
     @Test
+    public void thaiFordRangerWmiAnd2018To2026YearCodesAreRecognized() {
+        String modelYear2018 = "MNBABCDEFJ1234567";
+        String modelYear2026 = "MNBABCDEFT1234567";
+
+        assertEquals(VinBrandDetector.Brand.FORD,
+                VinBrandDetector.detect(modelYear2018));
+        assertEquals(BrandYearProfile.Brand.FORD,
+                BrandYearProfile.brandFromVin(modelYear2018));
+        assertEquals(2018, BrandYearProfile.yearFromVin(modelYear2018));
+        assertEquals(2026, BrandYearProfile.yearFromVin(modelYear2026));
+    }
+
+    @Test
     public void brandFromVinDetectsBMW() {
         assertEquals(BrandYearProfile.Brand.BMW,
                 BrandYearProfile.brandFromVin("WBAAA3XXXXXXXXXXXX"));

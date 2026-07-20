@@ -125,12 +125,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="PETROL"
-                    android:textColor="#38BDF8"
+                    android:textColor="@color/primary"
                     android:textSize="10sp"
                     android:textStyle="bold"
                     android:letterSpacing="0.05"
                     android:background="@drawable/bg_dtc_badge_pill"
-                    android:backgroundTint="#2038BDF8"
+                    android:backgroundTint="@color/primary_faint"
                     android:paddingStart="8dp"
                     android:paddingEnd="8dp"
                     android:paddingTop="2dp"
@@ -178,7 +178,7 @@
                 android:layout_marginEnd="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_air_density"
-                app:tint="#38BDF8"
+                app:tint="@color/primary"
                 android:contentDescription="AeroDensity Intelligence" />
 
             <ImageButton
@@ -751,7 +751,7 @@
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="48dp"
-                        android:text="TUNE ASSIST"
+                        android:text="@string/tune_assist"
                         android:textSize="11sp"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
@@ -927,7 +927,7 @@
                             android:id="@+id/txtMapFormulaTitle"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Deviation = LPG Trim - Petrol Trim"
+                            android:text="@string/map_formula_delta_title"
                             android:textColor="@color/primary"
                             android:textSize="15sp"
                             android:textStyle="bold"
@@ -1089,7 +1089,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:layout_marginTop="16dp"
-                    android:text="EXPORT CSV (TUNE ASSIST)"
+                    android:text="@string/export_tune_assist_csv"
                     app:icon="@android:drawable/ic_menu_share"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:visibility="gone" />
@@ -1179,7 +1179,7 @@
                     app:cardBackgroundColor="?attr/colorSurface"
                     app:cardCornerRadius="16dp"
                     app:strokeWidth="1.5dp"
-                    app:strokeColor="#38BDF8">
+                    app:strokeColor="@color/primary">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -1196,7 +1196,7 @@
                             <View
                                 android:layout_width="4dp"
                                 android:layout_height="20dp"
-                                android:background="#38BDF8"
+                                android:background="@color/primary"
                                 android:layout_marginEnd="8dp" />
                             <TextView
                                 android:layout_width="0dp"
@@ -1250,7 +1250,7 @@
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                                     android:text="AAD" android:textColor="@color/muted" android:textSize="10sp" android:textStyle="bold" />
                                 <TextView android:id="@+id/txtAAD" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                    android:text="--" android:textColor="#38BDF8" android:textSize="20sp" android:textStyle="bold" android:fontFamily="monospace" />
+                                    android:text="--" android:textColor="@color/primary" android:textSize="20sp" android:textStyle="bold" android:fontFamily="monospace" />
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                                     android:text="lbs/1000ft³" android:textColor="@color/muted" android:textSize="8sp" />
                             </LinearLayout>
@@ -1429,7 +1429,7 @@
                             android:textSize="11sp"
                             android:textStyle="bold"
                             android:letterSpacing="0.04"
-                            app:backgroundTint="#38BDF8"
+                            app:backgroundTint="@color/primary"
                             app:cornerRadius="12dp"
                             app:icon="@drawable/ic_speed"
                             app:iconTint="@color/background" />
@@ -2187,6 +2187,17 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
                     android:text="@string/read_vehicle_info"
+                    android:textColor="@color/primary"
+                    app:strokeColor="@color/primary"
+                    app:cornerRadius="12dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnEcuIdentification"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:text="@string/read_ecu_identification"
                     android:textColor="@color/primary"
                     app:strokeColor="@color/primary"
                     app:cornerRadius="12dp" />
@@ -4046,7 +4057,7 @@
                                 android:visibility="gone" />
                         </LinearLayout>
 
-                        <!-- Row: Multi-Protocol Deep Scan -->
+                        <!-- Row: Smart secondary-bus scan permission -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -4067,9 +4078,10 @@
                                     android:layout_marginEnd="16dp">
 
                                     <TextView
+                                        android:id="@+id/smartSecondaryBusScanTitle"
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
-                                        android:text="Deep Multi-Protocol Scan"
+                                        android:text="@string/smart_secondary_bus_scan_title"
                                         android:textColor="@color/text"
                                         android:textSize="14sp"
                                         android:textStyle="bold" />
@@ -4077,16 +4089,17 @@
                                     <TextView
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
-                                        android:text="Scan all protocols (Ford: HS-CAN + MS-CAN, Toyota, Honda, Isuzu, etc)"
+                                        android:text="@string/smart_secondary_bus_scan_description"
                                         android:textColor="@color/muted"
                                         android:textSize="11sp"
                                         android:layout_marginTop="2dp" />
                                 </LinearLayout>
 
                                 <com.google.android.material.checkbox.MaterialCheckBox
-                                    android:id="@+id/fordMsCanCheckbox"
+                                    android:id="@+id/smartDtcScanCheckbox"
                                     android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content" />
+                                    android:layout_height="wrap_content"
+                                    android:contentDescription="@string/smart_secondary_bus_scan_title" />
                             </LinearLayout>
                         </LinearLayout>
 
@@ -4212,7 +4225,7 @@
                                     <TextView
                                         android:layout_width="match_parent"
                                         android:layout_height="wrap_content"
-                                        android:text="Soot/Temp/Delta PIDs (0x7A-8C) for diesel vehicles"
+                                        android:text="@string/feature_dpf_monitor_desc"
                                         android:textColor="@color/muted"
                                         android:textSize="11sp"
                                         android:layout_marginTop="2dp" />

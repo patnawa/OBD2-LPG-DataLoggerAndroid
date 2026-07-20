@@ -275,18 +275,48 @@ public final class Mode09Reader {
                 continue;
             }
 
-            // ELM headers-off multi-frame form: "0: 49 04 ...", "1: ...".
-            boolean hadFrameIndex = line.matches("^[0-9A-F]+:.*");
-            line = line.replaceFirst("^[0-9A-F]+:\\s*", "");
+            // Keep a colon-suffixed CAN ID ("7E8: ...") as the source key.
+            // Only a 1-2 digit prefix is an ELM row counter ("0: ...").
+            // Treating 7E8 as a counter merges interleaved ECU responses.
+            String colonHeader = null;
+            int firstColon = line.indexOf(':');
+            if (firstColon > 0) {
+                String prefix = line.substring(0, firstColon).trim();
+                if (isCanHeader(prefix)) {
+                    colonHeader = prefix;
+                    line = line.substring(firstColon + 1).trim();
+                }
+            }
+            boolean hadFrameIndex = colonHeader == null
+                    && line.matches("^[0-9A-F]{1,2}:.*");
+            if (hadFrameIndex) {
+                line = line.replaceFirst("^[0-9A-F]{1,2}:\\s*", "");
+            }
             if (line.isEmpty()) continue;
 
-            String ecuKey = null;
+            String ecuKey = colonHeader;
             String frameHex = null;
             String[] tokens = line.split("\\s+");
-            if (tokens.length > 1 && isCanHeader(tokens[0])) {
+            int payloadStart = 0;
+            if (ecuKey == null && tokens.length > 1 && isCanHeader(tokens[0])) {
                 ecuKey = tokens[0];
+                payloadStart = 1;
+            }
+            if (ecuKey != null) {
+                // vLinker can retain its row counter after the CAN header:
+                // "7E8 0: 49 02 ...", "7E8 1: ...".
+                if (payloadStart < tokens.length
+                        && tokens[payloadStart].matches("[0-9A-F]{1,2}:")) {
+                    payloadStart++;
+                }
+                // Some adapters print the one-nibble CAN DLC as a separate
+                // token ("7E8 8 10 14 ..."). It is metadata, not payload.
+                if (payloadStart + 1 < tokens.length
+                        && tokens[payloadStart].matches("[0-8]")) {
+                    payloadStart++;
+                }
                 StringBuilder bytes = new StringBuilder();
-                for (int i = 1; i < tokens.length; i++) bytes.append(tokens[i]);
+                for (int i = payloadStart; i < tokens.length; i++) bytes.append(tokens[i]);
                 frameHex = bytes.toString().replaceAll("[^0-9A-F]", "");
             } else {
                 String compact = line.replaceAll("[^0-9A-F]", "");

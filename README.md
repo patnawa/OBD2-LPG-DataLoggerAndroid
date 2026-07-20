@@ -1,19 +1,31 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.30.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
+**Version 3.31.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
 แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
 
 ---
 
-## Unreleased — Protocol & VIN Detection Hardening
+## What's New in 3.31.0 — Industrial Theme, Driving Analytics & GPS Route Review
 
+- **Industrial look in both modes** — dark mode is now a gunmetal "night-shift HMI" with machine-amber accents; light mode is "workshop steel" (concrete greys + hazard amber). Every text/status swatch keeps the 4.5:1 contrast contract, and cards use a tighter 6dp radius so surfaces read as machined panels.
+- **Fuel-switchover analytics** — a new home-screen card detects the petrol↔LPG changeover from the OEM ECU's fuel-trim signature (closed-loop gated, tolerant of the open-loop blip during the switch) and compares LTFT across the two fuel regimes. An LTFT gap ≥ 8% flags the LPG map as diverging from the petrol baseline — the early warning for reducer aging or gas-injector drift, long before a DTC.
+- **Performance timers** — 0–100 km/h, 80–120 km/h and standing ¼-mile (with trap speed) measured from the speed PID with sub-sample interpolation. Dropouts, abandoned launches, and rolling starts that fall back below 80 km/h invalidate the run instead of fabricating a time. Last run + session bests on a home-screen card.
+- **GPS route capture & review map** — logging sessions record GPS (best-effort, 1 Hz) into new `gps_lat`/`gps_lon`/`gps_accuracy_m` log columns, and the session review screen draws the driven route color-coded by speed or boost — a dependency-free Canvas view: no map SDK, no API key, works offline. Without location permission the session simply logs without GPS.
+- **Freeze frames finished** — the Full Scan's per-DTC Mode 02 snapshots now reach the PDF report (one engine snapshot per DTC, incl. timing advance, throttle, distance-with-MIL, fuel level), fixing a bug where the report's freeze-frame section could never render. New read-only `GET /api/freezeframe` endpoint exposes the same data as JSON.
+
+## Also in 3.31.0 — Protocol & VIN Detection Hardening
+
+- **Per-module ECU Information** — on the current live ISO-TP CAN bus, select a module with a known scan-derived physical address (or the conservative engine/transmission fallback) and read a curated set of 19 default-session ISO 14229 identification DIDs: part/software/hardware numbers, versions, serial number, VIN, supplier and system name. The sweep is cancellable, batched into one exclusive ELM session, and uses only read-only UDS service `0x22`; it has no session-control, security-unlock, routine, reset, coding or write path. Positive results are saved only when a valid VIN is known and remain viewable offline; failed reads never replace a good saved result.
 - **Faster reconnects to a known car** — the app remembers which OBD protocol each adapter last locked on and seeds the next AUTO connect with it, skipping the 5–12 second bus search. A stale hint (adapter moved to another vehicle) falls back to the normal search automatically.
 - **Connects to adapters with a broken auto-search** — when automatic detection fails, the app now walks all nine protocols explicitly and locks the first bus that answers, rescuing common clone adapters that only work when the protocol is forced.
 - **Your real protocol on screen** — the home screen shows the bus the adapter actually locked on (e.g. `ISO_15765_4_CAN_11BIT_500`) instead of the word "AUTO".
 - **VIN detection on 29-bit vehicles** — the physical-addressing and UDS `22 F1 90` VIN fallbacks now cover 29-bit CAN (Isuzu trucks and several European makes), which previously got no fallback at all, and 29-bit addressing now also works on genuine ELM327 chips.
 - **More reliable VIN parsing** — candidate VINs are ranked by manufacturer code and ISO check digit, so noise around the real VIN can no longer win. Thai-market VINs, which omit the check digit, are unaffected.
 - **Readable DTC status text** — DTC status colours were retuned to meet contrast requirements in both light and dark themes, and the Export PDF Report button (previously invisible on its own background) now works and appears on every scan result, including a clean scan.
+- **Safe automatic DTC policy** — Quick Scan stays on the protocol that already connected. Smart Scan may add only standard OBD-II protocols 1–9 that were previously confirmed by a positive module-level Mode 03/07/0A response for a VIN read from this connection or explicitly entered for this live interactive session. The exhaustive Full Scan remains a manual action, and the 30-second monitor uses Quick only.
+- **No phantom secondary buses** — standard ELM protocol A is J1939, B/C are programmable USER CAN protocols on the adapter's normal CAN interface, and standard ELM has no D. The app no longer presents A/B/C/D as SW-CAN, Ford MS-CAN, Chrysler CAN, or LS-CAN, and a rejected protocol switch is never scanned under the wrong label.
+- **Foreground/background parity** — both logging paths run one Smart startup scan, then use current-protocol Quick scans for change monitoring. Automatic startup expansion requires a VIN read from that exact connection; a merely remembered/manual VIN is display metadata until the user explicitly binds it during the live session.
 
 ---
 
@@ -22,7 +34,8 @@
 - **Reconnects that survive real driving conditions** — foreground and background logging now use capped exponential backoff (1, 2, 4, 8, 16, then 30 seconds) until you press Stop, rather than giving up after a fixed retry count.
 - **Cleaner ELM327 command channel** — Classic Bluetooth, BLE, Wi-Fi, and USB responses are byte-validated, bounded, and require the ELM `>` prompt. A corrupt or partial frame is drained and retried once before the connection state machine takes over.
 - **BLE multi-PID safety** — BLE polling stays within the default ATT payload before MTU negotiation, avoiding lost/truncated ELM commands on vLinker-class adapters.
-- **Toyota VIN improvements** — extended, serialized Mode 09 VIN retry and Toyota `MR0` WMI recognition improve identification with vLinker MS/MC Bluetooth adapters.
+- **Toyota VIN improvements** — after the serialized extended functional retry, the app now tries read-only Mode 09 `09 02` and UDS `22 F1 90` at every legislated 11-bit physical OBD pair from `7E0/7E8` through `7E7/7EF`. It handles Response Pending, accepts colon-header, DLC-token, vLinker indexed-row, and no-record-byte response variants, rejects data without the exact positive marker, and gives physical setup/data a 30-second budget before mandatory disconnect/cancellation-safe cleanup.
+- **Thai Ford diesel coverage** — `MNB` VINs resolve to Ford and select Ford module labels and diesel behavior across model-year codes 2018–2026. This includes the Ranger/Everest generation in which 2.0L Bi-Turbo is available, but the app does not infer a Bi-Turbo engine from WMI/year alone. Ford VIN detection does not claim that an adapter can route the separate MS-CAN pins.
 - **Passive CAN diagnostics foundation** — optional read-only ISO-TP/UDS reassembly, bounded telemetry buffering, and anomaly reporting; it never injects CAN frames or performs ECU programming.
 
 ---
@@ -402,8 +415,8 @@ This app connects to your vehicle's OBD2 port via ELM327-compatible adapters (vL
 ## Key Features
 
 ### Data Logging
-- **45+ OBD2 PIDs**: Engine RPM, Vehicle Speed, Engine Load, Coolant Temp, Intake Air Temp, MAF, MAP, Fuel Pressure, Barometric Pressure, Throttle Position, Timing Advance, STFT/LTFT (Bank 1 & 2), O2 Sensors (B1S1-B2S4 voltage + STFT), Lambda (wideband), Control Module Voltage, Absolute Load, Fuel Level, Fuel Type, Ethanol %, EVAP Pressure, Run Time, Distance counters, DPF Soot/Temp/Delta/Regen/Ash, and more
-- **Derived sensors**: Fuel Economy (km/L, L/100km), Turbo Boost (kPa, psi), DPF Health (Clean/Moderate/Warning/Critical), DPF Regen Status
+- **45+ OBD2 PIDs**: Engine RPM, Vehicle Speed, Engine Load, Coolant Temp, Intake Air Temp, MAF, MAP, Fuel Pressure, Barometric Pressure, Throttle Position, Timing Advance, STFT/LTFT (Bank 1 & 2), O2 Sensors (B1S1-B2S4 voltage + STFT), Lambda (wideband), Control Module Voltage, Absolute Load, Fuel Level, Fuel Type, Ethanol %, EVAP Pressure, Run Time, Distance counters, standard DPF differential pressure/inlet temperature, and more
+- **Derived sensors**: Fuel Economy (km/L, L/100km) and Turbo Boost (kPa, psi). DPF soot/ash/regen health requires verified manufacturer-specific data and is not fabricated from standard PID 0x7A.
 - **Dual format logging**: CSV (RFC-4180 quoted) + JSONL (one JSON object per line)
 - **Custom log folder**: Save logs anywhere via Android Storage Access Framework (SAF) — Downloads, SD card, USB, Google Drive
 - **Fuel-mode prefixed filenames**: e.g. `PETROL_20260630_120000_obd2.csv`, `LPG_20260630_130000_obd2.csv`
@@ -413,24 +426,31 @@ This app connects to your vehicle's OBD2 port via ELM327-compatible adapters (vL
 - **Config persistence**: All settings restored on reopen; checkboxes save instantly (no onPause required)
 
 ### LPG/CNG Tune Assist
-- **Live Fuel Map**: 2D grid (T.inj ms × RPM) with color-coded STFT+LTFT averages — red (rich) to blue (lean), green (perfect)
-- **Dual-fuel comparison**: Separate Petrol and LPG data layers on the same map; Deviation view shows `LPG - Petrol` per cell
-- **Correction grid**: Auto-calculates the % correction multiplier needed for the LPG ECU to match petrol trims
+- **Live ECU Fuel Correction Map**: 2D RPM × measured MAP kPa grid (or an explicitly identified Load % fallback) containing quality-gated averages of `STFT + LTFT`. Values are ECU correction, not direct measured rich/lean AFR verdicts.
+- **Dual-fuel comparison**: Separate Petrol and LPG data layers; Δ Trim/Deviation is `average LPG Trim - average Petrol Trim` in the same cell and is expressed in percentage points (pp).
+- **Tune Assist grid**: Reuses the rounded Δ number as an approximate gas-map adjustment percentage—not an exact conversion or guaranteed LPG multiplier correction. Confirm with measured Lambda/wideband and re-log after small changes.
 - **CSV export**: Export correction map as CSV for use on a tuning laptop; share via any app (Line, Email, Bluetooth)
 - **Closed-loop gating**: Only plots data when PID 03 bit 0x02 is set (closed loop) and ECT ≥ 80°C
 - **LTFT fallback**: Uses LTFT alone when STFT is unavailable (common on some Toyota/Honda models)
-- **MAP → T.inj scaling**: Linearly scales standard OBD2 MAP/Load values into estimated `T.inj` ms to ensure compatibility with all car models
+- **Axis provenance**: Measured MAP, synthesized MAP, and Load fallbacks are identified separately; maps using different axis sources are not compared.
 - **Cell lock & hit counter**: Dwell-time debounce filters transients; cells lock after 20+ hits (gold border)
 - **Open Log File**: Load external CSV files from anywhere (SAF picker) for offline analysis; multi-select for cross-file Petrol+LPG comparison
 - **In-list Compare 2 Logs**: Pick a Petrol log + an LPG log from History and plot both on one map
+- **Diesel limitation**: Many diesel ECUs, including some Ford diesels, do not expose gasoline-style Mode 01 STFT/LTFT. A blank Trim/Δ map can be expected; use supported boost, rail-pressure, MAF, EGR, and DPF data instead.
 
-### Tuning Formula & Examples
-The **Deviation** and **Tune Assist** percentage calculations are based on the following formula:
-$$\text{Deviation} = \text{LPG Trim} - \text{Petrol Trim}$$
-This calculates the net fuel trim difference between running on gas and the petrol baseline:
-- **Positive Deviation (e.g., +8%)**: LPG is running leaner than petrol (the ECU must add 8% extra fuel when on gas). To correct this, you need to **increase (add +8%)** the LPG multiplier map at that cell in your gas tuning software.
-- **Negative Deviation (e.g., -8%)**: LPG is running richer than petrol (the ECU is pulling 8% more fuel when on gas). To correct this, you need to **decrease (subtract -8%)** the LPG multiplier map at that cell in your gas tuning software.
-- **Goal**: Adjust the LPG map until the Deviation is close to **0%** across all cells.
+### Δ Trim Formula & Examples
+For each quality-gated RPM/load cell:
+
+$$\text{Cell Trim} = \operatorname{average}(\text{STFT} + \text{LTFT})$$
+$$\Delta\text{ Trim} = \text{average LPG Trim} - \text{average Petrol Trim}$$
+
+Fuel trims are percentages, so their difference is technically measured in **percentage points (pp)**:
+
+- **Petrol +2%, LPG +8% → Δ +6 pp**: the ECU adds 6 points more correction on gas. Tune Assist starts near +6%; under comparable conditions, add gas gradually.
+- **Petrol −3%, LPG −9% → Δ −6 pp**: the ECU removes 6 points more correction on gas. Tune Assist starts near −6%; reduce gas gradually.
+- **Petrol +15%, LPG +15% → Δ 0 pp**: both maps match, but both baselines still need investigation. Zero Δ means matched, not healthy.
+
+Δ remains a percentage-point difference. Tune Assist repurposes its rounded number as an approximate percentage adjustment, not a measured AFR verdict or an exact multiplier command. Establish a healthy petrol baseline, make small changes, verify with measured Lambda/wideband, and collect a new log.
 
 ### Live Dashboard
 - **2x4 telemetry grid**: RPM | Speed | Coolant | Voltage + Fuel (km/L) | Boost (psi) | DPF | DTC count
@@ -442,14 +462,15 @@ This calculates the net fuel trim difference between running on gas and the petr
 
 ### Diagnostics
 - **DTC scanning**: Read stored (Mode 03), pending (Mode 07), and permanent (Mode 0A) Diagnostic Trouble Codes with descriptions
-- **Multi-protocol deep scan**: 7 protocol buses — HS-CAN, MS-CAN (Ford/Mazda), CAN 29-bit (Isuzu), CAN 250k, KWP2000 (older Toyota), ISO 9141-2 (older Honda/Nissan), J1850 VPW (older Isuzu)
+- **Quick / Smart / Full policy**: Quick uses the connected protocol; Smart adds only VIN/profile-confirmed standard protocols that the current ELM driver can select; manual Full checks OBD-II protocols 1–9 and physically sweeps only proven 11-bit CAN protocols 6/8
+- **Adapter-safe switching**: every explicit `ATSP` must return `OK`; an `ATDPN` mismatch, `?`, error, status text, or negative diagnostic reply cannot be counted or mislabeled as another bus
 - **ECU database**: 40+ CAN IDs mapped to human-readable module names — Toyota, Honda, Mazda, Isuzu, Nissan, Mitsubishi, Ford
 - **Mode 06 Monitor Test Results**: Read actual test values, min/max thresholds, and pass/fail for all monitors (Catalyst, O2, EGR, EVAP, Misfire)
 - **Per-DTC Freeze Frames**: Individual freeze frame snapshot for each stored DTC with 10 PIDs
 - **DTC Enrichment**: 157 codes with probable causes, repair suggestions, emissions flags, and drive cycles to clear
 - **Scan Comparison**: Shows NEW and CLEARED codes vs previous scan
 - **Clear DTCs**: Send Mode 04 to clear codes and reset MIL
-- **VIN reader**: Read 17-character VIN via Mode 09 PID 02 (multi-frame ISO-TP) — auto-detects diesel vehicles. Falls back through an extended-timeout retry, physical ECU addressing (11-bit `7E0`/`7E1` and 29-bit `18DA10F1`/`18DA18F1`), then UDS `22 F1 90`, for vehicles that do not answer the functional Mode 09 request; candidates are ranked by WMI and ISO check digit
+- **VIN reader**: Read a 17-character VIN via Mode 09 PID 02 (multi-frame ISO-TP) and auto-detect supported diesel families. After an extended functional retry, each bounded physical candidate tries Mode 09 then read-only UDS `22 F1 90`: 11-bit `7E0/7E8` through `7E7/7EF`, or the conservative 29-bit ECM/TCM pairs. Candidates are ranked by recognized WMI and ISO check digit.
 - **ECU Calibration**: Read Cal-ID and CVN via Mode 09 for emissions compliance
 - **Readiness monitors**: Check emission inspection readiness — 12 monitors including Particulate Filter
 
@@ -461,6 +482,7 @@ Professional-grade 12V battery diagnostics via OBD2 PID 0x42 (Control Module Vol
 - **vLinker MC WiFi** (MIC3313): TCP, pre-buffering optimizations (ATAT2, ATST1A, ATAL, 6-PID chunks)
 - **vLinker MC BT** (MIC3313): Bluetooth SPP, conservative timing (ATAT1, ATST23, ATAL, 4-PID chunks)
 - **Generic ELM327**: WiFi/BLE/BT SPP/USB — conservative 4-PID chunks
+- **ANCEL X6 VCI**: its vendor-framed transport is not an ELM text command channel; support requires a separately documented and tested `AncelVciDriver` rather than treating a device identifier as a protocol capability
 - **Auto-connect**: Tries USB → WiFi → selected BT device → all paired BT devices → simulation fallback
 - **Multi-PID batch polling**: Sends up to 6 PIDs per ELM327 command
 - **USB serial**: Supports CH340, CP2102, FTDI, Prolific via usb-serial-for-android v3.7.3

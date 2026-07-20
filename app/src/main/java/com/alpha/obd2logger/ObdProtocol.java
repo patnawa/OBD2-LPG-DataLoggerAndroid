@@ -12,8 +12,8 @@ public enum ObdProtocol {
     ISO_15765_4_CAN_11BIT_250("8", "ISO 15765-4 CAN 11-bit ID 250 kbaud"),
     ISO_15765_4_CAN_29BIT_250("9", "ISO 15765-4 CAN 29-bit ID 250 kbaud"),
     SAE_J1939_CAN("A", "SAE J1939 CAN 29-bit ID 250 kbaud"),
-    USER1_CAN("B", "User1 CAN 11-bit ID 500 kbaud"),
-    USER2_CAN("C", "User2 CAN 29-bit ID 250 kbaud");
+    USER1_CAN("B", "User1 CAN 11-bit ID 125 kbaud (default)"),
+    USER2_CAN("C", "User2 CAN 11-bit ID 50 kbaud (default)");
 
     private final String elmValue;
     private final String label;
@@ -66,10 +66,10 @@ public enum ObdProtocol {
         return this == ISO_15765_4_CAN_29BIT_500 || this == ISO_15765_4_CAN_29BIT_250;
     }
 
-    /** True for the 11-bit ISO 15765-4 CAN variants plus User1 CAN. */
+    /** True for the standard 11-bit CAN variants. */
     public boolean isElevenBitCan() {
         return this == ISO_15765_4_CAN_11BIT_500 || this == ISO_15765_4_CAN_11BIT_250
-                || this == USER1_CAN;
+                || this == USER1_CAN || this == USER2_CAN;
     }
 
     @Override

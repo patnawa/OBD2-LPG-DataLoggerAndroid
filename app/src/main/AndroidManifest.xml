@@ -16,6 +16,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- GPS route capture during a logging session (RouteRecorder). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -58,7 +60,7 @@
         <service
             android:name=".LoggerService"
             android:exported="false"
-            android:foregroundServiceType="connectedDevice|dataSync" />
+            android:foregroundServiceType="connectedDevice|dataSync|location" />
 
         <activity android:name=".ReviewSessionActivity"
             android:exported="false"

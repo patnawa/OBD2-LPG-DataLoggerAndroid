@@ -55,10 +55,36 @@ public class ApiServer extends NanoHTTPD {
         this.vehicleInformation = snapshot;
     }
 
+    public static final class DtcSnapshot {
+        public final java.util.List<DtcCode> stored;
+        public final java.util.List<DtcCode> pending;
+
+        public DtcSnapshot(java.util.List<DtcCode> stored,
+                           java.util.List<DtcCode> pending) {
+            this.stored = java.util.Collections.unmodifiableList(
+                    new java.util.ArrayList<>(stored != null
+                            ? stored : java.util.Collections.emptyList()));
+            this.pending = java.util.Collections.unmodifiableList(
+                    new java.util.ArrayList<>(pending != null
+                            ? pending : java.util.Collections.emptyList()));
+        }
+    }
+
     public interface DtcProvider {
         java.util.List<DtcCode> getStoredDtcs();
         java.util.List<DtcCode> getPendingDtcs();
+        default DtcSnapshot getDtcSnapshot() {
+            return new DtcSnapshot(getStoredDtcs(), getPendingDtcs());
+        }
         boolean triggerClearDtcs();
+        /** Mode 02 freeze frames from the last Full Scan; empty until one ran. */
+        default java.util.List<FreezeFrameReader.FreezeFrameEntry> getPerDtcFreezeFrames() {
+            return java.util.Collections.emptyList();
+        }
+        /** Generic (frame 0) snapshot, or null when none was captured. */
+        default FreezeFrameData getGenericFreezeFrame() {
+            return null;
+        }
     }
     
     private volatile DtcProvider dtcProvider;
@@ -411,6 +437,8 @@ public class ApiServer extends NanoHTTPD {
                 response = handleMapExport();
             } else if ("/api/dtc".equals(uri)) {
                 response = handleGetDtc();
+            } else if ("/api/freezeframe".equals(uri)) {
+                response = handleGetFreezeFrames();
             } else if ("/api/stream".equals(uri) || "/api/events".equals(uri)) {
                 response = handleSseStream(session);
             } else if ("/api/agent".equals(uri)) {
@@ -1054,7 +1082,8 @@ public class ApiServer extends NanoHTTPD {
             JSONArray storedArr = new JSONArray();
             JSONArray pendingArr = new JSONArray();
             if (dtcProvider != null) {
-                java.util.List<DtcCode> stored = dtcProvider.getStoredDtcs();
+                DtcSnapshot dtcSnapshot = dtcProvider.getDtcSnapshot();
+                java.util.List<DtcCode> stored = dtcSnapshot.stored;
                 if (stored != null) {
                     for (DtcCode dtc : stored) {
                             JSONObject dtcObj = new JSONObject();
@@ -1064,7 +1093,7 @@ public class ApiServer extends NanoHTTPD {
                             storedArr.put(dtcObj);
                         }
                 }
-                java.util.List<DtcCode> pending = dtcProvider.getPendingDtcs();
+                java.util.List<DtcCode> pending = dtcSnapshot.pending;
                 if (pending != null) {
                     for (DtcCode dtc : pending) {
                             JSONObject dtcObj = new JSONObject();
@@ -1077,6 +1106,37 @@ public class ApiServer extends NanoHTTPD {
             }
             obj.put("stored", storedArr);
             obj.put("pending", pendingArr);
+            obj.put("timestamp", System.currentTimeMillis());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return newFixedLengthResponse(Response.Status.OK, "application/json", obj.toString());
+    }
+
+    /**
+     * GET /api/freezeframe — Mode 02 snapshots captured by the last Full Scan.
+     * Read-only mirror of on-device state; never triggers a new adapter read.
+     */
+    private Response handleGetFreezeFrames() {
+        JSONObject obj = new JSONObject();
+        try {
+            JSONArray framesArr = new JSONArray();
+            FreezeFrameData generic = null;
+            if (dtcProvider != null) {
+                for (FreezeFrameReader.FreezeFrameEntry entry : dtcProvider.getPerDtcFreezeFrames()) {
+                    if (entry == null) continue;
+                    JSONObject frameObj = new JSONObject();
+                    frameObj.put("frame", entry.getFrameNumber());
+                    frameObj.put("dtc", entry.getDtcCode() != null ? entry.getDtcCode() : JSONObject.NULL);
+                    FreezeFrameData data = entry.getData();
+                    frameObj.put("data", data != null ? data.toJsonObject() : JSONObject.NULL);
+                    framesArr.put(frameObj);
+                }
+                generic = dtcProvider.getGenericFreezeFrame();
+            }
+            obj.put("frames", framesArr);
+            obj.put("generic", generic != null ? generic.toJsonObject() : JSONObject.NULL);
+            obj.put("available", framesArr.length() > 0 || generic != null);
             obj.put("timestamp", System.currentTimeMillis());
         } catch (JSONException e) {
             e.printStackTrace();
@@ -1188,7 +1248,8 @@ public class ApiServer extends NanoHTTPD {
             // ── DTC codes with severity ──
             if (dtcProvider != null) {
                 JSONArray dtcArr = new JSONArray();
-                java.util.List<DtcCode> stored = dtcProvider.getStoredDtcs();
+                DtcSnapshot dtcSnapshot = dtcProvider.getDtcSnapshot();
+                java.util.List<DtcCode> stored = dtcSnapshot.stored;
                 if (stored != null) {
                     for (DtcCode dtc : stored) {
                         JSONObject dtcObj = new JSONObject();
@@ -1199,7 +1260,7 @@ public class ApiServer extends NanoHTTPD {
                         dtcArr.put(dtcObj);
                     }
                 }
-                java.util.List<DtcCode> pending = dtcProvider.getPendingDtcs();
+                java.util.List<DtcCode> pending = dtcSnapshot.pending;
                 if (pending != null) {
                     for (DtcCode dtc : pending) {
                         JSONObject dtcObj = new JSONObject();

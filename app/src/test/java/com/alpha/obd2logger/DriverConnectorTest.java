@@ -2,6 +2,7 @@ package com.alpha.obd2logger;
 
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -13,6 +14,7 @@ public class DriverConnectorTest {
         DriverConnector.Result result = DriverConnector.connect(config, 1_000L);
         assertTrue(result.isConnected());
         assertTrue(result.getDriver() instanceof SimulationDriver);
+        assertEquals(1L, result.getDriver().getConnectionEpoch());
         result.getDriver().disconnect();
     }
 
@@ -30,6 +32,14 @@ public class DriverConnectorTest {
         DriverConnector.Result result = DriverConnector.reconnect(driver, 1_000L);
         assertTrue(result.isConnected());
         assertTrue(result.getDriver() == driver);
+        assertEquals(1L, driver.getConnectionEpoch());
+        driver.disconnect();
+
+        DriverConnector.Result second = DriverConnector.reconnect(driver, 1_000L);
+        assertTrue(second.isConnected());
+        assertTrue(second.getDriver() == driver);
+        assertEquals("same object must receive a new physical-connection identity",
+                2L, driver.getConnectionEpoch());
         driver.disconnect();
     }
 }

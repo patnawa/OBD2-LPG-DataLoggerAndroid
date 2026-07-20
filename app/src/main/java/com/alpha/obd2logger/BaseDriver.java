@@ -40,6 +40,15 @@ public abstract class BaseDriver {
     private final java.util.concurrent.Semaphore connectGate =
             new java.util.concurrent.Semaphore(1);
 
+    /**
+     * Monotonic identity of the physical adapter/vehicle connection carried by
+     * this driver object. Reconnect deliberately reuses the Java object, so
+     * object identity alone cannot distinguish evidence captured before and
+     * after the cable/radio link was re-established.
+     */
+    private final java.util.concurrent.atomic.AtomicLong connectionEpoch =
+            new java.util.concurrent.atomic.AtomicLong(0L);
+
     protected BaseDriver(LoggerConfig config) {
         this.config = config;
     }
@@ -57,6 +66,14 @@ public abstract class BaseDriver {
     /** Release the connect slot taken by {@link #tryAcquireConnectGate}. */
     void releaseConnectGate() {
         connectGate.release();
+    }
+
+    void markPhysicalConnectionEstablished() {
+        connectionEpoch.incrementAndGet();
+    }
+
+    public long getConnectionEpoch() {
+        return connectionEpoch.get();
     }
 
     public abstract boolean connect();
