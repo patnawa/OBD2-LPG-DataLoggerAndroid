@@ -145,7 +145,7 @@ public final class WiFiDriver extends ElmDriver {
     }
 
     @Override
-    protected String sendCommand(String command) {
+    protected String sendCommandImpl(String command) {
         if (outputStream == null || inputStream == null) {
             return "";
         }

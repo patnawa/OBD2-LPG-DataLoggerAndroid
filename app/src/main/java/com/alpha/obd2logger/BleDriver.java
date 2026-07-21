@@ -263,7 +263,7 @@ public final class BleDriver extends ElmDriver {
     }
 
     @Override
-    protected String sendCommand(String command) {
+    protected String sendCommandImpl(String command) {
         if (gatt == null || writeChar == null || !hasBluetoothConnectPermission()) {
             return "";
         }

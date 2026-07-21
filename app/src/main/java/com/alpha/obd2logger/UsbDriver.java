@@ -101,7 +101,7 @@ public class UsbDriver extends ElmDriver {
     }
 
     @Override
-    protected String sendCommand(String command) {
+    protected String sendCommandImpl(String command) {
         if (usbSerialPort == null) {
             return "";
         }
