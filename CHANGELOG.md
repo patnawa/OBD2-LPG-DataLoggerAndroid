@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.31.1] - 2026-07-21 — Fix "Connected but no data" after protocol detection
+
+### Fixed
+
+- Adapters answering `ATDPN` with a non-protocol reply (`?`, `NO DATA`, a clone's version banner) were mis-parsed as a concrete protocol: the parser took the last hex-looking character of any reply, so e.g. `NO DATA` became SAE J1939 and `ELM327 v1.5` became KWP fast-init. The automatic startup DTC scan then restored polling onto that non-existent bus, leaving the UI on "Connected" while every gauge stayed empty — and the failed PID availability probe could be cached per-VIN for 30 days, making the outage sticky. `ObdProtocol.fromDpnResponse` now accepts only a strict one-line `h`/`Ah` protocol report and rejects everything else (falling back to the previous safe behavior).
+- `restorePollingState()` no longer ignores its own re-probe: when the remembered locked protocol stops answering after a deep scan, it falls back to a full `ATSP0` automatic search instead of leaving polling dead on a silent bus.
+- New regression harness `ConnectedButNoDataDiagnosisTest` simulates an ELM327 adapter plus an 11-bit/500k CAN vehicle through the real connect → deep-scan restore → batch-poll path, sweeping adapter `ATDPN` reply variants.
+
 ## [3.31.0] - 2026-07-20 — Industrial Theme, Driving Analytics, GPS Routes & Protocol Hardening
 
 ### Industrial theme

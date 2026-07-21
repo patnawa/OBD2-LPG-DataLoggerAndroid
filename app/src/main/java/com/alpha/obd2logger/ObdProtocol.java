@@ -46,17 +46,24 @@ public enum ObdProtocol {
      */
     public static ObdProtocol fromDpnResponse(String atDpnResponse) {
         if (atDpnResponse == null) return null;
-        String cleaned = atDpnResponse.toUpperCase(java.util.Locale.US)
-                .replaceAll("[^0-9A-F]", "");
-        if (cleaned.isEmpty()) return null;
-        // The code is the LAST 1-2 chars: an echoed "ATDPN" prefix compacts to
-        // "ADN"-free hex ("AD") which must not be mistaken for the code itself,
-        // so scan from the end: optional 'A' auto marker + one protocol digit.
-        char code = cleaned.charAt(cleaned.length() - 1);
-        for (ObdProtocol protocol : values()) {
-            if (protocol != AUTO && protocol.elmValue.charAt(0) == code) {
-                return protocol;
+        // A protocol report is exactly one line of "h" or "Ah". Anything else
+        // ("?", "NO DATA", a version banner from a clone) must be rejected —
+        // pulling the last hex-looking character out of such a reply once
+        // re-routed polling to a bus the car does not speak, killing all data
+        // while the UI still showed Connected.
+        String[] lines = atDpnResponse.toUpperCase(java.util.Locale.US)
+                .replace('>', ' ').split("[\\r\\n]+");
+        for (int i = lines.length - 1; i >= 0; i--) {
+            String token = lines[i].trim();
+            if (token.isEmpty()) continue;
+            if (!token.matches("A?[0-9A-C]")) return null;
+            char code = token.charAt(token.length() - 1);
+            for (ObdProtocol protocol : values()) {
+                if (protocol != AUTO && protocol.elmValue.charAt(0) == code) {
+                    return protocol;
+                }
             }
+            return null;
         }
         return null;
     }

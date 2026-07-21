@@ -537,7 +537,19 @@ public abstract class ElmDriver extends BaseDriver {
             sendCommand("ATSP" + config.obdProtocol.getElmValue());
         }
 
-        probeVehicle();
+        if (!probeVehicle()
+                && config.obdProtocol == ObdProtocol.AUTO && resolved != null) {
+            // The remembered lock stopped answering (mis-detected protocol,
+            // bus glitch). A full automatic search may be slow on clones, but
+            // staying on a dead bus silently kills every gauge while the UI
+            // still shows Connected.
+            android.util.Log.w("OBD2Logger", "Locked protocol "
+                    + resolved.getLabel() + " stopped answering after deep scan"
+                    + " — falling back to automatic search");
+            detectedProtocol = null;
+            sendCommand("ATSP0");
+            probeVehicle();
+        }
         // Re-apply safe performance settings for known vLinker hardware —
         // after probeVehicle(), whose finally block restores conservative
         // ATAT1/ATST32 and would otherwise clobber them.
