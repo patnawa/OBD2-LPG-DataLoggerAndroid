@@ -211,7 +211,9 @@ public class VinReaderTest {
         UdsOnlyVinDriver driver = new UdsOnlyVinDriver(config);
 
         assertEquals("MR0FZ29G901234567", VinReader.readVin(driver));
-        assertEquals(3, driver.mode09Attempts);
+        // Functional + extended-timeout functional. The F190-first sweep finds
+        // the VIN at 7E0 before the physical 0902 retry pass ever runs.
+        assertEquals(2, driver.mode09Attempts);
         assertTrue(driver.sent.contains("22F190"));
         assertTrue(driver.sent.contains("ATSH7E0"));
         // Polling state is restored after the UDS request too.
@@ -247,14 +249,20 @@ public class VinReaderTest {
     }
 
     @Test
-    public void allFailPhysicalSweepIsBoundedToLegislatedAddresses() {
+    public void allFailPhysicalSweepBailsAfterConsecutiveSilentAddresses() {
+        // Every physical address is silent (nobody home). The F190-first sweep
+        // must stop after MAX_CONSECUTIVE_SILENT dead addresses instead of
+        // walking all 8 — and with zero live ECUs the 0902 pass is pointless.
         BoundedSweepDriver driver = new BoundedSweepDriver(new LoggerConfig(), StopMode.NONE);
 
         assertNull(VinReader.readVin(driver));
 
-        assertEquals(8, driver.physicalMode09Attempts);
-        assertEquals(8, driver.physicalUdsAttempts);
-        assertTrue(driver.sent.contains("ATSH7E7"));
+        assertEquals(VinReader.MAX_CONSECUTIVE_SILENT, driver.physicalUdsAttempts);
+        assertEquals("all-silent sweep spends exactly one 0902 on the engine ECU",
+                1, driver.physicalMode09Attempts);
+        assertTrue(driver.sent.contains("ATSH7E2"));
+        assertFalse("sweep must bail before the fourth silent address",
+                driver.sent.contains("ATSH7E3"));
         assertFalse(driver.sent.contains("ATSH7F0"));
         assertEquals("7DF", driver.header);
     }
@@ -266,8 +274,9 @@ public class VinReaderTest {
 
         assertNull(VinReader.readVin(driver));
 
-        assertEquals(1, driver.physicalMode09Attempts);
-        assertEquals(0, driver.physicalUdsAttempts);
+        // F190-first: the sweep's first physical request is now UDS.
+        assertEquals(1, driver.physicalUdsAttempts);
+        assertEquals(0, driver.physicalMode09Attempts);
         assertFalse(driver.sent.contains("ATSH7E1"));
         assertEquals("Restore must put functional addressing back", "7DF", driver.header);
     }
@@ -299,8 +308,9 @@ public class VinReaderTest {
             assertNull(VinReader.readVin(driver));
             assertTrue("Caller must observe lifecycle cancellation",
                     Thread.currentThread().isInterrupted());
-            assertEquals(1, driver.physicalMode09Attempts);
-            assertEquals(0, driver.physicalUdsAttempts);
+            // F190-first: the sweep's first physical request is now UDS.
+            assertEquals(1, driver.physicalUdsAttempts);
+            assertEquals(0, driver.physicalMode09Attempts);
             assertTrue(driver.sent.contains("ATCRA"));
             assertTrue(driver.sent.contains("ATSH7DF"));
             assertEquals("7DF", driver.header);
@@ -464,6 +474,7 @@ public class VinReaderTest {
             }
             if ("22F190".equals(command) && !"7DF".equals(header)) {
                 physicalUdsAttempts++;
+                stopAfterFirstPhysicalRequest();
                 return "NO DATA\r>";
             }
             if ("0902".equals(command)) return "NO DATA\r>";
@@ -471,7 +482,8 @@ public class VinReaderTest {
         }
 
         private void stopAfterFirstPhysicalRequest() {
-            if (physicalMode09Attempts != 1) return;
+            // The sweep is F190-first, so the first physical request is UDS.
+            if (physicalMode09Attempts + physicalUdsAttempts != 1) return;
             if (stopMode == StopMode.DISCONNECT) {
                 connected = false;
             } else if (stopMode == StopMode.INTERRUPT) {
