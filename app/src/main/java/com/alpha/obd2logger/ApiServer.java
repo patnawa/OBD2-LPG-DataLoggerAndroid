@@ -57,6 +57,29 @@ public class ApiServer extends NanoHTTPD {
         this.veMapStore = store;
     }
 
+    /**
+     * Invoked when DELETE /api/vemap clears the in-memory surface, so the
+     * owner can wipe the persisted copy too — otherwise the deleted surface
+     * would resurrect from disk on the next session. ApiServer deliberately
+     * holds no Context; persistence stays the owner's concern.
+     */
+    private volatile Runnable veMapPersistenceClearHook;
+
+    public void setVeMapPersistenceClearHook(Runnable hook) {
+        this.veMapPersistenceClearHook = hook;
+    }
+
+    /** Supplies the cross-session ΔVE drift verdict for /api/vemap. */
+    public interface VeTrendProvider {
+        VeTrendTracker.Verdict getVerdict();
+    }
+
+    private volatile VeTrendProvider veTrendProvider;
+
+    public void setVeTrendProvider(VeTrendProvider provider) {
+        this.veTrendProvider = provider;
+    }
+
     /** Set the latest read-only vehicle identity/capability snapshot. */
     public void setVehicleInformation(VehicleInformationReader.Snapshot snapshot) {
         this.vehicleInformation = snapshot;
@@ -833,6 +856,20 @@ public class ApiServer extends NanoHTTPD {
             delta.put("avg_petrol_minus_lpg", round1(snap.getAveragePetrolMinusLpg()));
             delta.put("max_loss_cell", snap.getMaxLossCell() != null ? snap.getMaxLossCell() : JSONObject.NULL);
             obj.put("delta_ve", delta);
+
+            VeTrendProvider trendProvider = veTrendProvider;
+            VeTrendTracker.Verdict verdict = trendProvider != null
+                    ? trendProvider.getVerdict() : null;
+            if (verdict != null) {
+                JSONObject trend = new JSONObject();
+                trend.put("status", verdict.status.name());
+                trend.put("shift_points", Double.isNaN(verdict.shiftPoints)
+                        ? JSONObject.NULL : round1(verdict.shiftPoints));
+                trend.put("slope_per_day",
+                        Math.round(verdict.slopePerDay * 1000.0) / 1000.0);
+                trend.put("sessions", verdict.sessions);
+                obj.put("trend", trend);
+            }
         } catch (JSONException e) {
             return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json",
                     "{\"error\":\"json\"}");
@@ -895,6 +932,13 @@ public class ApiServer extends NanoHTTPD {
     private Response handleVeMapClear() {
         VeMapStore store = veMapStore;
         if (store != null) store.clear();
+        Runnable hook = veMapPersistenceClearHook;
+        if (hook != null) {
+            try {
+                hook.run();
+            } catch (Exception ignored) {
+            }
+        }
         return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\": \"cleared\"}");
     }
 

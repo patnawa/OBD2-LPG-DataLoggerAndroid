@@ -1,5 +1,9 @@
 package com.alpha.obd2logger;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
@@ -504,6 +508,105 @@ public final class VeMapStore {
         lastCellKey = "";
         lastGaseous = null;
         resetGate();
+    }
+
+    // ── Persistence ─────────────────────────────────────────────────────────
+
+    /** Bump when the JSON layout changes incompatibly. */
+    static final int SCHEMA_VERSION = 1;
+
+    /**
+     * Serialize the learned surface (both fuels + axis provenance) to JSON.
+     * Counterpart of {@link #importFromJson}; used by {@link VeMapPersistence}
+     * so weeks of learning survive process death and phone reboots.
+     */
+    public synchronized JSONObject exportToJson() {
+        try {
+            JSONObject root = new JSONObject();
+            root.put("schema_version", SCHEMA_VERSION);
+            root.put("petrol_axis", petrolAxisSource);
+            root.put("lpg_axis", lpgAxisSource);
+            root.put("petrol", sideToJson(petrolData));
+            root.put("lpg", sideToJson(lpgData));
+            return root;
+        } catch (JSONException e) {
+            return null;
+        }
+    }
+
+    private static JSONArray sideToJson(Map<String, VeCell> side) throws JSONException {
+        JSONArray arr = new JSONArray();
+        for (Map.Entry<String, VeCell> e : side.entrySet()) {
+            VeCell c = e.getValue();
+            if (c.getCount() <= 0) continue;
+            JSONObject cell = new JSONObject();
+            cell.put("k", e.getKey());
+            cell.put("ve", c.getVe());
+            cell.put("n", c.getCount());
+            cell.put("sd", c.getStdDev());
+            arr.put(cell);
+        }
+        return arr;
+    }
+
+    /**
+     * Restore a previously exported surface. Replaces both sides wholesale —
+     * the persisted surface IS the learned state, not a baseline to merge.
+     * Unknown schema versions and malformed cells are ignored, never partially
+     * applied over live data.
+     *
+     * @return true when a surface was restored
+     */
+    public synchronized boolean importFromJson(JSONObject root) {
+        if (root == null || root.optInt("schema_version", -1) != SCHEMA_VERSION) return false;
+        Map<String, VeCell> petrol = sideFromJson(root.optJSONArray("petrol"));
+        Map<String, VeCell> lpg = sideFromJson(root.optJSONArray("lpg"));
+        if (petrol.isEmpty() && lpg.isEmpty()) return false;
+
+        petrolData.clear();
+        petrolData.putAll(petrol);
+        lpgData.clear();
+        lpgData.putAll(lpg);
+        petrolAxisSource = restoredAxis(root.optString("petrol_axis", null), !petrol.isEmpty());
+        lpgAxisSource = restoredAxis(root.optString("lpg_axis", null), !lpg.isEmpty());
+        lastGaseous = null;
+        resetGate();
+        lastUpdateMs = System.currentTimeMillis();
+        return true;
+    }
+
+    private static Map<String, VeCell> sideFromJson(JSONArray arr) {
+        Map<String, VeCell> side = new HashMap<>();
+        if (arr == null) return side;
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject cell = arr.optJSONObject(i);
+            if (cell == null) continue;
+            String key = LiveMapStore.normalizeCellKey(cell.optString("k", ""));
+            double ve = cell.optDouble("ve", Double.NaN);
+            int n = cell.optInt("n", 0);
+            if (key.isEmpty() || n <= 0
+                    || !Double.isFinite(ve) || ve < VE_MIN || ve > VE_MAX) continue;
+            VeCell restored = new VeCell();
+            restored.setFromImport(ve, n, cell.optDouble("sd", 0.0));
+            side.put(key, restored);
+        }
+        return side;
+    }
+
+    /**
+     * Only known axis names are restored; anything else degrades to NONE so a
+     * corrupt value can never lock the map against live samples forever.
+     * An empty side always restores NONE — axis provenance without cells is
+     * meaningless and would block the first live axis from establishing itself.
+     */
+    private static String restoredAxis(String axis, boolean hasCells) {
+        if (!hasCells) return MapSampleMeta.AXIS_NONE;
+        if (MapSampleMeta.AXIS_MAP.equals(axis)
+                || MapSampleMeta.AXIS_SYNTH_MAP.equals(axis)
+                || MapSampleMeta.AXIS_LOAD.equals(axis)) {
+            return axis;
+        }
+        return MapSampleMeta.AXIS_NONE;
     }
 
     // ── Exports ─────────────────────────────────────────────────────────────
