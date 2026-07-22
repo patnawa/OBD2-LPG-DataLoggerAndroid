@@ -37,6 +37,13 @@ public final class LogReplayParser {
             public int lambdaIdx = -1;  // measured PID 0x34 only; never commanded PID 0x44
             // Optional ≥3.13 AI map columns (used when present to prefer accepted samples)
             public int mapRpmCellIdx = -1, mapAxisValueIdx = -1, mapAcceptedIdx = -1, mapTrimTotalIdx = -1;
+            // ≥3.33 learned-VE-map columns (ve_map_*). The logged cell state is
+            // a running mean, so the LAST row per cell is the final learned value.
+            public int mapAxisSourceIdx = -1;
+            public int veCellVeIdx = -1, veCellHitsIdx = -1;
+            public boolean hasVeColumns() {
+                return veCellVeIdx != -1 && mapRpmCellIdx != -1 && mapAxisValueIdx != -1;
+            }
             // Axis source decided ONCE per file (on the first row with a usable
             // axis value): FALSE = MAP column, TRUE = Engine Load fallback.
             // Deciding per row would mix kPa-binned and %-binned points in one map.
@@ -50,6 +57,68 @@ public final class LogReplayParser {
         }
 
     /** One GPS route sample with the telemetry used to color the segment. */
+    /**
+     * One row's learned-VE-cell state from a ≥3.33 log. The logged value is
+     * the cell's running mean AFTER that row's push, so replaying rows in
+     * order and keeping the last value per (fuel, cell) reconstructs the
+     * exact learned surface at end of session.
+     */
+    public static final class VeCellSample {
+        public final FuelMode fuelMode;
+        public final int rpmCell;
+        public final double axisValue;
+        public final double cellVe;
+        public final int cellHits;
+        /** MapSampleMeta axis-source code: 1=MAP 2=LOAD 3=SYNTH_MAP, 0 unknown. */
+        public final int axisSourceCode;
+
+        VeCellSample(FuelMode fuelMode, int rpmCell, double axisValue,
+                     double cellVe, int cellHits, int axisSourceCode) {
+            this.fuelMode = fuelMode;
+            this.rpmCell = rpmCell;
+            this.axisValue = axisValue;
+            this.cellVe = cellVe;
+            this.cellHits = cellHits;
+            this.axisSourceCode = axisSourceCode;
+        }
+    }
+
+    /**
+     * Extract the learned VE cell state from one data line, or null when the
+     * row carries none (no VE columns, blank cell state, unparseable numbers).
+     */
+    public static VeCellSample parseVeCell(String line, Columns c) {
+        if (!c.hasVeColumns()) return null;
+        String[] parts = splitCsv(line);
+        String veStr = cell(parts, c.veCellVeIdx);
+        String rpmStr = cell(parts, c.mapRpmCellIdx);
+        String axisStr = cell(parts, c.mapAxisValueIdx);
+        if (veStr.isEmpty() || rpmStr.isEmpty() || axisStr.isEmpty()) return null;
+        try {
+            double ve = Double.parseDouble(veStr);
+            int rpmCell = (int) Double.parseDouble(rpmStr);
+            double axis = Double.parseDouble(axisStr);
+            if (!Double.isFinite(ve) || !Double.isFinite(axis) || rpmCell < 0) return null;
+            int hits = 1;
+            String hitsStr = cell(parts, c.veCellHitsIdx);
+            if (!hitsStr.isEmpty()) {
+                hits = Math.max(1, (int) Double.parseDouble(hitsStr));
+            }
+            int axisCode = 0;
+            String axisSrcStr = cell(parts, c.mapAxisSourceIdx);
+            if (!axisSrcStr.isEmpty()) {
+                axisCode = (int) Double.parseDouble(axisSrcStr);
+            }
+            FuelMode mode = FuelMode.PETROL;
+            if (c.fuelModeIdx != -1 && parts.length > c.fuelModeIdx) {
+                mode = FuelMode.fromString(cell(parts, c.fuelModeIdx));
+            }
+            return new VeCellSample(mode, rpmCell, axis, ve, hits, axisCode);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
     public static final class RoutePoint {
         public final double lat;
         public final double lon;
@@ -194,7 +263,17 @@ public final class LogReplayParser {
                 // Optional precomputed map fields from ≥3.13 logs (AI-friendly)
                 else if (h.contains("map rpm cell")) c.mapRpmCellIdx = i;
                 else if (h.contains("map axis value")) c.mapAxisValueIdx = i;
-                else if (h.contains("map accepted")) c.mapAcceptedIdx = i;
+                else if (h.contains("map axis source")) c.mapAxisSourceIdx = i;
+                else if (h.contains("ve map cell ve")) c.veCellVeIdx = i;
+                else if (h.contains("ve map cell hits")) c.veCellHitsIdx = i;
+                // The CSV label is "Map Sample Accepted (1/0)"; the old bare
+                // "map accepted" pattern never matched it, so the replay
+                // silently fell back to closed-loop gating instead of the
+                // store's actual accept decisions. The ve-map guard keeps
+                // "VE Map Sample Accepted" from stealing this index.
+                else if (!h.contains("ve map")
+                        && (h.contains("map accepted") || h.contains("map sample accepted")))
+                    c.mapAcceptedIdx = i;
                 else if (h.contains("map trim total")) c.mapTrimTotalIdx = i;
             }
             return c;

@@ -48,6 +48,34 @@
                 android:textSize="12sp" />
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- VE map: what it means and how to read the three views -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/how_to_read_ve_map_title"
+            android:textColor="@color/text"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardCornerRadius="12dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="14dp"
+                android:text="@string/how_to_read_ve_map_desc"
+                android:textColor="@color/text"
+                android:textSize="12sp" />
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Color Legend Section -->
         <TextView
             android:layout_width="match_parent"

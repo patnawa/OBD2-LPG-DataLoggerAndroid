@@ -3482,6 +3482,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
             fuelMapView.setMapMode(config.fuelMode.isGaseous()
                     ? FuelMapView.MapMode.LPG : FuelMapView.MapMode.PETROL);
+            // VE heatmap opens on the fuel being logged, mirroring the fuel
+            // map above; the user can still tap-cycle to ΔVE at any time.
+            if (veMapView != null) {
+                veMapView.setMode(config.fuelMode.isGaseous()
+                        ? VeMapView.Mode.VE_LPG : VeMapView.Mode.VE_PETROL);
+            }
             // Also sync the toggle button in the Map tab
             com.google.android.material.button.MaterialButtonToggleGroup mapModeToggle = findViewById(R.id.mapModeToggle);
             if (mapModeToggle != null) {

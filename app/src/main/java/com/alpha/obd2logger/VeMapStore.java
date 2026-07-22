@@ -660,6 +660,46 @@ public final class VeMapStore {
         return MapSampleMeta.AXIS_NONE;
     }
 
+    /**
+     * Overwrite one cell from a replayed session log ({@code ve_map_*}
+     * columns). Last write wins by design: the logged cell state is a running
+     * mean, so replaying rows in order leaves each cell holding its final
+     * learned value. Used by ReviewSessionActivity; live learning never calls
+     * this.
+     *
+     * @param axisSourceCode {@link MapSampleMeta#axisSourceCode} value from
+     *                       the log (1=MAP 2=LOAD 3=SYNTH_MAP); 0 leaves the
+     *                       side's axis untouched
+     */
+    public synchronized void putReplayCell(boolean gaseous, int rpmCell, double axisValue,
+                                           double ve, int hits, int axisSourceCode) {
+        if (!Double.isFinite(ve) || ve < VE_MIN || ve > VE_MAX || hits <= 0) return;
+        String key = MapBinning.cellKey(MapBinning.binRpm(rpmCell),
+                MapBinning.binMap(axisValue));
+        VeCell cellData = new VeCell();
+        cellData.setFromImport(ve, Math.max(1, hits), 0.0);
+        (gaseous ? lpgData : petrolData).put(key, cellData);
+
+        String axis = axisNameFromCode(axisSourceCode);
+        if (axis != null) {
+            if (gaseous) {
+                lpgAxisSource = axis;
+            } else {
+                petrolAxisSource = axis;
+            }
+        }
+        lastUpdateMs = System.currentTimeMillis();
+    }
+
+    private static String axisNameFromCode(int code) {
+        switch (code) {
+            case 1: return MapSampleMeta.AXIS_MAP;
+            case 2: return MapSampleMeta.AXIS_LOAD;
+            case 3: return MapSampleMeta.AXIS_SYNTH_MAP;
+            default: return null;
+        }
+    }
+
     // ── Exports ─────────────────────────────────────────────────────────────
 
     /** Dense per-side CSV — one row per learned cell. */

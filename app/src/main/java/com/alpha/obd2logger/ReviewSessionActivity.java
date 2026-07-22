@@ -27,6 +27,10 @@ public class ReviewSessionActivity extends AppCompatActivity {
     private FuelMapView fuelMapView;
     private RouteMapView routeMapView;
     private View routeCard;
+    private VeMapView veMapView;
+    private View veMapCard;
+    /** VE surface rebuilt from ve_map_* columns (executor thread only). */
+    private final VeMapStore reviewVeStore = new VeMapStore();
     private TextView tvFileName;
     private TextView tvStatus;
     private ProgressBar progressBar;
@@ -62,6 +66,8 @@ public class ReviewSessionActivity extends AppCompatActivity {
         fuelMapView = findViewById(R.id.reviewFuelMapView);
         routeMapView = findViewById(R.id.reviewRouteMapView);
         routeCard = findViewById(R.id.reviewRouteCard);
+        veMapView = findViewById(R.id.reviewVeMapView);
+        veMapCard = findViewById(R.id.reviewVeMapCard);
         tvFileName = findViewById(R.id.reviewFileName);
         tvStatus = findViewById(R.id.reviewStatus);
         progressBar = findViewById(R.id.reviewProgress);
@@ -168,11 +174,33 @@ public class ReviewSessionActivity extends AppCompatActivity {
 
             final java.util.List<LogReplayParser.RoutePoint> fRoute =
                     new java.util.ArrayList<>(routePoints);
+            // Snapshot on the worker; syncFromStore copies defensively, so the
+            // UI thread only ever touches immutable state.
+            final VeMapStore.VeSnapshot veSnapshot =
+                    (reviewVeStore.getPetrolData().isEmpty()
+                            && reviewVeStore.getLpgData().isEmpty())
+                            ? null : reviewVeStore.snapshot();
             runOnUiThread(() -> {
                 progressBar.setVisibility(View.GONE);
                 if (routeMapView != null && routeCard != null && fRoute.size() >= 2) {
                     routeMapView.setRoute(fRoute);
                     routeCard.setVisibility(View.VISIBLE);
+                }
+                if (veMapView != null && veMapCard != null && veSnapshot != null) {
+                    veMapView.syncFromStore(veSnapshot);
+                    // Open on the side the log actually contains — mirrors the
+                    // fuel map starting on the logged fuel. Both sides present
+                    // (a petrol+LPG compare) opens directly on ΔVE.
+                    boolean hasPetrol = !veSnapshot.getPetrolData().isEmpty();
+                    boolean hasLpg = !veSnapshot.getLpgData().isEmpty();
+                    if (hasPetrol && hasLpg) {
+                        veMapView.setMode(VeMapView.Mode.VE_DELTA);
+                    } else if (hasLpg) {
+                        veMapView.setMode(VeMapView.Mode.VE_LPG);
+                    } else {
+                        veMapView.setMode(VeMapView.Mode.VE_PETROL);
+                    }
+                    veMapCard.setVisibility(View.VISIBLE);
                 }
                 if (fPlotted == 0) {
                     tvStatus.setText(errMsg.isEmpty()
@@ -234,6 +262,15 @@ public class ReviewSessionActivity extends AppCompatActivity {
                             LogReplayParser.parseRouteLine(line, routeCols);
                     if (rp != null) routePoints.add(rp);
                 }
+                // Rebuild the learned VE surface (≥3.33 logs). Last row per
+                // cell wins — the logged state is the store's running mean.
+                LogReplayParser.VeCellSample v = LogReplayParser.parseVeCell(line, cols);
+                if (v != null) {
+                    reviewVeStore.putReplayCell(v.fuelMode.isGaseous(),
+                            v.rpmCell, v.axisValue, v.cellVe, v.cellHits,
+                            v.axisSourceCode);
+                }
+
                 LogReplayParser.Point p = LogReplayParser.parseLine(line, cols);
                 if (p == null) continue; // too short, open loop, or unparseable
 

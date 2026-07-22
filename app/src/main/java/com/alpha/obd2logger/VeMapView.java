@@ -49,7 +49,10 @@ public class VeMapView extends View {
     private final Map<String, VeMapStore.VeCell> lpgData = new ConcurrentHashMap<>();
     private volatile boolean axisCompatible = true;
 
-    private Mode mode = Mode.VE_DELTA;
+    // Default matches FuelMapView's PETROL default; the live path re-targets
+    // this to the active fuel at session start, and the review path picks the
+    // side(s) the replayed log actually contains.
+    private Mode mode = Mode.VE_PETROL;
     private Paint gridPaint;
     private Paint cellPaint;
     private Paint textPaint;
