@@ -140,7 +140,7 @@ public final class SerialDriver extends ElmDriver {
     }
 
     @Override
-    protected String sendCommandImpl(String command) {
+    protected String sendCommand(String command) {
         if (outputStream == null || inputStream == null) {
             return "";
         }

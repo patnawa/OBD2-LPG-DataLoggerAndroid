@@ -265,32 +265,7 @@ public abstract class ElmDriver extends BaseDriver {
         }
     }
 
-    /**
-     * TEMPORARY trace wrapper for the "connected but no data" diagnosis: every
-     * command/response pair funnels through here into {@link CommandTrace}
-     * before reaching the transport-specific {@link #sendCommandImpl}. In
-     * release builds {@code CommandTrace.ENABLED} is false and this is a plain
-     * delegate. Remove the wrapper (restore {@code abstract sendCommand}) once
-     * the root cause is fixed.
-     */
-    protected String sendCommand(String command) {
-        if (!CommandTrace.ENABLED) {
-            return sendCommandImpl(command);
-        }
-        String response = null;
-        try {
-            response = sendCommandImpl(command);
-            return response;
-        } finally {
-            CommandTrace.record(command, response);
-        }
-    }
-
-    /** Transport-specific command I/O. Every concrete driver overrides this. */
-    protected String sendCommandImpl(String command) {
-        throw new UnsupportedOperationException(
-                getClass().getSimpleName() + " must override sendCommandImpl");
-    }
+    protected abstract String sendCommand(String command);
 
     /**
      * Upper bound for Mode-01 PIDs sent in one request on this transport.
