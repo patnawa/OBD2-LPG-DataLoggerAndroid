@@ -289,7 +289,9 @@ public final class MapSampleMeta {
      * 0=accepted, 1=no_rpm, 2=no_axis, 3=open_loop, 4=cold, 5=no_trim,
      * 6=debounce, 7=locked, 8=null_record, 9=no_coolant,
      * 10=no_fuel_status, 11=axis_mismatch, 12=transient,
-     * 13=lambda_unstable, 14=trim_unstable, 15=non_finite_trim, 99=other.
+     * 13=lambda_unstable, 14=trim_unstable, 15=non_finite_trim,
+     * 16=skew (batch acquisition span too long to be one engine instant),
+     * 99=other.
      */
     public static double rejectCode(String reason) {
         if (reason == null || reason.isEmpty()) return 0.0;
@@ -309,6 +311,7 @@ public final class MapSampleMeta {
             case "lambda_unstable": return 13.0;
             case "trim_unstable": return 14.0;
             case "non_finite_trim": return 15.0;
+            case "skew": return 16.0;
             default: return 99.0;
         }
     }

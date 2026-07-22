@@ -37,6 +37,19 @@ final class PollingEngine {
     /** Sea-level barometric fallback when the vehicle reports no baro PID. */
     private static final double DEFAULT_BARO_KPA = 101.3;
 
+    /**
+     * Maximum batch acquisition span (ms) for a record to be treated as one
+     * coherent engine instant by the learned maps. {@code poll_span_ms} has
+     * always been logged but nothing consumed it: on a slow Bluetooth adapter
+     * RPM and trim/MAF can be sampled seconds apart, and binning that pair
+     * files a measurement into a cell the engine was never actually in —
+     * silently corrupting both the fuel-trim and VE surfaces. Map inputs are
+     * ordered first in the batch (see PidHealthTracker.MAP_INPUT_ORDER), so
+     * their real skew is a fraction of the span; 2500 ms is generous enough
+     * to keep slow-but-usable adapters learning.
+     */
+    static final long MAX_COHERENT_SPAN_MS = 2500;
+
     /** Result of one poll cycle. */
     static final class PollOutcome {
         final DataRecord record;
@@ -179,17 +192,22 @@ final class PollingEngine {
         // the UI can only ever snapshot (never push), hits cannot double-count,
         // and the map_* columns describe what the store actually accepted.
         MapSampleMeta mapMeta = MapSampleMeta.from(record);
+        // Time-alignment gate: a batch that took too long is not one engine
+        // instant. Its samples still log normally, but neither learned map may
+        // bin them — the RPM/trim/MAF pairing inside the record is incoherent.
+        boolean skewed = acquisitionSpanMs > MAX_COHERENT_SPAN_MS;
         LiveMapStore.PushResult mapPush = null;
-        if (mapStore != null) {
+        if (mapStore != null && !skewed) {
             mapPush = mapStore.pushFromMeta(mapMeta, fuelMode);
         }
         mapMeta.appendLogSamples(samples,
                 mapPush != null && mapPush.accepted,
-                mapPush != null ? mapPush.reason : mapMeta.rejectReason);
+                skewed ? "skew"
+                        : (mapPush != null ? mapPush.reason : mapMeta.rejectReason));
 
         // Fold the instantaneous VE into the learned VE surface, reusing the
         // fuel map's cell binning and provenance so the two grids stay aligned.
-        if (veMapStore != null) {
+        if (veMapStore != null && !skewed) {
             Double vePct = advanced != null ? advanced.vePct : null;
             veMapStore.push(mapMeta, fuelMode, vePct);
         }

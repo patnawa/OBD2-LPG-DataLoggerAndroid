@@ -16,17 +16,41 @@ import java.util.function.LongSupplier;
 public final class VinReader {
 
     /**
-     * Bounds the expanded physical ECU sweep. An ECU that implements Mode 09 /
-     * UDS F190 answers its first physical request in about a second, so a tight
-     * budget still captures the VIN from responsive gateways/powertrains. The
-     * previous 30 s bound meant that vehicles WITHOUT a readable VIN (e.g.
-     * older Toyotas that answer no VIN service) blocked the whole startup —
-     * and therefore the first live PID poll — for up to half a minute while the
-     * sweep hammered dead addresses, leaving every gauge empty ("connected but
-     * no data"). 5 s keeps VIN detection working while getting data on screen
-     * quickly on cars that have no VIN to give.
+     * Bounds the expanded physical ECU sweep.
+     *
+     * <p>Two real vehicles constrain this number in opposite directions:
+     * <ul>
+     *   <li>A 2004 Yaris with NO readable VIN — every physical request dies in
+     *       an ATSTFF wait (~1.2–2 s each over Bluetooth). The original 30 s
+     *       bound let the sweep block the first live poll for half a minute
+     *       ("connected but no data"), which is why it was cut.</li>
+     *   <li>A 2014 Thai-market Yaris whose VIN exists ONLY via UDS 22 F1 90 in
+     *       this very sweep (pre-2016 Asian-market Toyotas implement no Mode
+     *       09). The 3 s cut expired during the first ECU's dead 0902 attempt,
+     *       so the F190 request holding the VIN was never sent — VIN detection
+     *       silently regressed on every UDS-only Toyota.</li>
+     * </ul>
+     *
+     * <p>Three mechanisms together serve both vehicles (see {@link #readVin}):
+     * the F190-first sweep order, this worst-case budget, and the
+     * consecutive-silent-address early exit ({@link #MAX_CONSECUTIVE_SILENT}),
+     * which is what actually bounds the no-VIN car — three addresses with
+     * nobody home end the sweep in ~4–6 s without waiting out the budget.
+     * {@link Toyota2014YarisVinRegressionTest} locks both directions with
+     * realistic per-command latency — do not retune any of the three without
+     * running it.
      */
-    private static final long PHYSICAL_FALLBACK_BUDGET_NANOS = 3_000_000_000L;
+    static final long PHYSICAL_FALLBACK_BUDGET_NANOS = 10_000_000_000L;
+
+    /**
+     * Abandon the physical sweep after this many consecutive addresses with no
+     * response of any kind. A silent address means nobody is home there; a
+     * negative response (7F ...) proves an ECU is alive and resets the count.
+     * Legislated VIN sources in practice are 7E0 (engine), 7E1 (TCM) and 7E2
+     * (gateway) — three consecutive silents past the last live ECU means the
+     * rest of the range is almost certainly empty too.
+     */
+    static final int MAX_CONSECUTIVE_SILENT = 3;
 
     private VinReader() {
     }
@@ -93,28 +117,58 @@ public final class VinReader {
                 // instrument/powertrain layouts do not always publish the VIN
                 // from 7E0, so try every conservative request/response pair
                 // instead of assuming the engine ECU owns Info Type 02.
+                //
+                // ORDER MATTERS UNDER THE TIME BUDGET. By the time this sweep
+                // runs, the functional 0902 has already failed twice — so on
+                // the vehicles that need the sweep at all (pre-2016 Asian-
+                // market Toyotas foremost), Mode 09 usually does not exist and
+                // only UDS 22 F190 will answer. The sweep therefore makes a
+                // full F190 pass FIRST and only then retries 0902 physically.
+                // Interleaving them per-ECU (the old order) spent a dead
+                // ATSTFF wait on 0902 at every address before each F190 try,
+                // and under the budget that starved the exact request that
+                // holds the VIN on UDS-only vehicles.
+                int consecutiveSilent = 0;
+                boolean anyAlive = false;
                 for (String[] ecu : physicalEcus) {
+                    if (!isFallbackActive(
+                            elm, clock, fallbackStartedNanos, budgetNanos)) return null;
+                    response = sendPhysicalWithPendingRetries(
+                            elm, "22F190", "22", ecu[0], ecu[1], clock,
+                            fallbackStartedNanos, budgetNanos);
+                    vin = parseUdsVinResponse(response);
+                    if (vin != null) {
+                        return vin;
+                    }
+                    if (isSilent(response)) {
+                        // Nobody home at this address. Three in a row and the
+                        // remaining range is almost certainly empty — bail out
+                        // instead of waiting out the whole budget on a vehicle
+                        // that has no VIN to give (the 2004-Yaris case).
+                        if (++consecutiveSilent >= MAX_CONSECUTIVE_SILENT) break;
+                    } else {
+                        consecutiveSilent = 0;
+                        anyAlive = true;
+                    }
+                }
+                // The full 0902 physical retry only makes sense when some
+                // address proved alive. But "no address answered F190" does
+                // not prove the engine ECU is absent — pre-UDS CAN ECUs can
+                // ignore service 22 entirely yet still answer a physical Mode
+                // 09 (the DirectToyotaVinDriver case). So an all-silent sweep
+                // still spends exactly ONE bounded 0902 request on the engine
+                // ECU before giving up, which keeps that vehicle class
+                // readable at the cost of a single extra dead request on
+                // vehicles with no VIN at all.
+                String[][] mode09Targets = anyAlive
+                        ? physicalEcus : new String[][]{physicalEcus[0]};
+                for (String[] ecu : mode09Targets) {
                     if (!isFallbackActive(
                             elm, clock, fallbackStartedNanos, budgetNanos)) return null;
                     response = sendPhysicalWithPendingRetries(
                             elm, "0902", "09", ecu[0], ecu[1], clock,
                             fallbackStartedNanos, budgetNanos);
                     vin = parseVinResponse(response);
-                    if (vin != null) {
-                        return vin;
-                    }
-                    if (!isFallbackActive(
-                            elm, clock, fallbackStartedNanos, budgetNanos)) return null;
-
-                    // Many vehicles — Asian-market Toyotas especially — do not
-                    // implement Mode 09 Info Type 02 on every OBD-facing ECU.
-                    // Try read-only UDS DID F190 at the same address before
-                    // moving on, which avoids a full slow sweep when the VIN is
-                    // available from an early gateway/ECU.
-                    response = sendPhysicalWithPendingRetries(
-                            elm, "22F190", "22", ecu[0], ecu[1], clock,
-                            fallbackStartedNanos, budgetNanos);
-                    vin = parseUdsVinResponse(response);
                     if (vin != null) {
                         return vin;
                     }
@@ -141,6 +195,23 @@ public final class VinReader {
             if (!isResponsePending(response, requestService)) break;
         }
         return response;
+    }
+
+    /**
+     * True when a physical request produced no ECU response at all — adapter
+     * chatter like NO DATA / CAN ERROR / '?', or nothing. Any hex payload
+     * (positive OR negative response) proves an ECU is alive at the address.
+     */
+    static boolean isSilent(String response) {
+        if (response == null) return true;
+        String upper = response.toUpperCase(Locale.US);
+        if (upper.contains("NO DATA") || upper.contains("NODATA")
+                || upper.contains("CAN ERROR") || upper.contains("ERROR")) {
+            return true;
+        }
+        // Strip prompts/whitespace; any remaining hex means something answered.
+        String compact = upper.replaceAll("[^0-9A-F]", "");
+        return compact.isEmpty();
     }
 
     private static boolean isResponsePending(String response, String requestService) {

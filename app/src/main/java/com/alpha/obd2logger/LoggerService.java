@@ -942,7 +942,17 @@ public final class LoggerService extends Service {
         // VE map shares the fuel map's cross-session retention: the Tune Assist
         // workflow logs Petrol then LPG to compare, and the ΔVE surface is only
         // meaningful if both fuels' learned cells survive the fuel switch.
-        VeMapStore localVeMapStore = veMapStore != null ? veMapStore : new VeMapStore();
+        // A brand-new store additionally restores the persisted surface, so
+        // learning survives process death and reboots (saved on stop/destroy).
+        VeMapStore localVeMapStore = veMapStore;
+        if (localVeMapStore == null) {
+            localVeMapStore = new VeMapStore();
+            if (VeMapPersistence.load(this, localVeMapStore)) {
+                Log.i(TAG, "Restored learned VE surface: "
+                        + localVeMapStore.getPetrolData().size() + " petrol / "
+                        + localVeMapStore.getLpgData().size() + " lpg cells");
+            }
+        }
         synchronized (SESSION_STATE_LOCK) {
             if (ownsActiveSession(sessionToken)) {
                 // Expose via instance getter for MainActivity to read snapshots
@@ -1002,6 +1012,9 @@ public final class LoggerService extends Service {
                 localApiServer.setVehicleBrand(config.vehicleBrand);
                 localApiServer.setLiveMapStore(localMapStore);
                 localApiServer.setVeMapStore(localVeMapStore);
+                localApiServer.setVeMapPersistenceClearHook(
+                        () -> VeMapPersistence.clear(this));
+                localApiServer.setVeTrendProvider(() -> VeTrendTracker.evaluate(this));
                 localApiServer.setVehicleInformation(CommonVehicleDataStore.get(this, config.vin));
                 localApiServer.resetSession();
                 synchronized (SESSION_STATE_LOCK) {
@@ -1125,6 +1138,8 @@ public final class LoggerService extends Service {
         long started = android.os.SystemClock.elapsedRealtime();
         // Shared with the in-process path in MainActivity — see PollingEngine.
         final PollingEngine engine = new PollingEngine(config, finalPids, started);
+        // Link-level liveness supervisor; owned by this worker like the engine.
+        final TelemetryWatchdog watchdog = new TelemetryWatchdog();
         // GPS route capture is best-effort: without permission or a provider
         // the session simply logs no gps_* columns.
         final RouteRecorder routeRecorder = new RouteRecorder(this);
@@ -1163,6 +1178,8 @@ public final class LoggerService extends Service {
                             throw new java.io.IOException(reconnect.getError());
                         }
                         retryCount = 0;
+                        // Fresh link — stale watchdog history must not re-kill it.
+                        watchdog.reset();
                         refreshDtcSnapshotAfterReconnect(localDriver, sessionToken);
                         lastDtcCheckMs = android.os.SystemClock.elapsedRealtime();
                         notifySessionStatus(sessionToken, "Connected. Logging resumed.", false);
@@ -1260,6 +1277,34 @@ public final class LoggerService extends Service {
                         // A stop/start can complete while poll() is blocked. Do
                         // not let that last result escape the worker that made it.
                         if (!ownsActiveSession(sessionToken)) break;
+
+                        // FDIR: "connected" with no live engine data is a fault,
+                        // not a state to sit in. On DEAD, escalate into the
+                        // existing IOException reconnect path (backoff →
+                        // disconnect → reconnect → protocol re-detect).
+                        TelemetryWatchdog.State linkState =
+                                watchdog.observeCycle(outcome.batch);
+                        if (watchdog.consumeRecoveryDemand()) {
+                            notifySessionStatus(sessionToken,
+                                    "No live data — recovering connection...", true);
+                            // The whole point of this fault class: the driver
+                            // still CLAIMS connected, so the reconnect block
+                            // above would be skipped. Force the disconnect so
+                            // DriverConnector.reconnect + protocol re-detect
+                            // actually run.
+                            try {
+                                localDriver.disconnect();
+                            } catch (Exception ignored) {
+                            }
+                            throw new java.io.IOException(
+                                    "Telemetry watchdog: adapter connected but no "
+                                    + "engine data for " + watchdog.getCorelessCycles()
+                                    + " cycles — forcing transport recovery");
+                        } else if (linkState == TelemetryWatchdog.State.STALE) {
+                            Log.w(TAG, "Telemetry STALE: "
+                                    + watchdog.getCorelessCycles()
+                                    + " cycles without core data");
+                        }
                         DataRecord record = outcome.record;
 
                         localWriter.writeRecord(record);
@@ -1394,6 +1439,20 @@ public final class LoggerService extends Service {
     }
 
     private void stopLogging() {
+        // Persist the learned VE surface before the session is torn down.
+        // .apply() is async, so this does not block the main thread.
+        VeMapPersistence.save(this, veMapStore);
+        // One ΔVE trend point per session — the cross-session widening of the
+        // petrol−LPG gap is the gaseous-fuel-system degradation signal.
+        VeMapStore trendStore = veMapStore;
+        if (trendStore != null) {
+            try {
+                VeTrendTracker.recordSession(this, trendStore.snapshot(),
+                        System.currentTimeMillis());
+            } catch (Exception e) {
+                Log.w(TAG, "VE trend record failed non-fatally", e);
+            }
+        }
         ExecutorService loggerToStop;
         ExecutorService dtcToStop;
         synchronized (SESSION_STATE_LOCK) {

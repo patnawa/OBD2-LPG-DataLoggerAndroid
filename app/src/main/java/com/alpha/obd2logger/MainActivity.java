@@ -225,6 +225,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
     private com.google.android.material.button.MaterialButton fabLog;
     private FuelMapView fuelMapView;
+    /** Learned VE heatmap — read-only sibling of the fuel map card. */
+    private VeMapView veMapView;
+    private View veMapCard;
     private AirDensityMonitor airDensityMonitor;
     // --- UI: Air Density Panel ---
     private View airDensityCard;
@@ -1308,7 +1311,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         txtFilterStatus = findViewById(R.id.txtFilterStatus);
         
         fuelMapView = findViewById(R.id.fuelMapView);
-        
+        veMapView = findViewById(R.id.veMapView);
+        veMapCard = findViewById(R.id.veMapCard);
+
         com.google.android.material.button.MaterialButtonToggleGroup mapModeToggle = findViewById(R.id.mapModeToggle);
         View btnExportCsv = findViewById(R.id.btnExportCsv);
         mapModeToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
@@ -1986,6 +1991,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                     fuelMapView.syncFromStore(snapshot);
                     updateMapCoverage(snapshot, activeFuelMode());
                 }
+                syncVeMapView();
             }
 
             if (onBackPressedCallback != null) {
@@ -3456,8 +3462,18 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (clearVeStore != null) {
                 clearVeStore.clear(config.fuelMode);
             }
-            if (inProcessVeMapStore != null) {
+            if (inProcessVeMapStore != null && inProcessVeMapStore != clearVeStore) {
                 inProcessVeMapStore.clear(config.fuelMode);
+            }
+            // Sync the persisted copy, or the cleared fuel's stale surface
+            // would resurrect from disk on the next app launch.
+            if (clearVeStore != null) {
+                if (clearVeStore.getPetrolData().isEmpty()
+                        && clearVeStore.getLpgData().isEmpty()) {
+                    VeMapPersistence.clear(getApplicationContext());
+                } else {
+                    VeMapPersistence.save(getApplicationContext(), clearVeStore);
+                }
             }
             if (config.fuelMode.isGaseous()) {
                 sessionLpgData.clear();
@@ -3990,6 +4006,9 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         // This path used to carry its own copy and had silently lost the NGV
         // km/kg branch and the mapSynthesized flag; do not inline it again.
         final PollingEngine engine = new PollingEngine(config, finalPids, started);
+        // Link-level liveness supervisor — see TelemetryWatchdog. On DEAD it
+        // escalates via IOException into this loop's existing reconnect path.
+        final TelemetryWatchdog watchdog = new TelemetryWatchdog();
         // GPS route capture is best-effort: without permission or a provider
         // the session simply logs no gps_* columns.
         final RouteRecorder routeRecorder = new RouteRecorder(this);
@@ -4103,7 +4122,22 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         if (isPaused) continue;
                         PollingEngine.PollOutcome outcome = engine.poll(
                                 driver, loggerAirDensityMonitor, ensureInProcessMapStore(),
-                                ensureInProcessVeMapStore());
+                                ensureInProcessVeMapStore(getApplicationContext()));
+                        // FDIR: escalate a silent-but-connected link into this
+                        // loop's IOException reconnect path. Disconnect first —
+                        // in this fault class the driver still claims connected,
+                        // and reconnection logic only engages on a dead driver.
+                        if (watchdog.observeCycle(outcome.batch) == TelemetryWatchdog.State.DEAD
+                                && watchdog.consumeRecoveryDemand()) {
+                            try {
+                                driver.disconnect();
+                            } catch (Exception ignored) {
+                            }
+                            watchdog.reset();
+                            throw new java.io.IOException(
+                                    "Telemetry watchdog: adapter connected but no "
+                                    + "engine data — forcing transport recovery");
+                        }
                         DataRecord record = outcome.record;
 
                         writer.writeRecord(record);
@@ -4218,6 +4252,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             }
         } finally {
             routeRecorder.stop();
+            // Persist learned VE cells at session end (mirrors LoggerService).
+            try {
+                VeMapPersistence.save(getApplicationContext(), inProcessVeMapStore);
+                if (inProcessVeMapStore != null) {
+                    VeTrendTracker.recordSession(getApplicationContext(),
+                            inProcessVeMapStore.snapshot(), System.currentTimeMillis());
+                }
+            } catch (Exception ignored) {
+            }
             try {
                 if (writer != null) writer.close();
             } catch (Exception ignored) {
@@ -4415,6 +4458,7 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 LiveMapStore.MapSnapshot snapshot = store.snapshot();
                 fuelMapView.syncFromStore(snapshot);
                 updateMapCoverage(snapshot, mode);
+                syncVeMapView();
             } else if (fuelMapView != null && store == null
                     && meta.rpm != null && !Double.isNaN(meta.loadAxis)) {
                 if (meta.gatedEligible) {
@@ -4589,8 +4633,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
         private static volatile VeMapStore inProcessVeMapStore;
 
         private static synchronized VeMapStore ensureInProcessVeMapStore() {
+            return ensureInProcessVeMapStore(null);
+        }
+
+        /**
+         * With a context, a brand-new store restores the persisted VE surface
+         * (saved at session teardown) so learning survives process death.
+         * UI readers pass null and never trigger disk IO.
+         */
+        private static synchronized VeMapStore ensureInProcessVeMapStore(
+                android.content.Context context) {
             if (inProcessVeMapStore == null) {
                 inProcessVeMapStore = new VeMapStore();
+                if (context != null) {
+                    VeMapPersistence.load(context, inProcessVeMapStore);
+                }
             }
             return inProcessVeMapStore;
         }
@@ -4603,6 +4660,21 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 if (serviceStore != null) return serviceStore;
             }
             return ensureInProcessVeMapStore();
+        }
+
+        /**
+         * Refresh the VE heatmap from the canonical store and show its card
+         * once any cell has been learned. Read-only — the view never pushes.
+         */
+        private void syncVeMapView() {
+            if (veMapView == null) return;
+            VeMapStore store = getVeMapStore();
+            if (store == null) return;
+            veMapView.syncFromStore(store.snapshot());
+            if (veMapCard != null) {
+                veMapCard.setVisibility(
+                        veMapView.hasAnyData() ? View.VISIBLE : View.GONE);
+            }
         }
 
     @Override
@@ -6312,6 +6384,17 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                             try { Thread.sleep(80); } catch (InterruptedException e) { break; }
                         }
                         crankMinVoltage = (minV < 999) ? minV : -1;
+                        // Prognostics: crank minimum is the battery's most
+                        // predictive slow-drift signal — one trend point per
+                        // crank test enables a remaining-life projection.
+                        if (crankMinVoltage > 0) {
+                            try {
+                                HealthTrendStore.append(getApplicationContext(),
+                                        BatteryTrend.SERIES, System.currentTimeMillis(),
+                                        crankMinVoltage);
+                            } catch (Exception ignored) {
+                            }
+                        }
                         runOnUiThread(() -> {
                             if (crankMinVoltage > 0) {
                                 double rest = restingVoltage > 0 ? restingVoltage : lastBatteryVoltage;
@@ -7308,6 +7391,12 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
 
                 // Read Mode 06
                 List<Mode06Result> mode06Results = Mode06Reader.readDiagnostic(activeDriver);
+                // Prognostics: one catalyst-margin trend point per Full Scan.
+                try {
+                    Mode06TrendRecorder.record(getApplicationContext(),
+                            mode06Results, System.currentTimeMillis());
+                } catch (Exception ignored) {
+                }
                 List<FreezeFrameReader.FreezeFrameEntry> perDtcFrames = FreezeFrameReader.readAllFreezeFrames(activeDriver);
                 List<Mode09Reader.CalIdEntry> calIds = Mode09Reader.readCalIds(activeDriver);
                 List<Mode09Reader.CvnEntry> cvns = Mode09Reader.readCvns(activeDriver);
