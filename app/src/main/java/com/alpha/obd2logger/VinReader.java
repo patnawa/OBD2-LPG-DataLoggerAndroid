@@ -15,8 +15,18 @@ import java.util.function.LongSupplier;
  */
 public final class VinReader {
 
-    /** Bounds the expanded physical sweep when an adapter is half-open. */
-    private static final long PHYSICAL_FALLBACK_BUDGET_NANOS = 30_000_000_000L;
+    /**
+     * Bounds the expanded physical ECU sweep. An ECU that implements Mode 09 /
+     * UDS F190 answers its first physical request in about a second, so a tight
+     * budget still captures the VIN from responsive gateways/powertrains. The
+     * previous 30 s bound meant that vehicles WITHOUT a readable VIN (e.g.
+     * older Toyotas that answer no VIN service) blocked the whole startup —
+     * and therefore the first live PID poll — for up to half a minute while the
+     * sweep hammered dead addresses, leaving every gauge empty ("connected but
+     * no data"). 5 s keeps VIN detection working while getting data on screen
+     * quickly on cars that have no VIN to give.
+     */
+    private static final long PHYSICAL_FALLBACK_BUDGET_NANOS = 3_000_000_000L;
 
     private VinReader() {
     }

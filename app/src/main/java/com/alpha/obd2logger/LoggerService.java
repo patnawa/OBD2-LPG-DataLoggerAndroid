@@ -152,6 +152,13 @@ public final class LoggerService extends Service {
         return liveMapStore;
     }
 
+    /** Learned VE surface — sibling of {@link #liveMapStore}, same lifecycle. */
+    private volatile VeMapStore veMapStore;
+
+    public VeMapStore getVeMapStore() {
+        return veMapStore;
+    }
+
     /** Air density monitor — merges OBD2 + weather API for AAD/MAD/BAD */
     private AirDensityMonitor airDensityMonitor;
 
@@ -710,6 +717,79 @@ public final class LoggerService extends Service {
         return true;
     }
 
+    /**
+     * Smart startup DTC scan, deferred to run once immediately AFTER the first
+     * live record so the gauges populate before this multi-bus scan (which can
+     * take a few seconds) rather than after it. Runs on the logging worker
+     * thread, so it is naturally serialized with polling; commandLock is still
+     * taken to exclude any concurrent manual UI diagnostic. Failures are
+     * non-fatal — a DTC scan must never take the live logger down.
+     */
+    private void runStartupDtcScan(BaseDriver localDriver, long sessionToken,
+            String verifiedVinForDtcScan, long initialDtcSnapshotGeneration,
+            LoggerConfig config) {
+        boolean lockHeld = false;
+        try {
+            final BaseDriver finalDriverForDtc = localDriver;
+            final long dtcConnectionEpoch = finalDriverForDtc.getConnectionEpoch();
+            localDriver.commandLock.lockInterruptibly();
+            lockHeld = true;
+            // A stop/start or reconnect may have happened while polling; do not
+            // scan or publish against a connection that is no longer current.
+            if (!isCurrentConnection(finalDriverForDtc, sessionToken, dtcConnectionEpoch)) {
+                return;
+            }
+            VehicleModuleProfileStore.SmartProtocolEvidence evidence =
+                    verifiedVinForDtcScan != null
+                    ? VehicleModuleProfileStore.getSmartProtocolEvidence(
+                            this, verifiedVinForDtcScan) : null;
+            SmartDtcScanPlanner.Plan startupPlan =
+                    SmartDtcScanPlanner.createPlanFromEvidence(
+                    SmartDtcScanPlanner.ScanMode.SMART,
+                    DtcReader.activeProtocolFor(finalDriverForDtc), evidence,
+                    verifiedVinForDtcScan, config.fordMsCanEnabled,
+                    DtcReader.supportsStandardProtocolSelection(finalDriverForDtc));
+            DtcReader.DtcScanResult scanResult = DtcReader.readDtcs(
+                    finalDriverForDtc, startupPlan);
+
+            DtcSnapshotValidity published = isCurrentConnection(
+                    finalDriverForDtc, sessionToken, dtcConnectionEpoch)
+                    ? replaceDtcSnapshotFromScan(
+                            scanResult, true, initialDtcSnapshotGeneration)
+                    : null;
+            if (published != null) {
+                DtcSnapshot snapshot = getDtcSnapshot();
+
+                LoggerCallback cbDtc = getCallback();
+                if (cbDtc != null) {
+                    mainHandler.post(() -> {
+                        if (isCurrentConnection(
+                                finalDriverForDtc, sessionToken, dtcConnectionEpoch)) {
+                            cbDtc.onDtcAutoScan(
+                                    snapshot.stored.size(),
+                                    snapshot.pending.size(),
+                                    snapshot.permanent.size(), snapshot.validity);
+                        }
+                    });
+                    mainHandler.post(() -> {
+                        if (isCurrentConnection(
+                                finalDriverForDtc, sessionToken, dtcConnectionEpoch)) {
+                            cbDtc.onDtcAutoScanDetails(
+                                    scanResult, finalDriverForDtc, sessionToken,
+                                    dtcConnectionEpoch);
+                        }
+                    });
+                }
+            }
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            if (ownsActiveSession(sessionToken)) Log.e(TAG, "DTC Auto-scan failed", e);
+        } finally {
+            if (lockHeld) localDriver.commandLock.unlock();
+        }
+    }
+
     private void runLogger(LoggerConfig config, long sessionToken, int startId) {
         synchronized (SESSION_STATE_LOCK) {
             if (ownsActiveSession(sessionToken)) activeConfig = config;
@@ -859,10 +939,15 @@ public final class LoggerService extends Service {
         // allocation threw away the comparison fuel it had just preserved —
         // leaving Deviation/Correction permanently empty.
         LiveMapStore localMapStore = liveMapStore != null ? liveMapStore : new LiveMapStore();
+        // VE map shares the fuel map's cross-session retention: the Tune Assist
+        // workflow logs Petrol then LPG to compare, and the ΔVE surface is only
+        // meaningful if both fuels' learned cells survive the fuel switch.
+        VeMapStore localVeMapStore = veMapStore != null ? veMapStore : new VeMapStore();
         synchronized (SESSION_STATE_LOCK) {
             if (ownsActiveSession(sessionToken)) {
                 // Expose via instance getter for MainActivity to read snapshots
                 liveMapStore = localMapStore;
+                veMapStore = localVeMapStore;
             }
         }
 
@@ -916,6 +1001,7 @@ public final class LoggerService extends Service {
                 localApiServer.setAdapterConnected(true);
                 localApiServer.setVehicleBrand(config.vehicleBrand);
                 localApiServer.setLiveMapStore(localMapStore);
+                localApiServer.setVeMapStore(localVeMapStore);
                 localApiServer.setVehicleInformation(CommonVehicleDataStore.get(this, config.vin));
                 localApiServer.resetSession();
                 synchronized (SESSION_STATE_LOCK) {
@@ -958,57 +1044,12 @@ public final class LoggerService extends Service {
         if (abortRetiredInitialization(
                 sessionToken, localDriver, localApiServer, localAirDensity)) return;
 
-        // --- Smart startup DTC scan (current + verified profile protocols) ---
-        try {
-            final BaseDriver finalDriverForDtc = localDriver;
-            final long dtcConnectionEpoch = finalDriverForDtc.getConnectionEpoch();
-            VehicleModuleProfileStore.SmartProtocolEvidence evidence =
-                    verifiedVinForDtcScan != null
-                    ? VehicleModuleProfileStore.getSmartProtocolEvidence(
-                            this, verifiedVinForDtcScan) : null;
-            SmartDtcScanPlanner.Plan startupPlan =
-                    SmartDtcScanPlanner.createPlanFromEvidence(
-                    SmartDtcScanPlanner.ScanMode.SMART,
-                    DtcReader.activeProtocolFor(finalDriverForDtc), evidence,
-                    verifiedVinForDtcScan, config.fordMsCanEnabled,
-                    DtcReader.supportsStandardProtocolSelection(finalDriverForDtc));
-            DtcReader.DtcScanResult scanResult = DtcReader.readDtcs(
-                    finalDriverForDtc, startupPlan);
-
-            DtcSnapshotValidity published = isCurrentConnection(
-                    finalDriverForDtc, sessionToken, dtcConnectionEpoch)
-                    ? replaceDtcSnapshotFromScan(
-                            scanResult, true, initialDtcSnapshotGeneration)
-                    : null;
-            if (published != null) {
-                DtcSnapshot snapshot = getDtcSnapshot();
-
-                LoggerCallback cbDtc = getCallback();
-                if (cbDtc != null) {
-                    mainHandler.post(() -> {
-                        if (isCurrentConnection(
-                                finalDriverForDtc, sessionToken, dtcConnectionEpoch)) {
-                            cbDtc.onDtcAutoScan(
-                                    snapshot.stored.size(),
-                                    snapshot.pending.size(),
-                                    snapshot.permanent.size(), snapshot.validity);
-                        }
-                    });
-                    mainHandler.post(() -> {
-                        if (isCurrentConnection(
-                                finalDriverForDtc, sessionToken, dtcConnectionEpoch)) {
-                            cbDtc.onDtcAutoScanDetails(
-                                    scanResult, finalDriverForDtc, sessionToken,
-                                    dtcConnectionEpoch);
-                        }
-                    });
-                }
-            }
-        } catch (Exception e) {
-            if (ownsActiveSession(sessionToken)) Log.e(TAG, "DTC Auto-scan failed", e);
-        }
-        if (abortRetiredInitialization(
-                sessionToken, localDriver, localApiServer, localAirDensity)) return;
+        // The smart startup DTC scan is deferred: it runs once immediately
+        // after the first live poll (see runStartupDtcScan below), so gauges
+        // populate in a few seconds instead of waiting out this multi-bus scan.
+        // A vehicle that answers no VIN service used to leave the driver
+        // staring at empty gauges while VIN + DTC acquisition blocked the first
+        // poll — hence "connected but no data".
 
         // --- Auto-detect supported PIDs ---
         List<PIDDefinition> allPids = PIDCatalogue.getConfiguredPollSet(this,
@@ -1103,6 +1144,9 @@ public final class LoggerService extends Service {
             updateSessionNotification(sessionToken, "Logging: 0 records", 0);
             long lastDtcCheckMs = android.os.SystemClock.elapsedRealtime();
             int retryCount = 0;
+            // The smart startup DTC scan runs once, right after the first live
+            // record, instead of blocking the first poll. See runStartupDtcScan.
+            boolean startupDtcDone = false;
 
             while (ownsActiveSession(sessionToken)) {
                 try {
@@ -1212,7 +1256,7 @@ public final class LoggerService extends Service {
                         }
                         if (MainActivity.isPaused) continue;
                         PollingEngine.PollOutcome outcome =
-                                engine.poll(localDriver, localAirDensity, localMapStore);
+                                engine.poll(localDriver, localAirDensity, localMapStore, localVeMapStore);
                         // A stop/start can complete while poll() is blocked. Do
                         // not let that last result escape the worker that made it.
                         if (!ownsActiveSession(sessionToken)) break;
@@ -1232,6 +1276,17 @@ public final class LoggerService extends Service {
                             }
                         }
                         publishSessionRecord(sessionToken, record, localRecordCount);
+
+                        // Deferred smart startup DTC scan: gauges are now live, so
+                        // run the (slower, multi-bus) scan once. Same worker thread
+                        // as polling, so it is serialized with it naturally.
+                        if (!startupDtcDone) {
+                            startupDtcDone = true;
+                            runStartupDtcScan(localDriver, sessionToken,
+                                    verifiedVinForDtcScan, initialDtcSnapshotGeneration,
+                                    config);
+                            lastDtcCheckMs = android.os.SystemClock.elapsedRealtime();
+                        }
 
                         // Low-voltage watchdog: a weak alternator / battery cause lean
                         // misfires that masquerade as fuel-trim problems — especially on

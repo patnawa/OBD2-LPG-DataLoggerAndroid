@@ -523,11 +523,11 @@ public final class AirDensityMonitor implements SensorEventListener {
      * @param ratedRPM rated peak power RPM
      * @param displacementUserSet if false, VE/TMF/PDI stamped "assumed"
      */
-    public void appendSamples(java.util.List<SensorSample> samples,
+    public AdvancedAirDensity.AdvancedResult appendSamples(java.util.List<SensorSample> samples,
                               Double mafGs, Double rpm, Double lambda,
                               FuelMode fuelMode, double displacementCC, double ratedRPM,
                               boolean displacementUserSet) {
-        appendSamples(samples, mafGs, rpm, lambda, null, fuelMode,
+        return appendSamples(samples, mafGs, rpm, lambda, null, fuelMode,
                 displacementCC, ratedRPM, displacementUserSet);
     }
 
@@ -536,12 +536,12 @@ public final class AirDensityMonitor implements SensorEventListener {
      * semantically separate. Commanded equivalence ratio is useful as a target,
      * but is never allowed to drive actual-AFR, ECC, or density calculations.
      */
-    public void appendSamples(java.util.List<SensorSample> samples,
+    public AdvancedAirDensity.AdvancedResult appendSamples(java.util.List<SensorSample> samples,
                               Double mafGs, Double rpm, Double actualLambda,
                               Double commandedLambda, FuelMode fuelMode,
                               double displacementCC, double ratedRPM,
                               boolean displacementUserSet) {
-        if (samples == null) return;
+        if (samples == null) return null;
 
         // Soft async weather refresh if TTL expired (never blocks OBD thread)
         if (needsWeatherRefresh()) {
@@ -553,9 +553,9 @@ public final class AirDensityMonitor implements SensorEventListener {
             dr = compute();
         } catch (Exception e) {
             Log.w(TAG, "Air density compute failed non-fatally", e);
-            return;
+            return null;
         }
-        if (dr == null) return;
+        if (dr == null) return null;
 
         String q = dr.qualityStatus != null ? dr.qualityStatus : "default";
         if (dr.aad != null) {
@@ -601,10 +601,14 @@ public final class AirDensityMonitor implements SensorEventListener {
         appendAfrSamples(samples, actualLambda, commandedLambda, fuelMode);
 
         // Advanced block. Only measured lambda may drive these calculations.
+        // The result is returned so the caller can fold VE into the VE map
+        // without recomputing the whole advanced set.
+        AdvancedAirDensity.AdvancedResult advanced = null;
         try {
             AdvancedAirDensity.AdvancedResult ar = computeAdvanced(
                     mafGs, rpm, actualLambda, fuelMode, displacementCC, ratedRPM);
-            if (ar == null) return;
+            if (ar == null) return null;
+            advanced = ar;
 
             String advBase = q;
             // Samples whose math depends on manifold pressure inherit the MAD
@@ -677,6 +681,7 @@ public final class AirDensityMonitor implements SensorEventListener {
         } catch (Exception advEx) {
             Log.w(TAG, "Advanced air density computation failed non-fatally", advEx);
         }
+        return advanced;
     }
 
     /** AFR is useful independently of the optional AeroDensity panel. */

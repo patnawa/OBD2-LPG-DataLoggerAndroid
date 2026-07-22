@@ -109,9 +109,17 @@ final class PollingEngine {
      * @param driver     connected transport; checked for liveness after the batch
      * @param airDensity optional AAD/MAD/BAD monitor, null when disabled
      * @param mapStore   optional fuel-map store, null when the caller owns no map
+     * @param veMapStore optional VE-map store, null when the caller owns no VE map
      * @throws IOException when the adapter stopped responding mid-batch
      */
+    /** Back-compat entry for callers that own no VE map (tests, legacy paths). */
     PollOutcome poll(BaseDriver driver, AirDensityMonitor airDensity, LiveMapStore mapStore)
+            throws IOException {
+        return poll(driver, airDensity, mapStore, null);
+    }
+
+    PollOutcome poll(BaseDriver driver, AirDensityMonitor airDensity, LiveMapStore mapStore,
+                     VeMapStore veMapStore)
             throws IOException {
         pollCycle++;
         long cycleStartMs = SystemClock.elapsedRealtime();
@@ -154,7 +162,8 @@ final class PollingEngine {
         appendFuelEconomy(samples, mafValue, speedValue, fuelMode);
         appendTurboBoost(samples, mapValue, baroValue);
         appendDpf(samples, batch);
-        appendAirDensity(samples, batch, airDensity, mafValue, mapSynthesized, fuelMode);
+        AdvancedAirDensity.AdvancedResult advanced =
+                appendAirDensity(samples, batch, airDensity, mafValue, mapSynthesized, fuelMode);
         appendTiming(samples, acquisitionSpanMs);
         appendLocation(samples);
 
@@ -177,6 +186,13 @@ final class PollingEngine {
         mapMeta.appendLogSamples(samples,
                 mapPush != null && mapPush.accepted,
                 mapPush != null ? mapPush.reason : mapMeta.rejectReason);
+
+        // Fold the instantaneous VE into the learned VE surface, reusing the
+        // fuel map's cell binning and provenance so the two grids stay aligned.
+        if (veMapStore != null) {
+            Double vePct = advanced != null ? advanced.vePct : null;
+            veMapStore.push(mapMeta, fuelMode, vePct);
+        }
 
         return new PollOutcome(record, batch, mapSynthesized, mapPush);
     }
@@ -269,7 +285,8 @@ final class PollingEngine {
         }
     }
 
-    private void appendAirDensity(List<SensorSample> samples, Map<String, Double> batch,
+    private AdvancedAirDensity.AdvancedResult appendAirDensity(List<SensorSample> samples,
+                                  Map<String, Double> batch,
                                   AirDensityMonitor airDensity, Double mafValue,
                                   boolean mapSynthesized, FuelMode fuelMode) {
         if (!config.showAirDensity || airDensity == null) {
@@ -277,7 +294,7 @@ final class PollingEngine {
                     batch.get("Lambda (B1S1)"),
                     batch.get("Commanded Equivalence Ratio"),
                     fuelMode);
-            return;
+            return null;
         }
 
         // The monitor must be told whether MAP is measured or synthesized —
@@ -285,7 +302,7 @@ final class PollingEngine {
         // logged as measured quantities.
         airDensity.onObdBatch(batch, mapSynthesized);
         try {
-            airDensity.appendSamples(samples, mafValue,
+            return airDensity.appendSamples(samples, mafValue,
                     batch.get("Engine RPM"),
                     batch.get("Lambda (B1S1)"),
                     batch.get("Commanded Equivalence Ratio"),
@@ -295,6 +312,7 @@ final class PollingEngine {
                     config.engineDisplacementUserSet);
         } catch (Exception densityEx) {
             Log.w(TAG, "Air density sample append failed non-fatally", densityEx);
+            return null;
         }
     }
 

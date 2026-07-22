@@ -3450,6 +3450,15 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
             if (inProcessMapStore != null) {
                 inProcessMapStore.clear(config.fuelMode);
             }
+            // Clear the learned VE surface for the same fuel in lock-step, so a
+            // re-logged fuel does not compare fresh cells against a stale ΔVE.
+            VeMapStore clearVeStore = getVeMapStore();
+            if (clearVeStore != null) {
+                clearVeStore.clear(config.fuelMode);
+            }
+            if (inProcessVeMapStore != null) {
+                inProcessVeMapStore.clear(config.fuelMode);
+            }
             if (config.fuelMode.isGaseous()) {
                 sessionLpgData.clear();
             } else {
@@ -4093,7 +4102,8 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                         }
                         if (isPaused) continue;
                         PollingEngine.PollOutcome outcome = engine.poll(
-                                driver, loggerAirDensityMonitor, ensureInProcessMapStore());
+                                driver, loggerAirDensityMonitor, ensureInProcessMapStore(),
+                                ensureInProcessVeMapStore());
                         DataRecord record = outcome.record;
 
                         writer.writeRecord(record);
@@ -4573,6 +4583,26 @@ public final class MainActivity extends AppCompatActivity implements LoggerServi
                 inProcessMapStore = new LiveMapStore();
             }
             return inProcessMapStore;
+        }
+
+        /** VE-map counterpart to {@link #inProcessMapStore}, same lifecycle. */
+        private static volatile VeMapStore inProcessVeMapStore;
+
+        private static synchronized VeMapStore ensureInProcessVeMapStore() {
+            if (inProcessVeMapStore == null) {
+                inProcessVeMapStore = new VeMapStore();
+            }
+            return inProcessVeMapStore;
+        }
+
+        /** Prefer the background service's VE store; fall back to in-process. */
+        private VeMapStore getVeMapStore() {
+            if (mapOwnedByBackgroundService) {
+                LoggerService service = LoggerService.getInstance();
+                VeMapStore serviceStore = service != null ? service.getVeMapStore() : null;
+                if (serviceStore != null) return serviceStore;
+            }
+            return ensureInProcessVeMapStore();
         }
 
     @Override

@@ -18,8 +18,8 @@ android {
         applicationId 'com.alpha.obd2logger'
         minSdk 23
         targetSdk 35
-        versionCode 133
-        versionName "3.31.1"
+        versionCode 134
+        versionName "3.32.0"
 
         // Optional: GitHub token for higher Issues API rate limits.
         // Set GITHUB_TOKEN env var before building, or leave empty for
