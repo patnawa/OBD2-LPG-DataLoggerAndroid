@@ -50,6 +50,13 @@ public class ApiServer extends NanoHTTPD {
         this.liveMapStore = store;
     }
 
+    /** Learned VE surface — read by /api/vemap and /api/vemap/export. */
+    private volatile VeMapStore veMapStore;
+
+    public void setVeMapStore(VeMapStore store) {
+        this.veMapStore = store;
+    }
+
     /** Set the latest read-only vehicle identity/capability snapshot. */
     public void setVehicleInformation(VehicleInformationReader.Snapshot snapshot) {
         this.vehicleInformation = snapshot;
@@ -435,6 +442,10 @@ public class ApiServer extends NanoHTTPD {
                 response = handleMapSummary();
             } else if ("/api/map/export".equals(uri)) {
                 response = handleMapExport();
+            } else if ("/api/vemap".equals(uri)) {
+                response = handleVeMap();
+            } else if ("/api/vemap/export".equals(uri)) {
+                response = handleVeMapExport(session);
             } else if ("/api/dtc".equals(uri)) {
                 response = handleGetDtc();
             } else if ("/api/freezeframe".equals(uri)) {
@@ -449,6 +460,8 @@ public class ApiServer extends NanoHTTPD {
         } else if (Method.DELETE.equals(method)) {
             if ("/api/map".equals(uri)) {
                 response = handleMapClear();
+            } else if ("/api/vemap".equals(uri)) {
+                response = handleVeMapClear();
             } else if ("/api/dtc".equals(uri)) {
                 response = handleDeleteDtc();
             } else {
@@ -788,6 +801,99 @@ public class ApiServer extends NanoHTTPD {
 
     private Response handleMapClear() {
         LiveMapStore store = liveMapStore;
+        if (store != null) store.clear();
+        return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\": \"cleared\"}");
+    }
+
+    /**
+     * GET /api/vemap — learned volumetric-efficiency surface per fuel plus the
+     * petrol−LPG ΔVE diagnostic. Mirrors /api/map but carries VE, not trim.
+     */
+    private Response handleVeMap() {
+        VeMapStore store = veMapStore;
+        JSONObject obj = new JSONObject();
+        try {
+            if (store == null) {
+                obj.put("available", false);
+                return newFixedLengthResponse(Response.Status.OK, "application/json", obj.toString());
+            }
+            VeMapStore.VeSnapshot snap = store.snapshot();
+            obj.put("available", true);
+            obj.put("snapshot_ms", snap.getSnapshotMs());
+            obj.put("last_cell", snap.getLastCellKey());
+            obj.put("total_accepted", snap.getTotalAccepted());
+            obj.put("petrol_axis", snap.getPetrolAxisSource());
+            obj.put("lpg_axis", snap.getLpgAxisSource());
+            obj.put("petrol_cells", veCellArray(snap.getPetrolData()));
+            obj.put("lpg_cells", veCellArray(snap.getLpgData()));
+
+            JSONObject delta = new JSONObject();
+            delta.put("axis_compatible", snap.isComparisonAxisCompatible());
+            delta.put("overlapping_cells", snap.getOverlappingCellCount());
+            delta.put("avg_petrol_minus_lpg", round1(snap.getAveragePetrolMinusLpg()));
+            delta.put("max_loss_cell", snap.getMaxLossCell() != null ? snap.getMaxLossCell() : JSONObject.NULL);
+            obj.put("delta_ve", delta);
+        } catch (JSONException e) {
+            return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json",
+                    "{\"error\":\"json\"}");
+        }
+        return newFixedLengthResponse(Response.Status.OK, "application/json", obj.toString());
+    }
+
+    private static JSONArray veCellArray(Map<String, VeMapStore.VeCell> cells) throws JSONException {
+        JSONArray arr = new JSONArray();
+        for (Map.Entry<String, VeMapStore.VeCell> e : cells.entrySet()) {
+            VeMapStore.VeCell c = e.getValue();
+            JSONObject cell = new JSONObject();
+            cell.put("cell", e.getKey());
+            cell.put("ve", round1(c.getVe()));
+            cell.put("stddev", round1(c.getStdDev()));
+            cell.put("hits", c.getCount());
+            cell.put("confidence", Math.round(c.getConfidence() * 1000.0) / 1000.0);
+            arr.put(cell);
+        }
+        return arr;
+    }
+
+    private static double round1(double v) {
+        return Math.round(v * 10.0) / 10.0;
+    }
+
+    /**
+     * GET /api/vemap/export — CSV. {@code ?side=delta} (default) exports the
+     * petrol−LPG ΔVE grid; {@code ?side=petrol} / {@code ?side=lpg} export the
+     * dense per-side cell list.
+     */
+    private Response handleVeMapExport(IHTTPSession session) {
+        VeMapStore store = veMapStore;
+        if (store == null) {
+            return newFixedLengthResponse(Response.Status.OK, "text/csv", "");
+        }
+        String side = "delta";
+        String filename = "ve_delta_map.csv";
+        if (session != null && session.getParameters() != null) {
+            java.util.List<String> vals = session.getParameters().get("side");
+            if (vals != null && !vals.isEmpty() && vals.get(0) != null) {
+                side = vals.get(0).toLowerCase(Locale.US);
+            }
+        }
+        String csv;
+        if ("petrol".equals(side)) {
+            csv = store.exportVeCsv(false);
+            filename = "ve_map_petrol.csv";
+        } else if ("lpg".equals(side)) {
+            csv = store.exportVeCsv(true);
+            filename = "ve_map_lpg.csv";
+        } else {
+            csv = store.exportDeltaVeCsv();
+        }
+        Response response = newFixedLengthResponse(Response.Status.OK, "text/csv", csv);
+        response.addHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+        return response;
+    }
+
+    private Response handleVeMapClear() {
+        VeMapStore store = veMapStore;
         if (store != null) store.clear();
         return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\": \"cleared\"}");
     }

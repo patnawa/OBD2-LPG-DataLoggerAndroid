@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.32.0] - 2026-07-22 — Learned Volumetric Efficiency Map & Petrol−LPG ΔVE Diagnostic
+
+### Added
+
+- **Learned VE map** (`VeMapStore`): the instantaneous volumetric efficiency already computed by AeroDensity (`AdvancedAirDensity.volumetricEfficiency`) is now accumulated into a persistent per-fuel RPM×MAP surface on the exact same grid (`MapBinning`/`MapSampleMeta`) as the live fuel-trim map, so the two grids stay cell-aligned. Each cell keeps a bounded-memory mean (running average that transitions to an EWMA after 12 hits, so the surface tracks slow drift like vaporizer aging instead of freezing on early-session data), variance, min/max and a 0–1 confidence score.
+- **Petrol−LPG ΔVE diagnostic** — the headline feature uniquely enabled by the dual-fuel design: gaseous fuel physically displaces intake air, so LPG VE sits measurably below petrol VE at the same operating point. The per-cell ΔVE surface localizes a growing breathing loss to the load range where it occurs — a fingerprint of vaporizer/mixer/gas-injector degradation visible before the ECU throws a mixture DTC. Snapshot statistics report overlapping-cell count, average petrol−LPG loss and the worst-loss cell (both sides need ≥ 3 accepted hits before a cell is compared).
+- **VE-specific sample gating**: valid grid cell + warm engine (when ECT is reported) + axis-source consistency (measured MAP never mixes with load-synthesized MAP) + transient rejection (same RPM/MAP/throttle step thresholds as the fuel map) + 2-in-window debounce. Deliberately does *not* require closed loop — peak-VE cells live at wide-open throttle in open loop. The operating point is tracked across cycles where VE is unavailable (MAF is round-robin polled), so a MAF dropout can never cause a false transient rejection when readings resume.
+- **API endpoints** (bearer-token auth like all map endpoints): `GET /api/vemap` (per-fuel learned cells + ΔVE statistics as JSON), `GET /api/vemap/export?side=delta|petrol|lpg` (ΔVE grid CSV or dense per-side cell CSV), `DELETE /api/vemap`.
+- Wiring preserves the single-writer rule: `PollingEngine.poll` is the only VE-map writer (UI and API only snapshot), the store is retained across sessions like the fuel map so the petrol-then-LPG Tune Assist workflow keeps both surfaces, and clearing a fuel's trim map clears its VE surface in lock-step. `AirDensityMonitor.appendSamples` now returns its `AdvancedResult` so VE is reused, not recomputed.
+- Tests: `VeMapStoreTest` (12 unit tests: gating, per-fuel separation, immature-overlap exclusion, confidence, exports) and `VeMapIntegrationTest` (4 end-to-end tests driving a fake adapter through the real `PollingEngine` → `AirDensityMonitor` physics chain, asserting VE ≈ 89% at a realistic 2.0 L / 2400 rpm / 95 kPa / 38 g/s operating point and a ~9-point ΔVE after a fuel switchover).
+
+### Notes
+
+- The VE map populates only when AeroDensity is enabled and an engine displacement is configured (VE physically requires manifold density and displacement). A wrong displacement scales both fuels' surfaces equally, so the ΔVE diagnostic is immune to displacement error.
+
 ## [3.31.1] - 2026-07-21 — Fix "Connected but no data" after protocol detection
 
 ### Fixed

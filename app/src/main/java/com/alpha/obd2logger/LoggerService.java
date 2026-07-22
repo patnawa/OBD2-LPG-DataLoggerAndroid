@@ -152,6 +152,13 @@ public final class LoggerService extends Service {
         return liveMapStore;
     }
 
+    /** Learned VE surface — sibling of {@link #liveMapStore}, same lifecycle. */
+    private volatile VeMapStore veMapStore;
+
+    public VeMapStore getVeMapStore() {
+        return veMapStore;
+    }
+
     /** Air density monitor — merges OBD2 + weather API for AAD/MAD/BAD */
     private AirDensityMonitor airDensityMonitor;
 
@@ -932,10 +939,15 @@ public final class LoggerService extends Service {
         // allocation threw away the comparison fuel it had just preserved —
         // leaving Deviation/Correction permanently empty.
         LiveMapStore localMapStore = liveMapStore != null ? liveMapStore : new LiveMapStore();
+        // VE map shares the fuel map's cross-session retention: the Tune Assist
+        // workflow logs Petrol then LPG to compare, and the ΔVE surface is only
+        // meaningful if both fuels' learned cells survive the fuel switch.
+        VeMapStore localVeMapStore = veMapStore != null ? veMapStore : new VeMapStore();
         synchronized (SESSION_STATE_LOCK) {
             if (ownsActiveSession(sessionToken)) {
                 // Expose via instance getter for MainActivity to read snapshots
                 liveMapStore = localMapStore;
+                veMapStore = localVeMapStore;
             }
         }
 
@@ -989,6 +1001,7 @@ public final class LoggerService extends Service {
                 localApiServer.setAdapterConnected(true);
                 localApiServer.setVehicleBrand(config.vehicleBrand);
                 localApiServer.setLiveMapStore(localMapStore);
+                localApiServer.setVeMapStore(localVeMapStore);
                 localApiServer.setVehicleInformation(CommonVehicleDataStore.get(this, config.vin));
                 localApiServer.resetSession();
                 synchronized (SESSION_STATE_LOCK) {
@@ -1243,7 +1256,7 @@ public final class LoggerService extends Service {
                         }
                         if (MainActivity.isPaused) continue;
                         PollingEngine.PollOutcome outcome =
-                                engine.poll(localDriver, localAirDensity, localMapStore);
+                                engine.poll(localDriver, localAirDensity, localMapStore, localVeMapStore);
                         // A stop/start can complete while poll() is blocked. Do
                         // not let that last result escape the worker that made it.
                         if (!ownsActiveSession(sessionToken)) break;

@@ -1,10 +1,17 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.31.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
+**Version 3.32.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
-แอปพลิเคชัน Android สำหรับบันทึกข้อมูล OBD2 จากรถยนต์ วิเคราะห์ความหนาแน่นของอากาศ (AAD/MAD/BAD) และการจูนเชื้อเพลิงทุกชนิด พร้อมเชื่อมต่อ AI Agent ผ่าน REST API
+แอปพลิเคชัน Android ระดับมืออาชีพสำหรับการวินิจฉัยและบันทึกข้อมูลรถยนต์ผ่านระบบ OBD2 — วิเคราะห์ความหนาแน่นอากาศ (AAD/MAD/BAD) และประสิทธิภาพเชิงปริมาตรของเครื่องยนต์ (VE) รองรับการจูนหลากหลายระบบเชื้อเพลิง (เบนซิน / แก๊สโซฮอล์ / LPG / NGV / ดีเซล) พร้อมการเชื่อมต่อ AI Agent ผ่าน REST API ที่มีระบบรักษาความปลอดภัย
 
 ---
+
+## What's New in 3.32.0 — Learned Volumetric Efficiency Map & ΔVE Diagnostic
+
+- **Learned VE map** — the instantaneous volumetric efficiency that AeroDensity already computes is now accumulated into a persistent per-fuel RPM×MAP surface on the same grid as the live fuel map. Each cell carries a drift-tracking mean (EWMA after maturity), variance and a confidence score, with VE-specific gating: steady-state only, warm engine, measured-vs-synthesized MAP never mixed — but no closed-loop requirement, so peak-VE cells at wide-open throttle still learn.
+- **Petrol−LPG ΔVE diagnostic** — gaseous fuel displaces intake air, so LPG VE sits measurably below petrol VE at the same cell. The new ΔVE surface localizes a growing breathing loss to the exact load range where it happens: an early, per-cell fingerprint of vaporizer icing, mixer aging or gas-injector coking — visible before the ECU sets a mixture DTC, and immune to engine-displacement configuration error (it cancels in the subtraction).
+- **API**: `GET /api/vemap` (learned cells + ΔVE statistics), `GET /api/vemap/export?side=delta|petrol|lpg` (CSV), `DELETE /api/vemap` — same bearer-token auth as all map endpoints, ready for the AI-agent tuning workflow.
+- Requires AeroDensity enabled and an engine displacement configured; the fuel map's single-writer, cross-session-retention and per-fuel clear semantics all carry over unchanged.
 
 ## What's New in 3.31.0 — Industrial Theme, Driving Analytics & GPS Route Review
 
