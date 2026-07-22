@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.33.0] - 2026-07-22 — VE Heatmap & Trends, FDIR Watchdog, Prognostics, Toyota VIN Fix
+
+### Fixed
+
+- **2014 Toyota Yaris (and all pre-2016 Asian-market Toyotas): VIN detection restored.** The 3.31.1-era startup fix cut the VIN physical-sweep budget 30 s → 3 s (tuned on a vehicle with no readable VIN), which starved the UDS `22 F1 90` request that is the *only* VIN source on these vehicles — the budget expired during the first ECU's dead Mode 09 attempt. The sweep now runs its UDS F190 pass first, abandons after 3 consecutive silent addresses (a `7F` negative response counts as alive), keeps one bounded engine-ECU Mode 09 safety retry, and caps at 10 s — so no-VIN vehicles still start ~13 s total, on par with 3.31.1. `Toyota2014YarisVinRegressionTest` charges realistic per-command wall time to an injected clock so time-budget regressions can no longer hide behind latency-free test fakes.
+
+### Added
+
+- **VE map on screen** (`VeMapView`): heatmap card in the fuel-map tab — tap cycles Petrol VE / LPG VE / ΔVE. Confidence drives cell opacity; the ΔVE mode uses a diverging scale centered on the expected healthy petrol−LPG gap (amber→red = widening loss, blue = inverted gap). Hidden until cells exist; strictly read-only from store snapshots.
+- **VE surface persistence** (`VeMapPersistence`): the learned surface survives process death and reboots (versioned JSON; loaded at store creation, saved at session teardown on both logging paths). Per-fuel clears and `DELETE /api/vemap` wipe the disk copy in lock-step.
+- **ΔVE drift alarm** (`VeTrendTracker` + shared `HealthTrendStore`/`TrendAnalysis` engine): one average-ΔVE point per session, windowed level-shift classification — OK / WATCH (≥1.5 pt) / ALARM (≥3 pt) — reported as `"trend"` in `GET /api/vemap`. A widening petrol−LPG gap is the vaporizer/mixer/gas-injector degradation early warning; a shrinking gap deliberately never raises an LPG alarm.
+- **VE map in the session log**: new `ve_map_accepted`, `ve_map_reject_code` (incl. 16=skew, 17=no VE, 18=no cell), `ve_map_cell_ve`, `ve_map_cell_hits`, `ve_map_cell_confidence` columns in CSV/JSONL — the learned surface and every gate decision can be rebuilt and audited from the log alone, mirroring the `map_*` contract. Rejected samples still report the target cell's learned state.
+- **FDIR telemetry watchdog** (`TelemetryWatchdog`): LIVE→STALE→DEAD supervisor over the whole vehicle link (core signal: Engine RPM; 0 rpm at key-on counts as alive). On DEAD it force-disconnects and escalates through the existing reconnect path — structurally ending the "connected but no data" failure family.
+- **Time-alignment gate**: `poll_span_ms` is now enforced — a batch acquired over > 2.5 s is not one engine instant and is barred from both learned maps (`map_reject_code` 16), protecting map integrity on slow Bluetooth adapters.
+- **Prognostics**: `BatteryTrend` trends the crank-minimum voltage across battery tests and projects days until the 9.60 V cranking floor; `Mode06TrendRecorder` trends the worst catalyst-bank margin-to-failure (MIDs 0x21–0x24) per Full Scan — the P0420 predictor.
+
 ## [3.32.0] - 2026-07-22 — Learned Volumetric Efficiency Map & Petrol−LPG ΔVE Diagnostic
 
 ### Added

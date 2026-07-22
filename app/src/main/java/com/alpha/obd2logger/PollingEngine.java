@@ -207,9 +207,15 @@ final class PollingEngine {
 
         // Fold the instantaneous VE into the learned VE surface, reusing the
         // fuel map's cell binning and provenance so the two grids stay aligned.
-        if (veMapStore != null && !skewed) {
-            Double vePct = advanced != null ? advanced.vePct : null;
-            veMapStore.push(mapMeta, fuelMode, vePct);
+        // The push outcome is logged as ve_map_* columns (mirroring map_*) so
+        // the learned surface can be rebuilt and audited from the log alone.
+        if (veMapStore != null) {
+            VeMapStore.VePushResult vePush = null;
+            if (!skewed) {
+                Double vePct = advanced != null ? advanced.vePct : null;
+                vePush = veMapStore.push(mapMeta, fuelMode, vePct);
+            }
+            VeMapStore.appendLogSamples(samples, vePush, skewed ? "skew" : null);
         }
 
         return new PollOutcome(record, batch, mapSynthesized, mapPush);

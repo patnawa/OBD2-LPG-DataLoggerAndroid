@@ -1,10 +1,18 @@
 # TunerMap Pro — OBD2 Multi-Fuel Data Logger Android
 
-**Version 3.32.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
+**Version 3.33.0** | Professional-grade OBD2 vehicle diagnostics, multi-fuel air density analysis, and secured AI Agent integration.
 
 แอปพลิเคชัน Android ระดับมืออาชีพสำหรับการวินิจฉัยและบันทึกข้อมูลรถยนต์ผ่านระบบ OBD2 — วิเคราะห์ความหนาแน่นอากาศ (AAD/MAD/BAD) และประสิทธิภาพเชิงปริมาตรของเครื่องยนต์ (VE) รองรับการจูนหลากหลายระบบเชื้อเพลิง (เบนซิน / แก๊สโซฮอล์ / LPG / NGV / ดีเซล) พร้อมการเชื่อมต่อ AI Agent ผ่าน REST API ที่มีระบบรักษาความปลอดภัย
 
 ---
+
+## What's New in 3.33.0 — VE Heatmap & Trends, FDIR Watchdog, Toyota VIN Fix
+
+- **Toyota VIN detection restored** — pre-2016 Asian-market Toyotas (2014 Yaris incl.) read their VIN only via UDS `22 F1 90`; a startup-latency fix had starved that path. The sweep is now F190-first with a silent-address early exit — VIN back in ~2–5 s, while no-VIN vehicles still start fast.
+- **VE map on screen** — tap the new heatmap card to cycle Petrol VE / LPG VE / ΔVE, with confidence-driven opacity. The learned surface now **persists across reboots** and each session feeds a **ΔVE drift alarm** (OK/WATCH/ALARM in `/api/vemap`) — the early warning for vaporizer/mixer/gas-injector aging.
+- **VE map in the log** — new `ve_map_*` CSV/JSONL columns record every accept/reject decision and the learned cell state, so the surface can be rebuilt from the log alone.
+- **FDIR telemetry watchdog** — a LIVE→STALE→DEAD supervisor force-recovers a link that is "connected" but returning no engine data, ending that failure family structurally. Learned maps are also protected from slow-adapter time skew (> 2.5 s batches are never binned).
+- **Prognostics** — battery crank-minimum trend with days-to-failure projection, and Mode 06 catalyst margin trending (P0420 predictor).
 
 ## What's New in 3.32.0 — Learned Volumetric Efficiency Map & ΔVE Diagnostic
 

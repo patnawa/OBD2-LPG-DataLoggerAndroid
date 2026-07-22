@@ -191,6 +191,51 @@ public class VeMapIntegrationTest {
                 veStore.getPetrolData().get(newCell));
     }
 
+    private static Double sampleValue(DataRecord record, String pidKey) {
+        for (SensorSample s : record.getSamples()) {
+            if (pidKey.equals(s.getPidKey())) return s.getValue();
+        }
+        return null;
+    }
+
+    @Test
+    public void veMapColumnsAreLoggedWithEveryRecord() throws Exception {
+        LoggerConfig config = veConfig();
+        PollingEngine engine = new PollingEngine(config, fullPidSet(), 0L);
+        AirDensityMonitor monitor = new AirDensityMonitor(null);
+        VeMapStore veStore = new VeMapStore();
+        FakeDriver driver = new FakeDriver(warmCruiseBatch(38.0));
+
+        // Cycle 1: debounced — columns must say rejected (code 6) and carry
+        // no cell state yet.
+        DataRecord first = engine.poll(driver, monitor, null, veStore).record;
+        assertEquals(0.0, sampleValue(first, "ve_map_accepted"), 1e-9);
+        assertEquals(6.0, sampleValue(first, "ve_map_reject_code"), 1e-9);
+        assertNull(sampleValue(first, "ve_map_cell_ve"));
+
+        // Cycle 2: accepted — columns must carry the learned cell state.
+        DataRecord second = engine.poll(driver, monitor, null, veStore).record;
+        assertEquals(1.0, sampleValue(second, "ve_map_accepted"), 1e-9);
+        assertEquals(0.0, sampleValue(second, "ve_map_reject_code"), 1e-9);
+        Double cellVe = sampleValue(second, "ve_map_cell_ve");
+        assertNotNull(cellVe);
+        assertTrue("logged cell VE must be plausible, got " + cellVe,
+                cellVe > 80.0 && cellVe < 100.0);
+        assertEquals(1.0, sampleValue(second, "ve_map_cell_hits"), 1e-9);
+        assertNotNull(sampleValue(second, "ve_map_cell_confidence"));
+    }
+
+    @Test
+    public void veMapColumnsAbsentWhenNoVeStoreIsWired() throws Exception {
+        LoggerConfig config = veConfig();
+        PollingEngine engine = new PollingEngine(config, fullPidSet(), 0L);
+        DataRecord record = engine.poll(
+                new FakeDriver(warmCruiseBatch(38.0)), new AirDensityMonitor(null),
+                null, null).record;
+        assertNull("sessions without a VE store must not emit ve_map_* columns",
+                sampleValue(record, "ve_map_accepted"));
+    }
+
     @Test
     public void coldEngineNeverLearnsVe() throws Exception {
         LoggerConfig config = veConfig();

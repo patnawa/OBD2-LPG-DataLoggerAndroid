@@ -291,6 +291,8 @@ public final class MapSampleMeta {
      * 10=no_fuel_status, 11=axis_mismatch, 12=transient,
      * 13=lambda_unstable, 14=trim_unstable, 15=non_finite_trim,
      * 16=skew (batch acquisition span too long to be one engine instant),
+     * 17=no_ve (VE map: no finite/plausible VE value this cycle),
+     * 18=no_cell (VE map: sample carried no grid cell),
      * 99=other.
      */
     public static double rejectCode(String reason) {
@@ -312,6 +314,8 @@ public final class MapSampleMeta {
             case "trim_unstable": return 14.0;
             case "non_finite_trim": return 15.0;
             case "skew": return 16.0;
+            case "no_ve": return 17.0;
+            case "no_cell": return 18.0;
             default: return 99.0;
         }
     }

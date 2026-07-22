@@ -154,14 +154,29 @@ public final class VeMapStore {
         public final String cellKey;
         public final boolean gaseous;
         public final double ve;
+        /** Learned mean of the target cell AFTER this push; NaN when no cell. */
+        public final double cellVe;
+        /** Hit count of the target cell after this push; 0 when no cell. */
+        public final int cellHits;
+        /** Confidence of the target cell after this push; 0 when no cell. */
+        public final double cellConfidence;
 
         VePushResult(boolean accepted, String reason, String cellKey,
-                     boolean gaseous, double ve) {
+                     boolean gaseous, double ve, VeCell cell) {
             this.accepted = accepted;
             this.reason = reason;
             this.cellKey = cellKey != null ? cellKey : "";
             this.gaseous = gaseous;
             this.ve = ve;
+            if (cell != null && cell.getCount() > 0) {
+                this.cellVe = cell.getVe();
+                this.cellHits = cell.getCount();
+                this.cellConfidence = cell.getConfidence();
+            } else {
+                this.cellVe = Double.NaN;
+                this.cellHits = 0;
+                this.cellConfidence = 0.0;
+            }
         }
     }
 
@@ -416,7 +431,7 @@ public final class VeMapStore {
         lastUpdateMs = System.currentTimeMillis();
         lastCellKey = meta.cellKey;
         totalAccepted++;
-        return new VePushResult(true, null, meta.cellKey, gaseous, ve);
+        return new VePushResult(true, null, meta.cellKey, gaseous, ve, cell);
     }
 
     private static boolean isTransient(MapSampleMeta before, MapSampleMeta now) {
@@ -438,8 +453,44 @@ public final class VeMapStore {
         debounce.reset();
     }
 
+    /**
+     * Rejections still report the target cell's CURRENT learned state (when
+     * one exists) so the session log can show "sample dropped, but this cell
+     * already holds VE x from n hits" — without it a debounced record looks
+     * identical to unmapped territory.
+     */
     private VePushResult rejected(String reason, String cellKey, boolean gaseous, double ve) {
-        return new VePushResult(false, reason, cellKey, gaseous, ve);
+        VeCell cell = null;
+        if (cellKey != null && !cellKey.isEmpty()) {
+            cell = (gaseous ? lpgData : petrolData).get(cellKey);
+        }
+        return new VePushResult(false, reason, cellKey, gaseous, ve, cell);
+    }
+
+    /**
+     * Append the VE-map columns for one poll record — the VE counterpart of
+     * {@link MapSampleMeta#appendLogSamples}. Numeric-only so agents can
+     * rebuild the learned VE surface (and audit every gate decision) from the
+     * session log alone.
+     */
+    public static void appendLogSamples(java.util.List<SensorSample> samples,
+                                        VePushResult push, String overrideReject) {
+        if (samples == null) return;
+        boolean accepted = push != null && push.accepted && overrideReject == null;
+        String reason = overrideReject != null
+                ? overrideReject : (push != null ? push.reason : null);
+        samples.add(new SensorSample("ve_map_accepted", "VE Map Sample Accepted",
+                accepted ? 1.0 : 0.0, "", "ok"));
+        samples.add(new SensorSample("ve_map_reject_code", "VE Map Reject Code",
+                MapSampleMeta.rejectCode(accepted ? null : reason), "", "ok"));
+        boolean hasCell = push != null && push.cellHits > 0;
+        samples.add(new SensorSample("ve_map_cell_ve", "VE Map Cell VE",
+                hasCell ? push.cellVe : null, "%", hasCell ? "ok" : "unavailable"));
+        samples.add(new SensorSample("ve_map_cell_hits", "VE Map Cell Hits",
+                hasCell ? (double) push.cellHits : null, "", hasCell ? "ok" : "unavailable"));
+        samples.add(new SensorSample("ve_map_cell_confidence", "VE Map Cell Confidence",
+                hasCell ? Math.round(push.cellConfidence * 1000.0) / 1000.0 : null,
+                "", hasCell ? "ok" : "unavailable"));
     }
 
     public VeSnapshot snapshot() {

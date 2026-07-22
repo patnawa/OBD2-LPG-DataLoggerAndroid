@@ -255,6 +255,15 @@ public final class DataWriter implements AutoCloseable {
         registerDerived("map_gated", "Map Gate Eligible (1/0)");
         registerDerived("map_accepted", "Map Sample Accepted (1/0)");
         registerDerived("map_reject_code", "Map Reject Code");
+        // Learned-VE-map columns: per-record accept/reject plus the target
+        // cell's learned state after the push, so the VE surface (and every
+        // gate decision) can be rebuilt from the log alone — same contract as
+        // the map_* block above. Cell columns are blank until a cell exists.
+        registerDerived("ve_map_accepted", "VE Map Sample Accepted (1/0)");
+        registerDerived("ve_map_reject_code", "VE Map Reject Code");
+        registerDerived("ve_map_cell_ve", "VE Map Cell VE (%)");
+        registerDerived("ve_map_cell_hits", "VE Map Cell Hits");
+        registerDerived("ve_map_cell_confidence", "VE Map Cell Confidence (0-1)");
         // GPS route columns (RouteRecorder). Empty when the session had no
         // permission/fix — consumers must treat blank as "no fix", not (0,0).
         registerDerived("gps_lat", "GPS Latitude (deg)");
